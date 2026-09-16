@@ -1,3 +1,6 @@
+# Project specific MCP setup (for local testing)
+.mcp.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -13,27 +13,29 @@ Get up and running with the **FPAC Soil MCP Server** in less than two minutes.
 
 ## 2. Instant Local Run
 
-```powershell
-# Clone the repository
+Clone the repository and change into the project directory:
+
+```bash
 git clone https://github.com/AndrewBrown-USDA/fpac-soil-mcp.git
-Set-Location fpac-soil-mcp
+cd fpac-soil-mcp
+```
 
-# Sync environment
+Sync dependencies and run the server directly (stdio mode):
+
+```bash
 uv sync
-
-# Run the server directly (stdio mode)
 uv run fpac-soil-mcp
 ```
 
 ---
 
-## 3. Connect to Claude Desktop
+## 3. Client Configuration
 
-Open your Claude Desktop configuration file:
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+The server runs over standard I/O (`stdio`) by default and integrates with any MCP-compliant client or agent (e.g., Pi coding agent via `pi-mcp-adapter`, Claude, Cursor, Copilot CLI, or custom clients).
 
-Add the server definition:
+### Standard MCP Configuration (`.mcp.json` or client config)
+
+Define the server in your project's `.mcp.json` or client configuration file:
 
 ```json
 {
@@ -41,8 +43,6 @@ Add the server definition:
     "fpac-soil": {
       "command": "uv",
       "args": [
-        "--directory",
-        "D:\\workspace\\fpac-soil-mcp",
         "run",
         "fpac-soil-mcp"
       ]
@@ -51,31 +51,53 @@ Add the server definition:
 }
 ```
 
-Restart Claude Desktop. Look for the hammer 🔨 icon indicating active tools.
+*Note: If your client runs from a different working directory, add the project path via `--directory /path/to/fpac-soil-mcp` before `run`.*
 
 ---
 
 ## 4. Try These Prompts in Your LLM
 
-Once connected, ask your assistant:
+Once connected, test the server tools, resources, and prompt templates using these sample queries:
 
-1. **Point Screening Query:**
-   > *"What is the USDA soil map unit and farmland classification at latitude 41.8781, longitude -93.0977?"*
+### Discovery & Capabilities
+> *"What tools, resources, and prompt templates do you have available for FPAC-NRCS soil data and FPPA screening?"*
 
-2. **Mukey Query:**
-   > *"Look up SSURGO map unit details for mukey '408013'."*
+### Point Screening Query (`get_farmland_classification_by_point`)
+- **Urban / Non-Prime Farmland:**
+  > *"Can you check the soil map unit and farmland classification for latitude `39.7684` and longitude `-86.1581`?"*
+- **Conditional Prime Farmland:**
+  > *"Can you check the soil map unit and farmland classification for latitude `39.7684` and longitude `-87.1581`?"*
+- **Prime Farmland / General Point:**
+  > *"What is the USDA soil map unit and farmland classification at latitude `41.8781`, longitude `-93.0977`?"*
 
-3. **FPPA Scope & Legal Rules:**
-   > *"Explain the difference between this soil classification lookup and an official FPPA Form AD-1006 determination under 7 CFR Part 658."*
+### Map Unit Key (mukey) Query (`get_farmland_classification_by_mukey`)
+- **Direct Map Unit Lookup:**
+  > *"Retrieve the farmland classification and soil map unit details for SSURGO map unit key (mukey) `3104713`."*
+- **Conditional Prime Map Unit:**
+  > *"Retrieve the farmland classification and soil map unit details for SSURGO map unit key (mukey) `159756`."*
 
-4. **Farmland Classification Definitions:**
-   > *"List all official USDA NRCS farmland classification categories and their FPPA significance."*
+### FPPA Scope & Regulatory Boundaries (`explain_fppa_screening_scope`)
+> *"Explain the difference between preliminary SDA soil screening and a full FPPA LESA determination or Form AD-1006."*
+
+### Farmland Classification Definitions (`list_farmland_classes`)
+> *"List all official USDA NRCS farmland classification categories and their FPPA significance."*
+
+### FPPA Screening Assistant Prompt (`fppa_screening_assistant`)
+> *"Use the `fppa_screening_assistant` prompt to evaluate a proposed highway extension project at `39.7684, -87.1581`."*
+
+### Validation & Out-of-Bounds Edge Cases
+- **Invalid Latitude:**
+  > *"Can you check the soil map unit and farmland classification for latitude `120.0` and longitude `-87.1581`?"*
+- **Unmapped / Geographic Boundary (Arctic Ocean):**
+  > *"Can you check the soil map unit and farmland classification for latitude `89.0` and longitude `-87.1581`?"*
+- **Invalid Map Unit Key:**
+  > *"Retrieve the farmland classification and soil map unit details for SSURGO map unit key (mukey) `asdgasdg`."*
 
 ---
 
 ## 5. Development & Testing
 
-```powershell
+```bash
 # Run unit tests
 uv run pytest
 
