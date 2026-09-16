@@ -32,8 +32,8 @@ uv run pytest -m live_sda
 
 ## Find Things
 
-- `main.py` - console-script entry point selected by `[project.scripts]` in `pyproject.toml`.
-- `src\fpac_soil_mcp\app.py` - FastMCP factory; wires tools, resources, prompts, and custom routes.
+- `src\fpac_soil_mcp\app.py` - FastMCP factory and console-script entry point (`main()`).
+- `main.py` - optional root-level development entry point script.
 - `src\fpac_soil_mcp\config.py` - environment and `.env` settings.
 - `src\fpac_soil_mcp\sda_client.py` - USDA SDA HTTP client, validation, fixed SQL templates, retries, and response parsing.
 - `src\fpac_soil_mcp\models.py` - Pydantic response schemas.

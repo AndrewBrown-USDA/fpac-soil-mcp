@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fpac-soil-mcp = "main:main"
+fpac-soil-mcp = "fpac_soil_mcp.app:main"
 
 [build-system]
 requires = ["hatchling"]
