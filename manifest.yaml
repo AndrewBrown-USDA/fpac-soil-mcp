@@ -1,0 +1,22 @@
+name: fpac-soil-mcp
+title: USDA FPAC Soil MCP Server
+version: 0.1.0
+description: FastMCP server providing USDA NRCS Soil Data Access (SDA) farmland classifications and preliminary FPPA screening metadata.
+author: Andrew Brown
+license: MIT
+tools:
+  - name: get_farmland_classification_by_point
+    description: Query USDA NRCS Soil Data Access for soil map units and Farmland Classification at a WGS84 point.
+  - name: get_farmland_classification_by_mukey
+    description: Query USDA NRCS Soil Data Access for soil map unit attributes by map unit key (mukey).
+  - name: explain_fppa_screening_scope
+    description: Explain the scope and limitations of FPPA preliminary screening vs full LESA evaluation.
+  - name: list_farmland_classes
+    description: List all standard NRCS farmland classification categories with definitions and regulatory context.
+resources:
+  - uri: fppa://regulatory-notice
+    name: FPPA Regulatory Notice
+    description: Authoritative regulatory disclaimer regarding preliminary screening vs official NRCS determinations.
+  - uri: fppa://screening-guidance
+    name: FPPA Screening Guidance
+    description: Technical guidance on 7 CFR Parts 657/658 and Form AD-1006 / NRCS-CPA-106 workflows.
