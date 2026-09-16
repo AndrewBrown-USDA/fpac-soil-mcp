@@ -48,7 +48,7 @@ uv run pytest -m live_sda
 - `Dockerfile` - production container build.
 - `server.json` and `manifest.yaml` - MCP registry and capability metadata.
 - `README.md` and `QUICKSTART.md` - user-facing setup, client configuration, API behavior, and regulatory scope.
-- `planning\` - planning artifacts; inspect the directory rather than treating task-state files as project truth.
+- `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md`, then inspect the directory for execution-specific files.
 
 ## Workflows
 
@@ -105,6 +105,7 @@ Run `uv run pytest -m live_sda` separately when changing requests, SQL templates
 - `.env.example` - configuration reference.
 - `manifest.yaml` - published MCP tools and resources.
 - `server.json` - MCP server launch metadata.
+- `planning\MASTER_PLAN.md` - product mission, target architecture, governance, and roadmap.
 - [FastMCP documentation](https://gofastmcp.com/)
 - [USDA NRCS Soil Data Access](https://sdmdataaccess.nrcs.usda.gov/)
 - [USDA Web Soil Survey](https://websoilsurvey.sc.egov.usda.gov/)
