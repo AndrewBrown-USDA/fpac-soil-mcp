@@ -93,6 +93,8 @@ flowchart LR
 
 The roadmap is structured into sequential phases. Each phase translates directly into an individual `/plan-wave` and `/wave-orchestration` plan.
 
+Technical integration details, source constraints, and implementation breadcrumbs for NASS, Census TIGERweb, and SDA interpretations are maintained in `planning/RESEARCH_PUBLIC_APIS_AND_INTERPRETATIONS.md`.
+
 ```mermaid
 flowchart TD
     P0[Phase 0: Technical Foundation] --> P1[Phase 1: Domain & Governance Model]
@@ -140,11 +142,14 @@ flowchart TD
 3. **Workflow State Machine**: Implement valid state transitions (received, ready_for_analysis, analysis_complete, pending_nrcs_review, provisionally_complete, closed).
 4. **Official Source Registry**: Add versioned registry of regulations, official form editions, and regional scoring configurations.
 5. **Security & Privacy Baseline**: Strip sensitive personal details from request payloads. Enforce public-only data handling.
+6. **Public Data Integration Records**: Define UrbanExemptionRecord, CountyAgProfile, and SoilInterpretationRecord models with source, retrieval time, method version, and configuration provenance.
+7. **Integration Configuration**: Define validated configuration for the NASS county agricultural profile, Census TIGERweb urban-area screening, and SDA soil interpretations/NCCPI.
 
 **Exit Criteria**:
 - Models validate all workflow transitions.
 - Automated code cannot set nrcs_official or agency_approved states.
 - Tests verify invalid state transitions are blocked.
+- Public-data records reject missing provenance, and integration configuration fails clearly when required settings are absent or invalid.
 
 ---
 
@@ -159,11 +164,15 @@ flowchart TD
 4. **Local Acreage Calculation**: Project geometries to local equal-area CRS and calculate acreage per soil unit.
 5. **Farmland Breakdown**: Group results by prime, unique, statewide/local importance, not-prime, and unmapped soils.
 6. **Artifact Output**: Produce structured summary JSON, CSV map-unit table, and execution manifest.
+7. **Urban-Area Pre-Screen**: Overlay AOIs with the configured Census TIGERweb urban-area source and record potentially exempt acreage before soil analysis, without issuing a legal exemption determination.
+8. **Soil Interpretation Evidence**: Retrieve component-weighted SDA soil interpretations, including configured NCCPI measures, with source and method provenance.
 
 **Exit Criteria**:
 - 50 test AOIs match reviewed test fixtures within 0.1% acreage tolerance.
 - Conditional prime classifications are reported accurately without silent conversions.
 - Response payloads include full geometry hashes and query metadata.
+- Reviewed urban-area fixtures produce the expected preliminary screening flags and preserve non-exempt acreage for soil analysis.
+- SDA interpretation and NCCPI results match verified offline benchmark fixtures.
 
 ---
 
@@ -177,11 +186,15 @@ flowchart TD
 3. **Impact Area Separation**: Track direct-conversion, indirect-conversion, and alternative corridors as distinct geometries.
 4. **Corridor Rules Engine**: Apply 7 CFR 658.5(c) rules (omit SA criteria 5 and 6; raise criteria 8 and 11 to 25 points).
 5. **Multi-County Reconciliation**: Ensure county-level acreage sums equal total corridor project acreage.
+6. **Urban Corridor Segmentation**: Split corridors into preliminary urban-screened and rural analysis segments while preserving the source geometry and screening evidence.
+7. **County Agricultural Baselines**: Attach a provenance-bearing NASS county agricultural profile for every county intersected by the corridor.
 
 **Exit Criteria**:
 - Multi-county test corridor splits cleanly across survey and county lines.
 - Calculations follow CPA-106 rules rather than AD-1006 rules.
 - System recovers gracefully from partial upstream network failures.
+- Urban and rural segment acreages reconcile to the full corridor acreage within the established tolerance.
+- Every intersected county has a configured NASS profile or an explicit unavailable-data status with retrieval provenance.
 
 ---
 
@@ -195,11 +208,15 @@ flowchart TD
 3. **Judgment Criteria Handling**: Expose subjective criteria (Part VI items) as input slots with rationale fields. Do not fabricate scores.
 4. **Combined Scoring**: Sum LE (100 max) and SA (160 max) to compute preliminary total (260 max).
 5. **Threshold Flagging**: Flag projects scoring 160 or higher for mandatory alternatives consideration per 7 CFR 658.4(c)(2).
+6. **NCCPI Candidate Method**: When an approved local LE table is unavailable, derive a configured candidate LE score from acreage-weighted SDA NCCPI evidence and label the result as preliminary.
+7. **Public-Data SA Measurements**: Use NASS county profiles and TIGERweb spatial evidence for applicable objective SA measurements, while leaving judgment criteria for documented human input.
 
 **Exit Criteria**:
 - Deterministic measurements match test cases exactly.
 - Missing local methods halt calculations with missing_method errors instead of fabricated values.
 - Total scores clearly display preliminary status and breakdown by criterion.
+- Configured NCCPI candidate LE calculations match reviewed weighted benchmark fixtures and retain interpretation provenance.
+- Applicable NASS- and TIGERweb-supported SA measurements match offline fixtures; unavailable data and human-judgment fields remain explicit rather than inferred.
 
 ---
 
@@ -213,11 +230,13 @@ flowchart TD
 3. **Draft AD-1006 Population**: Fill Parts I, II, III, IV, and measurable fields of Part VI for standard parcel projects.
 4. **Draft CPA-106 Population**: Fill equivalent sections for corridor projects.
 5. **Review Packages**: Generate exportable packages with maps, tables, draft form data, and missing-information lists.
+6. **Public-Data Evidence Bundle**: Include the NASS county profile, TIGERweb urban-screening audit record, and SDA interpretation/NCCPI evidence used by each alternative, with configuration and retrieval provenance.
 
 **Exit Criteria**:
 - Forms are watermarked as preliminary drafts.
 - Incomplete inputs generate missing-information notices.
 - Output packages reproduce identically from saved case records.
+- Review packages identify the evidence used for every populated public-data field and preserve unavailable-data notices without implying official approval.
 
 ---
 
@@ -249,11 +268,13 @@ flowchart TD
 3. **Performance Benchmarking**: Measure p50/p95 latency and memory usage across all tool types.
 4. **Documentation & Packaging**: Synchronize README.md, manifest.yaml, server.json, and quickstart guides.
 5. **Presentation Materials**: Prepare 5-7 minute demo script, slides, and fallback video recording.
+6. **Offline Public-Data Corpus**: Add recorded NASS, TIGERweb, and SDA interpretation/NCCPI fixtures covering success, unavailable-data, malformed-response, and partial-upstream-failure scenarios.
 
 **Exit Criteria**:
 - 100% pass rate on unit, integration, and offline evaluation tests.
 - 0 unhandled exceptions across all gold-set scenarios.
 - All public metadata and tool signatures match runtime capabilities.
+- Parcel, corridor, LE-SA, and review-package gold-set cases run without live public APIs and reproduce expected provenance-bearing evidence.
 
 ---
 
