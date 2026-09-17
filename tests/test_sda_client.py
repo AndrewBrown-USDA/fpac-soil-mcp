@@ -283,6 +283,62 @@ class TestSDAClientExecution:
         assert results[0]["numeric_rating"] == 0.78
         assert results[0]["rating_class"] == "High"
 
+    def test_get_interpretations_unsupported_aggregation_method(self) -> None:
+        client = SDAClient()
+        with pytest.raises(
+            SDAValidationError, match="Aggregation method 'Dominant Condition' is not in allowed"
+        ):
+            client.get_interpretations(["412915"], aggregation_method="Dominant Condition")
+
+    def test_get_interpretations_fresh_client_catalog_lookup(self) -> None:
+        mock_catalog_resp = {
+            "Table": [
+                ["mrulename"],
+                ["Custom Soil Productivity Index"],
+            ]
+        }
+        mock_interp_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rating_class",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["412915", "IN097", "MmA", "Miami silt loam", 0.85, "High", 95, 100],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if b"sdvattribute" in request.content:
+                return httpx.Response(200, json=mock_catalog_resp)
+            return httpx.Response(200, json=mock_interp_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        assert client._cached_rule_names is None
+        results = client.get_interpretations(["412915"], rule_name="Custom Soil Productivity Index")
+        assert len(results) == 1
+        assert results[0]["numeric_rating"] == 0.85
+
+    def test_get_interpretations_invalid_catalog_rule_rejected(self) -> None:
+        mock_catalog_resp = {
+            "Table": [
+                ["mrulename"],
+                ["Allowed Rule A"],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_catalog_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        with pytest.raises(SDAValidationError, match="not found in SDA cointerp rule catalog"):
+            client.get_interpretations(["412915"], rule_name="Nonexistent Custom Rule")
+
     def test_get_spatial_intersection_clipped(self) -> None:
         wkt = "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"
         mock_spatial_resp = {

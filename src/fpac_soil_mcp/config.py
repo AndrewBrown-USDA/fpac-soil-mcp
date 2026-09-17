@@ -74,8 +74,6 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "Weighted Average",
             "Dominant Component",
-            "Dominant Condition",
-            "Minimum or Maximum",
         ],
         description="Allowlist of supported component aggregation methods",
     )

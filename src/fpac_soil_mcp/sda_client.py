@@ -550,10 +550,8 @@ class SDAClient:
                 f"Invalid characters in interpretation rule name: '{rule_name}'"
             )
 
-        if rule_clean not in settings.sda_interpretation_rules_allowed and (
-            self._cached_rule_names is not None and rule_clean not in self._cached_rule_names
-        ):
-            # If not in default allowlist and not in cached catalog, attempt lookup or validate safe characters
+        if rule_clean not in settings.sda_interpretation_rules_allowed:
+            # If not in default allowlist, verify against cached or live catalog
             try:
                 available = self.get_available_interpretation_rules()
                 if rule_clean not in available:
@@ -570,7 +568,7 @@ class SDAClient:
                 if not all(c.isalnum() or c in " -_().,/" for c in rule_clean):
                     raise SDAValidationError(f"Invalid rule name format: '{rule_clean}'") from exc
 
-        if aggregation_method not in settings.sda_aggregation_methods_allowed:
+        if aggregation_method not in ("Weighted Average", "Dominant Component"):
             raise SDAValidationError(
                 f"Aggregation method '{aggregation_method}' is not in allowed methods: {settings.sda_aggregation_methods_allowed}"
             )
