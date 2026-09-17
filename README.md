@@ -4,7 +4,7 @@
 [![FastMCP](https://img.shields.io/badge/FastMCP-2.0+-green.svg)](https://github.com/jlowin/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A standard Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jlowin/fastmcp) to provide LLM clients with direct, verified access to USDA Natural Resources Conservation Service (NRCS) **Soil Data Access (SDA)** tabular queries and preliminary **Farmland Protection Policy Act (FPPA)** screening.
+A Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jlowin/fastmcp) that gives LLM clients direct access to USDA Natural Resources Conservation Service (NRCS) **Soil Data Access (SDA)** tabular queries and preliminary **Farmland Protection Policy Act (FPPA)** screening.
 
 ---
 
@@ -12,33 +12,29 @@ A standard Model Context Protocol (MCP) server built with [FastMCP](https://gith
 
 - [Overview](#overview)
 - [Architecture & Data Flow](#architecture--data-flow)
-- [Key Features](#key-features)
-- [FPPA Legal Context & Regulatory Disclaimers](#fppa-legal-context--regulatory-disclaimers)
-- [Data Provenance & py-soildb Disclosure](#data-provenance--py-soildb-disclosure)
+- [Features](#features)
+- [FPPA Regulatory Scope & Limitations](#fppa-regulatory-scope--limitations)
+- [Data Sources & Relationship to py-soildb](#data-sources--relationship-to-py-soildb)
 - [Installation & Setup](#installation--setup)
 - [Execution Modes](#execution-modes)
-- [MCP Client Configurations](#mcp-client-configurations)
-  - [Claude Desktop](#claude-desktop)
-  - [Cursor](#cursor)
-  - [Zed](#zed)
+- [MCP Client Setup](#mcp-client-setup)
 - [Tool Reference](#tool-reference)
 - [Resources & Prompts](#resources--prompts)
-- [Internal Domain & Governance Architecture (Phase 1)](#internal-domain--governance-architecture-phase-1)
 - [Configuration Reference](#configuration-reference)
-- [Development & QA Commands](#development--qa-commands)
+- [Development Commands](#development-commands)
 - [License](#license)
 
 ---
 
 ## Overview
 
-Federal projects, environmental reviews (NEPA), agricultural evaluations, and infrastructure siting often require checking whether a property or parcel contains **Prime Farmland**, **Unique Farmland**, or **Farmland of Statewide/Local Importance** as classified under USDA NRCS SSURGO datasets and 7 CFR Part 657.
+Federal projects, environmental reviews (NEPA), agricultural evaluations, and site selection often require checking for **Prime Farmland**, **Unique Farmland**, or **Farmland of Statewide/Local Importance** under USDA NRCS SSURGO datasets and 7 CFR Part 657.
 
-`fpac-soil-mcp` connects LLMs directly to the live USDA NRCS Soil Data Access REST query API, allowing agents to:
-1. Lookup soil map unit keys (`mukey`), symbols (`musym`), names (`muname`), and official farmland classification designations (`farmlndcl`) via geographic coordinates (WGS84 lat/lon) or explicit `mukey`.
-2. Inspect regulatory descriptions of official farmland classification categories.
-3. Retrieve structured explanations distinguishing preliminary soil screening from full Land Evaluation and Site Assessment (LESA) determinations.
-4. Access standardized MCP Prompts and Resources that reinforce statutory FPPA boundaries and prevent LLM hallucination of Land Evaluation (LE) or Site Assessment (SA) scores.
+`fpac-soil-mcp` connects LLMs directly to the USDA NRCS Soil Data Access REST API to:
+- Find soil map unit keys (`mukey`), symbols (`musym`), names (`muname`), and farmland classification ratings (`farmlndcl`) by geographic coordinates or `mukey`.
+- Screen project polygons for farmland categories and Census 2020 urban area exemptions.
+- Retrieve soil interpretation ratings (such as NCCPI v3 crop productivity indices).
+- Provide MCP Prompts and Resources that explain statutory FPPA boundaries and prevent fabricated Land Evaluation (LE) or Site Assessment (SA) scores.
 
 ---
 
@@ -72,64 +68,60 @@ flowchart TD
 
 ---
 
-## Key Features
+## Features
 
-- **Live SSURGO Spatial Queries**: Performs spatial point-in-polygon queries against the live USDA Soil Data Mart using WGS84 coordinates.
-- **Mukey Direct Lookup**: Fetches comprehensive tabular soil details directly by SSURGO Map Unit Key.
-- **Strict FPPA Regulatory Compliance**: Embeds mandatory 7 CFR Parts 657 & 658 disclaimers and warnings directly into tool responses, preventing AI assistants from claiming Form AD-1006 compliance prematurely.
-- **MCP Native**: Full support for FastMCP Tools, Resources (`fppa://...`), and Prompts (`fppa_screening_assistant`).
-- **Flexible Transports**: Supports both standard input/output (`stdio`) for desktop hosts and Server-Sent Events (`sse`) for networked deployments.
-- **Robust Networking**: Automatic retries with exponential backoff on transient SDA gateway and connection timeouts.
+- **Spatial Soil Queries**: Intersects WGS84 coordinates and GeoJSON polygons directly with live USDA Soil Data Mart spatial layers.
+- **Mukey Lookups**: Retrieves tabular soil attributes by Map Unit Key.
+- **FPPA Screening**: Identifies prime, unique, and statewide important farmland, calculates acreages, and checks Census 2020 urban area boundaries (7 CFR § 658.2(a)).
+- **Soil Interpretations**: Fetches component-weighted interpretation ratings like NCCPI v3.
+- **Embedded Regulatory Notices**: Attaches 7 CFR Parts 657 & 658 notices to query responses to keep screening distinct from official agency determinations.
+- **FastMCP Transports**: Supports stdio for local clients and SSE for network services.
+- **Retry Handling**: Retries transient USDA SDA gateway and connection timeouts with exponential backoff.
 
 ---
 
-## FPPA Legal Context & Regulatory Disclaimers
+## FPPA Regulatory Scope & Limitations
 
 ### 7 CFR Part 657 vs. 7 CFR Part 658
 
 | Regulation | Scope & Authority | Handled by `fpac-soil-mcp`? |
 | :--- | :--- | :--- |
-| **7 CFR Part 657** | **Classification of Prime Farmland, Unique Farmland, and Additional Farmland of Statewide and Local Importance.** Defines technical criteria and soil inventory attributes. | **YES** — Direct live lookup of official SSURGO `farmlndcl` classifications. |
-| **7 CFR Part 658** | **Farmland Protection Policy Act (FPPA) Rules & Regulations.** Governs federal agency reviews, Land Evaluation and Site Assessment (LESA) scoring (up to 260 points total: 100 LE + 160 SA), and official USDA Form AD-1006 / NRCS-CPA-106 processing. | **NO (Informational Scope Only)** — Preliminary screening only. Formal determination requires submission to local USDA NRCS state/field offices. |
+| **7 CFR Part 657** | **Farmland Classification.** Defines criteria for Prime Farmland, Unique Farmland, and Farmland of Statewide/Local Importance. | **YES** — Direct live lookup of official SSURGO `farmlndcl` ratings. |
+| **7 CFR Part 658** | **Farmland Protection Policy Act Rules.** Governs federal reviews, Land Evaluation and Site Assessment (LESA) scoring (up to 260 points total), and official USDA Form AD-1006 / NRCS-CPA-106 processing. | **NO (Informational Scope Only)** — Preliminary screening only. Official determinations require submission to local USDA NRCS offices. |
 
-### Mandatory Regulatory Notice
+### Regulatory Notice
 
-> **IMPORTANT REGULATORY LIMITATION**:
+> **IMPORTANT LIMITATION**:
 > Query results from this server provide **preliminary soil inventory and farmland classification screening data only** under 7 CFR Part 657. 
 > 
-> A soil query **DOES NOT** constitute:
+> A query **DOES NOT** constitute:
 > 1. An official Farmland Protection Policy Act (FPPA) determination under 7 CFR Part 658.
 > 2. A completed USDA Form AD-1006 (Farmland Conversion Impact Rating) or Form NRCS-CPA-106.
-> 3. An official Land Evaluation (LE) score or Site Assessment (SA) score.
+> 3. An official Land Evaluation (LE) or Site Assessment (SA) score.
 > 
-> Federal agencies, grant recipients, and project sponsors must submit proposed project corridors or footprints to the local USDA NRCS state or field office for official evaluation when subject to FPPA rules.
+> When subject to FPPA rules, project sponsors must submit project boundaries to their local USDA NRCS office for formal review.
 
 ---
 
-## Data Provenance & py-soildb Disclosure
+## Data Sources & Relationship to py-soildb
 
-- **Data Origin**: Tabular and spatial data are served directly from the USDA NRCS **Soil Data Access (SDA)** REST web service (`https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest`).
-- **SSURGO Snapshot**: SDA queries live Soil Survey Geographic Database (SSURGO) tables maintained by the National Cooperative Soil Survey (NCSS).
-- **py-soildb Relationship**: `fpac-soil-mcp` is an independent, lightweight FastMCP server designed for direct REST integration with SDA. It is not affiliated with or dependent upon legacy Python packages such as `py-soildb`, executing optimized SQL queries directly against USDA endpoints with zero heavy geospatial binary dependencies.
+- **Data Sources**: Tabular and spatial data come from the USDA NRCS **Soil Data Access (SDA)** REST service (`https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest`) and Census TIGERweb REST APIs.
+- **Relationship to `py-soildb`**: While `py-soildb` is an actively maintained package for soil database workflows and serves as a proven reference implementation, `fpac-soil-mcp` implements its own direct SDA query logic. This keeps the server self-contained and lets it manage endpoints and formats (such as GeoJSON clipping and Census urban layers) outside `py-soildb`'s scope without extra dependencies.
 
 ---
 
 ## Installation & Setup
 
-### Prerequisites
+### Requirements
 
 - **Python**: `>=3.11`
-- **Package Manager**: [uv](https://docs.astral.sh/uv/) (recommended) or standard `pip`
-- **Optional**: Docker (for containerized deployments)
+- **Package Manager**: [uv](https://docs.astral.sh/uv/) (recommended) or `pip`
 
 ### Using `uv` (Recommended)
 
 ```powershell
-# Clone the repository
 git clone https://github.com/AndrewBrown-USDA/fpac-soil-mcp.git
 Set-Location fpac-soil-mcp
-
-# Create environment and install dependencies
 uv sync
 ```
 
@@ -145,17 +137,17 @@ pip install -e .
 
 ## Execution Modes
 
-### 1. Standard I/O Mode (Default, `stdio`)
+### Standard I/O (Default, `stdio`)
 
-Recommended for local MCP clients such as Claude Desktop, Cursor, and Zed.
+For local desktop clients such as Claude Desktop, Cursor, and Zed:
 
 ```powershell
 uv run fpac-soil-mcp
 ```
 
-### 2. Server-Sent Events Mode (`sse`)
+### Server-Sent Events (`sse`)
 
-For network-accessible or remote microservice deployments.
+For network services:
 
 ```powershell
 $env:MCP_TRANSPORT="sse"
@@ -164,7 +156,7 @@ $env:MCP_PORT="8000"
 uv run fpac-soil-mcp
 ```
 
-### 3. Docker Container
+### Docker Container
 
 ```powershell
 docker build -t fpac-soil-mcp .
@@ -173,11 +165,11 @@ docker run -i --rm -e MCP_TRANSPORT=stdio fpac-soil-mcp
 
 ---
 
-## MCP Client Configurations
+## MCP Client Setup
 
 ### Claude Desktop
 
-Add `fpac-soil-mcp` to your `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+Add to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
@@ -200,7 +192,7 @@ Add `fpac-soil-mcp` to your `%APPDATA%\Claude\claude_desktop_config.json` (Windo
 
 ### Cursor
 
-In Cursor's **Features > MCP Servers** settings, add a new server:
+In Cursor's **Features > MCP Servers** settings:
 
 - **Name**: `fpac-soil`
 - **Type**: `command`
@@ -208,7 +200,7 @@ In Cursor's **Features > MCP Servers** settings, add a new server:
 
 ### Zed
 
-Add to your `~/.config/zed/settings.json`:
+Add to `~/.config/zed/settings.json`:
 
 ```json
 {
@@ -230,118 +222,16 @@ Add to your `~/.config/zed/settings.json`:
 
 ## Tool Reference
 
-### `get_farmland_classification_by_point`
-
-Query USDA NRCS SDA for soil map unit attributes and farmland classification at a point using WGS84 geographic coordinates.
-
-**Parameters:**
-- `latitude` (*float*, required): Latitude in decimal degrees `[-90.0, 90.0]`.
-- `longitude` (*float*, required): Longitude in decimal degrees `[-180.0, 180.0]`.
-
-**Response Model (`FarmlandClassificationResponse`):**
-```json
-{
-  "query_type": "point",
-  "input_query": {
-    "latitude": 41.8781,
-    "longitude": -93.0977
-  },
-  "coverage_status": "covered",
-  "map_units": [
-    {
-      "mukey": "408013",
-      "musym": "138B",
-      "muname": "Clarion loam, 2 to 6 percent slopes",
-      "farmlndcl": "All areas are prime farmland",
-      "areasymbol": "IA169"
-    }
-  ],
-  "source": {
-    "endpoint": "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest",
-    "timestamp_utc": "2026-09-16T16:15:00.000000Z"
-  },
-  "limitations": [
-    "Preliminary soil inventory query only under 7 CFR Part 657.",
-    "Does not constitute an official FPPA determination or Form AD-1006 completion under 7 CFR Part 658."
-  ],
-  "regulatory_notice": "..."
-}
-```
-
----
-
-### `get_farmland_classification_by_mukey`
-
-Query USDA NRCS SDA for soil map unit details and farmland classification by Map Unit Key (`mukey`).
-
-**Parameters:**
-- `mukey` (*string*, required): SSURGO Map Unit Key (numeric string).
-
----
-
-### `analyze_farmland_by_polygon`
-
-Execute comprehensive FPPA preliminary screening on a GeoJSON `Polygon` or `MultiPolygon` Area of Interest (AOI).
-
-**Capabilities:**
-- Computes geodesic ellipsoidal surface acreage on WGS84 using equal-area projections.
-- Performs preliminary statutory exemption screening against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)).
-- Queries intersecting SSURGO map units via USDA NRCS Soil Data Access with server-side spatial clipping (`STIntersection` and `STArea`).
-- Groups exact clipped fragments by map unit and calculates true acreage and percentages.
-- Accurately reports `coverage_status` as `"covered"`, `"partially_covered"`, or `"unmapped"`.
-- Fetches component-weighted National Commodity Crop Productivity Index (`NCCPI - National Commodity Crop Productivity Index (Ver 3.0)`) ratings.
-- Summarizes acreage across statutory farmland categories (Prime, Conditional Prime, Statewide/Local Importance, Unique, Not Prime).
-- Generates a CSV tabular output, deterministic SHA-256 geometry hash, and execution manifest.
-
-**Parameters:**
-- `geojson` (*dict | string*, required): GeoJSON Polygon, MultiPolygon, Feature, or FeatureCollection geometry.
-- `include_nccpi` (*bool*, optional, default `true`): Whether to fetch component-weighted NCCPI v3 crop productivity indices.
-
----
-
-### `get_soil_polygons_by_geometry`
-
-Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as a GeoJSON `FeatureCollection` for mapping or GIS integration.
-
-**Capabilities:**
-- Returns GeoJSON features containing map unit attributes (`mukey`, `musym`, `muname`, `farmlndcl`, `areasymbol`, `area_ac`) and polygon geometries.
-- Supports server-side clipping to the AOI footprint (`clip=true`) or returning complete intersecting SSURGO survey polygons (`clip=false`).
-
-**Parameters:**
-- `geojson` (*dict | string*, required): GeoJSON Polygon or MultiPolygon geometry.
-- `clip` (*bool*, optional, default `true`): Whether to clip geometries to the exact AOI boundary.
-
----
-
-### `check_urban_area_exemption`
-
-Screen a project footprint or location against Census Bureau 2020 Urban Area boundaries (Layer 6) for preliminary statutory exemption analysis under 7 CFR § 658.2(a). Supports GeoJSON `Point`, `Polygon`, `MultiPolygon`, `Feature`, or `FeatureCollection` geometries.
-
-**Parameters:**
-- `geojson` (*dict | string*, required): GeoJSON geometry (Point, Polygon, MultiPolygon, Feature, or FeatureCollection).
-
----
-
-### `get_soil_interpretations`
-
-Retrieve component-weighted soil interpretations (such as NCCPI v3) from USDA NRCS SDA for a list of map unit keys.
-
-**Parameters:**
-- `mukeys` (*list[string]*, required): List of SSURGO Map Unit Keys.
-- `rule_name` (*string*, optional, default `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`): Interpretation rule name.
-- `aggregation_method` (*string*, optional, default `'Weighted Average'`): Aggregation method (`'Weighted Average'` or `'Dominant Component'`).
-
----
-
-### `explain_fppa_screening_scope`
-
-Provides an authoritative regulatory breakdown distinguishing preliminary SDA soil screening (7 CFR 657) from formal FPPA Land Evaluation & Site Assessment (LESA) scoring and Form AD-1006 determinations (7 CFR 658).
-
----
-
-### `list_farmland_classes`
-
-Returns all standardized USDA NRCS SSURGO Farmland Classification categories (`mapunit.farmlndcl`), their statutory definitions, FPPA relevance, and 7 CFR citations.
+| Tool Name | Parameters | Description |
+| :--- | :--- | :--- |
+| `get_farmland_classification_by_point` | `latitude` (float, required), `longitude` (float, required) | Queries SDA for soil map unit attributes and farmland classification at a point. |
+| `get_farmland_classification_by_mukey` | `mukey` (string, required) | Fetches soil map unit details and farmland classification by Map Unit Key. |
+| `analyze_farmland_by_polygon` | `geojson` (dict \| string, required), `include_nccpi` (bool, default `true`) | Performs preliminary FPPA screening on a polygon: calculates acreage, checks 2020 Census urban area exemptions, intersects SSURGO map units with spatial clipping, summarizes farmland categories, and fetches NCCPI v3 ratings. |
+| `get_soil_polygons_by_geometry` | `geojson` (dict \| string, required), `clip` (bool, default `true`) | Returns intersecting SSURGO map unit polygon geometries and attributes as a GeoJSON `FeatureCollection`. |
+| `check_urban_area_exemption` | `geojson` (dict \| string, required) | Screens point or polygon geometries against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)). |
+| `get_soil_interpretations` | `mukeys` (list[string], required), `rule_name` (string, default NCCPI v3), `aggregation_method` (string, default `'Weighted Average'`) | Fetches component-weighted soil interpretations from USDA SDA for specified map units. |
+| `explain_fppa_screening_scope` | None | Explains why SDA preliminary screening (7 CFR 657) differs from formal FPPA LESA reviews and Form AD-1006 (7 CFR 658). |
+| `list_farmland_classes` | None | Returns standard USDA NRCS SSURGO Farmland Classification categories, statutory definitions, and 7 CFR citations. |
 
 ---
 
@@ -349,87 +239,51 @@ Returns all standardized USDA NRCS SSURGO Farmland Classification categories (`m
 
 ### Resources
 
-- `fppa://regulatory-notice`: Official statutory notice, limitations, and citations.
-- `fppa://screening-guidance`: In-depth guidance contrasting 7 CFR 657 inventory queries with 7 CFR 658 AD-1006 forms.
-- `fppa://farmland-classes`: Reference schema of all standard SSURGO farmland class categories.
+- `fppa://regulatory-notice`: Statutory notice, limitations, and citations.
+- `fppa://screening-guidance`: Guidance contrasting 7 CFR 657 inventory queries with 7 CFR 658 AD-1006 reviews.
+- `fppa://farmland-classes`: Reference list of SSURGO farmland classification categories.
 
 ### Prompts
 
-- `fppa_screening_assistant`: Guided prompt ensuring LLMs maintain strict regulatory discipline, avoid score hallucinations, and properly direct users to local USDA NRCS offices.
-
----
-
-## Internal Domain & Governance Architecture (Phase 1)
-
-`fpac-soil-mcp` implements a strict internal domain, lifecycle, and governance model to support structured FPPA evaluation workflows.
-
-> **Note on Scope**: Phase 1 establishes internal domain contracts, governance invariants, public data records, and privacy policies. It does **not** expose public case-management MCP tools, persistent databases, live external HTTP clients (NASS/TIGERweb), or automated official determinations.
-
-### Core Contracts & Invariants
-
-1. **Authority & Provenance Primitives (`authority.py`)**:
-   - `ValueAuthority` classifies values as `machine_estimate`, `analyst_proposed`, `agency_approved`, or `nrcs_official`.
-   - Automated evaluation paths may only produce `machine_estimate` or `analyst_proposed`.
-   - `agency_approved` and `nrcs_official` values strictly require a complete, timezone-aware `Attestation` record with a corresponding `ActorCategory` (`agency_official` or `nrcs_official`).
-   - `Provenance` tracks authoritative source names, references, timestamps, and algorithm/configuration versions.
-
-2. **FPPA Case Domain Models (`case_models.py`)**:
-   - Pydantic models for `AgencyProfile`, `FppaRequest`, `ImpactArea`, `ExemptionClaim`, `CalculationRun`, and `DecisionRecord`.
-   - The aggregate root `FppaCase` tracks structured case assets, lifecycle state, and an immutable transition history.
-
-3. **Public Integration Records (`integration_models.py`)**:
-   - Provenance-bearing models for external public datasets: `UrbanExemptionRecord` (Census TIGERweb Layer 6), `CountyAgProfile` (USDA NASS Quick Stats), and `SoilInterpretationRecord` (USDA NRCS SDA NCCPI / interpretations).
-   - Urban screening remains strictly preliminary under 7 CFR 658.2(a) and cannot constitute a granted legal exemption.
-
-4. **Public-Only Privacy Policy (`privacy.py`)**:
-   - Defensively rejects sensitive personal data (e.g., personal names, personal emails, phones, SSNs, street addresses) with deterministic field paths.
-   - Provides explicit, non-mutating `sanitize_public_payload()` that reports removed field paths while preserving permitted public and operational project fields.
-
-5. **Official Source Registry (`official_sources.py`)**:
-   - Package-owned JSON registries (`data/official_sources.v1.json`, `data/regional_scoring.v1.json`) cataloging authoritative citations, form editions (AD-1006, CPA-106), regulations (7 CFR 657, 7 CFR 658), and endpoints.
-   - Regional scoring configurations validate jurisdiction and approval authority without inventing unverified scoring methods.
-
-6. **Workflow State Machine (`workflow.py`)**:
-   - Pure, deterministic directed state machine transitioning through `received` -> `ready_for_analysis` -> `analysis_complete` -> `pending_nrcs_review` -> `provisionally_complete` -> `closed`.
-   - Enforces transition guards (public privacy validation, completed calculation runs, decision records, closure rationale) while preserving immutability.
+- `fppa_screening_assistant`: Guided prompt ensuring LLMs maintain regulatory boundaries, avoid score hallucinations, and direct users to local USDA NRCS offices when formal determinations are required.
 
 ---
 
 ## Configuration Reference
 
-Settings can be configured via environment variables or a `.env` file:
+Configure settings via environment variables or a `.env` file:
 
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `SDA_TABULAR_URL` | string | `https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest` | USDA NRCS SDA Tabular query endpoint |
-| `REQUEST_TIMEOUT_SECONDS` | float | `30.0` | HTTP request timeout in seconds for SDA queries |
+| `REQUEST_TIMEOUT_SECONDS` | float | `30.0` | Timeout in seconds for SDA HTTP requests |
 | `MAX_RETRIES` | int | `3` | Maximum retry attempts for transient SDA connection errors |
 | `NASS_API_KEY` | string | `None` | Optional API key for USDA NASS Quick Stats API |
 | `NASS_BASE_URL` | string | `https://quickstats.nass.usda.gov/api/api_GET/` | USDA NASS Quick Stats API GET endpoint |
-| `NASS_ENABLED` | boolean | `false` | Whether USDA NASS integration is actively enabled |
-| `NASS_CENSUS_YEAR` | int | `2022` | Baseline Census of Agriculture year (e.g., 2017, 2022) |
+| `NASS_ENABLED` | boolean | `false` | Enable USDA NASS integration |
+| `NASS_CENSUS_YEAR` | int | `2022` | Baseline Census of Agriculture year |
 | `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/.../6` | Census TIGERweb 2020 Urban Areas MapServer Layer 6 |
 | `TIGERWEB_URBAN_LAYER_ID` | int | `6` | Layer index for 2020 Census Urban Areas |
-| `TIGERWEB_TIMEOUT_SECONDS` | float | `15.0` | HTTP request timeout for TIGERweb queries |
+| `TIGERWEB_TIMEOUT_SECONDS` | float | `15.0` | Timeout in seconds for TIGERweb queries |
 | `MCP_TRANSPORT` | string | `stdio` | FastMCP transport mode (`stdio` or `sse`) |
 | `MCP_HOST` | string | `127.0.0.1` | Host to bind for SSE transport |
 | `MCP_PORT` | int | `8000` | Port to bind for SSE transport |
 
 ---
 
-## Development & QA Commands
+## Development Commands
 
 ```powershell
-# Run the test suite (unit tests with mocked SDA responses)
+# Run unit tests with mocked SDA responses
 uv run pytest
 
-# Run live SDA integration tests (requires active internet access)
+# Run live SDA integration tests (requires network access)
 uv run pytest -m live_sda
 
-# Run code style and lint checks
+# Check linting
 uv run ruff check .
 
-# Run auto-formatting checks
+# Check formatting
 uv run ruff format --check .
 ```
 
@@ -438,4 +292,3 @@ uv run ruff format --check .
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
