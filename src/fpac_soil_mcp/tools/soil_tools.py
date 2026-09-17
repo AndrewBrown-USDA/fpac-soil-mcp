@@ -206,14 +206,14 @@ def check_urban_area_exemption(
 
 def get_soil_interpretations(
     mukeys: list[str],
-    rule_name: str = "NCCPI - National Commodity Crop Productivity Index (v3)",
+    rule_name: str = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
     aggregation_method: str = "Weighted Average",
 ) -> list[dict]:
     """Retrieve component-level soil interpretations from USDA NRCS SDA for a list of map unit keys.
 
     Args:
         mukeys: List of SSURGO Map Unit Keys.
-        rule_name: Soil interpretation rule name.
+        rule_name: Soil interpretation rule name (default 'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)').
         aggregation_method: Component aggregation method ('Weighted Average' or 'Dominant Component').
 
     Returns:

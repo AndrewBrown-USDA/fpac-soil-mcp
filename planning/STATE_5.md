@@ -21,9 +21,9 @@
 | `5.3.1` | 3 | Unit Test Suite & Mock Updates | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.3.2` | 3 | Dedicated Live Integration Suite | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.4.1` | 4 | Registry, Manifest & Documentation Sync | done | orchestrator | 2026-09-17 | 2026-09-17 |
-| `5.5.1` | 5 | WKT Parsing Hardening & Query Template Dispatch | pending | | | |
-| `5.5.2` | 5 | TIGERweb Interior Rings & Point Support | pending | | | |
-| `5.5.3` | 5 | Coverage Status & Default Rule Alignment | pending | | | |
+| `5.5.1` | 5 | WKT Parsing Hardening & Query Template Dispatch | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `5.5.2` | 5 | TIGERweb Interior Rings & Point Support | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `5.5.3` | 5 | Coverage Status & Default Rule Alignment | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.6.1` | 6 | Contract Verification & Live Test Hardening | pending | | | |
 | `5.6.2` | 6 | Documentation Example Synchronization | pending | | | |
 
@@ -81,6 +81,24 @@
 - **Files Changed**: `manifest.yaml`, `README.md`
 - **Verification**: `uv run ruff check .` and format validation passed.
 - **Summary**: Synchronized `manifest.yaml` and `README.md` with the new `get_soil_polygons_by_geometry` tool and documented exact server-side clipping capabilities and updated NCCPI interpretation rules.
+
+### 5.5.1: WKT Parsing Hardening & Query Template Dispatch
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/geometry.py`, `src/fpac_soil_mcp/sda_client.py`, `tests/test_sda_client.py`
+- **Verification**: `uv run pytest tests/test_sda_client.py -q -m "not live_sda"` (33 passed), `uv run ruff check .`, `uv run ruff format --check .`
+- **Summary**: Added `validate_and_sanitize_polygon_wkt` to sanitize and normalize WKT inputs via Shapely and bounds checking. Wired `geom_acres` flag to select between `STArea` geodesic calculation and `CAST(NULL AS float)` in `sda_client.py`.
+
+### 5.5.2: TIGERweb Interior Rings & Point Support
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/tigerweb_client.py`, `src/fpac_soil_mcp/geometry.py`, `tests/test_tigerweb_client.py`
+- **Verification**: `uv run pytest tests/test_tigerweb_client.py -q` (5 passed), `uv run ruff check .`, `uv run ruff format --check .`
+- **Summary**: Included interior hole rings for Polygon and MultiPolygon geometries in `tigerweb_client.py` to prevent false positive intersections in donut holes. Added `Point` geometry dispatch formatted as ESRI `esriGeometryPoint`.
+
+### 5.5.3: Coverage Status & Default Rule Alignment
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `tests/test_polygon_analysis.py`
+- **Verification**: `uv run pytest tests/test_polygon_analysis.py -q` (3 passed), `uv run ruff check .`, `uv run ruff format --check .`
+- **Summary**: Updated `PolygonAnalyzer` to return `partially_covered` status when mapped units are found and `unmapped_remainder > 0.0`. Aligned default `rule_name` in `get_soil_interpretations` to `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`.
 
 
 

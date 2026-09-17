@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.geometry import MultiPolygon, Point, Polygon
 
 from fpac_soil_mcp.authority import Provenance
 from fpac_soil_mcp.config import settings
@@ -65,25 +65,36 @@ class TigerwebClient:
         )
 
         try:
-            if isinstance(geometry_input, (Polygon, MultiPolygon)):
+            if isinstance(geometry_input, (Polygon, MultiPolygon, Point)):
                 geom = geometry_input
             else:
-                geom = parse_geojson_geometry(geometry_input)
+                geom = parse_geojson_geometry(geometry_input, allow_point=True)
 
             geom_hash = compute_geometry_hash(geom)
-            minx, miny, maxx, maxy = geom.bounds
 
-            # Format ESRI polygon rings or envelope
-            if isinstance(geom, Polygon):
-                rings = [list(geom.exterior.coords)]
+            # Format ESRI geometry based on type
+            if isinstance(geom, Point):
+                esri_geom = json.dumps({"x": geom.x, "y": geom.y})
+                geom_type_str = "esriGeometryPoint"
+            elif isinstance(geom, Polygon):
+                rings = [list(geom.exterior.coords)] + [
+                    list(interior.coords) for interior in geom.interiors
+                ]
+                esri_geom = json.dumps({"rings": rings})
+                geom_type_str = "esriGeometryPolygon"
             else:
-                rings = [list(p.exterior.coords) for p in geom.geoms]
-
-            esri_geom = json.dumps({"rings": rings})
+                # MultiPolygon: include exterior and interior rings for every part
+                rings = []
+                for p in geom.geoms:
+                    rings.append(list(p.exterior.coords))
+                    for interior in p.interiors:
+                        rings.append(list(interior.coords))
+                esri_geom = json.dumps({"rings": rings})
+                geom_type_str = "esriGeometryPolygon"
 
             params = {
                 "geometry": esri_geom,
-                "geometryType": "esriGeometryPolygon",
+                "geometryType": geom_type_str,
                 "inSR": "4326",
                 "spatialRel": "esriSpatialRelIntersects",
                 "outFields": "GEOID,NAME,BASENAME,POP100,HU100",

@@ -249,7 +249,12 @@ class PolygonAnalyzer:
             total_fppa_protected_pct=_pct(protected_acres),
         )
 
-        coverage_status = "covered" if unit_models else "unmapped"
+        if not unit_models:
+            coverage_status = "unmapped"
+        elif unmapped_remainder > 0.0:
+            coverage_status = "partially_covered"
+        else:
+            coverage_status = "covered"
 
         # 6. Generate CSV table
         output_io = io.StringIO()

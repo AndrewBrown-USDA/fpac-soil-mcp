@@ -15,6 +15,10 @@ from typing import Any
 import httpx
 
 from fpac_soil_mcp.config import settings
+from fpac_soil_mcp.geometry import (
+    GeometryValidationError,
+    validate_and_sanitize_polygon_wkt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +77,7 @@ SELECT
     m.muname,
     m.farmlndcl,
     l.areasymbol,
-    GEOGRAPHY::STGeomFromWKB(geom_data.geom.STUnion(geom_data.geom.STStartPoint()).STAsBinary(), 4326).MakeValid().STArea() * 0.000247105 AS area_ac{geom_column}
+    {area_expr} AS area_ac{geom_column}
 FROM geom_data
 INNER JOIN mapunit AS m ON geom_data.mukey = m.mukey
 INNER JOIN legend AS l ON m.lkey = l.lkey
@@ -93,7 +97,7 @@ SELECT
     m.muname,
     m.farmlndcl,
     l.areasymbol,
-    GEOGRAPHY::STGeomFromWKB(geom_data.geom.STUnion(geom_data.geom.STStartPoint()).STAsBinary(), 4326).MakeValid().STArea() * 0.000247105 AS area_ac{geom_column}
+    {area_expr} AS area_ac{geom_column}
 FROM geom_data
 INNER JOIN mapunit AS m ON geom_data.mukey = m.mukey
 INNER JOIN legend AS l ON m.lkey = l.lkey
@@ -257,6 +261,24 @@ class SDAClient:
                 f"Map unit key (mukey) must be a positive integer; received '{mukey}'"
             )
         return mukey_str
+
+    @staticmethod
+    def validate_wkt(wkt_geometry: str) -> str:
+        """Validate and sanitize a WGS84 WKT Polygon or MultiPolygon string.
+
+        Args:
+            wkt_geometry: WKT string.
+
+        Returns:
+            Normalized WKT string.
+
+        Raises:
+            SDAValidationError: If WKT is invalid or not Polygon/MultiPolygon.
+        """
+        try:
+            return validate_and_sanitize_polygon_wkt(wkt_geometry)
+        except GeometryValidationError as exc:
+            raise SDAValidationError(f"Invalid or unparseable WKT: {exc}") from exc
 
     def _execute_query(self, query: str) -> list[dict[str, Any]]:
         """Execute SQL query against SDA endpoint with retry logic and parse table array.
@@ -422,14 +444,10 @@ class SDAClient:
             SDAValidationError: If WKT format is invalid or contains unexpected characters.
             SDAQueryError: If SDA query fails.
         """
-        wkt = str(wkt_geometry).strip()
-        if not wkt.upper().startswith(("POLYGON", "MULTIPOLYGON")):
-            raise SDAValidationError(
-                f"Geometry must be a POLYGON or MULTIPOLYGON WKT string; received '{wkt[:30]}...'"
-            )
-        # Verify basic character whitelist to prevent injection
-        if any(c in wkt for c in [";", "--", "/*", "*/", "DROP", "EXEC"]):
-            raise SDAValidationError("Invalid characters detected in WKT geometry string.")
+        try:
+            wkt = validate_and_sanitize_polygon_wkt(wkt_geometry)
+        except GeometryValidationError as exc:
+            raise SDAValidationError(f"Invalid WKT geometry: {exc}") from exc
 
         query = SQL_POLYGON_LOOKUP.format(wkt=wkt)
         return self._execute_query(query)
@@ -458,17 +476,19 @@ class SDAClient:
             SDAValidationError: If WKT is invalid.
             SDAQueryError: If SDA query fails.
         """
-        wkt = str(wkt_geometry).strip()
-        if not wkt.upper().startswith(("POLYGON", "MULTIPOLYGON")):
-            raise SDAValidationError(
-                f"Geometry must be a POLYGON or MULTIPOLYGON WKT string; received '{wkt[:30]}...'"
-            )
-        if any(c in wkt for c in [";", "--", "/*", "*/", "DROP", "EXEC"]):
-            raise SDAValidationError("Invalid characters detected in WKT geometry string.")
+        try:
+            wkt = validate_and_sanitize_polygon_wkt(wkt_geometry)
+        except GeometryValidationError as exc:
+            raise SDAValidationError(f"Invalid WKT geometry: {exc}") from exc
 
+        area_expr = (
+            "GEOGRAPHY::STGeomFromWKB(geom_data.geom.STUnion(geom_data.geom.STStartPoint()).STAsBinary(), 4326).MakeValid().STArea() * 0.000247105"
+            if geom_acres
+            else "CAST(NULL AS float)"
+        )
         geom_col = ", geom_data.geom.STAsText() AS geom" if return_geom else ""
         template = SQL_SPATIAL_INTERSECTION_CLIPPED if clip else SQL_SPATIAL_INTERSECTION_OVERLAP
-        query = template.format(wkt=wkt, geom_column=geom_col)
+        query = template.format(wkt=wkt, area_expr=area_expr, geom_column=geom_col)
         return self._execute_query(query)
 
     def get_available_interpretation_rules(self, refresh: bool = False) -> list[str]:

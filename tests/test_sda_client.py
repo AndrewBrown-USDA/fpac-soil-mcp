@@ -71,6 +71,14 @@ class TestSDAValidation:
         with pytest.raises(SDAValidationError, match="must be a positive integer"):
             SDAClient.validate_mukey("412915; DROP TABLE mapunit;--")
 
+    def test_validate_wkt_invalid_malicious_input(self) -> None:
+        with pytest.raises(SDAValidationError, match="Invalid or unparseable WKT"):
+            SDAClient.validate_wkt("POLYGON((0 0, 1 1)); DROP TABLE mapunit;--")
+
+    def test_validate_wkt_non_polygon_rejected(self) -> None:
+        with pytest.raises(SDAValidationError, match="must be a Polygon or MultiPolygon"):
+            SDAClient.validate_wkt("POINT(-86.1581 39.7684)")
+
 
 class TestSDAParsing:
     """Test parsing of SDA JSON table responses."""

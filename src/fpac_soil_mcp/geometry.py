@@ -13,7 +13,9 @@ import re
 from typing import Any
 
 from pyproj import Geod
-from shapely.geometry import MultiPolygon, Polygon, mapping, shape
+from shapely import wkt as shapely_wkt
+from shapely.errors import GEOSException, ShapelyError
+from shapely.geometry import MultiPolygon, Point, Polygon, mapping, shape
 from shapely.validation import make_valid
 
 _WKT_PREFIX_PATTERN = re.compile(
@@ -58,19 +60,77 @@ def validate_wkt_string(wkt: str) -> str:
     return cleaned
 
 
-def parse_geojson_geometry(geojson_input: dict[str, Any] | str) -> Polygon | MultiPolygon:
+def validate_and_sanitize_polygon_wkt(wkt: str) -> str:
+    """Parse, validate, and sanitize a WKT Polygon or MultiPolygon string.
+
+    Parses the WKT using Shapely, verifies that it is a valid Polygon or MultiPolygon
+    with WGS84 coordinate bounds, and returns normalized WKT to prevent SQL injection.
+
+    Args:
+        wkt: WKT Polygon or MultiPolygon string.
+
+    Returns:
+        Normalized and sanitized WKT string.
+
+    Raises:
+        GeometryValidationError: If WKT is empty, malformed, not a Polygon/MultiPolygon, or out of bounds.
+    """
+    cleaned = wkt.strip()
+    if not cleaned:
+        raise GeometryValidationError("WKT geometry string cannot be empty.")
+
+    try:
+        geom = shapely_wkt.loads(cleaned)
+    except (GEOSException, ShapelyError, Exception) as exc:
+        raise GeometryValidationError(f"Invalid WKT geometry format: {exc}") from exc
+
+    if not isinstance(geom, (Polygon, MultiPolygon)):
+        raise GeometryValidationError(
+            f"WKT geometry must be a Polygon or MultiPolygon; received '{geom.geom_type}'."
+        )
+
+    if geom.is_empty:
+        raise GeometryValidationError("WKT geometry is empty.")
+
+    minx, miny, maxx, maxy = geom.bounds
+    if not (-180.0 <= minx <= 180.0 and -180.0 <= maxx <= 180.0):
+        raise GeometryValidationError(
+            f"Longitude coordinates outside valid range [-180, 180]: minx={minx}, maxx={maxx}"
+        )
+    if not (-90.0 <= miny <= 90.0 and -90.0 <= maxy <= 90.0):
+        raise GeometryValidationError(
+            f"Latitude coordinates outside valid range [-90, 90]: miny={miny}, maxy={maxy}"
+        )
+
+    if not geom.is_valid:
+        repaired = make_valid(geom)
+        if isinstance(repaired, (Polygon, MultiPolygon)) and not repaired.is_empty:
+            geom = repaired
+        else:
+            raise GeometryValidationError(
+                "WKT geometry is topologically invalid and could not be repaired."
+            )
+
+    return geom.wkt
+
+
+def parse_geojson_geometry(
+    geojson_input: dict[str, Any] | str,
+    allow_point: bool = False,
+) -> Polygon | MultiPolygon | Point:
     """Parse and validate a GeoJSON geometry dictionary or JSON string into a Shapely geometry.
 
     Accepts GeoJSON Feature, FeatureCollection (single geometry), or raw geometry dicts.
 
     Args:
         geojson_input: GeoJSON object as dict or JSON string.
+        allow_point: If True, allows Point geometry in addition to Polygon/MultiPolygon.
 
     Returns:
-        Shapely Polygon or MultiPolygon instance.
+        Shapely Polygon, MultiPolygon, or Point instance.
 
     Raises:
-        GeometryValidationError: If GeoJSON structure is invalid or geometry is not a Polygon/MultiPolygon.
+        GeometryValidationError: If GeoJSON structure is invalid or geometry type is disallowed.
     """
     if isinstance(geojson_input, str):
         try:
@@ -94,9 +154,12 @@ def parse_geojson_geometry(geojson_input: dict[str, Any] | str) -> Polygon | Mul
         geom_dict = features[0].get("geometry") or {}
 
     geom_type = geom_dict.get("type")
-    if geom_type not in ("Polygon", "MultiPolygon"):
+    allowed_types = (
+        ("Polygon", "MultiPolygon", "Point") if allow_point else ("Polygon", "MultiPolygon")
+    )
+    if geom_type not in allowed_types:
         raise GeometryValidationError(
-            f"Unsupported geometry type: '{geom_type}'. Only 'Polygon' and 'MultiPolygon' are permitted."
+            f"Unsupported geometry type: '{geom_type}'. Allowed types: {', '.join(allowed_types)}."
         )
 
     try:
@@ -118,8 +181,8 @@ def parse_geojson_geometry(geojson_input: dict[str, Any] | str) -> Polygon | Mul
             f"Latitude coordinates outside valid range [-90, 90]: miny={miny}, maxy={maxy}"
         )
 
-    # Topology validation and automated repair if needed
-    if not geom.is_valid:
+    # Topology validation and automated repair for polygons
+    if isinstance(geom, (Polygon, MultiPolygon)) and not geom.is_valid:
         repaired = make_valid(geom)
         if isinstance(repaired, (Polygon, MultiPolygon)) and not repaired.is_empty:
             geom = repaired
@@ -177,7 +240,9 @@ def geometry_to_wkt(geom: Polygon | MultiPolygon) -> str:
     return validate_wkt_string(wkt_str)
 
 
-def compute_geometry_hash(geojson_dict_or_geom: dict[str, Any] | Polygon | MultiPolygon) -> str:
+def compute_geometry_hash(
+    geojson_dict_or_geom: dict[str, Any] | Polygon | MultiPolygon | Point,
+) -> str:
     """Compute deterministic SHA-256 hash of a normalized geometry.
 
     Args:
@@ -186,10 +251,10 @@ def compute_geometry_hash(geojson_dict_or_geom: dict[str, Any] | Polygon | Multi
     Returns:
         Hex-encoded SHA-256 hash string prefixed with 'sha256:'.
     """
-    if isinstance(geojson_dict_or_geom, (Polygon, MultiPolygon)):
+    if isinstance(geojson_dict_or_geom, (Polygon, MultiPolygon, Point)):
         norm_dict = mapping(geojson_dict_or_geom)
     elif isinstance(geojson_dict_or_geom, dict):
-        parsed = parse_geojson_geometry(geojson_dict_or_geom)
+        parsed = parse_geojson_geometry(geojson_dict_or_geom, allow_point=True)
         norm_dict = mapping(parsed)
     else:
         raise GeometryValidationError("Invalid input type for compute_geometry_hash.")
