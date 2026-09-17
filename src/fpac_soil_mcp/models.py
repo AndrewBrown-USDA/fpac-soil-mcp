@@ -108,14 +108,18 @@ class SoilMapUnitAcreage(BaseModel):
     areasymbol: str | None = Field(default=None, description="Soil survey area symbol")
     calculated_acres: float = Field(default=0.0, description="Estimated acres of this map unit")
     percentage_of_aoi: float = Field(default=0.0, description="Percentage of total AOI footprint")
-    nccpi_rating: float | None = Field(default=None, description="Weighted NCCPI v3 rating (0.0 - 1.0)")
+    nccpi_rating: float | None = Field(
+        default=None, description="Weighted NCCPI v3 rating (0.0 - 1.0)"
+    )
     nccpi_class: str | None = Field(default=None, description="Qualitative rating class")
 
 
 class FarmlandCategoryBreakdown(BaseModel):
     """Acreage summary grouped by statutory FPPA / SSURGO farmland category."""
 
-    prime_farmland_acres: float = Field(default=0.0, description="Acres of all areas prime farmland")
+    prime_farmland_acres: float = Field(
+        default=0.0, description="Acres of all areas prime farmland"
+    )
     prime_farmland_pct: float = Field(default=0.0, description="Percentage prime farmland")
     conditional_prime_acres: float = Field(
         default=0.0, description="Acres of prime farmland if drained/protected/irrigated"
@@ -124,7 +128,9 @@ class FarmlandCategoryBreakdown(BaseModel):
     statewide_importance_acres: float = Field(
         default=0.0, description="Acres of farmland of statewide importance"
     )
-    statewide_importance_pct: float = Field(default=0.0, description="Percentage statewide importance")
+    statewide_importance_pct: float = Field(
+        default=0.0, description="Percentage statewide importance"
+    )
     local_importance_acres: float = Field(
         default=0.0, description="Acres of farmland of local importance"
     )
@@ -150,7 +156,9 @@ class PolygonFarmlandAnalysisResponse(BaseModel):
     query_type: str = Field(default="polygon", description="Query type performed")
     geometry_hash: str = Field(description="Deterministic SHA-256 hash of the screened geometry")
     total_aoi_acres: float = Field(description="Total geodesic surface area of the AOI in acres")
-    coverage_status: str = Field(description="Coverage status: 'covered', 'partially_covered', or 'unmapped'")
+    coverage_status: str = Field(
+        description="Coverage status: 'covered', 'partially_covered', or 'unmapped'"
+    )
     urban_screening: dict[str, Any] = Field(
         description="Census 2020 Urban Area preliminary screening result"
     )
@@ -161,6 +169,14 @@ class PolygonFarmlandAnalysisResponse(BaseModel):
         default_factory=list, description="List of intersecting soil map units with acreage"
     )
     tabular_csv: str = Field(description="CSV-formatted table of soil map units and acreage")
+    manifest: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Execution manifest, geometry hash, and runtime parameters",
+    )
     source: QuerySource = Field(description="Query source metadata")
-    limitations: list[str] = Field(default_factory=list, description="Regulatory and technical limitations")
-    regulatory_notice: str = Field(description="Official regulatory disclaimer regarding FPPA screening")
+    limitations: list[str] = Field(
+        default_factory=list, description="Regulatory and technical limitations"
+    )
+    regulatory_notice: str = Field(
+        description="Official regulatory disclaimer regarding FPPA screening"
+    )

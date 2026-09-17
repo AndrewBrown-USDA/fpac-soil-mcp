@@ -16,8 +16,8 @@
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
 | `5.1.1` | 1 | SDA Spatial Intersection & Rule Catalog Engine | done | orchestrator | 2026-09-17 | 2026-09-17 |
-| `5.2.1` | 2 | Polygon Analysis Spatial Aggregation & Manifests | pending | | | |
-| `5.2.2` | 2 | Geometry Tool Registration & MCP Interface | pending | | | |
+| `5.2.1` | 2 | Polygon Analysis Spatial Aggregation & Manifests | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `5.2.2` | 2 | Geometry Tool Registration & MCP Interface | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.3.1` | 3 | Unit Test Suite & Mock Updates | pending | | | |
 | `5.3.2` | 3 | Dedicated Live Integration Suite | pending | | | |
 | `5.4.1` | 4 | Registry, Manifest & Documentation Sync | pending | | | |
@@ -44,4 +44,17 @@
 - **Files Changed**: `src/fpac_soil_mcp/config.py`, `src/fpac_soil_mcp/sda_client.py`
 - **Verification**: `uv run pytest tests/test_sda_client.py -q -m "not live_sda"` (31 passed), `uv run ruff check .`, `uv run ruff format --check .`
 - **Summary**: Implemented `SQL_SPATIAL_INTERSECTION_CLIPPED`, `SQL_SPATIAL_INTERSECTION_OVERLAP`, `SQL_INTERPRETATION_CATALOG`, `get_spatial_intersection`, and `get_available_interpretation_rules` in `SDAClient`. Corrected default NCCPI rule to `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`.
+
+### 5.2.1: Polygon Analysis Spatial Aggregation & Manifests
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/models.py`
+- **Verification**: Ruff check/format clean.
+- **Summary**: Updated `PolygonAnalyzer` to aggregate exact server-side clipped acreages from `get_spatial_intersection(clip=True)` grouped by `mukey`. Embedded execution manifest in `PolygonFarmlandAnalysisResponse`. Updated default interpretation query rule name to `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`.
+
+### 5.2.2: Geometry Tool Registration & MCP Interface
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/tools/__init__.py`
+- **Verification**: Ruff check/format clean.
+- **Summary**: Implemented and registered `get_soil_polygons_by_geometry` tool returning GeoJSON FeatureCollection with clipped or overlapping SSURGO map unit geometries and attributes. Exported tool in `tools/__init__.py`.
+
 

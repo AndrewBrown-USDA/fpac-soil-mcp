@@ -15,6 +15,7 @@ from fpac_soil_mcp.tools.soil_tools import (
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
     get_soil_interpretations,
+    get_soil_polygons_by_geometry,
     register_soil_tools,
 )
 
@@ -28,6 +29,7 @@ __all__ = [
     "get_farmland_classification_by_mukey",
     "get_farmland_classification_by_point",
     "get_soil_interpretations",
+    "get_soil_polygons_by_geometry",
     "list_farmland_classes",
     "register_fppa_tools",
     "register_soil_tools",

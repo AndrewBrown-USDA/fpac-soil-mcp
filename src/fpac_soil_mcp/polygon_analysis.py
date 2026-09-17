@@ -118,23 +118,28 @@ class PolygonAnalyzer:
         urban_rec = self.tigerweb_client.check_urban_exemption(geom)
         urban_dict = urban_rec.model_dump(mode="json")
 
-        # 3. SDA Spatial Intersection Query
+        # 3. SDA Spatial Intersection Query with Exact Clipping
         raw_units: list[dict[str, Any]] = []
         limitations = list(REGULATORY_LIMITATIONS)
         try:
-            raw_units = self.sda_client.get_by_polygon(wkt_str)
+            raw_units = self.sda_client.get_spatial_intersection(
+                wkt_str,
+                clip=True,
+                geom_acres=True,
+                return_geom=False,
+            )
         except SDAClientError as exc:
             logger.error("SDA spatial query failed: %s", exc)
             limitations.append(f"SDA spatial query error: {exc}")
 
         # 4. Ingest Interpretations (NCCPI v3) if requested
-        mukeys = [str(r.get("mukey")) for r in raw_units if r.get("mukey")]
+        mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
         interp_map: dict[str, dict[str, Any]] = {}
         if include_nccpi and mukeys:
             try:
                 interp_rows = self.sda_client.get_interpretations(
                     mukeys=mukeys,
-                    rule_name="NCCPI - National Commodity Crop Productivity Index (v3)",
+                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
                     aggregation_method="Weighted Average",
                 )
                 for irow in interp_rows:
@@ -145,11 +150,27 @@ class PolygonAnalyzer:
                 limitations.append(f"NCCPI interpretation warning: {exc}")
 
         # 5. Build Map Unit Acreage models
-        # Note: SDA spatial intersection returns distinct intersecting map units.
-        # When sub-polygon geometry clipping is not explicitly provided, acreage is distributed
-        # evenly across intersecting units as candidate screening estimates.
-        num_units = len(raw_units)
+        # Group spatial intersection fragments by mukey, summing exact clipped acreage
         unit_models: list[SoilMapUnitAcreage] = []
+        grouped_units: dict[str, dict[str, Any]] = {}
+        for u in raw_units:
+            mukey_str = str(u.get("mukey", ""))
+            if not mukey_str:
+                continue
+            if mukey_str not in grouped_units:
+                grouped_units[mukey_str] = {
+                    "mukey": mukey_str,
+                    "musym": u.get("musym"),
+                    "muname": u.get("muname"),
+                    "farmlndcl": u.get("farmlndcl"),
+                    "areasymbol": u.get("areasymbol"),
+                    "area_ac": 0.0,
+                }
+            try:
+                raw_area = float(u.get("area_ac") or 0.0)
+            except (ValueError, TypeError):
+                raw_area = 0.0
+            grouped_units[mukey_str]["area_ac"] += raw_area
 
         category_acres: dict[str, float] = {
             "prime": 0.0,
@@ -161,39 +182,41 @@ class PolygonAnalyzer:
             "unmapped": 0.0,
         }
 
-        if num_units > 0:
-            unit_acres = round(total_acres / num_units, 2)
-            unit_pct = round(100.0 / num_units, 2)
+        total_mapped_acres = 0.0
+        for mukey_str, u in grouped_units.items():
+            farmlndcl_str = u.get("farmlndcl")
+            calc_ac = round(u["area_ac"], 2)
+            total_mapped_acres += calc_ac
+            pct = round((calc_ac / total_acres * 100.0) if total_acres > 0 else 0.0, 2)
 
-            for u in raw_units:
-                mukey_str = str(u.get("mukey", ""))
-                farmlndcl_str = u.get("farmlndcl")
-                interp_info = interp_map.get(mukey_str, {})
-                cat = categorize_farmland_class(farmlndcl_str)
-                category_acres[cat] += unit_acres
+            interp_info = interp_map.get(mukey_str, {})
+            cat = categorize_farmland_class(farmlndcl_str)
+            category_acres[cat] += calc_ac
 
-                numeric_rating = interp_info.get("numeric_rating")
-                if numeric_rating is not None:
-                    try:
-                        numeric_rating = float(numeric_rating)
-                    except (ValueError, TypeError):
-                        numeric_rating = None
+            numeric_rating = interp_info.get("numeric_rating")
+            if numeric_rating is not None:
+                try:
+                    numeric_rating = float(numeric_rating)
+                except (ValueError, TypeError):
+                    numeric_rating = None
 
-                unit_models.append(
-                    SoilMapUnitAcreage(
-                        mukey=mukey_str,
-                        musym=u.get("musym"),
-                        muname=u.get("muname"),
-                        farmlndcl=farmlndcl_str,
-                        areasymbol=u.get("areasymbol"),
-                        calculated_acres=unit_acres,
-                        percentage_of_aoi=unit_pct,
-                        nccpi_rating=numeric_rating,
-                        nccpi_class=interp_info.get("rating_class"),
-                    )
+            unit_models.append(
+                SoilMapUnitAcreage(
+                    mukey=mukey_str,
+                    musym=u.get("musym"),
+                    muname=u.get("muname"),
+                    farmlndcl=farmlndcl_str,
+                    areasymbol=u.get("areasymbol"),
+                    calculated_acres=calc_ac,
+                    percentage_of_aoi=pct,
+                    nccpi_rating=numeric_rating,
+                    nccpi_class=interp_info.get("rating_class"),
                 )
-        else:
-            category_acres["unmapped"] = total_acres
+            )
+
+        # Handle any unmapped remainder / slivers
+        unmapped_remainder = max(0.0, round(total_acres - total_mapped_acres, 2))
+        category_acres["unmapped"] += unmapped_remainder
 
         # Compute summary percentages
         def _pct(val: float) -> float:
@@ -260,6 +283,18 @@ class PolygonAnalyzer:
             )
         csv_str = output_io.getvalue()
 
+        # 7. Build Execution Manifest
+        manifest = {
+            "execution_timestamp_utc": timestamp_str,
+            "geometry_hash": geom_hash,
+            "total_aoi_acres": total_acres,
+            "mapped_soil_units_count": len(unit_models),
+            "spatial_clipping_engine": "USDA NRCS SDA STIntersection / STArea",
+            "interpretation_rule": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "urban_screening_layer": "Census 2020 Urban Areas Layer 6",
+            "statutory_authority": "Farmland Protection Policy Act (7 U.S.C. 4201 et seq., 7 CFR Part 658)",
+        }
+
         return PolygonFarmlandAnalysisResponse(
             query_type="polygon",
             geometry_hash=geom_hash,
@@ -269,6 +304,7 @@ class PolygonAnalyzer:
             farmland_summary=summary,
             map_units=unit_models,
             tabular_csv=csv_str,
+            manifest=manifest,
             source=QuerySource(
                 endpoint=self.sda_client.base_url,
                 timestamp_utc=timestamp_str,
