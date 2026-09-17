@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     # SDA Interpretation Rules & NCCPI Allowlist
     sda_interpretation_rules_allowed: list[str] = Field(
         default_factory=lambda: [
-            "NCCPI - National Commodity Crop Productivity Index (v3)",
+            "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             "NCCPI - Corn and Soybeans Crop Productivity Index",
             "NCCPI - Small Grains Crop Productivity Index",
             "NCCPI - Cotton Crop Productivity Index",

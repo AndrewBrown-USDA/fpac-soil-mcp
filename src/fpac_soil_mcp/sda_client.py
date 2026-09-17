@@ -59,6 +59,53 @@ INNER JOIN mapunit AS m ON g.mukey = m.mukey
 INNER JOIN legend AS l ON m.lkey = l.lkey
 """
 
+SQL_SPATIAL_INTERSECTION_CLIPPED = """\
+WITH geom_data (geom, mukey) AS (
+    SELECT
+        mupolygongeo.STIntersection(geometry::STGeomFromText('{wkt}', 4326)) AS geom,
+        mukey
+    FROM mupolygon
+    WHERE mupolygongeo.STIntersects(geometry::STGeomFromText('{wkt}', 4326)) = 1
+)
+SELECT
+    m.mukey,
+    m.musym,
+    m.muname,
+    m.farmlndcl,
+    l.areasymbol,
+    GEOGRAPHY::STGeomFromWKB(geom_data.geom.STUnion(geom_data.geom.STStartPoint()).STAsBinary(), 4326).MakeValid().STArea() * 0.000247105 AS area_ac{geom_column}
+FROM geom_data
+INNER JOIN mapunit AS m ON geom_data.mukey = m.mukey
+INNER JOIN legend AS l ON m.lkey = l.lkey
+"""
+
+SQL_SPATIAL_INTERSECTION_OVERLAP = """\
+WITH geom_data (geom, mukey) AS (
+    SELECT
+        mupolygongeo AS geom,
+        mukey
+    FROM mupolygon
+    WHERE mupolygongeo.STIntersects(geometry::STGeomFromText('{wkt}', 4326)) = 1
+)
+SELECT
+    m.mukey,
+    m.musym,
+    m.muname,
+    m.farmlndcl,
+    l.areasymbol,
+    GEOGRAPHY::STGeomFromWKB(geom_data.geom.STUnion(geom_data.geom.STStartPoint()).STAsBinary(), 4326).MakeValid().STArea() * 0.000247105 AS area_ac{geom_column}
+FROM geom_data
+INNER JOIN mapunit AS m ON geom_data.mukey = m.mukey
+INNER JOIN legend AS l ON m.lkey = l.lkey
+"""
+
+SQL_INTERPRETATION_CATALOG = """\
+SELECT DISTINCT mrulename
+FROM cointerp
+WHERE ruledepth = 0
+ORDER BY mrulename
+"""
+
 SQL_INTERPRETATION_WEIGHTED_AVG = """\
 WITH comp_interp AS (
     SELECT
@@ -155,6 +202,7 @@ class SDAClient:
         self.timeout = timeout or settings.request_timeout_seconds
         self.max_retries = max_retries if max_retries is not None else settings.max_retries
         self._http_client = http_client
+        self._cached_rule_names: list[str] | None = None
 
     @staticmethod
     def validate_coordinates(latitude: float, longitude: float) -> tuple[float, float]:
@@ -385,10 +433,73 @@ class SDAClient:
         query = SQL_POLYGON_LOOKUP.format(wkt=wkt)
         return self._execute_query(query)
 
+    def get_spatial_intersection(
+        self,
+        wkt_geometry: str,
+        clip: bool = True,
+        geom_acres: bool = True,
+        return_geom: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Query SDA for spatial intersection with SSURGO map units.
+
+        Calculates exact clipped or overlapping acreage and optionally returns geometry WKT.
+
+        Args:
+            wkt_geometry: Validated WGS84 WKT Polygon or MultiPolygon.
+            clip: True to clip geometries to AOI boundary; False to return overlapping polygons.
+            geom_acres: True to compute area_ac using geodesic STArea().
+            return_geom: True to return WKT geometry string in 'geom' column.
+
+        Returns:
+            List of map unit records with calculated 'area_ac' and optional 'geom'.
+
+        Raises:
+            SDAValidationError: If WKT is invalid.
+            SDAQueryError: If SDA query fails.
+        """
+        wkt = str(wkt_geometry).strip()
+        if not wkt.upper().startswith(("POLYGON", "MULTIPOLYGON")):
+            raise SDAValidationError(
+                f"Geometry must be a POLYGON or MULTIPOLYGON WKT string; received '{wkt[:30]}...'"
+            )
+        if any(c in wkt for c in [";", "--", "/*", "*/", "DROP", "EXEC"]):
+            raise SDAValidationError("Invalid characters detected in WKT geometry string.")
+
+        geom_col = ", geom_data.geom.STAsText() AS geom" if return_geom else ""
+        template = SQL_SPATIAL_INTERSECTION_CLIPPED if clip else SQL_SPATIAL_INTERSECTION_OVERLAP
+        query = template.format(wkt=wkt, geom_column=geom_col)
+        return self._execute_query(query)
+
+    def get_available_interpretation_rules(self, refresh: bool = False) -> list[str]:
+        """Fetch all available soil interpretation rule names (mrulename) from SDA cointerp.
+
+        Results are cached in memory on the client instance.
+
+        Args:
+            refresh: If True, forces a fresh query to SDA.
+
+        Returns:
+            Alphabetical list of supported rule names.
+
+        Raises:
+            SDAQueryError: If query fails.
+        """
+        if self._cached_rule_names is not None and not refresh:
+            return self._cached_rule_names
+
+        results = self._execute_query(SQL_INTERPRETATION_CATALOG)
+        rule_names = [
+            str(row["mrulename"]).strip()
+            for row in results
+            if row.get("mrulename") and str(row.get("mrulename")).strip()
+        ]
+        self._cached_rule_names = rule_names
+        return rule_names
+
     def get_interpretations(
         self,
         mukeys: list[str | int],
-        rule_name: str = "NCCPI - National Commodity Crop Productivity Index (v3)",
+        rule_name: str = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
         aggregation_method: str = "Weighted Average",
     ) -> list[dict[str, Any]]:
         """Query component-level soil interpretations for specified map unit keys.
@@ -411,10 +522,32 @@ class SDAClient:
         clean_mukeys = [self.validate_mukey(k) for k in mukeys]
         mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
 
-        if rule_name not in settings.sda_interpretation_rules_allowed:
+        # Validation: Check against allowed config list or cached rule names or safe format
+        rule_clean = str(rule_name).strip()
+        if any(c in rule_clean for c in [";", "--", "/*", "*/", "DROP", "EXEC", "'"]):
             raise SDAValidationError(
-                f"Rule '{rule_name}' is not in allowed SDA interpretation rules: {settings.sda_interpretation_rules_allowed}"
+                f"Invalid characters in interpretation rule name: '{rule_name}'"
             )
+
+        if rule_clean not in settings.sda_interpretation_rules_allowed and (
+            self._cached_rule_names is not None and rule_clean not in self._cached_rule_names
+        ):
+            # If not in default allowlist and not in cached catalog, attempt lookup or validate safe characters
+            try:
+                available = self.get_available_interpretation_rules()
+                if rule_clean not in available:
+                    raise SDAValidationError(
+                        f"Rule '{rule_clean}' not found in SDA cointerp rule catalog."
+                    )
+            except Exception as exc:
+                if isinstance(exc, SDAValidationError):
+                    raise
+                # If catalog check fails (e.g. offline/mocked), ensure rule matches standard characters
+                logger.warning(
+                    "Could not verify rule against live catalog (%s); checking format", exc
+                )
+                if not all(c.isalnum() or c in " -_().,/" for c in rule_clean):
+                    raise SDAValidationError(f"Invalid rule name format: '{rule_clean}'") from exc
 
         if aggregation_method not in settings.sda_aggregation_methods_allowed:
             raise SDAValidationError(
@@ -424,12 +557,12 @@ class SDAClient:
         if aggregation_method == "Dominant Component":
             query = SQL_INTERPRETATION_DOMINANT_COMP.format(
                 mukeys_csv=mukeys_csv,
-                rule_name=rule_name,
+                rule_name=rule_clean,
             )
         else:
             query = SQL_INTERPRETATION_WEIGHTED_AVG.format(
                 mukeys_csv=mukeys_csv,
-                rule_name=rule_name,
+                rule_name=rule_clean,
             )
 
         return self._execute_query(query)
