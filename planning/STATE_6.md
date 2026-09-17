@@ -13,10 +13,10 @@
 
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
-| `6.1.1` | 1 | Enhance Master Plan Phase 3 & Phase 4 Specifications | pending | | | |
-| `6.2.1` | 2 | Enhance Master Plan Phase 5 & Phase 6 Specifications | pending | | | |
-| `6.3.1` | 3 | Update Master Plan Architecture & Tool Surface | pending | | | |
-| `6.3.2` | 3 | Synchronize Planning Artifacts & Verification | pending | | | |
+| `6.1.1` | 1 | Enhance Master Plan Phase 3 & Phase 4 Specifications | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `6.2.1` | 2 | Enhance Master Plan Phase 5 & Phase 6 Specifications | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `6.3.1` | 3 | Update Master Plan Architecture & Tool Surface | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `6.3.2` | 3 | Synchronize Planning Artifacts & Verification | done | orchestrator | 2026-09-17 | 2026-09-17 |
 
 ## Wave Gates
 
@@ -31,4 +31,22 @@
 
 ## Task Reports
 
-<!-- Worker task completion reports are appended below -->
+### 6.1.1 — Enhance Master Plan Phase 3 & Phase 4 Specifications
+- **Status**: Completed
+- **Files Changed**: `planning/MASTER_PLAN.md`, `planning/tasks/6.1.1.todo.md`
+- **Summary**: Expanded Phase 3 with plain-language corridor buffering, direct/indirect geometry separation, true multi-county segment partitioning and sum reconciliation, and 7 CFR § 658.5(c) scoring. Expanded Phase 4 with relative LE normalization formulas, null-rating screening, dynamic SDV attribute routing, and live NASS QuickStats baselines.
+
+### 6.2.1 — Enhance Master Plan Phase 5 & Phase 6 Specifications
+- **Status**: Completed
+- **Files Changed**: `planning/MASTER_PLAN.md`, `planning/tasks/6.2.1.todo.md`
+- **Summary**: Expanded Phase 5 with multi-alternative slot mapping (B, C, D), canonical template tag mappings, draft document watermarking, and automated clearance letters including the "Minimal Surface Disturbance" exemption. Expanded Phase 6 with ACID SQLite case store schema, 19 CPA-2 indicators across 22 Federal agencies, and drill-down traceability.
+
+### 6.3.1 — Update Master Plan Architecture & Tool Surface
+- **Status**: Completed
+- **Files Changed**: `planning/MASTER_PLAN.md`, `planning/tasks/6.3.1.todo.md`
+- **Summary**: Updated Section 1 and Section 2 of `MASTER_PLAN.md` incorporating the paradigm shift from desktop GIS to headless on-demand REST APIs (SDA, NASS QuickStats, Census TIGERweb) and updated the system architecture diagram.
+
+### 6.3.2 — Synchronize Planning Artifacts & Verification
+- **Status**: Completed
+- **Files Changed**: `planning/STATE_6.md`, `planning/tasks/6.3.2.todo.md`
+- **Summary**: Synchronized and verified all Plan 6 execution artifacts, ensuring consistent task tracking, state board records, and clean task completion.
