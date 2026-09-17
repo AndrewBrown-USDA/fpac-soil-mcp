@@ -75,6 +75,16 @@ class TestSDAValidation:
         with pytest.raises(SDAValidationError, match="Invalid or unparseable WKT"):
             SDAClient.validate_wkt("POLYGON((0 0, 1 1)); DROP TABLE mapunit;--")
 
+    def test_validate_wkt_injection_attack_strings(self) -> None:
+        malicious_inputs = [
+            "POLYGON((0 0, 10 0, 10 10, 0 10, 0 0))' OR '1'='1",
+            "POLYGON((0 0, 10 0, 10 10, 0 10, 0 0)); DROP TABLE mupolygon; --",
+            "'; EXEC sp_msforeachtable 'DROP TABLE ?'--",
+        ]
+        for bad_wkt in malicious_inputs:
+            with pytest.raises(SDAValidationError):
+                SDAClient.validate_wkt(bad_wkt)
+
     def test_validate_wkt_non_polygon_rejected(self) -> None:
         with pytest.raises(SDAValidationError, match="must be a Polygon or MultiPolygon"):
             SDAClient.validate_wkt("POINT(-86.1581 39.7684)")
@@ -284,13 +294,35 @@ class TestSDAClientExecution:
 
         def handler(request: httpx.Request) -> httpx.Response:
             assert b"STIntersection" in request.content
+            assert b"STArea()" in request.content
             return httpx.Response(200, json=mock_spatial_resp)
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        results = client.get_spatial_intersection(wkt, clip=True)
+        results = client.get_spatial_intersection(wkt, clip=True, geom_acres=True)
         assert len(results) == 1
         assert results[0]["mukey"] == "412915"
         assert results[0]["area_ac"] == 25.4
+
+    def test_get_spatial_intersection_without_geom_acres(self) -> None:
+        wkt = "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"
+        mock_spatial_resp = {
+            "Table": [
+                ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+                ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", None],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"STIntersection" in request.content
+            assert b"CAST(NULL AS float) AS area_ac" in request.content
+            assert b"STArea()" not in request.content
+            return httpx.Response(200, json=mock_spatial_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_spatial_intersection(wkt, clip=True, geom_acres=False)
+        assert len(results) == 1
+        assert results[0]["mukey"] == "412915"
+        assert results[0]["area_ac"] is None
 
     def test_get_spatial_intersection_with_geometry(self) -> None:
         wkt = "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"

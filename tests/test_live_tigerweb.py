@@ -37,6 +37,9 @@ class TestLiveTigerweb:
         except httpx.HTTPError as exc:
             pytest.skip(f"Live TIGERweb endpoint unavailable or timed out: {exc}")
 
+        if res.status == "error":
+            pytest.skip(f"Live TIGERweb returned error: {res.message}")
+
         assert res.status == "success"
         assert res.is_urban_intersected is True
         assert len(res.urban_area_names) >= 1
@@ -65,11 +68,9 @@ class TestLiveTigerweb:
         except httpx.HTTPError as exc:
             pytest.skip(f"Live TIGERweb endpoint unavailable or timed out: {exc}")
 
+        if res.status == "error":
+            pytest.skip(f"Live TIGERweb returned error: {res.message}")
+
         assert res.status == "success"
-        # If rural footprint does not intersect any 2020 Census urban area
-        if res.is_urban_intersected:
-            # If an urban area unexpectedly overlaps, check its name
-            assert len(res.urban_area_names) >= 0
-        else:
-            assert res.is_urban_intersected is False
-            assert len(res.urban_area_names) == 0
+        assert res.is_urban_intersected is False
+        assert len(res.urban_area_names) == 0

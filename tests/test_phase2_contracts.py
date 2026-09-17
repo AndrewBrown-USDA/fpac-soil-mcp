@@ -126,6 +126,26 @@ def test_phase2_end_to_end_screening_with_fixtures():
 
 
 def test_mcp_tool_registration_surface():
+    import asyncio
+
     mcp = FastMCP("test-server")
     register_tools(mcp)
     assert mcp.name == "test-server"
+
+    tools = asyncio.run(mcp.list_tools())
+    tool_names = [t.name for t in tools]
+
+    expected_tools = [
+        "get_farmland_classification_by_point",
+        "get_farmland_classification_by_mukey",
+        "analyze_farmland_by_polygon",
+        "get_soil_polygons_by_geometry",
+        "check_urban_area_exemption",
+        "get_soil_interpretations",
+        "explain_fppa_screening_scope",
+        "list_farmland_classes",
+    ]
+
+    for expected in expected_tools:
+        assert expected in tool_names
+    assert len(tool_names) == 8
