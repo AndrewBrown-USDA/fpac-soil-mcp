@@ -21,6 +21,11 @@
 | `5.3.1` | 3 | Unit Test Suite & Mock Updates | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.3.2` | 3 | Dedicated Live Integration Suite | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.4.1` | 4 | Registry, Manifest & Documentation Sync | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `5.5.1` | 5 | WKT Parsing Hardening & Query Template Dispatch | pending | | | |
+| `5.5.2` | 5 | TIGERweb Interior Rings & Point Support | pending | | | |
+| `5.5.3` | 5 | Coverage Status & Default Rule Alignment | pending | | | |
+| `5.6.1` | 6 | Contract Verification & Live Test Hardening | pending | | | |
+| `5.6.2` | 6 | Documentation Example Synchronization | pending | | | |
 
 ## Wave Gates
 
@@ -28,6 +33,8 @@
 - **Wave 2** depends on `5.1.1`. Tasks `5.2.1` and `5.2.2` have disjoint files and can run in parallel worktrees (up to 2 concurrent workers).
 - **Wave 3** depends on `5.2.1` and `5.2.2`. Tasks `5.3.1` and `5.3.2` have disjoint files and can run in parallel.
 - **Wave 4** depends on `5.3.1` and `5.3.2`.
+- **Wave 5** depends on `5.4.1`. Tasks `5.5.1`, `5.5.2`, and `5.5.3` have disjoint files and can run in parallel (up to 3 concurrent workers).
+- **Wave 6** depends on `5.5.1`, `5.5.2`, and `5.5.3`. Tasks `5.6.1` and `5.6.2` have disjoint files and can run in parallel.
 - At every wave boundary, run serially:
   - `uv run pytest -m "not live_sda"`
   - `uv run ruff check .`
