@@ -23,6 +23,7 @@ A standard Model Context Protocol (MCP) server built with [FastMCP](https://gith
   - [Zed](#zed)
 - [Tool Reference](#tool-reference)
 - [Resources & Prompts](#resources--prompts)
+- [Internal Domain & Governance Architecture (Phase 1)](#internal-domain--governance-architecture-phase-1)
 - [Configuration Reference](#configuration-reference)
 - [Development & QA Commands](#development--qa-commands)
 - [License](#license)
@@ -304,6 +305,42 @@ Returns all standardized USDA NRCS SSURGO Farmland Classification categories (`m
 
 ---
 
+## Internal Domain & Governance Architecture (Phase 1)
+
+`fpac-soil-mcp` implements a strict internal domain, lifecycle, and governance model to support structured FPPA evaluation workflows.
+
+> **Note on Scope**: Phase 1 establishes internal domain contracts, governance invariants, public data records, and privacy policies. It does **not** expose public case-management MCP tools, persistent databases, live external HTTP clients (NASS/TIGERweb), or automated official determinations.
+
+### Core Contracts & Invariants
+
+1. **Authority & Provenance Primitives (`authority.py`)**:
+   - `ValueAuthority` classifies values as `machine_estimate`, `analyst_proposed`, `agency_approved`, or `nrcs_official`.
+   - Automated evaluation paths may only produce `machine_estimate` or `analyst_proposed`.
+   - `agency_approved` and `nrcs_official` values strictly require a complete, timezone-aware `Attestation` record with a corresponding `ActorCategory` (`agency_official` or `nrcs_official`).
+   - `Provenance` tracks authoritative source names, references, timestamps, and algorithm/configuration versions.
+
+2. **FPPA Case Domain Models (`case_models.py`)**:
+   - Pydantic models for `AgencyProfile`, `FppaRequest`, `ImpactArea`, `ExemptionClaim`, `CalculationRun`, and `DecisionRecord`.
+   - The aggregate root `FppaCase` tracks structured case assets, lifecycle state, and an immutable transition history.
+
+3. **Public Integration Records (`integration_models.py`)**:
+   - Provenance-bearing models for external public datasets: `UrbanExemptionRecord` (Census TIGERweb Layer 6), `CountyAgProfile` (USDA NASS Quick Stats), and `SoilInterpretationRecord` (USDA NRCS SDA NCCPI / interpretations).
+   - Urban screening remains strictly preliminary under 7 CFR 658.2(a) and cannot constitute a granted legal exemption.
+
+4. **Public-Only Privacy Policy (`privacy.py`)**:
+   - Defensively rejects sensitive personal data (e.g., personal names, personal emails, phones, SSNs, street addresses) with deterministic field paths.
+   - Provides explicit, non-mutating `sanitize_public_payload()` that reports removed field paths while preserving permitted public and operational project fields.
+
+5. **Official Source Registry (`official_sources.py`)**:
+   - Package-owned JSON registries (`data/official_sources.v1.json`, `data/regional_scoring.v1.json`) cataloging authoritative citations, form editions (AD-1006, CPA-106), regulations (7 CFR 657, 7 CFR 658), and endpoints.
+   - Regional scoring configurations validate jurisdiction and approval authority without inventing unverified scoring methods.
+
+6. **Workflow State Machine (`workflow.py`)**:
+   - Pure, deterministic directed state machine transitioning through `received` -> `ready_for_analysis` -> `analysis_complete` -> `pending_nrcs_review` -> `provisionally_complete` -> `closed`.
+   - Enforces transition guards (public privacy validation, completed calculation runs, decision records, closure rationale) while preserving immutability.
+
+---
+
 ## Configuration Reference
 
 Settings can be configured via environment variables or a `.env` file:
@@ -311,8 +348,15 @@ Settings can be configured via environment variables or a `.env` file:
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `SDA_TABULAR_URL` | string | `https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest` | USDA NRCS SDA Tabular query endpoint |
-| `REQUEST_TIMEOUT_SECONDS` | float | `30.0` | HTTP request timeout in seconds |
+| `REQUEST_TIMEOUT_SECONDS` | float | `30.0` | HTTP request timeout in seconds for SDA queries |
 | `MAX_RETRIES` | int | `3` | Maximum retry attempts for transient SDA connection errors |
+| `NASS_API_KEY` | string | `None` | Optional API key for USDA NASS Quick Stats API |
+| `NASS_BASE_URL` | string | `https://quickstats.nass.usda.gov/api/api_GET/` | USDA NASS Quick Stats API GET endpoint |
+| `NASS_ENABLED` | boolean | `false` | Whether USDA NASS integration is actively enabled |
+| `NASS_CENSUS_YEAR` | int | `2022` | Baseline Census of Agriculture year (e.g., 2017, 2022) |
+| `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/.../6` | Census TIGERweb 2020 Urban Areas MapServer Layer 6 |
+| `TIGERWEB_URBAN_LAYER_ID` | int | `6` | Layer index for 2020 Census Urban Areas |
+| `TIGERWEB_TIMEOUT_SECONDS` | float | `15.0` | HTTP request timeout for TIGERweb queries |
 | `MCP_TRANSPORT` | string | `stdio` | FastMCP transport mode (`stdio` or `sse`) |
 | `MCP_HOST` | string | `127.0.0.1` | Host to bind for SSE transport |
 | `MCP_PORT` | int | `8000` | Port to bind for SSE transport |

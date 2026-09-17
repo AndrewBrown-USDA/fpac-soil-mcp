@@ -22,7 +22,7 @@
 | `3.2.4` | 2 | Official Source Registry | done | orchestrator | 2026-09-16 | 2026-09-16 |
 | `3.2.5` | 2 | Integration Configuration | done | orchestrator | 2026-09-16 | 2026-09-16 |
 | `3.3.1` | 3 | Workflow State Machine | done | orchestrator | 2026-09-16 | 2026-09-16 |
-| `3.4.1` | 4 | Phase 1 Contract Integration | pending |  |  |  |
+| `3.4.1` | 4 | Phase 1 Contract Integration | done | orchestrator | 2026-09-16 | 2026-09-16 |
 
 ## Wave Gates
 
@@ -86,5 +86,13 @@
 - **Targeted tests**: `uv run pytest tests\test_workflow.py -q` -> 5 passed in 0.07s.
 - **Deviations**: None.
 - **Gotchas for dependent tasks**: Transitions return a new `FppaCase` instance and validate preconditions (public policy checks for readiness, completed runs for analysis completion, decisions for provisional completion, rationale + actor for closure).
+
+## 3.4.1
+- **Status**: Complete.
+- **Files changed**: `tests/test_phase1_contracts.py` (lines 1-235), `README.md` (lines 305-375), `planning/tasks/3.4.1.todo.md` (lines 1-32).
+- **Targeted tests**: `uv run pytest tests\test_phase1_contracts.py -q` -> 1 passed in 0.05s.
+- **Deviations**: None.
+- **Gotchas for dependent tasks**: Orchestration 3 is complete; all Phase 1 domain, governance, privacy, registry, config, and state machine contracts are fully verified and integrated.
+
 
 
