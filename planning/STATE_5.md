@@ -20,7 +20,7 @@
 | `5.2.2` | 2 | Geometry Tool Registration & MCP Interface | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.3.1` | 3 | Unit Test Suite & Mock Updates | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.3.2` | 3 | Dedicated Live Integration Suite | done | orchestrator | 2026-09-17 | 2026-09-17 |
-| `5.4.1` | 4 | Registry, Manifest & Documentation Sync | pending | | | |
+| `5.4.1` | 4 | Registry, Manifest & Documentation Sync | done | orchestrator | 2026-09-17 | 2026-09-17 |
 
 ## Wave Gates
 
@@ -68,6 +68,13 @@
 - **Files Changed**: `tests/test_live_sda.py`, `tests/test_live_tigerweb.py`
 - **Verification**: `uv run pytest tests/test_live_sda.py tests/test_live_tigerweb.py -m live_sda -q` (6 passed, 1 skipped).
 - **Summary**: Added dedicated live integration test suite validating real USDA SDA spatial queries, clipped acreage calculations, NCCPI v3 interpretations, rule catalog queries, and Census TIGERweb urban area screening.
+
+### 5.4.1: Registry, Manifest & Documentation Sync
+- **Status**: Completed
+- **Files Changed**: `manifest.yaml`, `README.md`
+- **Verification**: `uv run ruff check .` and format validation passed.
+- **Summary**: Synchronized `manifest.yaml` and `README.md` with the new `get_soil_polygons_by_geometry` tool and documented exact server-side clipping capabilities and updated NCCPI interpretation rules.
+
 
 
 

@@ -286,14 +286,29 @@ Execute comprehensive FPPA preliminary screening on a GeoJSON `Polygon` or `Mult
 **Capabilities:**
 - Computes geodesic ellipsoidal surface acreage on WGS84 using equal-area projections.
 - Performs preliminary statutory exemption screening against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)).
-- Queries intersecting SSURGO map units via USDA NRCS Soil Data Access spatial endpoints.
-- Fetches component-weighted National Commodity Crop Productivity Index (NCCPI v3) ratings.
+- Queries intersecting SSURGO map units via USDA NRCS Soil Data Access with server-side spatial clipping (`STIntersection` and `STArea`).
+- Groups exact clipped fragments by map unit and calculates true acreage and percentages.
+- Fetches component-weighted National Commodity Crop Productivity Index (`NCCPI - National Commodity Crop Productivity Index (Ver 3.0)`) ratings.
 - Summarizes acreage across statutory farmland categories (Prime, Conditional Prime, Statewide/Local Importance, Unique, Not Prime).
-- Generates a CSV tabular output and deterministic SHA-256 geometry hash.
+- Generates a CSV tabular output, deterministic SHA-256 geometry hash, and execution manifest.
 
 **Parameters:**
 - `geojson` (*dict | string*, required): GeoJSON Polygon, MultiPolygon, Feature, or FeatureCollection geometry.
 - `include_nccpi` (*bool*, optional, default `true`): Whether to fetch component-weighted NCCPI v3 crop productivity indices.
+
+---
+
+### `get_soil_polygons_by_geometry`
+
+Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as a GeoJSON `FeatureCollection` for mapping or GIS integration.
+
+**Capabilities:**
+- Returns GeoJSON features containing map unit attributes (`mukey`, `musym`, `muname`, `farmlndcl`, `areasymbol`, `area_ac`) and polygon geometries.
+- Supports server-side clipping to the AOI footprint (`clip=true`) or returning complete intersecting SSURGO survey polygons (`clip=false`).
+
+**Parameters:**
+- `geojson` (*dict | string*, required): GeoJSON Polygon or MultiPolygon geometry.
+- `clip` (*bool*, optional, default `true`): Whether to clip geometries to the exact AOI boundary.
 
 ---
 
