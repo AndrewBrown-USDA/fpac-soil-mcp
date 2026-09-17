@@ -21,7 +21,7 @@
 | `3.2.3` | 2 | Public-Only Privacy Policy | done | orchestrator | 2026-09-16 | 2026-09-16 |
 | `3.2.4` | 2 | Official Source Registry | done | orchestrator | 2026-09-16 | 2026-09-16 |
 | `3.2.5` | 2 | Integration Configuration | done | orchestrator | 2026-09-16 | 2026-09-16 |
-| `3.3.1` | 3 | Workflow State Machine | pending |  |  |  |
+| `3.3.1` | 3 | Workflow State Machine | done | orchestrator | 2026-09-16 | 2026-09-16 |
 | `3.4.1` | 4 | Phase 1 Contract Integration | pending |  |  |  |
 
 ## Wave Gates
@@ -79,4 +79,12 @@
 - **Targeted tests**: `uv run pytest tests\test_config.py tests\test_server.py -q -m "not live_sda"` -> 13 passed in 0.09s.
 - **Deviations**: None.
 - **Gotchas for dependent tasks**: `Settings` supports SDA-only startup without NASS key, but fails if `nass_enabled=True` without a key or when `validate_nass_capability()` is invoked.
+
+## 3.3.1
+- **Status**: Complete.
+- **Files changed**: `src/fpac_soil_mcp/workflow.py` (lines 1-135), `tests/test_workflow.py` (lines 1-220), `planning/tasks/3.3.1.todo.md` (lines 1-32).
+- **Targeted tests**: `uv run pytest tests\test_workflow.py -q` -> 5 passed in 0.07s.
+- **Deviations**: None.
+- **Gotchas for dependent tasks**: Transitions return a new `FppaCase` instance and validate preconditions (public policy checks for readiness, completed runs for analysis completion, decisions for provisional completion, rationale + actor for closure).
+
 
