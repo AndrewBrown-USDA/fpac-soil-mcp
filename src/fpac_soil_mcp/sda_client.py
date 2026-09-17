@@ -100,10 +100,11 @@ INNER JOIN legend AS l ON m.lkey = l.lkey
 """
 
 SQL_INTERPRETATION_CATALOG = """\
-SELECT DISTINCT mrulename
-FROM cointerp
-WHERE ruledepth = 0
-ORDER BY mrulename
+SELECT DISTINCT nasisrulename AS mrulename
+FROM sdvattribute
+WHERE attributetablename = 'cointerp'
+  AND nasisrulename IS NOT NULL
+ORDER BY nasisrulename
 """
 
 SQL_INTERPRETATION_WEIGHTED_AVG = """\

@@ -77,7 +77,7 @@ class TestLiveSDA:
         assert res.get("numeric_rating") is not None
 
     def test_live_cointerp_rule_catalog(self) -> None:
-        """Query live cointerp rule catalog to verify presence of standard rules."""
+        """Query live cointerp rule catalog from sdvattribute metadata table."""
         client = SDAClient()
         try:
             rules = client.get_available_interpretation_rules(refresh=True)
@@ -86,7 +86,7 @@ class TestLiveSDA:
 
         assert len(rules) > 50
         assert "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)" in rules
-        assert "Farmland Classification" in rules
+        assert any("Corn" in r for r in rules)
 
     def test_live_geometry_extraction(self) -> None:
         """Query live geometry extraction returning WKT polygon shapes."""

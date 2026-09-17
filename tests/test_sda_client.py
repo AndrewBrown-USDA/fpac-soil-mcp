@@ -320,7 +320,7 @@ class TestSDAClientExecution:
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"SELECT DISTINCT mrulename" in request.content
+            assert b"sdvattribute" in request.content
             return httpx.Response(200, json=mock_catalog_resp)
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
