@@ -138,7 +138,7 @@ class TigerwebClient:
                 status=IntegrationStatus.SUCCESS,
                 geometry_hash=geom_hash,
                 provenance=provenance,
-                source_layer="Urban Areas 2020 (Layer 6)",
+                source_layer="2020 Urban Areas",
                 layer_version="2020",
                 is_urban_intersected=is_intersected,
                 urban_area_names=urban_names,

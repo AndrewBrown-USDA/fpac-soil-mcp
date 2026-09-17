@@ -13,7 +13,7 @@ def test_default_settings():
     assert s.max_retries == 3
     assert s.nass_enabled is False
     assert s.nass_api_key is None
-    assert s.tigerweb_urban_layer_id == 6
+    assert s.tigerweb_urban_layer_id == 0
     assert len(s.sda_interpretation_rules_allowed) > 0
 
 
