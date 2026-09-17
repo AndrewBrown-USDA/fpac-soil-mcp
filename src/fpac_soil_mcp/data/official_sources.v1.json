@@ -1,0 +1,86 @@
+[
+  {
+    "source_id": "7_CFR_657",
+    "schema_version": "1.0",
+    "publisher": "Federal Register / USDA NRCS",
+    "title": "7 CFR Part 657 - Prime and Unique Farmlands",
+    "citation": "7 CFR Part 657",
+    "canonical_url": "https://www.ecfr.gov/current/title-7/subtitle-B/chapter-VI/subchapter-F/part-657",
+    "edition": null,
+    "effective_date": "1978-01-31",
+    "status": "active",
+    "retrieval_guidance": "Official electronic Code of Federal Regulations (eCFR) title 7 part 657."
+  },
+  {
+    "source_id": "7_CFR_658",
+    "schema_version": "1.0",
+    "publisher": "Federal Register / USDA NRCS",
+    "title": "7 CFR Part 658 - Farmland Protection Policy Act",
+    "citation": "7 CFR Part 658",
+    "canonical_url": "https://www.ecfr.gov/current/title-7/subtitle-B/chapter-VI/subchapter-F/part-658",
+    "edition": null,
+    "effective_date": "1984-07-05",
+    "status": "active",
+    "retrieval_guidance": "Official electronic Code of Federal Regulations (eCFR) title 7 part 658."
+  },
+  {
+    "source_id": "FORM_AD_1006",
+    "schema_version": "1.0",
+    "publisher": "USDA NRCS",
+    "title": "USDA Form AD-1006 - Farmland Conversion Impact Rating",
+    "citation": "USDA Form AD-1006",
+    "canonical_url": "https://www.nrcs.usda.gov/resources/guides-and-instructions/farmland-protection-policy-act",
+    "edition": "10-83",
+    "effective_date": "1983-10-01",
+    "status": "active",
+    "retrieval_guidance": "Standard form for non-corridor and corridor federal projects converting farmland."
+  },
+  {
+    "source_id": "FORM_NRCS_CPA_106",
+    "schema_version": "1.0",
+    "publisher": "USDA NRCS",
+    "title": "USDA Form NRCS-CPA-106 - Farmland Conversion Impact Rating for Corridor Type Projects",
+    "citation": "USDA Form NRCS-CPA-106",
+    "canonical_url": "https://www.nrcs.usda.gov/resources/guides-and-instructions/farmland-protection-policy-act",
+    "edition": "03-02",
+    "effective_date": "2002-03-01",
+    "status": "active",
+    "retrieval_guidance": "Specialized form for linear/corridor-type projects (highways, pipelines, transmission lines)."
+  },
+  {
+    "source_id": "SDA_SERVICE",
+    "schema_version": "1.0",
+    "publisher": "USDA NRCS",
+    "title": "Soil Data Access (SDA) REST Web Service",
+    "citation": "USDA NRCS Soil Data Access",
+    "canonical_url": "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest",
+    "edition": null,
+    "effective_date": null,
+    "status": "active",
+    "retrieval_guidance": "Direct REST endpoint for querying SSURGO soil map units and interpretations."
+  },
+  {
+    "source_id": "USDA_NASS_QUICKSTATS",
+    "schema_version": "1.0",
+    "publisher": "USDA National Agricultural Statistics Service (NASS)",
+    "title": "USDA NASS Quick Stats API v2",
+    "citation": "USDA NASS Quick Stats API",
+    "canonical_url": "https://quickstats.nass.usda.gov/api",
+    "edition": "v2",
+    "effective_date": null,
+    "status": "active",
+    "retrieval_guidance": "Programmatic API for County-level agricultural census data (farmland acres, crop acreage, farm count)."
+  },
+  {
+    "source_id": "CENSUS_TIGERWEB_URBAN",
+    "schema_version": "1.0",
+    "publisher": "U.S. Census Bureau",
+    "title": "Census TIGERweb 2020 Decennial Urban Areas MapServer",
+    "citation": "Census TIGERweb Urban Areas (Layer 6)",
+    "canonical_url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6",
+    "edition": "2020 Decennial",
+    "effective_date": "2020-01-01",
+    "status": "active",
+    "retrieval_guidance": "Spatial screening service for urbanized areas under 7 CFR 658.2(a) urban exemptions."
+  }
+]
