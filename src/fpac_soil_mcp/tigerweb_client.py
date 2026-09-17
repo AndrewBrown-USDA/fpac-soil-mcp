@@ -92,7 +92,9 @@ class TigerwebClient:
                 "f": "json",
             }
 
-            query_url = f"{self.base_url}/query" if not self.base_url.endswith("/query") else self.base_url
+            query_url = (
+                f"{self.base_url}/query" if not self.base_url.endswith("/query") else self.base_url
+            )
 
             if self._http_client is not None:
                 resp = self._http_client.post(query_url, data=params, timeout=self.timeout)
@@ -115,7 +117,8 @@ class TigerwebClient:
             features = data.get("features", [])
             is_intersected = len(features) > 0
             urban_names = [
-                f.get("attributes", {}).get("NAME") or f.get("attributes", {}).get("BASENAME", "Unknown Urban Area")
+                f.get("attributes", {}).get("NAME")
+                or f.get("attributes", {}).get("BASENAME", "Unknown Urban Area")
                 for f in features
                 if f.get("attributes")
             ]
@@ -132,7 +135,11 @@ class TigerwebClient:
 
         except (httpx.HTTPError, GeometryValidationError, ValueError, KeyError) as exc:
             logger.error("TIGERweb screening failed: %s", exc)
-            fallback_hash = compute_geometry_hash(geom) if "geom" in locals() and geom else "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            fallback_hash = (
+                compute_geometry_hash(geom)
+                if "geom" in locals() and geom
+                else "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            )
             return UrbanExemptionRecord(
                 status=IntegrationStatus.ERROR,
                 geometry_hash=fallback_hash,

@@ -240,7 +240,16 @@ class TestSDAClientExecution:
     def test_get_interpretations_weighted_avg_success(self) -> None:
         mock_interp_resp = {
             "Table": [
-                ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rating_class", "rated_pct", "total_pct"],
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rating_class",
+                    "rated_pct",
+                    "total_pct",
+                ],
                 ["412915", "IN097", "MmA", "Miami silt loam", 0.78, "High", 95, 100],
             ]
         }
@@ -256,20 +265,65 @@ class TestSDAClientExecution:
         assert results[0]["numeric_rating"] == 0.78
         assert results[0]["rating_class"] == "High"
 
-    def test_get_interpretations_dominant_comp_success(self) -> None:
-        mock_interp_resp = {
+    def test_get_spatial_intersection_clipped(self) -> None:
+        wkt = "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"
+        mock_spatial_resp = {
             "Table": [
-                ["mukey", "areasymbol", "musym", "muname", "cokey", "compname", "dominant_pct", "numeric_rating", "rating_class"],
-                ["412915", "IN097", "MmA", "Miami silt loam", "12345", "Miami", 85, 0.85, "High"],
+                ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+                ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", 25.4],
             ]
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"ranked_components" in request.content
-            return httpx.Response(200, json=mock_interp_resp)
+            assert b"STIntersection" in request.content
+            return httpx.Response(200, json=mock_spatial_resp)
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        results = client.get_interpretations(["412915"], aggregation_method="Dominant Component")
+        results = client.get_spatial_intersection(wkt, clip=True)
         assert len(results) == 1
-        assert results[0]["compname"] == "Miami"
-        assert results[0]["dominant_pct"] == 85
+        assert results[0]["mukey"] == "412915"
+        assert results[0]["area_ac"] == 25.4
+
+    def test_get_spatial_intersection_with_geometry(self) -> None:
+        wkt = "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"
+        mock_spatial_resp = {
+            "Table": [
+                ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac", "geom"],
+                [
+                    "412915",
+                    "138B",
+                    "Clarion loam",
+                    "All areas are prime farmland",
+                    "IA169",
+                    25.4,
+                    "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))",
+                ],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"STAsText() AS geom" in request.content
+            return httpx.Response(200, json=mock_spatial_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_spatial_intersection(wkt, clip=True, return_geom=True)
+        assert len(results) == 1
+        assert results[0]["geom"].startswith("POLYGON")
+
+    def test_get_available_interpretation_rules(self) -> None:
+        mock_catalog_resp = {
+            "Table": [
+                ["mrulename"],
+                ["NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"],
+                ["Farmland Classification"],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"SELECT DISTINCT mrulename" in request.content
+            return httpx.Response(200, json=mock_catalog_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        rules = client.get_available_interpretation_rules()
+        assert "Farmland Classification" in rules
+        assert len(rules) == 2

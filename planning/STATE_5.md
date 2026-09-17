@@ -18,8 +18,8 @@
 | `5.1.1` | 1 | SDA Spatial Intersection & Rule Catalog Engine | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.2.1` | 2 | Polygon Analysis Spatial Aggregation & Manifests | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.2.2` | 2 | Geometry Tool Registration & MCP Interface | done | orchestrator | 2026-09-17 | 2026-09-17 |
-| `5.3.1` | 3 | Unit Test Suite & Mock Updates | pending | | | |
-| `5.3.2` | 3 | Dedicated Live Integration Suite | pending | | | |
+| `5.3.1` | 3 | Unit Test Suite & Mock Updates | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `5.3.2` | 3 | Dedicated Live Integration Suite | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.4.1` | 4 | Registry, Manifest & Documentation Sync | pending | | | |
 
 ## Wave Gates
@@ -56,5 +56,18 @@
 - **Files Changed**: `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/tools/__init__.py`
 - **Verification**: Ruff check/format clean.
 - **Summary**: Implemented and registered `get_soil_polygons_by_geometry` tool returning GeoJSON FeatureCollection with clipped or overlapping SSURGO map unit geometries and attributes. Exported tool in `tools/__init__.py`.
+
+### 5.3.1: Unit Test Suite & Mock Updates
+- **Status**: Completed
+- **Files Changed**: `tests/test_sda_client.py`, `tests/test_polygon_analysis.py`, `tests/test_phase2_contracts.py`, `tests/test_tools.py`
+- **Verification**: `uv run pytest -m "not live_sda" -q` (108 passed, 10 deselected).
+- **Summary**: Updated mocked responses with `area_ac` columns, tested `get_spatial_intersection`, `get_available_interpretation_rules`, `get_soil_polygons_by_geometry`, and verified manifest validation.
+
+### 5.3.2: Dedicated Live Integration Suite
+- **Status**: Completed
+- **Files Changed**: `tests/test_live_sda.py`, `tests/test_live_tigerweb.py`
+- **Verification**: `uv run pytest tests/test_live_sda.py tests/test_live_tigerweb.py -m live_sda -q` (6 passed, 1 skipped).
+- **Summary**: Added dedicated live integration test suite validating real USDA SDA spatial queries, clipped acreage calculations, NCCPI v3 interpretations, rule catalog queries, and Census TIGERweb urban area screening.
+
 
 

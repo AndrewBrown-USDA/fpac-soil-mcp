@@ -33,15 +33,24 @@ def test_analyze_polygon_success():
 
     mock_sda_spatial = {
         "Table": [
-            ["mukey", "musym", "muname", "farmlndcl", "areasymbol"],
-            ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169"],
-            ["412916", "507", "Canisteo clay loam", "Prime farmland if drained", "IA169"],
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", 120.5],
+            ["412916", "507", "Canisteo clay loam", "Prime farmland if drained", "IA169", 80.2],
         ]
     }
 
     mock_sda_interp = {
         "Table": [
-            ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rating_class", "rated_pct", "total_pct"],
+            [
+                "mukey",
+                "areasymbol",
+                "musym",
+                "muname",
+                "numeric_rating",
+                "rating_class",
+                "rated_pct",
+                "total_pct",
+            ],
             ["412915", "IA169", "138B", "Clarion loam", 0.88, "High", 100, 100],
             ["412916", "IA169", "507", "Canisteo clay loam", 0.82, "High", 95, 100],
         ]
@@ -52,15 +61,15 @@ def test_analyze_polygon_success():
             return httpx.Response(200, json=mock_sda_interp)
         return httpx.Response(200, json=mock_sda_spatial)
 
-    mock_tiger_resp = {
-        "features": []
-    }
+    mock_tiger_resp = {"features": []}
 
     def tiger_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=mock_tiger_resp)
 
     sda_client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(sda_handler)))
-    tiger_client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(tiger_handler)))
+    tiger_client = TigerwebClient(
+        http_client=httpx.Client(transport=httpx.MockTransport(tiger_handler))
+    )
 
     analyzer = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client)
     res = analyzer.analyze_polygon(geojson)
@@ -68,9 +77,10 @@ def test_analyze_polygon_success():
     assert res.coverage_status == "covered"
     assert res.total_aoi_acres > 0
     assert len(res.map_units) == 2
-    assert res.farmland_summary.prime_farmland_acres > 0
-    assert res.farmland_summary.conditional_prime_acres > 0
+    assert res.farmland_summary.prime_farmland_acres == 120.5
+    assert res.farmland_summary.conditional_prime_acres == 80.2
     assert res.farmland_summary.total_fppa_protected_pct > 0
     assert "mukey,musym,muname" in res.tabular_csv
     assert res.geometry_hash.startswith("sha256:")
     assert res.urban_screening.get("status") == "success"
+    assert res.manifest["spatial_clipping_engine"] == "USDA NRCS SDA STIntersection / STArea"

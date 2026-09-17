@@ -23,16 +23,46 @@ def test_phase2_end_to_end_screening_with_fixtures():
 
     mock_sda_spatial = {
         "Table": [
-            ["mukey", "musym", "muname", "farmlndcl", "areasymbol"],
-            ["412915", "138B", "Clarion loam, 2 to 5 percent slopes", "All areas are prime farmland", "IA169"],
-            ["412916", "507", "Canisteo clay loam, 0 to 2 percent slopes", "Prime farmland if drained", "IA169"],
-            ["412917", "138C2", "Clarion loam, 6 to 10 percent slopes", "Farmland of statewide importance", "IA169"],
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            [
+                "412915",
+                "138B",
+                "Clarion loam, 2 to 5 percent slopes",
+                "All areas are prime farmland",
+                "IA169",
+                25.0,
+            ],
+            [
+                "412916",
+                "507",
+                "Canisteo clay loam, 0 to 2 percent slopes",
+                "Prime farmland if drained",
+                "IA169",
+                15.0,
+            ],
+            [
+                "412917",
+                "138C2",
+                "Clarion loam, 6 to 10 percent slopes",
+                "Farmland of statewide importance",
+                "IA169",
+                9.42,
+            ],
         ]
     }
 
     mock_sda_interp = {
         "Table": [
-            ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rating_class", "rated_pct", "total_pct"],
+            [
+                "mukey",
+                "areasymbol",
+                "musym",
+                "muname",
+                "numeric_rating",
+                "rating_class",
+                "rated_pct",
+                "total_pct",
+            ],
             ["412915", "IA169", "138B", "Clarion loam", 0.88, "High", 100, 100],
             ["412916", "IA169", "507", "Canisteo clay loam", 0.82, "High", 95, 100],
             ["412917", "IA169", "138C2", "Clarion loam", 0.71, "Moderate", 90, 100],
@@ -61,7 +91,9 @@ def test_phase2_end_to_end_screening_with_fixtures():
         return httpx.Response(200, json=mock_tiger_resp)
 
     sda_client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(sda_handler)))
-    tiger_client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(tiger_handler)))
+    tiger_client = TigerwebClient(
+        http_client=httpx.Client(transport=httpx.MockTransport(tiger_handler))
+    )
 
     analyzer = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client)
     res = analyzer.analyze_polygon(geojson, include_nccpi=True)

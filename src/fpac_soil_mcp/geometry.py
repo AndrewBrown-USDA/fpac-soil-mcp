@@ -124,7 +124,9 @@ def parse_geojson_geometry(geojson_input: dict[str, Any] | str) -> Polygon | Mul
         if isinstance(repaired, (Polygon, MultiPolygon)) and not repaired.is_empty:
             geom = repaired
         else:
-            raise GeometryValidationError("Geometry is topologically invalid and could not be repaired.")
+            raise GeometryValidationError(
+                "Geometry is topologically invalid and could not be repaired."
+            )
 
     return geom
 
