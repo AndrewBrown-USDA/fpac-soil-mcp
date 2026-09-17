@@ -1,10 +1,11 @@
-# Research Report: Crosswalk & Parity Analysis of Colorado NRCS ArcGIS Python Toolbox vs. FPAC Soil MCP Server
+# Research Report: Crosswalk & Parity Analysis of Colorado NRCS ArcGIS Python Toolbox (v3 & v4-test) vs. FPAC Soil MCP Server
 
 **Document Identifier:** `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`  
 **Author / Orchestrator:** AI Research Orchestration Agent  
 **Date:** September 17, 2026  
 **Primary References:**  
-- Colorado NRCS ArcGIS Pro FPPA Python Toolbox (`D:\FPPA-Toolbox-Troyer\v3\Toolbox\ArcGIS Pro FPPA Toolbox.pyt` by Michael Troyer, State GIS Specialist)
+- Colorado NRCS ArcGIS Pro FPPA Python Toolbox v3 Production (`D:\FPPA-Toolbox-Troyer\v3\Toolbox\ArcGIS Pro FPPA Toolbox.pyt` by Michael Troyer, State GIS Specialist)
+- Colorado NRCS ArcGIS Pro FPPA Python Toolbox v4-test Development (`D:\FPPA-Toolbox-Troyer\v4-test\Toolbox\ArcGIS Pro FPPA Toolbox.pyt`)
 - Colorado NRCS Setup Instructions (`D:\FPPA-Toolbox-Troyer\v3\ArcGIS Pro FPPA Toolbox Setup Instructions.txt`)
 - FPAC Soil MCP Master Plan (`planning/MASTER_PLAN.md` and `planning/RESEARCH_PUBLIC_APIS_AND_INTERPRETATIONS.md`)
 - Existing MCP Implementation (`src/fpac_soil_mcp/`)
@@ -13,33 +14,40 @@
 
 ## 1. Executive Summary
 
-This research document evaluates the USDA NRCS Colorado State Office ArcGIS Python Toolbox (`ArcGIS Pro FPPA Toolbox.pyt`) against the existing architecture and future roadmap of the **FPAC Soil MCP Server** (`fpac-soil-mcp`). 
+This research document evaluates the USDA NRCS Colorado State Office ArcGIS Python Toolbox (both the **v3 production** and **v4-test development** toolboxes authored by Michael Troyer) against the existing architecture and future roadmap of the **FPAC Soil MCP Server** (`fpac-soil-mcp`). 
 
 The Colorado Toolbox represents the current state-of-the-art for USDA NRCS desktop-assisted Farmland Protection Policy Act (FPPA; 7 U.S.C. § 4201 et seq.; 7 CFR Part 658) administration. While it effectively automates the population of Form AD-1006 (Site Projects), Form NRCS-CPA-106 (Corridor Projects), clearance letters, and annual CPA-2 multi-agency rollups, it relies heavily on manual data preparation, proprietary ArcGIS Pro (`arcpy`) licenses, pre-downloaded static USDA NASS CSVs, and local geodatabases.
 
-By modernizing these workflows into an AI-orchestrated Model Context Protocol (MCP) server, we can achieve complete functional parity and significantly streamline the user experience. An end-user interacting with an LLM agent in plain language needs only to supply an Area of Interest (polygon or corridor centerline with buffer distance) and optional state/county Land Evaluation (LE) or Site Assessment (SA) weighting overrides. The MCP server handles all data retrieval, spatial clipping, Census urban screening, NASS agricultural baselines, LE/SA scoring, and draft artifact generation in real time via live authoritative federal REST endpoints.
+Furthermore, a critical architectural gap in both v3 and v4-test of the desktop toolbox is that **when a linear corridor traverses multiple counties, the tool arbitrarily collapses the analysis to the single largest intersected county by area**. This introduces severe distortion under 7 CFR Part 658 because soil productivity ratings, county maximum baselines ($R_{\text{county\_max}}$), and NASS agricultural metrics vary dramatically across county borders.
+
+By modernizing these workflows into an AI-orchestrated Model Context Protocol (MCP) server, we can achieve complete functional parity and significantly streamline the user experience:
+1. **Plain-Language & Zero-Setup Ingestion**: An end-user interacting with an LLM agent in plain language needs only to supply an Area of Interest (polygon or corridor centerline with buffer distance) and optional state/county Land Evaluation (LE) or Site Assessment (SA) weighting overrides.
+2. **True Multi-County Segment Partitioning**: Rather than simplifying to a single county, `fpac-soil-mcp` dynamically intersects, partitions, and reconciles corridor segments across multiple counties with sum reconciliation.
+3. **Live Authoritative REST Pipelines**: The MCP server handles all data retrieval, spatial clipping, Census urban screening, NASS agricultural baselines, LE/SA scoring, and draft artifact generation in real time via live authoritative federal REST endpoints (USDA SDA, USDA NASS QuickStats API, US Census TIGERweb).
 
 ```mermaid
 flowchart TB
-    subgraph Desktop_Legacy["State-of-the-Art Desktop Workflow (Colorado NRCS ArcGIS Pro Toolbox)"]
+    subgraph Desktop_Legacy["State-of-the-Art Desktop Workflow (Colorado NRCS ArcGIS Pro v3 / v4-test)"]
         User_Desktop[GIS Specialist in ArcGIS Pro] --> Manual_NASS[Manual NASS QuickStats CSV Downloads\n3 Tables per Census Cycle]
         User_Desktop --> Manual_SSURGO[Pre-calculated Statewide SSURGO GDB\nRequires 'rating_' and 'farmland_class' attributes]
         User_Desktop --> Local_GDB[(Reference_Data.gdb\nUrban Areas, Counties, States)]
-        User_Desktop --> ArcPy_Script[Execute ArcGIS Pro FPPA Toolbox.pyt\nRequires arcpy & Pro Layout Template]
+        User_Desktop --> Single_County_Gap["Single-County Simplification Gap\n(Forces largest county by area)"]
+        Single_County_Gap --> ArcPy_Script[Execute ArcGIS Pro FPPA Toolbox.pyt\nRequires arcpy & Pro Layout Template]
         ArcPy_Script --> Docx_Out[Word AD-1006 / CPA-106 & Letter]
         ArcPy_Script --> Excel_Out[Log to FPPA_DATA.xlsx & CPA-2 Annual Report]
     end
 
     subgraph MCP_Modern["Next-Generation Cloud-Native Workflow (fpac-soil-mcp)"]
-        User_Agent[User / AI Agent via Natural Language] --> Agent_Intake["Input: AOI Polygon or Corridor + Buffer\n(Optional: State/County LE/SA Custom Weights)"]
+        User_Agent[User / AI Agent via Natural Language] --> Agent_Intake["Input: AOI Polygon or Corridor Centerline + Buffer\n(Optional: State/County LE/SA Custom Weights)"]
         Agent_Intake --> MCP_Server[FPAC Soil FastMCP Server]
         
         MCP_Server --> SDA_API[(USDA NRCS Soil Data Access REST API\nLive WKT Spatial Clipping & NCCPI v3)]
         MCP_Server --> Census_API[(US Census TIGERweb REST API\nLive 2020 Urban Area Boundary Layer 6)]
         MCP_Server --> NASS_API[(USDA NASS QuickStats REST API\nLive County Ag Census Baselines)]
         
-        MCP_Server --> Engine_LESA[Preliminary LE-SA Scoring Engine\n7 CFR 658.5(c) Corridor / Site Logic]
-        MCP_Server --> Artifact_Gen[Draft Form AD-1006 / CPA-106 Package\nCPA-2 Case Database Rollup]
+        MCP_Server --> MultiCounty_Engine[True Multi-County Corridor Engine\nPartitioning, Segment Scoring & Sum Reconciliation]
+        MultiCounty_Engine --> Engine_LESA[Preliminary LE-SA Scoring Engine\n7 CFR 658.5(c) Corridor / Site Logic]
+        Engine_LESA --> Artifact_Gen[Draft Form AD-1006 / CPA-106 Package\nCPA-2 Case Database Rollup]
     end
 
     Desktop_Legacy -.->|Modernized into| MCP_Modern
@@ -47,23 +55,25 @@ flowchart TB
 
 ---
 
-## 2. Comprehensive Crosswalk Matrix
+## 2. Comprehensive Crosswalk Matrix: v3, v4-test & `fpac-soil-mcp`
 
-The table below provides a granular comparison between the Colorado ArcGIS Pro Toolbox and `fpac-soil-mcp`.
+The table below provides a granular comparison across the Colorado v3 toolbox, v4-test development toolbox, and `fpac-soil-mcp`.
 
-| Analytical Domain | Colorado NRCS Toolbox (`ArcGIS Pro FPPA Toolbox.pyt`) | Current `fpac-soil-mcp` (Phases 0–2) | Target State in Master Plan (Phases 3–6) |
-| :--- | :--- | :--- | :--- |
-| **Execution Environment** | Requires licensed ArcGIS Pro desktop, Python `arcpy`, `.aprx` project with `FPPA Layout`, Windows OS[^1]. | Standalone Python 3.11+, FastMCP, Shapely, PyProj, Pydantic, HTTPX. Runs on any OS or container[^2]. | Cloud-ready containerized service supporting `stdio`, `sse`, and `http` transports[^3]. |
-| **Area of Interest (AOI) Ingestion** | Accepts Direct AOI polygon, Indirect AOI polygon, and up to 3 Alternative polygons (B, C, D) via ArcGIS Feature Layers[^1]. | Ingests GeoJSON Polygon, MultiPolygon, Feature, or FeatureCollection with topological repair (`make_valid`)[^4]. | Ingests Polygons, MultiPolygons, and Corridor LineStrings with automated geodesic buffering, multi-county partitioning, and named alternatives[^3]. |
-| **Urban Exemption Screening** | Erases AOI against static local feature class `Urban_Areas` in `Reference_Data.gdb`[^1]. | Live spatial query to US Census Bureau TIGERweb 2020 Urban Areas MapServer (Layer 6)[^5]. | Automated non-urban boundary ratio calculation, perimeter adjacency screening, and exemption determination drafting under 7 CFR § 658.2(a)[^3]. |
-| **Soils & SSURGO Ingestion** | Requires pre-loaded statewide SSURGO polygon layer with pre-populated `farmland_class` and `rating_` columns[^1]. | Live spatial SQL query to USDA NRCS Soil Data Access (SDA) Tabular REST API (`STIntersection`, `mupolygongeo`)[^6]. | Live SDA queries with automated Soil Data Viewer (`sdvattribute`) routing for state-specific soil productivity indexes (CSR2, CPI, Storie Index)[^7]. |
-| **Farmland Classification Breakdown** | Maps 27 SSURGO `farmland_class` strings into 2 categories: *Prime & Unique* vs. *Statewide & Local Importance*[^1]. | Categorizes all 6 standard SSURGO farmland classes (Prime, Unique, Statewide, Local, Conditional Prime, Not Prime)[^8]. | Fully granular map unit breakdown including conditional prime qualifiers (e.g., *if irrigated*, *if drained*)[^3]. |
-| **Land Evaluation (LE) Relative Rating** | Normalizes map unit ratings by county maximum: $RR = \text{Rating} / \text{Max Rating}$. Calculates AOI weighted average and county % farmland with $RR \ge RR_{\text{AOI}}$[^1]. | Implemented component-weighted NCCPI v3 ratings via SDA query templates[^6]. | Automated candidate LE (0–100) using local rating schedules or NCCPI v3, calculating relative ratings and county comparison percentiles[^3]. |
-| **NASS Agricultural Demographics** | Requires manual download and placement of 3 CSVs: `Acres Irrigated.csv`, `Average Farm Size.csv`, `Farmable Acres.csv`[^9]. | API design completed in `RESEARCH_PUBLIC_APIS_AND_INTERPRETATIONS.md`[^7]. | Live queries to USDA-NASS QuickStats API (`/api_GET/`) by State/County FIPS to extract land in farms, cropland, and average farm size[^3]. |
-| **Corridor Evaluation** | Swaps template to CPA-106 but processes only the single largest intersected county polygon[^1]. | Single-polygon screening implemented[^4]. | Dedicated `analyze_corridor` engine with automated centerline buffering, multi-county segment partitioning, and 7 CFR § 658.5(c) scoring[^3]. |
-| **Site Assessment (SA) Scoring** | Leaves Part VI of AD-1006 / CPA-106 blank for sponsoring Federal agency completion[^1]. | Domain models defined for SA criteria and rationale[^10]. | Hybrid SA engine: automates objective spatial measurements (perimeter ag %, farm size ratio), provides explicit input slots for subjective criteria[^3]. |
-| **Draft Document Generation** | In-place tag substitution in `AD 1006.docx`, `CPA 106.docx`, and `Letter_Template.docx` using `python-docx`[^11]. | Generates structured JSON responses and summary CSV data tables[^4]. | Generates watermarked draft AD-1006 / CPA-106 documents, standard clearance letters, and provenance-bearing JSON review bundles[^3]. |
-| **Annual Reporting & Case Tracking** | Appends rows to shared Excel file `Log\FPPA_DATA.xlsx` and aggregates into `Annual_Report_Template.xlsx`[^12]. | Pydantic case state models defined[^10]. | ACID-compliant SQLite case store tracking case UUIDs, geometry hashes, and generating automated fiscal year Form CPA-2 reports[^3]. |
+| Analytical Domain | Colorado v3 Production (`.pyt`) | Colorado v4-test Development (`.pyt`) | Current `fpac-soil-mcp` (Phases 0–2) | Target State in Master Plan (Phases 3–6) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tool Structure & Architecture** | Single tool `FPPA_Tool` with UI dropdown for `Site` vs `Corridor`[^1]. | Split into `FPPA_Tool_Site` and `FPPA_Tool_Corridor`; modularized functions[^13]. | Modular FastMCP tool routing (`soil_tools`, `fppa_tools`)[^2]. | Specialized tool endpoints: `analyze_farmland_by_polygon`, `analyze_corridor_fppa`, `calculate_preliminary_lesa`[^3]. |
+| **Execution Environment** | Requires ArcGIS Pro desktop, `arcpy`, `.aprx` project with `FPPA Layout`[^1]. | Requires ArcGIS Pro desktop, `arcpy`, `.aprx` with `GIS Templates` (`.lyrx`)[^13]. | Pure Python 3.11+, FastMCP, Shapely, PyProj, Pydantic, HTTPX. Runs on any OS / Docker[^2]. | Headless, containerized cloud service supporting `stdio`, `sse`, and `http` transports[^3]. |
+| **Corridor Ingestion & Buffering** | Ingests pre-buffered polygons only; no automated line buffering[^1]. | Ingests `Polyline` centerline and `Corridor_Width` (feet); automated `arcpy.Buffer`[^13]. | Ingests GeoJSON Polygon/MultiPolygon with topological validation[^4]. | Ingests `LineString`/`MultiLineString` centerlines with explicit buffer distance and units (`feet`, `meters`, `miles`)[^3]. |
+| **Multi-County Handling** | **Arbitrary Simplification**: Selects single largest county by area[^1]. | **Arbitrary Simplification**: Selects single largest county by area (adds state filter)[^13]. | Single-polygon screening implemented[^4]. | **True Multi-County Segmentation**: Partitions corridor by county, fetches per-county soils/NASS stats, and reconciles totals[^3]. |
+| **Spatial Coordinate System** | Inherits map/data projection; planar square meters[^1]. | Enforces **WGS 84 / NSIDC EASE-Grid 2.0 Global (EPSG: 6933)** across all clips[^13]. | Uses WGS84 geodesic algorithms (`pyproj.Geod`) and local equal-area CRS[^4]. | Full geodesic & EPSG:6933 equal-area spatial operations with sub-0.1% acreage tolerance[^3]. |
+| **Urban Exemption Screening** | Erases AOI against static local feature class `Urban_Areas` in `Reference_Data.gdb`[^1]. | Erases AOI against static local `Urban_Areas` feature class[^13]. | Live spatial query to US Census Bureau TIGERweb 2020 Urban Areas MapServer (Layer 6)[^5]. | Automated non-urban boundary ratio calculation, perimeter adjacency screening, and exemption determination drafting under 7 CFR § 658.2(a)[^3]. |
+| **Soils & SSURGO Ingestion** | Requires pre-loaded statewide SSURGO layer with `farmland_class` and `rating_`[^1]. | Requires pre-loaded statewide SSURGO layer with pre-calculated fields[^13]. | Live spatial SQL query to USDA NRCS Soil Data Access (SDA) Tabular REST API (`STIntersection`)[^6]. | Live SDA queries with automated Soil Data Viewer (`sdvattribute`) routing for state-specific soil productivity indexes (CSR2, CPI, Storie)[^7]. |
+| **Farmland Classification Breakdown** | Maps 27 SSURGO strings into 2 bins: *Prime & Unique* vs *Statewide & Local*[^1]. | Maps 27 SSURGO strings into 2 bins[^13]. | Categorizes all 6 standard SSURGO farmland classes (Prime, Unique, Statewide, Local, Conditional, Not Prime)[^8]. | Fully granular map unit breakdown including conditional prime qualifiers (e.g. *if irrigated*, *if drained*)[^3]. |
+| **Land Evaluation (LE) Relative Rating** | Normalizes map unit ratings by county maximum: $RR = \text{Rating} / \text{Max Rating}$. Calculates AOI weighted average and county % farmland with $RR \ge RR_{\text{AOI}}$[^1]. | Same relative rating formula; adds validation warning for null ratings (`[99, 999, None]`)[^13]. | Implemented component-weighted NCCPI v3 ratings via SDA query templates[^6]. | Automated candidate LE (0–100) using local rating schedules or NCCPI v3, calculating relative ratings, null screening, and county comparison percentiles[^3]. |
+| **NASS Agricultural Demographics** | Requires manual download and placement of 3 CSVs: `Acres Irrigated.csv`, `Average Farm Size.csv`, `Farmable Acres.csv`[^9]. | Requires manual download and placement of 3 CSVs[^13]. | API design completed in `RESEARCH_PUBLIC_APIS_AND_INTERPRETATIONS.md`[^7]. | Live queries to USDA-NASS QuickStats API (`/api_GET/`) by State/County FIPS to extract land in farms, cropland, and average farm size[^3]. |
+| **Site Assessment (SA) Scoring** | Leaves Part VI blank for sponsoring Federal agency completion[^1]. | Leaves Part VI blank for sponsoring Federal agency completion[^13]. | Domain models defined for SA criteria and rationale[^10]. | Hybrid SA engine: automates objective spatial measurements (perimeter ag %, farm size ratio), applies 7 CFR 658.5(c) corridor rules[^3]. |
+| **Draft Document Generation** | In-place tag substitution in `AD 1006.docx`, `CPA 106.docx`, and `Letter_Template.docx`[^11]. | In-place tag substitution; adds "Minimal Surface Disturbance" exemption statement[^13]. | Generates structured JSON responses and summary CSV data tables[^4]. | Generates watermarked draft AD-1006 / CPA-106 documents, standard clearance letters, and provenance-bearing JSON review bundles[^3]. |
+| **Annual Reporting & Case Tracking** | Appends rows to shared Excel file `Log\FPPA_DATA.xlsx` and aggregates into `Annual_Report_Template.xlsx`[^12]. | Appends rows to shared Excel file `Log\FPPA_DATA.xlsx`[^13]. | Pydantic case state models defined[^10]. | ACID-compliant SQLite case store tracking case UUIDs, geometry hashes, and generating automated fiscal year Form CPA-2 reports[^3]. |
 
 ---
 
@@ -325,3 +335,4 @@ classDiagram
 [^10]: `src/fpac_soil_mcp/authority.py:1-50`, `planning/MASTER_PLAN.md:106-131`
 [^11]: `D:\FPPA-Toolbox-Troyer\v3\Toolbox\ArcGIS Pro FPPA Toolbox.pyt:197-287`
 [^12]: `D:\FPPA-Toolbox-Troyer\v3\Toolbox\ArcGIS Pro FPPA Toolbox.pyt:63-122, 979-1229`
+[^13]: `D:\FPPA-Toolbox-Troyer\v4-test\Toolbox\ArcGIS Pro FPPA Toolbox.pyt:1-1367`

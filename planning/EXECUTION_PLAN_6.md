@@ -3,14 +3,18 @@
 ## Goal & Scope
 
 ### Goal
-Update `planning/MASTER_PLAN.md` with complete architectural and workflow parity details derived from the Colorado NRCS State GIS Specialist ArcGIS Python Toolbox research crosswalk (`planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`). Enhance the roadmap phases (Phases 3–6 and forward) to formalize streamlined natural-language agent interactions (AOI polygon/corridor centerline with buffer distance), live USDA NASS QuickStats and Census TIGERweb API baselines eliminating manual data preparation, relative Land Evaluation (LE) county normalization, 7 CFR § 658.5(c) corridor scoring rules, official Form AD-1006 / CPA-106 template tag mapping with clearance letters, and multi-agency Form CPA-2 annual reporting rollups.
+Update `planning/MASTER_PLAN.md` with complete architectural and workflow parity details derived from the Colorado NRCS State GIS Specialist ArcGIS Python Toolbox research crosswalk (`planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`, examining both v3 production and v4-test development toolboxes). Enhance the roadmap phases (Phases 3–6 and forward) to formalize streamlined natural-language agent interactions (AOI polygon/corridor centerline with buffer distance), true multi-county segment partitioning and reconciliation (actively overcoming the single-county simplification limitation present in v3 and v4-test desktop toolboxes), live USDA NASS QuickStats and Census TIGERweb API baselines eliminating manual data preparation, relative Land Evaluation (LE) county normalization with null-value pre-screening, 7 CFR § 658.5(c) corridor scoring rules, official Form AD-1006 / CPA-106 template tag mapping with clearance letters (including the "Minimal Surface Disturbance" exemption), and multi-agency Form CPA-2 annual reporting rollups.
 
 ### In Scope
 1. **Master Plan Roadmap & Architecture Overhaul (`planning/MASTER_PLAN.md`)**:
    - **System Architecture & Principles**: Formalize the conversational AI agent paradigm shift eliminating desktop GIS (`arcpy`), manual CSV downloading, and local geodatabase maintenance in favor of on-demand authoritative REST endpoints (USDA SDA, NASS QuickStats, Census TIGERweb).
-   - **Phase 3 Enhancement (Multi-County Corridor Analysis)**: Detail automated centerline buffering (`buffer_distance_feet`/`meters`/`miles`), geodesic equal-area reprojection, multi-county jurisdictional segmentation, urban corridor segment isolation, and 7 CFR § 658.5(c) scoring rules (Criteria 5 & 6 zeroed; Criteria 8 & 11 adjusted to 25 pts).
-   - **Phase 4 Enhancement (Preliminary LE-SA Workbench)**: Incorporate relative value Land Evaluation normalization ($RR_i = \text{Rating}_i / \text{Max Rating}_{\text{county}}$, AOI weighted $RR_{\text{AOI}}$, and county percentile $\ge RR_{\text{AOI}}$), live NASS QuickStats agricultural baselines (irrigated acres, average farm size, farmable acres), and flexible state/county LE rating schedules (e.g. CSR2, CPI, Storie Index).
-   - **Phase 5 Enhancement (Project Alternatives & Draft Form Generation)**: Add multi-alternative slot mapping (Site/Corridor B, C, D), watermarked draft `.docx`/`.pdf` generation for Form AD-1006 and Form NRCS-CPA-106 using canonical placeholder tags, and automated FPPA clearance letter generation (`Letter_Template.docx`).
+   - **Phase 3 Enhancement (Multi-County Corridor Analysis)**:
+     - Detail automated centerline buffering (`buffer_distance` with explicit units: `feet`, `meters`, `miles`) and geodesic equal-area reprojection (EPSG:6933).
+     - Detail **True Multi-County Segment Partitioning and Reconciliation** (intersecting corridor boundaries with county borders, processing county segments independently, fetching segment-specific SDA soils and NASS stats, and reconciling acreage sums to full project dimensions).
+     - Incorporate geometry separation matching v4-test: direct corridor centerline (buffered), indirect polygon impact areas (erased against direct corridor to prevent double counting), and up to 3 named alternative corridor alignments (B, C, D).
+     - Specify implementation of 7 CFR § 658.5(c) corridor scoring rules (Criteria 5 & 6 zeroed; Criteria 8 & 11 adjusted to 25 pts).
+   - **Phase 4 Enhancement (Preliminary LE-SA Workbench)**: Incorporate relative value Land Evaluation normalization ($RR_i = \text{Rating}_i / \text{Max Rating}_{\text{county}}$, AOI weighted $RR_{\text{AOI}}$, and county percentile $\ge RR_{\text{AOI}}$), evaluation rating null screening (`[99, 999, None]`), live NASS QuickStats agricultural baselines (irrigated acres, average farm size, farmable acres), and flexible state/county LE rating schedules (e.g. CSR2, CPI, Storie Index).
+   - **Phase 5 Enhancement (Project Alternatives & Draft Form Generation)**: Add multi-alternative slot mapping (Site/Corridor B, C, D), watermarked draft `.docx`/`.pdf` generation for Form AD-1006 and Form NRCS-CPA-106 using canonical placeholder tags, and automated FPPA clearance letter generation (`Letter_Template.docx` equivalent) supporting the expanded exemption catalog (including `"Minimal Surface Disturbance"`).
    - **Phase 6 Enhancement (Case Archival & CPA-2 Annual Reporting)**: Expand SQLite case schema to track all 19 CPA-2 row indicators ($A$ through $H$) across the 22 standard Federal action agencies for automated fiscal year rollups.
 2. **Task TODO Generation**:
    - Create granular micro-plan todo files in `planning/tasks/` for all Plan 6 tasks.
@@ -25,6 +29,7 @@ Update `planning/MASTER_PLAN.md` with complete architectural and workflow parity
 - "just the master plan" (Scope focus strictly on planning and Master Plan documentation).
 - "can add dedicated phases if needed but otherwise just enhance existing" (Enhance existing Phases 3 through 6 in-place and add explicit sub-sections and crosswalk references).
 - "subagent_concurrency=2" (Max 2 concurrent subagents per wave).
+- "we want to avoid the single-county simplification and develop a robust set of steps to improve parity and enhancements. if we get it working we will provide feedback to Michael on his implementation"
 - "produce your research document without altering any of the code in this repository, but write the final artifact as .md file in planning/ folder".
 - "Preserve the preliminary-screening limitation in every soil-query response: this service does not produce an official FPPA determination, LESA score, Form AD-1006, or NRCS-CPA-106."
 
@@ -33,6 +38,7 @@ Update `planning/MASTER_PLAN.md` with complete architectural and workflow parity
 ## Decision Log
 
 - **2026-09-17**: Scope of Execution Plan 6 is dedicated to updating `planning/MASTER_PLAN.md` and related wave execution scaffolds, integrating all findings from `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`.
+- **2026-09-17**: Explicitly address and eliminate the single-county simplification gap present in v3 and v4-test desktop toolboxes by specifying a true multi-county segmentation and sum reconciliation pipeline in Phase 3.
 - **2026-09-17**: Enhance Phases 3, 4, 5, and 6 in-place within `MASTER_PLAN.md` with explicit citations to `RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`, mathematical LE/SA formulations, template placeholder mappings, and CPA-2 multi-agency indicators.
 - **2026-09-17**: Set worker concurrency limit to 2 for Plan 6 wave execution.
 
