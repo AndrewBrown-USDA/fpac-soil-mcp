@@ -224,3 +224,52 @@ class TestSDAClientExecution:
 
         mukey_sql = SQL_MUKEY_LOOKUP.format(mukey="412915")
         assert "WHERE m.mukey = '412915'" in mukey_sql
+
+    def test_get_by_polygon_success(self, mock_sda_prime_response: dict) -> None:
+        wkt = "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"POLYGON" in request.content
+            return httpx.Response(200, json=mock_sda_prime_response)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_by_polygon(wkt)
+        assert len(results) == 1
+        assert results[0]["mukey"] == "412915"
+
+    def test_get_interpretations_weighted_avg_success(self) -> None:
+        mock_interp_resp = {
+            "Table": [
+                ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rating_class", "rated_pct", "total_pct"],
+                ["412915", "IN097", "MmA", "Miami silt loam", 0.78, "High", 95, 100],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"comp_interp" in request.content
+            return httpx.Response(200, json=mock_interp_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_interpretations(["412915"])
+        assert len(results) == 1
+        assert results[0]["mukey"] == "412915"
+        assert results[0]["numeric_rating"] == 0.78
+        assert results[0]["rating_class"] == "High"
+
+    def test_get_interpretations_dominant_comp_success(self) -> None:
+        mock_interp_resp = {
+            "Table": [
+                ["mukey", "areasymbol", "musym", "muname", "cokey", "compname", "dominant_pct", "numeric_rating", "rating_class"],
+                ["412915", "IN097", "MmA", "Miami silt loam", "12345", "Miami", 85, 0.85, "High"],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"ranked_components" in request.content
+            return httpx.Response(200, json=mock_interp_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_interpretations(["412915"], aggregation_method="Dominant Component")
+        assert len(results) == 1
+        assert results[0]["compname"] == "Miami"
+        assert results[0]["dominant_pct"] == 85

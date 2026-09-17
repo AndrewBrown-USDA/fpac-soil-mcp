@@ -43,6 +43,91 @@ INNER JOIN legend AS l ON m.lkey = l.lkey
 WHERE m.mukey = '{mukey}'
 """
 
+SQL_POLYGON_LOOKUP = """\
+WITH geom_mukeys AS (
+    SELECT DISTINCT mukey
+    FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('{wkt}')
+)
+SELECT
+    m.mukey,
+    m.musym,
+    m.muname,
+    m.farmlndcl,
+    l.areasymbol
+FROM geom_mukeys AS g
+INNER JOIN mapunit AS m ON g.mukey = m.mukey
+INNER JOIN legend AS l ON m.lkey = l.lkey
+"""
+
+SQL_INTERPRETATION_WEIGHTED_AVG = """\
+WITH comp_interp AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.interphr,
+        ci.interphrc
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_name}'
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(interphr * comppct_r) / NULLIF(SUM(CASE WHEN interphr IS NOT NULL THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    MAX(interphrc) AS rating_class,
+    SUM(CASE WHEN interphr IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_interp
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_INTERPRETATION_DOMINANT_COMP = """\
+WITH ranked_components AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.compname,
+        c.comppct_r,
+        ci.interphr AS numeric_rating,
+        ci.interphrc AS rating_class,
+        ROW_NUMBER() OVER (PARTITION BY m.mukey ORDER BY c.comppct_r DESC, c.cokey ASC) AS rnk
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_name}'
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    cokey,
+    compname,
+    comppct_r AS dominant_pct,
+    numeric_rating,
+    rating_class
+FROM ranked_components
+WHERE rnk = 1
+"""
+
 
 class SDAClientError(Exception):
     """Base exception for SDA Client errors."""
@@ -273,4 +358,78 @@ class SDAClient:
         """
         valid_mukey = self.validate_mukey(mukey)
         query = SQL_MUKEY_LOOKUP.format(mukey=valid_mukey)
+        return self._execute_query(query)
+
+    def get_by_polygon(self, wkt_geometry: str) -> list[dict[str, Any]]:
+        """Query SDA for soil map units intersecting a WGS84 WKT Polygon or MultiPolygon.
+
+        Args:
+            wkt_geometry: Validated WGS84 WKT geometry string.
+
+        Returns:
+            List of intersecting map unit records.
+
+        Raises:
+            SDAValidationError: If WKT format is invalid or contains unexpected characters.
+            SDAQueryError: If SDA query fails.
+        """
+        wkt = str(wkt_geometry).strip()
+        if not wkt.upper().startswith(("POLYGON", "MULTIPOLYGON")):
+            raise SDAValidationError(
+                f"Geometry must be a POLYGON or MULTIPOLYGON WKT string; received '{wkt[:30]}...'"
+            )
+        # Verify basic character whitelist to prevent injection
+        if any(c in wkt for c in [";", "--", "/*", "*/", "DROP", "EXEC"]):
+            raise SDAValidationError("Invalid characters detected in WKT geometry string.")
+
+        query = SQL_POLYGON_LOOKUP.format(wkt=wkt)
+        return self._execute_query(query)
+
+    def get_interpretations(
+        self,
+        mukeys: list[str | int],
+        rule_name: str = "NCCPI - National Commodity Crop Productivity Index (v3)",
+        aggregation_method: str = "Weighted Average",
+    ) -> list[dict[str, Any]]:
+        """Query component-level soil interpretations for specified map unit keys.
+
+        Args:
+            mukeys: List of positive integer map unit keys.
+            rule_name: Allowed interpretation rule name.
+            aggregation_method: 'Weighted Average' or 'Dominant Component'.
+
+        Returns:
+            List of parsed interpretation rows per mukey.
+
+        Raises:
+            SDAValidationError: If mukeys or rule/aggregation names are invalid.
+            SDAQueryError: If SDA query fails.
+        """
+        if not mukeys:
+            return []
+
+        clean_mukeys = [self.validate_mukey(k) for k in mukeys]
+        mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
+
+        if rule_name not in settings.sda_interpretation_rules_allowed:
+            raise SDAValidationError(
+                f"Rule '{rule_name}' is not in allowed SDA interpretation rules: {settings.sda_interpretation_rules_allowed}"
+            )
+
+        if aggregation_method not in settings.sda_aggregation_methods_allowed:
+            raise SDAValidationError(
+                f"Aggregation method '{aggregation_method}' is not in allowed methods: {settings.sda_aggregation_methods_allowed}"
+            )
+
+        if aggregation_method == "Dominant Component":
+            query = SQL_INTERPRETATION_DOMINANT_COMP.format(
+                mukeys_csv=mukeys_csv,
+                rule_name=rule_name,
+            )
+        else:
+            query = SQL_INTERPRETATION_WEIGHTED_AVG.format(
+                mukeys_csv=mukeys_csv,
+                rule_name=rule_name,
+            )
+
         return self._execute_query(query)
