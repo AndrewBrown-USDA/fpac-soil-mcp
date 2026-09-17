@@ -9,6 +9,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from fpac_soil_mcp.integration_models import IntegrationStatus
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 pytestmark = pytest.mark.live_sda
@@ -37,10 +38,15 @@ class TestLiveTigerweb:
         except httpx.HTTPError as exc:
             pytest.skip(f"Live TIGERweb endpoint unavailable or timed out: {exc}")
 
-        if res.status == "error":
-            pytest.skip(f"Live TIGERweb returned error: {res.message}")
+        if res.status in (
+            IntegrationStatus.ERROR,
+            IntegrationStatus.UNAVAILABLE,
+            "error",
+            "unavailable",
+        ):
+            pytest.skip(f"Live TIGERweb returned error: {res.error_message}")
 
-        assert res.status == "success"
+        assert res.status == IntegrationStatus.SUCCESS
         assert res.is_urban_intersected is True
         assert len(res.urban_area_names) >= 1
         assert any(
@@ -68,9 +74,14 @@ class TestLiveTigerweb:
         except httpx.HTTPError as exc:
             pytest.skip(f"Live TIGERweb endpoint unavailable or timed out: {exc}")
 
-        if res.status == "error":
-            pytest.skip(f"Live TIGERweb returned error: {res.message}")
+        if res.status in (
+            IntegrationStatus.ERROR,
+            IntegrationStatus.UNAVAILABLE,
+            "error",
+            "unavailable",
+        ):
+            pytest.skip(f"Live TIGERweb returned error: {res.error_message}")
 
-        assert res.status == "success"
+        assert res.status == IntegrationStatus.SUCCESS
         assert res.is_urban_intersected is False
         assert len(res.urban_area_names) == 0
