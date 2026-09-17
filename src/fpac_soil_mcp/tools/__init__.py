@@ -10,8 +10,11 @@ from fpac_soil_mcp.tools.fppa_tools import (
     register_fppa_tools,
 )
 from fpac_soil_mcp.tools.soil_tools import (
+    analyze_farmland_by_polygon,
+    check_urban_area_exemption,
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
+    get_soil_interpretations,
     register_soil_tools,
 )
 
@@ -19,9 +22,12 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 __all__ = [
+    "analyze_farmland_by_polygon",
+    "check_urban_area_exemption",
     "explain_fppa_screening_scope",
     "get_farmland_classification_by_mukey",
     "get_farmland_classification_by_point",
+    "get_soil_interpretations",
     "list_farmland_classes",
     "register_fppa_tools",
     "register_soil_tools",

@@ -11,12 +11,16 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fpac_soil_mcp.constants import REGULATORY_LIMITATIONS, REGULATORY_NOTICE
+from fpac_soil_mcp.integration_models import UrbanExemptionRecord
 from fpac_soil_mcp.models import (
     FarmlandClassificationResponse,
+    PolygonFarmlandAnalysisResponse,
     QuerySource,
     SoilMapUnit,
 )
+from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -152,6 +156,67 @@ def get_farmland_classification_by_mukey(
     )
 
 
+def analyze_farmland_by_polygon(
+    geojson: dict | str,
+    include_nccpi: bool = True,
+) -> PolygonFarmlandAnalysisResponse:
+    """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
+
+    Calculates geodesic surface acreage, checks Census 2020 Urban Area boundaries,
+    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches NCCPI crop
+    productivity ratings, and summarizes acreage across statutory farmland categories.
+
+    Args:
+        geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
+        include_nccpi: Whether to retrieve NCCPI v3 crop productivity ratings.
+
+    Returns:
+        PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
+    """
+    analyzer = PolygonAnalyzer()
+    return analyzer.analyze_polygon(geojson, include_nccpi=include_nccpi)
+
+
+def check_urban_area_exemption(
+    geojson: dict | str,
+) -> UrbanExemptionRecord:
+    """Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6).
+
+    Provides automated spatial screening under 7 CFR § 658.2(a) without issuing a binding legal determination.
+
+    Args:
+        geojson: GeoJSON geometry dict or string (Polygon, MultiPolygon, or Point).
+
+    Returns:
+        UrbanExemptionRecord with screening outcome and intersected urban areas.
+    """
+    client = TigerwebClient()
+    return client.check_urban_exemption(geojson)
+
+
+def get_soil_interpretations(
+    mukeys: list[str],
+    rule_name: str = "NCCPI - National Commodity Crop Productivity Index (v3)",
+    aggregation_method: str = "Weighted Average",
+) -> list[dict]:
+    """Retrieve component-level soil interpretations from USDA NRCS SDA for a list of map unit keys.
+
+    Args:
+        mukeys: List of SSURGO Map Unit Keys.
+        rule_name: Soil interpretation rule name.
+        aggregation_method: Component aggregation method ('Weighted Average' or 'Dominant Component').
+
+    Returns:
+        List of interpretation rating dictionaries per map unit key.
+    """
+    client = SDAClient()
+    return client.get_interpretations(
+        mukeys=mukeys,
+        rule_name=rule_name,
+        aggregation_method=aggregation_method,
+    )
+
+
 def register_soil_tools(mcp: FastMCP) -> None:
     """Register soil query tools on the provided FastMCP instance.
 
@@ -174,3 +239,29 @@ def register_soil_tools(mcp: FastMCP) -> None:
             "soil map unit details, official farmland classification (7 CFR 657), and FPPA regulatory notice."
         ),
     )(get_farmland_classification_by_mukey)
+
+    mcp.tool(
+        name="analyze_farmland_by_polygon",
+        description=(
+            "Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI. "
+            "Calculates total equal-area acreage, checks Census 2020 Urban Area statutory exemption status, "
+            "queries intersecting SSURGO map units via SDA, retrieves NCCPI crop productivity ratings, "
+            "and generates acreage breakdowns by farmland classification."
+        ),
+    )(analyze_farmland_by_polygon)
+
+    mcp.tool(
+        name="check_urban_area_exemption",
+        description=(
+            "Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6) "
+            "for preliminary statutory exemption analysis under 7 CFR § 658.2(a)."
+        ),
+    )(check_urban_area_exemption)
+
+    mcp.tool(
+        name="get_soil_interpretations",
+        description=(
+            "Retrieve component-weighted soil interpretations (such as NCCPI v3 crop productivity) "
+            "from USDA NRCS Soil Data Access (SDA) for a list of map unit keys (mukeys)."
+        ),
+    )(get_soil_interpretations)
