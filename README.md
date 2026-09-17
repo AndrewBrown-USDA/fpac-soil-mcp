@@ -279,6 +279,44 @@ Query USDA NRCS SDA for soil map unit details and farmland classification by Map
 
 ---
 
+### `analyze_farmland_by_polygon`
+
+Execute comprehensive FPPA preliminary screening on a GeoJSON `Polygon` or `MultiPolygon` Area of Interest (AOI).
+
+**Capabilities:**
+- Computes geodesic ellipsoidal surface acreage on WGS84 using equal-area projections.
+- Performs preliminary statutory exemption screening against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)).
+- Queries intersecting SSURGO map units via USDA NRCS Soil Data Access spatial endpoints.
+- Fetches component-weighted National Commodity Crop Productivity Index (NCCPI v3) ratings.
+- Summarizes acreage across statutory farmland categories (Prime, Conditional Prime, Statewide/Local Importance, Unique, Not Prime).
+- Generates a CSV tabular output and deterministic SHA-256 geometry hash.
+
+**Parameters:**
+- `geojson` (*dict | string*, required): GeoJSON Polygon, MultiPolygon, Feature, or FeatureCollection geometry.
+- `include_nccpi` (*bool*, optional, default `true`): Whether to fetch component-weighted NCCPI v3 crop productivity indices.
+
+---
+
+### `check_urban_area_exemption`
+
+Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6) for preliminary statutory exemption analysis under 7 CFR § 658.2(a).
+
+**Parameters:**
+- `geojson` (*dict | string*, required): GeoJSON geometry.
+
+---
+
+### `get_soil_interpretations`
+
+Retrieve component-weighted soil interpretations (such as NCCPI v3) from USDA NRCS SDA for a list of map unit keys.
+
+**Parameters:**
+- `mukeys` (*list[string]*, required): List of SSURGO Map Unit Keys.
+- `rule_name` (*string*, optional): Interpretation rule name (e.g. `'NCCPI - National Commodity Crop Productivity Index (v3)'`).
+- `aggregation_method` (*string*, optional, default `'Weighted Average'`): Aggregation method (`'Weighted Average'` or `'Dominant Component'`).
+
+---
+
 ### `explain_fppa_screening_scope`
 
 Provides an authoritative regulatory breakdown distinguishing preliminary SDA soil screening (7 CFR 657) from formal FPPA Land Evaluation & Site Assessment (LESA) scoring and Form AD-1006 determinations (7 CFR 658).
