@@ -96,3 +96,71 @@ class FarmlandClassListResponse(BaseModel):
     classes: dict[str, dict[str, str]] = Field(
         description="Dictionary mapping farmland class names to their details"
     )
+
+
+class SoilMapUnitAcreage(BaseModel):
+    """Acreage and interpretation metrics for a specific soil map unit in an AOI."""
+
+    mukey: str = Field(description="SSURGO Map Unit Key")
+    musym: str | None = Field(default=None, description="Map unit symbol")
+    muname: str | None = Field(default=None, description="Map unit name")
+    farmlndcl: str | None = Field(default=None, description="SSURGO farmland classification")
+    areasymbol: str | None = Field(default=None, description="Soil survey area symbol")
+    calculated_acres: float = Field(default=0.0, description="Estimated acres of this map unit")
+    percentage_of_aoi: float = Field(default=0.0, description="Percentage of total AOI footprint")
+    nccpi_rating: float | None = Field(default=None, description="Weighted NCCPI v3 rating (0.0 - 1.0)")
+    nccpi_class: str | None = Field(default=None, description="Qualitative rating class")
+
+
+class FarmlandCategoryBreakdown(BaseModel):
+    """Acreage summary grouped by statutory FPPA / SSURGO farmland category."""
+
+    prime_farmland_acres: float = Field(default=0.0, description="Acres of all areas prime farmland")
+    prime_farmland_pct: float = Field(default=0.0, description="Percentage prime farmland")
+    conditional_prime_acres: float = Field(
+        default=0.0, description="Acres of prime farmland if drained/protected/irrigated"
+    )
+    conditional_prime_pct: float = Field(default=0.0, description="Percentage conditional prime")
+    statewide_importance_acres: float = Field(
+        default=0.0, description="Acres of farmland of statewide importance"
+    )
+    statewide_importance_pct: float = Field(default=0.0, description="Percentage statewide importance")
+    local_importance_acres: float = Field(
+        default=0.0, description="Acres of farmland of local importance"
+    )
+    local_importance_pct: float = Field(default=0.0, description="Percentage local importance")
+    unique_farmland_acres: float = Field(default=0.0, description="Acres of unique farmland")
+    unique_farmland_pct: float = Field(default=0.0, description="Percentage unique farmland")
+    not_prime_acres: float = Field(default=0.0, description="Acres of not prime farmland")
+    not_prime_pct: float = Field(default=0.0, description="Percentage not prime")
+    unmapped_acres: float = Field(default=0.0, description="Acres of unmapped / water area")
+    unmapped_pct: float = Field(default=0.0, description="Percentage unmapped")
+    total_fppa_protected_acres: float = Field(
+        default=0.0,
+        description="Total acres subject to FPPA review (prime + conditional + statewide + local + unique)",
+    )
+    total_fppa_protected_pct: float = Field(
+        default=0.0, description="Total percentage of AOI subject to FPPA review"
+    )
+
+
+class PolygonFarmlandAnalysisResponse(BaseModel):
+    """Complete response schema for polygon AOI screening and farmland analysis."""
+
+    query_type: str = Field(default="polygon", description="Query type performed")
+    geometry_hash: str = Field(description="Deterministic SHA-256 hash of the screened geometry")
+    total_aoi_acres: float = Field(description="Total geodesic surface area of the AOI in acres")
+    coverage_status: str = Field(description="Coverage status: 'covered', 'partially_covered', or 'unmapped'")
+    urban_screening: dict[str, Any] = Field(
+        description="Census 2020 Urban Area preliminary screening result"
+    )
+    farmland_summary: FarmlandCategoryBreakdown = Field(
+        description="Acreage summary by farmland classification category"
+    )
+    map_units: list[SoilMapUnitAcreage] = Field(
+        default_factory=list, description="List of intersecting soil map units with acreage"
+    )
+    tabular_csv: str = Field(description="CSV-formatted table of soil map units and acreage")
+    source: QuerySource = Field(description="Query source metadata")
+    limitations: list[str] = Field(default_factory=list, description="Regulatory and technical limitations")
+    regulatory_notice: str = Field(description="Official regulatory disclaimer regarding FPPA screening")
