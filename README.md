@@ -288,6 +288,7 @@ Execute comprehensive FPPA preliminary screening on a GeoJSON `Polygon` or `Mult
 - Performs preliminary statutory exemption screening against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)).
 - Queries intersecting SSURGO map units via USDA NRCS Soil Data Access with server-side spatial clipping (`STIntersection` and `STArea`).
 - Groups exact clipped fragments by map unit and calculates true acreage and percentages.
+- Accurately reports `coverage_status` as `"covered"`, `"partially_covered"`, or `"unmapped"`.
 - Fetches component-weighted National Commodity Crop Productivity Index (`NCCPI - National Commodity Crop Productivity Index (Ver 3.0)`) ratings.
 - Summarizes acreage across statutory farmland categories (Prime, Conditional Prime, Statewide/Local Importance, Unique, Not Prime).
 - Generates a CSV tabular output, deterministic SHA-256 geometry hash, and execution manifest.
@@ -314,10 +315,10 @@ Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as 
 
 ### `check_urban_area_exemption`
 
-Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6) for preliminary statutory exemption analysis under 7 CFR § 658.2(a).
+Screen a project footprint or location against Census Bureau 2020 Urban Area boundaries (Layer 6) for preliminary statutory exemption analysis under 7 CFR § 658.2(a). Supports GeoJSON `Point`, `Polygon`, `MultiPolygon`, `Feature`, or `FeatureCollection` geometries.
 
 **Parameters:**
-- `geojson` (*dict | string*, required): GeoJSON geometry.
+- `geojson` (*dict | string*, required): GeoJSON geometry (Point, Polygon, MultiPolygon, Feature, or FeatureCollection).
 
 ---
 
@@ -327,7 +328,7 @@ Retrieve component-weighted soil interpretations (such as NCCPI v3) from USDA NR
 
 **Parameters:**
 - `mukeys` (*list[string]*, required): List of SSURGO Map Unit Keys.
-- `rule_name` (*string*, optional): Interpretation rule name (e.g. `'NCCPI - National Commodity Crop Productivity Index (v3)'`).
+- `rule_name` (*string*, optional, default `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`): Interpretation rule name.
 - `aggregation_method` (*string*, optional, default `'Weighted Average'`): Aggregation method (`'Weighted Average'` or `'Dominant Component'`).
 
 ---

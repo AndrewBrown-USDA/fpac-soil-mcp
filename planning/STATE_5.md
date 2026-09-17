@@ -24,8 +24,8 @@
 | `5.5.1` | 5 | WKT Parsing Hardening & Query Template Dispatch | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.5.2` | 5 | TIGERweb Interior Rings & Point Support | done | orchestrator | 2026-09-17 | 2026-09-17 |
 | `5.5.3` | 5 | Coverage Status & Default Rule Alignment | done | orchestrator | 2026-09-17 | 2026-09-17 |
-| `5.6.1` | 6 | Contract Verification & Live Test Hardening | pending | | | |
-| `5.6.2` | 6 | Documentation Example Synchronization | pending | | | |
+| `5.6.1` | 6 | Contract Verification & Live Test Hardening | done | orchestrator | 2026-09-17 | 2026-09-17 |
+| `5.6.2` | 6 | Documentation Example Synchronization | done | orchestrator | 2026-09-17 | 2026-09-17 |
 
 ## Wave Gates
 
@@ -99,6 +99,18 @@
 - **Files Changed**: `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `tests/test_polygon_analysis.py`
 - **Verification**: `uv run pytest tests/test_polygon_analysis.py -q` (3 passed), `uv run ruff check .`, `uv run ruff format --check .`
 - **Summary**: Updated `PolygonAnalyzer` to return `partially_covered` status when mapped units are found and `unmapped_remainder > 0.0`. Aligned default `rule_name` in `get_soil_interpretations` to `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`.
+
+### 5.6.1: Contract Verification & Live Test Hardening
+- **Status**: Completed
+- **Files Changed**: `tests/test_live_tigerweb.py`, `tests/test_phase2_contracts.py`, `tests/test_sda_client.py`
+- **Verification**: `uv run pytest -m "not live_sda" -q` (115 passed, 10 deselected), `uv run ruff check .`, `uv run ruff format --check .`
+- **Summary**: Hardened live TIGERweb test error-skipping and rural non-intersection assertion. Added contract test asserting all 8 registered tool names. Tested WKT injection rejection and `geom_acres=False` template behavior in SDA client tests.
+
+### 5.6.2: Documentation Example Synchronization
+- **Status**: Completed
+- **Files Changed**: `README.md`
+- **Verification**: `uv run ruff check .`
+- **Summary**: Updated `README.md` examples and parameter docs to use `'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'`, and documented `partially_covered` status and Point geometry support.
 
 
 
