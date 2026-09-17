@@ -15,7 +15,7 @@
 
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
-| `3.1.1` | 1 | Authority and Provenance Primitives | pending |  |  |  |
+| `3.1.1` | 1 | Authority and Provenance Primitives | done | orchestrator | 2026-09-16 | 2026-09-16 |
 | `3.2.1` | 2 | FPPA Case Domain Models | pending |  |  |  |
 | `3.2.2` | 2 | Public Integration Records | pending |  |  |  |
 | `3.2.3` | 2 | Public-Only Privacy Policy | pending |  |  |  |
@@ -38,4 +38,10 @@
 
 ## Task Reports
 
-<!-- Workers append one <=15-line section per task here after execution. -->
+## 3.1.1
+- **Status**: Complete.
+- **Files changed**: `src/fpac_soil_mcp/authority.py` (lines 1-224), `tests/test_authority.py` (lines 1-210), `planning/tasks/3.1.1.todo.md` (lines 1-32).
+- **Targeted tests**: `uv run pytest tests\test_authority.py -q` -> 9 passed in 0.04s.
+- **Deviations**: None.
+- **Gotchas for dependent tasks**: `AuthorityValue` requires complete `Attestation` with appropriate `ActorCategory` (`agency_official` or `nrcs_official`) for privileged authority states; naive datetimes and blank strings are rejected.
+
