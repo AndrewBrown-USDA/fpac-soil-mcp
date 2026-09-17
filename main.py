@@ -8,7 +8,6 @@ def main() -> None:
     # Deferred import to allow config testing prior to full app creation
     try:
         from fpac_soil_mcp.app import create_mcp_server
-
         from fpac_soil_mcp.config import settings
 
         server = create_mcp_server()
