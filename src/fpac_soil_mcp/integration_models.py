@@ -146,7 +146,7 @@ class SoilInterpretationRecord(BaseModel):
     status: IntegrationStatus = Field(description="Integration outcome status")
     mukey: str = Field(description="SSURGO Map Unit Key")
     rule_name: str = Field(
-        description="Name of interpretation rule, e.g. NCCPI - National Commodity Crop Productivity Index (v3)"
+        description="Name of interpretation rule, e.g. NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
     )
     rule_version: str = Field(description="Version of interpretation rule")
     provenance: Provenance = Field(description="Authoritative source provenance (USDA NRCS SDA)")

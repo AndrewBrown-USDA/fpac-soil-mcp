@@ -173,7 +173,7 @@ def test_phase1_complete_composition(valid_utc_now):
     interp_record = SoilInterpretationRecord(
         status=IntegrationStatus.SUCCESS,
         mukey="408013",
-        rule_name="NCCPI - National Commodity Crop Productivity Index (v3)",
+        rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
         rule_version="3.0",
         provenance=sda_prov,
         numeric_rating=0.82,

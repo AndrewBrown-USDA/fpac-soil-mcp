@@ -138,7 +138,7 @@ def test_soil_interpretation_record_validation(sda_prov):
     interp = SoilInterpretationRecord(
         status=IntegrationStatus.SUCCESS,
         mukey="123456",
-        rule_name="NCCPI - National Commodity Crop Productivity Index (v3)",
+        rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
         rule_version="3.0",
         provenance=sda_prov,
         aggregation_method="Weighted Average",
