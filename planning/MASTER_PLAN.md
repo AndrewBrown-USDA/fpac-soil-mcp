@@ -204,18 +204,22 @@ flowchart TD
 
 **Scope & Deliverables**:
 1. **Candidate Land Evaluation**: Calculate acreage-weighted soil productivity scores (0–100 scale) using approved local rating tables or NCCPI.
-2. **Site Assessment Measurements**: Automate objective physical measurements (perimeter agricultural adjacency, farm size ratios, infrastructure distances).
-3. **Judgment Criteria Handling**: Expose subjective criteria (Part VI items) as input slots with rationale fields. Do not fabricate scores.
-4. **Combined Scoring**: Sum LE (100 max) and SA (160 max) to compute preliminary total (260 max).
-5. **Threshold Flagging**: Flag projects scoring 160 or higher for mandatory alternatives consideration per 7 CFR 658.4(c)(2).
-6. **NCCPI Candidate Method**: When an approved local LE table is unavailable, derive a configured candidate LE score from acreage-weighted SDA NCCPI evidence and label the result as preliminary.
-7. **Public-Data SA Measurements**: Use NASS county profiles and TIGERweb spatial evidence for applicable objective SA measurements, while leaving judgment criteria for documented human input.
+2. **Metadata-Driven Rating & Property Query Engine**: Support generalized Soil Data Viewer (`sdvattribute`) query generation to pull arbitrary ratings and agricultural properties beyond standard `cointerp` rules:
+   - Dynamic query routing across source tables (`cointerp`, `component`, `chorizon`, `cocropyld`) based on `sdvattribute.attributetablename` and `sdvattribute.attributecolumnname`.
+   - Ingestion of state-specific productivity indexes (e.g., Iowa Corn Suitability Rating 2 / CSR2, Minnesota Crop Productivity Index, California Revised Storie Index) and physical/crop metrics (e.g., crop yield, available water capacity).
+3. **Site Assessment Measurements**: Automate objective physical measurements (perimeter agricultural adjacency, farm size ratios, infrastructure distances).
+4. **Judgment Criteria Handling**: Expose subjective criteria (Part VI items) as input slots with rationale fields. Do not fabricate scores.
+5. **Combined Scoring**: Sum LE (100 max) and SA (160 max) to compute preliminary total (260 max).
+6. **Threshold Flagging**: Flag projects scoring 160 or higher for mandatory alternatives consideration per 7 CFR 658.4(c)(2).
+7. **NCCPI Candidate Method**: When an approved local LE table is unavailable, derive a configured candidate LE score from acreage-weighted SDA NCCPI evidence and label the result as preliminary.
+8. **Public-Data SA Measurements**: Use NASS county profiles and TIGERweb spatial evidence for applicable objective SA measurements, while leaving judgment criteria for documented human input.
 
 **Exit Criteria**:
 - Deterministic measurements match test cases exactly.
 - Missing local methods halt calculations with missing_method errors instead of fabricated values.
 - Total scores clearly display preliminary status and breakdown by criterion.
 - Configured NCCPI candidate LE calculations match reviewed weighted benchmark fixtures and retain interpretation provenance.
+- Metadata-driven SDV property queries dynamically fetch valid state/local agricultural ratings from SDA without requiring static table joins.
 - Applicable NASS- and TIGERweb-supported SA measurements match offline fixtures; unavailable data and human-judgment fields remain explicit rather than inferred.
 
 ---
