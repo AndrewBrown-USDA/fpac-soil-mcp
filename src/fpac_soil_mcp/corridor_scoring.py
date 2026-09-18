@@ -18,47 +18,42 @@ Key statutory rules under 7 CFR § 658.5(c):
 
 from __future__ import annotations
 
-from typing import Any, Final
+from abc import ABC, abstractmethod
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from fpac_soil_mcp.constants import REGULATORY_NOTICE
+from fpac_soil_mcp.constants import (
+    CORRIDOR_CRITERIA_MAX_POINTS,
+    CORRIDOR_CRITERIA_NAMES,
+    LESA_THRESHOLD_SCORE,
+    MAX_LAND_EVALUATION_SCORE,
+    MAX_SITE_ASSESSMENT_SCORE,
+    MAX_TOTAL_LESA_SCORE,
+    REGULATORY_NOTICE,
+    STATUTORY_DETERMINATIONS,
+)
 
-# Standard Point Limits for Form NRCS-CPA-106 under 7 CFR § 658.5(c)
-CORRIDOR_CRITERIA_MAX_POINTS: Final[dict[int, int]] = {
-    1: 15,  # Area of non-urban land within 1 mile
-    2: 10,  # Perimeter in agricultural/non-urban land
-    3: 20,  # Land farmed >5 of last 10 years
-    4: 20,  # Agricultural protection status (zoning/easements)
-    5: 0,  # Distance to urban built-up area (0 for corridor)
-    6: 0,  # Distance to municipal water/sewer (0 for corridor)
-    7: 10,  # Size of farm compared to county average
-    8: 25,  # Non-farmable remnant acreage (adjusted to 25 for corridor)
-    9: 5,  # Agricultural support services availability
-    10: 20,  # On-farm investments (buildings/irrigation/conservation)
-    11: 25,  # Reduction in agricultural support demand (adjusted to 25 for corridor)
-    12: 10,  # Land use incompatibility
-}
-
-CORRIDOR_CRITERIA_NAMES: Final[dict[int, str]] = {
-    1: "Area of non-urban land in 1-mile buffer",
-    2: "Perimeter of farmable land surrounding corridor",
-    3: "Percentage of corridor farmed in 5 of last 10 years",
-    4: "Agricultural protection status (easement/zoning)",
-    5: "Distance to urban built-up area (Statutorily zeroed)",
-    6: "Distance to municipal water/sewer (Statutorily zeroed)",
-    7: "Farm size compared to county average",
-    8: "Creation of non-farmable or inaccessible remnant parcels",
-    9: "Availability of agricultural support services",
-    10: "On-farm capital investments and conservation measures",
-    11: "Reduction in local agricultural supply/service demand",
-    12: "Compatibility of corridor project with existing agricultural uses",
-}
-
-MAX_SITE_ASSESSMENT_SCORE: Final[int] = 160
-MAX_LAND_EVALUATION_SCORE: Final[int] = 100
-MAX_TOTAL_LESA_SCORE: Final[int] = 260
-LESA_THRESHOLD_SCORE: Final[int] = 160
+# Re-export constants for backwards compatibility
+__all__ = [
+    "CORRIDOR_CRITERIA_MAX_POINTS",
+    "CORRIDOR_CRITERIA_NAMES",
+    "CRITERION_EVALUATORS",
+    "LESA_THRESHOLD_SCORE",
+    "MAX_LAND_EVALUATION_SCORE",
+    "MAX_SITE_ASSESSMENT_SCORE",
+    "MAX_TOTAL_LESA_SCORE",
+    "CorridorSiteAssessmentSummary",
+    "CriterionEvaluation",
+    "CriterionEvaluator",
+    "FarmSizeCriterionEvaluator",
+    "LESAEvaluationResult",
+    "StandardCriterionEvaluator",
+    "ZeroedCriterionEvaluator",
+    "calculate_criterion_7_score",
+    "evaluate_corridor_lesa",
+    "evaluate_corridor_site_assessment",
+]
 
 
 class CriterionEvaluation(BaseModel):
@@ -146,6 +141,139 @@ class LESAEvaluationResult(BaseModel):
     )
 
 
+# --- Strategy Evaluator Pattern for Corridor Criteria ---
+
+
+class CriterionEvaluator(ABC):
+    """Abstract base strategy evaluator for corridor Site Assessment criteria under 7 CFR § 658.5(c)."""
+
+    def __init__(self, criterion_number: int) -> None:
+        self.criterion_number = criterion_number
+        self.name = CORRIDOR_CRITERIA_NAMES[criterion_number]
+        self.max_points = CORRIDOR_CRITERIA_MAX_POINTS[criterion_number]
+
+    @abstractmethod
+    def evaluate(
+        self,
+        crit_input: dict[str, Any] | None = None,
+        project_farm_acres: float | None = None,
+        county_average_farm_acres: float | None = None,
+    ) -> CriterionEvaluation:
+        """Evaluate the criterion and return a CriterionEvaluation instance."""
+        ...
+
+
+class ZeroedCriterionEvaluator(CriterionEvaluator):
+    """Evaluator for statutorily zeroed criteria (e.g. Criteria 5 and 6)."""
+
+    def evaluate(
+        self,
+        crit_input: dict[str, Any] | None = None,
+        project_farm_acres: float | None = None,
+        county_average_farm_acres: float | None = None,
+    ) -> CriterionEvaluation:
+        return CriterionEvaluation(
+            criterion_number=self.criterion_number,
+            name=self.name,
+            max_points=0,
+            awarded_points=0.0,
+            is_statutorily_zeroed=True,
+            is_automated=True,
+            justification="Statutorily set to 0 points for corridor projects under 7 CFR § 658.5(c).",
+        )
+
+
+class FarmSizeCriterionEvaluator(CriterionEvaluator):
+    """Evaluator for Criterion 7 (farm size compared to county average)."""
+
+    def evaluate(
+        self,
+        crit_input: dict[str, Any] | None = None,
+        project_farm_acres: float | None = None,
+        county_average_farm_acres: float | None = None,
+    ) -> CriterionEvaluation:
+        input_data = crit_input or {}
+        if project_farm_acres is not None and county_average_farm_acres is not None:
+            awarded, justification = calculate_criterion_7_score(
+                project_farm_acres, county_average_farm_acres
+            )
+            is_automated = True
+        else:
+            raw_pts = input_data.get("awarded_points", 0.0)
+            try:
+                awarded = float(raw_pts)
+            except (ValueError, TypeError):
+                awarded = 0.0
+
+            awarded = max(0.0, min(float(self.max_points), awarded))
+            justification = input_data.get("justification", "")
+            is_automated = bool(input_data.get("is_automated", False))
+
+            if awarded > 0 and not justification and not is_automated:
+                justification = f"Points ({awarded}/{self.max_points}) entered without explicit justification rationale."
+
+        return CriterionEvaluation(
+            criterion_number=self.criterion_number,
+            name=self.name,
+            max_points=self.max_points,
+            awarded_points=awarded,
+            is_statutorily_zeroed=False,
+            is_automated=is_automated,
+            justification=justification,
+        )
+
+
+class StandardCriterionEvaluator(CriterionEvaluator):
+    """Evaluator for standard or statutory-adjusted criteria (Criteria 1-4, 8-12)."""
+
+    def evaluate(
+        self,
+        crit_input: dict[str, Any] | None = None,
+        project_farm_acres: float | None = None,
+        county_average_farm_acres: float | None = None,
+    ) -> CriterionEvaluation:
+        input_data = crit_input or {}
+        raw_pts = input_data.get("awarded_points", 0.0)
+        try:
+            awarded = float(raw_pts)
+        except (ValueError, TypeError):
+            awarded = 0.0
+
+        awarded = max(0.0, min(float(self.max_points), awarded))
+        justification = input_data.get("justification", "")
+        is_automated = bool(input_data.get("is_automated", False))
+
+        if awarded > 0 and not justification and not is_automated:
+            justification = f"Points ({awarded}/{self.max_points}) entered without explicit justification rationale."
+
+        return CriterionEvaluation(
+            criterion_number=self.criterion_number,
+            name=self.name,
+            max_points=self.max_points,
+            awarded_points=awarded,
+            is_statutorily_zeroed=False,
+            is_automated=is_automated,
+            justification=justification,
+        )
+
+
+# Strategy registry mapping criterion numbers 1-12 to evaluators
+CRITERION_EVALUATORS: dict[int, CriterionEvaluator] = {
+    1: StandardCriterionEvaluator(1),
+    2: StandardCriterionEvaluator(2),
+    3: StandardCriterionEvaluator(3),
+    4: StandardCriterionEvaluator(4),
+    5: ZeroedCriterionEvaluator(5),
+    6: ZeroedCriterionEvaluator(6),
+    7: FarmSizeCriterionEvaluator(7),
+    8: StandardCriterionEvaluator(8),
+    9: StandardCriterionEvaluator(9),
+    10: StandardCriterionEvaluator(10),
+    11: StandardCriterionEvaluator(11),
+    12: StandardCriterionEvaluator(12),
+}
+
+
 def calculate_criterion_7_score(
     project_farm_acres: float,
     county_average_farm_acres: float,
@@ -211,57 +339,27 @@ def evaluate_corridor_site_assessment(
     all_justified = True
 
     for crit_num in range(1, 13):
-        max_pts = CORRIDOR_CRITERIA_MAX_POINTS[crit_num]
-        name = CORRIDOR_CRITERIA_NAMES[crit_num]
-        is_zeroed = max_pts == 0
-        crit_input = inputs.get(crit_num, {})
-
-        if is_zeroed:
-            awarded = 0.0
-            justification = (
-                "Statutorily set to 0 points for corridor projects under 7 CFR § 658.5(c)."
-            )
-            is_automated = True
-        elif (
-            crit_num == 7
-            and project_farm_acres is not None
-            and county_average_farm_acres is not None
-        ):
-            awarded, justification = calculate_criterion_7_score(
-                project_farm_acres, county_average_farm_acres
-            )
-            is_automated = True
-        else:
-            raw_pts = crit_input.get("awarded_points", 0.0)
-            try:
-                awarded = float(raw_pts)
-            except (ValueError, TypeError):
-                awarded = 0.0
-
-            # Clamp between 0 and statutory max
-            if awarded < 0:
-                awarded = 0.0
-            elif awarded > max_pts:
-                awarded = float(max_pts)
-
-            justification = crit_input.get("justification", "")
-            is_automated = bool(crit_input.get("is_automated", False))
-
-            if awarded > 0 and not justification and not is_automated:
-                all_justified = False
-                justification = f"Points ({awarded}/{max_pts}) entered without explicit justification rationale."
-
-        eval_item = CriterionEvaluation(
-            criterion_number=crit_num,
-            name=name,
-            max_points=max_pts,
-            awarded_points=awarded,
-            is_statutorily_zeroed=is_zeroed,
-            is_automated=is_automated,
-            justification=justification,
+        evaluator = CRITERION_EVALUATORS.get(crit_num) or StandardCriterionEvaluator(crit_num)
+        crit_input = inputs.get(crit_num)
+        eval_item = evaluator.evaluate(
+            crit_input=crit_input,
+            project_farm_acres=project_farm_acres,
+            county_average_farm_acres=county_average_farm_acres,
         )
+
+        if (
+            eval_item.awarded_points > 0
+            and not eval_item.is_automated
+            and (
+                not crit_input
+                or not crit_input.get("justification")
+                or not crit_input.get("justification").strip()
+            )
+        ):
+            all_justified = False
+
         criteria_list.append(eval_item)
-        total_sa += awarded
+        total_sa += eval_item.awarded_points
 
     total_sa = min(160.0, round(total_sa, 2))
 
@@ -297,11 +395,7 @@ def evaluate_corridor_lesa(
     threshold_exceeded = total_lesa >= LESA_THRESHOLD_SCORE
 
     if threshold_exceeded:
-        determination = (
-            f"TOTAL LESA SCORE ({total_lesa:.1f}/260) EQUALS OR EXCEEDS STATUTORY THRESHOLD (160). "
-            f"Under 7 CFR § 658.4(c)(2), this project must receive in-depth consideration for alternative "
-            f"corridor alignments, avoidance of prime/unique farmlands, and impact mitigation."
-        )
+        determination = STATUTORY_DETERMINATIONS["THRESHOLD_EXCEEDED"].format(total_lesa=total_lesa)
         actions = [
             "Assess alternative corridor alignments that avoid or minimize conversion of farmland (7 CFR § 658.4(c)(3)).",
             "Evaluate corridor designs with reduced right-of-way widths or alternative construction access to minimize acreage taken (7 CFR § 658.4(c)(4)).",
@@ -309,10 +403,8 @@ def evaluate_corridor_lesa(
             "Complete official USDA Form NRCS-CPA-106 prior to final federal project approval.",
         ]
     else:
-        determination = (
-            f"TOTAL LESA SCORE ({total_lesa:.1f}/260) IS BELOW STATUTORY THRESHOLD (160). "
-            f"Under 7 CFR § 658.4(c)(2), sites receiving a total score of less than 160 points require "
-            f"no further consideration for protection and no alternative site evaluations."
+        determination = STATUTORY_DETERMINATIONS["THRESHOLD_NOT_EXCEEDED"].format(
+            total_lesa=total_lesa
         )
         actions = [
             "Retain this preliminary screening score and documentation in the project administrative record.",

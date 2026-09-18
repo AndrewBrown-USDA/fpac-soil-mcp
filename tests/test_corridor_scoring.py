@@ -6,11 +6,15 @@ from pydantic import ValidationError
 from fpac_soil_mcp.corridor_scoring import (
     CORRIDOR_CRITERIA_MAX_POINTS,
     CORRIDOR_CRITERIA_NAMES,
+    CRITERION_EVALUATORS,
     LESA_THRESHOLD_SCORE,
     MAX_LAND_EVALUATION_SCORE,
     MAX_SITE_ASSESSMENT_SCORE,
     MAX_TOTAL_LESA_SCORE,
     CriterionEvaluation,
+    FarmSizeCriterionEvaluator,
+    StandardCriterionEvaluator,
+    ZeroedCriterionEvaluator,
     calculate_criterion_7_score,
     evaluate_corridor_lesa,
     evaluate_corridor_site_assessment,
@@ -218,6 +222,44 @@ def test_lesa_threshold_evaluation_below_160():
     assert "BELOW STATUTORY THRESHOLD" in lesa_res.statutory_determination
     assert any("administrative record" in act for act in lesa_res.recommended_actions)
     assert any("NRCS-CPA-106" in act for act in lesa_res.recommended_actions)
+
+
+def test_strategy_evaluator_dispatch():
+    """Verify strategy evaluators work as standalone classes and via registry."""
+    # Zeroed Evaluator
+    zero_eval = ZeroedCriterionEvaluator(5)
+    res5 = zero_eval.evaluate(crit_input={"awarded_points": 10.0})
+    assert res5.awarded_points == 0.0
+    assert res5.is_statutorily_zeroed is True
+
+    # Farm Size Evaluator automated
+    farm_eval = FarmSizeCriterionEvaluator(7)
+    res7_auto = farm_eval.evaluate(
+        project_farm_acres=300.0,
+        county_average_farm_acres=200.0,
+    )
+    assert res7_auto.awarded_points == 10.0
+    assert res7_auto.is_automated is True
+
+    # Farm Size Evaluator manual
+    res7_man = farm_eval.evaluate(
+        crit_input={"awarded_points": 8.0, "justification": "Manual evaluation"}
+    )
+    assert res7_man.awarded_points == 8.0
+    assert res7_man.justification == "Manual evaluation"
+
+    # Standard Evaluator clamping
+    std_eval = StandardCriterionEvaluator(1)
+    res1 = std_eval.evaluate(crit_input={"awarded_points": 25.0})
+    assert res1.awarded_points == 15.0  # Clamped to max 15
+
+    # Check registry mappings
+    assert isinstance(CRITERION_EVALUATORS[5], ZeroedCriterionEvaluator)
+    assert isinstance(CRITERION_EVALUATORS[6], ZeroedCriterionEvaluator)
+    assert isinstance(CRITERION_EVALUATORS[7], FarmSizeCriterionEvaluator)
+    assert isinstance(CRITERION_EVALUATORS[1], StandardCriterionEvaluator)
+    assert isinstance(CRITERION_EVALUATORS[8], StandardCriterionEvaluator)
+    assert CRITERION_EVALUATORS[8].max_points == 25
 
 
 def test_lesa_threshold_evaluation_above_160():
