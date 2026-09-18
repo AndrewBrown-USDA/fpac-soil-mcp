@@ -20,7 +20,7 @@
 | `7.2.1` | 2 | USDA NASS QuickStats REST Client | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.2.2` | 2 | TIGERweb County Boundary & Partitioning Client | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.2.3` | 2 | Multi-County Corridor Test Fixture Corpus | done | orchestrator | 2026-09-18 | 2026-09-18 |
-| `7.3.1` | 3 | Multi-County Corridor Analysis & Reconciliation Engine | pending | — | — | — |
+| `7.3.1` | 3 | Multi-County Corridor Analysis & Reconciliation Engine | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.4.1` | 4 | 7 CFR § 658.5(c) Corridor Site Assessment Rules Engine | pending | — | — | — |
 | `7.5.1` | 5 | FastMCP Corridor Analysis Tools & Server Registration | pending | — | — | — |
 | `7.6.1` | 6 | Phase 3 Contract, End-to-End & Documentation Suite | pending | — | — | — |
@@ -67,4 +67,10 @@
 - **Files Changed**: `tests/fixtures/corridor/multi_county_corridors.json` (lines 1-130), `tests/test_corridor_fixtures.py` (lines 1-60), `planning/tasks/7.2.3.todo.md` (lines 1-35)
 - **Verification**: `uv run pytest tests/test_corridor_fixtures.py -q` (1 passed), `uv run ruff check .` (clean), `uv run ruff format --check src/ tests/` (clean).
 - **Summary**: Created gold-set corridor test scenarios for 2-county, 3-county, and cross-state alignments with centerlines, direct buffer widths, and indirect staging polygons, with benchmark tolerance tests.
+
+### 7.3.1: Multi-County Corridor Analysis & Reconciliation Engine
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/models.py` (lines 180-295), `src/fpac_soil_mcp/corridor_analysis.py` (lines 1-545), `tests/test_corridor_analysis.py` (lines 1-320), `planning/tasks/7.3.1.todo.md` (lines 1-45)
+- **Verification**: `uv run pytest tests/test_corridor_analysis.py -q` (4 passed), `uv run ruff check .` (clean), `uv run ruff format --check .` (clean).
+- **Summary**: Implemented `CorridorAnalyzer` and response schemas for multi-county linear corridor screening; partitions corridor footprints across TIGERweb county borders, queries clipped SSURGO soils, computes composite LE ratings ($RR_{\text{composite}}$), evaluates alternative alignments, and enforces sum reconciliation within 0.1% tolerance.
 
