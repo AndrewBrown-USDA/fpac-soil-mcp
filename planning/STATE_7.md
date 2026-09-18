@@ -16,7 +16,7 @@
 
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
-| `7.1.1` | 1 | Corridor Geodesic Buffering & Geometry Primitives | pending | — | — | — |
+| `7.1.1` | 1 | Corridor Geodesic Buffering & Geometry Primitives | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.2.1` | 2 | USDA NASS QuickStats REST Client | pending | — | — | — |
 | `7.2.2` | 2 | TIGERweb County Boundary & Partitioning Client | pending | — | — | — |
 | `7.2.3` | 2 | Multi-County Corridor Test Fixture Corpus | pending | — | — | — |
@@ -43,3 +43,10 @@
 ## Task Reports
 
 <!-- Worker task completion reports are appended below -->
+
+### 7.1.1: Corridor Geodesic Buffering & Geometry Primitives
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/geometry.py` (lines 1-480), `tests/test_geometry.py` (lines 1-280), `planning/tasks/7.1.1.todo.md` (lines 1-32)
+- **Verification**: `uv run pytest tests/test_geometry.py -q` (13 passed), `uv run ruff check .` (clean), `uv run ruff format --check src/ tests/` (clean).
+- **Summary**: Implemented `buffer_centerline` with equal-area projection space (EPSG:6933) buffering across `feet`, `meters`, `miles`; implemented `erase_geometries` for direct/indirect footprint separation without double-counting; added line WKT sanitization and hashing.
+

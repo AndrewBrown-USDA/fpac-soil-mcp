@@ -5,10 +5,13 @@ from shapely.geometry import MultiPolygon, Polygon
 
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
+    buffer_centerline,
     calculate_acreage,
     compute_geometry_hash,
+    erase_geometries,
     geometry_to_wkt,
     parse_geojson_geometry,
+    validate_and_sanitize_line_wkt,
     validate_wkt_string,
 )
 
@@ -161,3 +164,110 @@ def test_geometry_to_wkt_and_hash():
 
     # Reproducibility
     assert compute_geometry_hash(geojson) == geom_hash
+
+
+def test_parse_geojson_line():
+    line_geojson = {
+        "type": "LineString",
+        "coordinates": [
+            [-93.5, 42.0],
+            [-93.4, 42.1],
+        ],
+    }
+    # default disallows line
+    with pytest.raises(GeometryValidationError, match="Unsupported geometry type"):
+        parse_geojson_geometry(line_geojson, allow_line=False)
+
+    geom = parse_geojson_geometry(line_geojson, allow_line=True)
+    assert geom.geom_type == "LineString"
+
+
+def test_validate_and_sanitize_line_wkt():
+    wkt = "LINESTRING(-93.5 42.0, -93.4 42.1)"
+    clean = validate_and_sanitize_line_wkt(wkt)
+    assert clean.startswith("LINESTRING")
+
+    with pytest.raises(GeometryValidationError, match="must be a LineString or MultiLineString"):
+        validate_and_sanitize_line_wkt(
+            "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))"
+        )
+
+
+def test_buffer_centerline():
+    # 10 mile line in Iowa, buffer 50 feet each side (total width 100 feet)
+    # 10 miles = 52,800 feet. Area ~ 52,800 * 100 = 5,280,000 sq ft = ~121.2 acres (plus round caps)
+    line_geojson = {
+        "type": "LineString",
+        "coordinates": [
+            [-93.5, 42.0],
+            [-93.5, 42.145],  # roughly 10 miles north
+        ],
+    }
+    buffered = buffer_centerline(line_geojson, buffer_distance=50, distance_unit="feet")
+    assert isinstance(buffered, (Polygon, MultiPolygon))
+    acres = calculate_acreage(buffered)
+    assert 100.0 <= acres <= 150.0
+
+    # Test meters
+    buffered_m = buffer_centerline(line_geojson, buffer_distance=15.24, distance_unit="meters")
+    assert abs(calculate_acreage(buffered_m) - acres) < 2.0
+
+    # Test miles
+    buffered_mi = buffer_centerline(line_geojson, buffer_distance=0.1, distance_unit="miles")
+    acres_mi = calculate_acreage(buffered_mi)
+    assert acres_mi > acres
+
+    # Test invalid distance
+    with pytest.raises(GeometryValidationError, match="must be a positive number"):
+        buffer_centerline(line_geojson, buffer_distance=-10)
+
+    # Test invalid unit
+    with pytest.raises(GeometryValidationError, match="Unrecognized distance_unit"):
+        buffer_centerline(line_geojson, buffer_distance=50, distance_unit="furlongs")
+
+
+def test_erase_geometries():
+    # Large box: 0.1 x 0.1 deg
+    big_box = parse_geojson_geometry(
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-93.5, 42.0],
+                    [-93.4, 42.0],
+                    [-93.4, 42.1],
+                    [-93.5, 42.1],
+                    [-93.5, 42.0],
+                ]
+            ],
+        }
+    )
+    # Inner box: 0.05 x 0.05 deg
+    inner_box = parse_geojson_geometry(
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-93.48, 42.02],
+                    [-93.42, 42.02],
+                    [-93.42, 42.08],
+                    [-93.48, 42.08],
+                    [-93.48, 42.02],
+                ]
+            ],
+        }
+    )
+
+    erased = erase_geometries(big_box, inner_box)
+    assert isinstance(erased, (Polygon, MultiPolygon))
+    big_acres = calculate_acreage(big_box)
+    inner_acres = calculate_acreage(inner_box)
+    erased_acres = calculate_acreage(erased)
+
+    assert abs(erased_acres - (big_acres - inner_acres)) < 1.0
+
+    # Line hash handling
+    line_hash = compute_geometry_hash(
+        {"type": "LineString", "coordinates": [[-93.5, 42.0], [-93.4, 42.1]]}
+    )
+    assert line_hash.startswith("sha256:")
