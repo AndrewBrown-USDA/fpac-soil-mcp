@@ -1,10 +1,18 @@
 """Tests for Census TIGERweb 2020 Urban Areas Client."""
 
+import json
+from urllib.parse import parse_qs
+
 import httpx
 import pytest
+from shapely.geometry import LinearRing, MultiPolygon, Polygon
 
 from fpac_soil_mcp.integration_models import IntegrationStatus
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
+from fpac_soil_mcp.tigerweb_client import (
+    TigerwebClient,
+    _normalize_ring_winding,
+    _polygon_to_esri_rings,
+)
 
 
 @pytest.fixture
@@ -21,6 +29,74 @@ def sample_geojson():
             ]
         ],
     }
+
+
+def test_ring_winding_normalization_helpers():
+    # Counter-clockwise coordinates (standard GeoJSON exterior)
+    ccw_coords = [
+        [-86.16, 39.76],
+        [-86.14, 39.76],
+        [-86.14, 39.78],
+        [-86.16, 39.78],
+        [-86.16, 39.76],
+    ]
+    ring = LinearRing(ccw_coords)
+    assert ring.is_ccw is True
+
+    # Normalize to clockwise (exterior)
+    cw_normalized = _normalize_ring_winding(ring, clockwise=True)
+    assert LinearRing(cw_normalized).is_ccw is False
+
+    # Normalize to counterclockwise (interior hole)
+    ccw_normalized = _normalize_ring_winding(ring, clockwise=False)
+    assert LinearRing(ccw_normalized).is_ccw is True
+
+    # Clockwise coordinates
+    cw_coords = [
+        [-86.16, 39.76],
+        [-86.16, 39.78],
+        [-86.14, 39.78],
+        [-86.14, 39.76],
+        [-86.16, 39.76],
+    ]
+    ring_cw = LinearRing(cw_coords)
+    assert ring_cw.is_ccw is False
+
+    cw_normalized_from_cw = _normalize_ring_winding(ring_cw, clockwise=True)
+    assert LinearRing(cw_normalized_from_cw).is_ccw is False
+
+    ccw_normalized_from_cw = _normalize_ring_winding(ring_cw, clockwise=False)
+    assert LinearRing(ccw_normalized_from_cw).is_ccw is True
+
+
+def test_polygon_to_esri_rings_multipolygon_winding():
+    # MultiPolygon with 2 polygons, one having an interior ring
+    poly1 = Polygon(
+        shell=[[-86.16, 39.76], [-86.14, 39.76], [-86.14, 39.78], [-86.16, 39.78], [-86.16, 39.76]],
+        holes=[
+            [
+                [-86.155, 39.765],
+                [-86.155, 39.775],
+                [-86.145, 39.775],
+                [-86.145, 39.765],
+                [-86.155, 39.765],
+            ]
+        ],
+    )
+    poly2 = Polygon(
+        shell=[[-86.10, 39.76], [-86.08, 39.76], [-86.08, 39.78], [-86.10, 39.78], [-86.10, 39.76]]
+    )
+    mp = MultiPolygon([poly1, poly2])
+
+    rings = _polygon_to_esri_rings(mp)
+    assert len(rings) == 3
+
+    # Ring 0: exterior of poly1 (must be CW -> is_ccw is False)
+    assert LinearRing(rings[0]).is_ccw is False
+    # Ring 1: interior hole of poly1 (must be CCW -> is_ccw is True)
+    assert LinearRing(rings[1]).is_ccw is True
+    # Ring 2: exterior of poly2 (must be CW -> is_ccw is False)
+    assert LinearRing(rings[2]).is_ccw is False
 
 
 def test_tigerweb_intersected_success(sample_geojson):
@@ -119,8 +195,15 @@ def test_tigerweb_polygon_with_interior_rings():
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert b"esriGeometryPolygon" in request.content
-        # Check both exterior and interior ring coordinates are present
-        assert b"-86.155" in request.content
+        # Verify rings are properly formatted and normalized in the posted data
+        body = parse_qs(request.content.decode("utf-8"))
+        geom_json = json.loads(body["geometry"][0])
+        rings = geom_json["rings"]
+        assert len(rings) == 2
+        # Exterior ring should be CW (is_ccw is False)
+        assert LinearRing(rings[0]).is_ccw is False
+        # Interior hole ring should be CCW (is_ccw is True)
+        assert LinearRing(rings[1]).is_ccw is True
         return httpx.Response(200, json=mock_response)
 
     client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))

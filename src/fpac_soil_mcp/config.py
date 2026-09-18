@@ -47,11 +47,11 @@ class Settings(BaseSettings):
 
     # Census TIGERweb Configuration
     tigerweb_rest_url: str = Field(
-        default="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/0",
+        default="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6",
         description="Census TIGERweb 2020 Urban Areas Layer endpoint",
     )
     tigerweb_urban_layer_id: int = Field(
-        default=0,
+        default=6,
         description="Layer index for 2020 Census Urban Areas",
     )
     tigerweb_timeout_seconds: float = Field(

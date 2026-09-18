@@ -1,4 +1,4 @@
-"""Census TIGERweb 2020 Urban Areas MapServer Layer 6 REST client.
+"""Census TIGERweb 2020 Urban Areas MapServer Layer 0 REST client.
 
 Screens geographic coordinates and polygon footprints against Census 2020 Urban Area
 boundaries for preliminary statutory exemption review under 7 CFR § 658.2(a).
@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.geometry import LinearRing, MultiPolygon, Point, Polygon
 
 from fpac_soil_mcp.authority import Provenance
 from fpac_soil_mcp.config import settings
@@ -24,6 +24,48 @@ from fpac_soil_mcp.geometry import (
 from fpac_soil_mcp.integration_models import IntegrationStatus, UrbanExemptionRecord
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_ring_winding(ring: LinearRing, clockwise: bool = True) -> list[list[float]]:
+    """Normalize ring coordinate winding for ArcGIS REST JSON polygon specification.
+
+    ArcGIS polygon JSON requires exterior rings to be clockwise (cw) and interior
+    rings (holes) to be counterclockwise (ccw).
+
+    Args:
+        ring: Shapely LinearRing.
+        clockwise: If True, orient clockwise; if False, orient counterclockwise.
+
+    Returns:
+        List of [x, y] or [x, y, z] coordinate lists.
+    """
+    coords = list(ring.coords)
+    is_ccw = ring.is_ccw
+    if (clockwise and is_ccw) or (not clockwise and not is_ccw):
+        coords.reverse()
+    return [list(c) for c in coords]
+
+
+def _polygon_to_esri_rings(geom: Polygon | MultiPolygon) -> list[list[list[float]]]:
+    """Convert Polygon or MultiPolygon to ArcGIS REST rings with normalized winding.
+
+    Args:
+        geom: Shapely Polygon or MultiPolygon.
+
+    Returns:
+        List of rings where exterior rings are clockwise and interior rings are counterclockwise.
+    """
+    rings: list[list[list[float]]] = []
+    polygons = [geom] if isinstance(geom, Polygon) else list(geom.geoms)
+
+    for poly in polygons:
+        # Exterior ring -> Clockwise
+        rings.append(_normalize_ring_winding(poly.exterior, clockwise=True))
+        # Interior rings (holes) -> Counterclockwise
+        for interior in poly.interiors:
+            rings.append(_normalize_ring_winding(interior, clockwise=False))
+
+    return rings
 
 
 class TigerwebClientError(Exception):
@@ -47,7 +89,7 @@ class TigerwebClient:
         self,
         geometry_input: dict[str, Any] | str | Polygon | MultiPolygon,
     ) -> UrbanExemptionRecord:
-        """Screen a polygon or geometry against 2020 Census Urban Areas (Layer 6).
+        """Screen a polygon or geometry against 2020 Census Urban Areas (Layer 0).
 
         Args:
             geometry_input: GeoJSON dict/string or Shapely geometry.
@@ -61,7 +103,7 @@ class TigerwebClient:
             source_reference=self.base_url,
             timestamp_utc=now,
             method_version="1.0.0",
-            configuration_version="census_2020_layer6",
+            configuration_version="census_2020_layer0",
         )
 
         try:
@@ -76,19 +118,8 @@ class TigerwebClient:
             if isinstance(geom, Point):
                 esri_geom = json.dumps({"x": geom.x, "y": geom.y})
                 geom_type_str = "esriGeometryPoint"
-            elif isinstance(geom, Polygon):
-                rings = [list(geom.exterior.coords)] + [
-                    list(interior.coords) for interior in geom.interiors
-                ]
-                esri_geom = json.dumps({"rings": rings})
-                geom_type_str = "esriGeometryPolygon"
             else:
-                # MultiPolygon: include exterior and interior rings for every part
-                rings = []
-                for p in geom.geoms:
-                    rings.append(list(p.exterior.coords))
-                    for interior in p.interiors:
-                        rings.append(list(interior.coords))
+                rings = _polygon_to_esri_rings(geom)
                 esri_geom = json.dumps({"rings": rings})
                 geom_type_str = "esriGeometryPolygon"
 
