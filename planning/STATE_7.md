@@ -21,7 +21,7 @@
 | `7.2.2` | 2 | TIGERweb County Boundary & Partitioning Client | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.2.3` | 2 | Multi-County Corridor Test Fixture Corpus | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.3.1` | 3 | Multi-County Corridor Analysis & Reconciliation Engine | done | orchestrator | 2026-09-18 | 2026-09-18 |
-| `7.4.1` | 4 | 7 CFR § 658.5(c) Corridor Site Assessment Rules Engine | pending | — | — | — |
+| `7.4.1` | 4 | 7 CFR § 658.5(c) Corridor Site Assessment Rules Engine | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.5.1` | 5 | FastMCP Corridor Analysis Tools & Server Registration | pending | — | — | — |
 | `7.6.1` | 6 | Phase 3 Contract, End-to-End & Documentation Suite | pending | — | — | — |
 
@@ -73,4 +73,10 @@
 - **Files Changed**: `src/fpac_soil_mcp/models.py` (lines 180-295), `src/fpac_soil_mcp/corridor_analysis.py` (lines 1-545), `tests/test_corridor_analysis.py` (lines 1-320), `planning/tasks/7.3.1.todo.md` (lines 1-45)
 - **Verification**: `uv run pytest tests/test_corridor_analysis.py -q` (4 passed), `uv run ruff check .` (clean), `uv run ruff format --check .` (clean).
 - **Summary**: Implemented `CorridorAnalyzer` and response schemas for multi-county linear corridor screening; partitions corridor footprints across TIGERweb county borders, queries clipped SSURGO soils, computes composite LE ratings ($RR_{\text{composite}}$), evaluates alternative alignments, and enforces sum reconciliation within 0.1% tolerance.
+
+### 7.4.1: 7 CFR § 658.5(c) Corridor Site Assessment Rules Engine
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/corridor_scoring.py` (lines 1-325), `tests/test_corridor_scoring.py` (lines 1-220), `planning/tasks/7.4.1.todo.md` (lines 1-45)
+- **Verification**: `uv run pytest tests/test_corridor_scoring.py -q` (6 passed), `uv run ruff check .` (clean), `uv run ruff format --check .` (clean).
+- **Summary**: Implemented statutory scoring rules for Form NRCS-CPA-106 under 7 CFR § 658.5(c), enforcing zeroed criteria 5 & 6 (0 pts max), adjusted criteria 8 & 11 (25 pts max each), automated NASS farm size ratio for criterion 7, total SA cap (160 pts), and 160-point LESA threshold determination (§ 658.4(c)(2)).
 
