@@ -13,7 +13,7 @@
 
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
-| `8.1.1` | 1 | Centralize Regulatory Constants & Types | pending | — | — | — |
+| `8.1.1` | 1 | Centralize Regulatory Constants & Types | completed | worker-8.1.1 | 2026-09-18 16:30 | 2026-09-18 16:35 |
 | `8.2.1` | 2 | Refactor Corridor Scoring & Strategy Evaluators | pending | — | — | — |
 | `8.2.2` | 2 | Typed TIGERweb County Partitioning | pending | — | — | — |
 | `8.3.1` | 3 | Alternative Composite LE & Reconciliation Warnings | pending | — | — | — |
@@ -36,4 +36,9 @@
 
 ## Task Reports
 
-<!-- Worker task completion reports are appended below -->
+### Task 8.1.1 Report: Centralize Regulatory Constants & Types
+- **Status**: Completed
+- **Changes**:
+  - Added statutory corridor criteria point maximums (`CORRIDOR_CRITERIA_MAX_POINTS`), names (`CORRIDOR_CRITERIA_NAMES`), scoring maximums (`MAX_SITE_ASSESSMENT_SCORE`, `MAX_LAND_EVALUATION_SCORE`, `MAX_TOTAL_LESA_SCORE`, `LESA_THRESHOLD_SCORE`), and determination templates (`STATUTORY_DETERMINATIONS`) under 7 CFR § 658.5(c) and § 658.4(c) in `constants.py`.
+  - Added `CountyPartitionGeometry` Pydantic model with validation for FIPS codes, non-negative acreage, and geometry to `integration_models.py`.
+- **Verification**: `tests/test_tigerweb_client.py` passed (8/8). Full suite `uv run pytest -m "not live_sda"` passed (148 passed). Ruff check and format clean.

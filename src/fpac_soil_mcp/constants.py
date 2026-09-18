@@ -107,3 +107,55 @@ FARMLAND_CLASS_DEFINITIONS: Final[dict[str, dict[str, str]]] = {
         "regulatory_category": "Not Prime Farmland",
     },
 }
+
+# Standard Point Limits for Form NRCS-CPA-106 under 7 CFR § 658.5(c)
+CORRIDOR_CRITERIA_MAX_POINTS: Final[dict[int, int]] = {
+    1: 15,  # Area of non-urban land within 1 mile
+    2: 10,  # Perimeter in agricultural/non-urban land
+    3: 20,  # Land farmed >5 of last 10 years
+    4: 20,  # Agricultural protection status (zoning/easements)
+    5: 0,  # Distance to urban built-up area (0 for corridor)
+    6: 0,  # Distance to municipal water/sewer (0 for corridor)
+    7: 10,  # Size of farm compared to county average
+    8: 25,  # Non-farmable remnant acreage (adjusted to 25 for corridor)
+    9: 5,  # Agricultural support services availability
+    10: 20,  # On-farm investments (buildings/irrigation/conservation)
+    11: 25,  # Reduction in agricultural support demand (adjusted to 25 for corridor)
+    12: 10,  # Land use incompatibility
+}
+
+# Statutory Names and Descriptions for Form NRCS-CPA-106 Criteria (7 CFR § 658.5(c))
+CORRIDOR_CRITERIA_NAMES: Final[dict[int, str]] = {
+    1: "Area of non-urban land in 1-mile buffer",
+    2: "Perimeter of farmable land surrounding corridor",
+    3: "Percentage of corridor farmed in 5 of last 10 years",
+    4: "Agricultural protection status (easement/zoning)",
+    5: "Distance to urban built-up area (Statutorily zeroed)",
+    6: "Distance to municipal water/sewer (Statutorily zeroed)",
+    7: "Farm size compared to county average",
+    8: "Creation of non-farmable or inaccessible remnant parcels",
+    9: "Availability of agricultural support services",
+    10: "On-farm capital investments and conservation measures",
+    11: "Reduction in local agricultural supply/service demand",
+    12: "Compatibility of corridor project with existing agricultural uses",
+}
+
+# Statutory Scoring Maximums and Thresholds under 7 CFR Part 658
+MAX_SITE_ASSESSMENT_SCORE: Final[int] = 160
+MAX_LAND_EVALUATION_SCORE: Final[int] = 100
+MAX_TOTAL_LESA_SCORE: Final[int] = 260
+LESA_THRESHOLD_SCORE: Final[int] = 160
+
+# Statutory Determination Texts and Templates under 7 CFR § 658.4(c)(2)-(4)
+STATUTORY_DETERMINATIONS: Final[dict[str, str]] = {
+    "THRESHOLD_EXCEEDED": (
+        "TOTAL LESA SCORE ({total_lesa:.1f}/260) EQUALS OR EXCEEDS STATUTORY THRESHOLD (160). "
+        "Under 7 CFR § 658.4(c)(2), this project must receive in-depth consideration for alternative "
+        "corridor alignments, avoidance of prime/unique farmlands, and impact mitigation."
+    ),
+    "THRESHOLD_NOT_EXCEEDED": (
+        "TOTAL LESA SCORE ({total_lesa:.1f}/260) IS BELOW STATUTORY THRESHOLD (160). "
+        "Under 7 CFR § 658.4(c)(2), sites receiving a total score of less than 160 points require "
+        "no further consideration for protection and no alternative site evaluations."
+    ),
+}
