@@ -15,6 +15,10 @@ from typing import Any
 import httpx
 
 from fpac_soil_mcp.config import settings
+from fpac_soil_mcp.geometry import (
+    GeometryValidationError,
+    validate_and_sanitize_polygon_wkt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,139 @@ SELECT
 FROM mapunit AS m
 INNER JOIN legend AS l ON m.lkey = l.lkey
 WHERE m.mukey = '{mukey}'
+"""
+
+SQL_POLYGON_LOOKUP = """\
+WITH geom_mukeys AS (
+    SELECT DISTINCT mukey
+    FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('{wkt}')
+)
+SELECT
+    m.mukey,
+    m.musym,
+    m.muname,
+    m.farmlndcl,
+    l.areasymbol
+FROM geom_mukeys AS g
+INNER JOIN mapunit AS m ON g.mukey = m.mukey
+INNER JOIN legend AS l ON m.lkey = l.lkey
+"""
+
+SQL_SPATIAL_INTERSECTION_CLIPPED = """\
+WITH geom_data (geom, mukey) AS (
+    SELECT
+        mupolygongeo.STIntersection(geometry::STGeomFromText('{wkt}', 4326)) AS geom,
+        mukey
+    FROM mupolygon
+    WHERE mupolygongeo.STIntersects(geometry::STGeomFromText('{wkt}', 4326)) = 1
+)
+SELECT
+    m.mukey,
+    m.musym,
+    m.muname,
+    m.farmlndcl,
+    l.areasymbol,
+    {area_expr} AS area_ac{geom_column}
+FROM geom_data
+INNER JOIN mapunit AS m ON geom_data.mukey = m.mukey
+INNER JOIN legend AS l ON m.lkey = l.lkey
+"""
+
+SQL_SPATIAL_INTERSECTION_OVERLAP = """\
+WITH geom_data (geom, mukey) AS (
+    SELECT
+        mupolygongeo AS geom,
+        mukey
+    FROM mupolygon
+    WHERE mupolygongeo.STIntersects(geometry::STGeomFromText('{wkt}', 4326)) = 1
+)
+SELECT
+    m.mukey,
+    m.musym,
+    m.muname,
+    m.farmlndcl,
+    l.areasymbol,
+    {area_expr} AS area_ac{geom_column}
+FROM geom_data
+INNER JOIN mapunit AS m ON geom_data.mukey = m.mukey
+INNER JOIN legend AS l ON m.lkey = l.lkey
+"""
+
+SQL_INTERPRETATION_CATALOG = """\
+SELECT DISTINCT nasisrulename AS mrulename
+FROM sdvattribute
+WHERE attributetablename = 'cointerp'
+  AND nasisrulename IS NOT NULL
+ORDER BY nasisrulename
+"""
+
+SQL_INTERPRETATION_WEIGHTED_AVG = """\
+WITH comp_interp AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.interphr,
+        ci.interphrc
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_name}'
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(interphr * comppct_r) / NULLIF(SUM(CASE WHEN interphr IS NOT NULL THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    MAX(interphrc) AS rating_class,
+    SUM(CASE WHEN interphr IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_interp
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_INTERPRETATION_DOMINANT_COMP = """\
+WITH ranked_components AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.compname,
+        c.comppct_r,
+        ci.interphr AS numeric_rating,
+        ci.interphrc AS rating_class,
+        ROW_NUMBER() OVER (PARTITION BY m.mukey ORDER BY c.comppct_r DESC, c.cokey ASC) AS rnk
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_name}'
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    cokey,
+    compname,
+    comppct_r AS dominant_pct,
+    numeric_rating,
+    rating_class
+FROM ranked_components
+WHERE rnk = 1
 """
 
 
@@ -70,6 +207,7 @@ class SDAClient:
         self.timeout = timeout or settings.request_timeout_seconds
         self.max_retries = max_retries if max_retries is not None else settings.max_retries
         self._http_client = http_client
+        self._cached_rule_names: list[str] | None = None
 
     @staticmethod
     def validate_coordinates(latitude: float, longitude: float) -> tuple[float, float]:
@@ -123,6 +261,24 @@ class SDAClient:
                 f"Map unit key (mukey) must be a positive integer; received '{mukey}'"
             )
         return mukey_str
+
+    @staticmethod
+    def validate_wkt(wkt_geometry: str) -> str:
+        """Validate and sanitize a WGS84 WKT Polygon or MultiPolygon string.
+
+        Args:
+            wkt_geometry: WKT string.
+
+        Returns:
+            Normalized WKT string.
+
+        Raises:
+            SDAValidationError: If WKT is invalid or not Polygon/MultiPolygon.
+        """
+        try:
+            return validate_and_sanitize_polygon_wkt(wkt_geometry)
+        except GeometryValidationError as exc:
+            raise SDAValidationError(f"Invalid or unparseable WKT: {exc}") from exc
 
     def _execute_query(self, query: str) -> list[dict[str, Any]]:
         """Execute SQL query against SDA endpoint with retry logic and parse table array.
@@ -273,4 +429,159 @@ class SDAClient:
         """
         valid_mukey = self.validate_mukey(mukey)
         query = SQL_MUKEY_LOOKUP.format(mukey=valid_mukey)
+        return self._execute_query(query)
+
+    def get_by_polygon(self, wkt_geometry: str) -> list[dict[str, Any]]:
+        """Query SDA for soil map units intersecting a WGS84 WKT Polygon or MultiPolygon.
+
+        Args:
+            wkt_geometry: Validated WGS84 WKT geometry string.
+
+        Returns:
+            List of intersecting map unit records.
+
+        Raises:
+            SDAValidationError: If WKT format is invalid or contains unexpected characters.
+            SDAQueryError: If SDA query fails.
+        """
+        try:
+            wkt = validate_and_sanitize_polygon_wkt(wkt_geometry)
+        except GeometryValidationError as exc:
+            raise SDAValidationError(f"Invalid WKT geometry: {exc}") from exc
+
+        query = SQL_POLYGON_LOOKUP.format(wkt=wkt)
+        return self._execute_query(query)
+
+    def get_spatial_intersection(
+        self,
+        wkt_geometry: str,
+        clip: bool = True,
+        geom_acres: bool = True,
+        return_geom: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Query SDA for spatial intersection with SSURGO map units.
+
+        Calculates exact clipped or overlapping acreage and optionally returns geometry WKT.
+
+        Args:
+            wkt_geometry: Validated WGS84 WKT Polygon or MultiPolygon.
+            clip: True to clip geometries to AOI boundary; False to return overlapping polygons.
+            geom_acres: True to compute area_ac using geodesic STArea().
+            return_geom: True to return WKT geometry string in 'geom' column.
+
+        Returns:
+            List of map unit records with calculated 'area_ac' and optional 'geom'.
+
+        Raises:
+            SDAValidationError: If WKT is invalid.
+            SDAQueryError: If SDA query fails.
+        """
+        try:
+            wkt = validate_and_sanitize_polygon_wkt(wkt_geometry)
+        except GeometryValidationError as exc:
+            raise SDAValidationError(f"Invalid WKT geometry: {exc}") from exc
+
+        area_expr = (
+            "GEOGRAPHY::STGeomFromWKB(geom_data.geom.STUnion(geom_data.geom.STStartPoint()).STAsBinary(), 4326).MakeValid().STArea() * 0.000247105"
+            if geom_acres
+            else "CAST(NULL AS float)"
+        )
+        geom_col = ", geom_data.geom.STAsText() AS geom" if return_geom else ""
+        template = SQL_SPATIAL_INTERSECTION_CLIPPED if clip else SQL_SPATIAL_INTERSECTION_OVERLAP
+        query = template.format(wkt=wkt, area_expr=area_expr, geom_column=geom_col)
+        return self._execute_query(query)
+
+    def get_available_interpretation_rules(self, refresh: bool = False) -> list[str]:
+        """Fetch all available soil interpretation rule names (mrulename) from SDA cointerp.
+
+        Results are cached in memory on the client instance.
+
+        Args:
+            refresh: If True, forces a fresh query to SDA.
+
+        Returns:
+            Alphabetical list of supported rule names.
+
+        Raises:
+            SDAQueryError: If query fails.
+        """
+        if self._cached_rule_names is not None and not refresh:
+            return self._cached_rule_names
+
+        results = self._execute_query(SQL_INTERPRETATION_CATALOG)
+        rule_names = [
+            str(row["mrulename"]).strip()
+            for row in results
+            if row.get("mrulename") and str(row.get("mrulename")).strip()
+        ]
+        self._cached_rule_names = rule_names
+        return rule_names
+
+    def get_interpretations(
+        self,
+        mukeys: list[str | int],
+        rule_name: str = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+        aggregation_method: str = "Weighted Average",
+    ) -> list[dict[str, Any]]:
+        """Query component-level soil interpretations for specified map unit keys.
+
+        Args:
+            mukeys: List of positive integer map unit keys.
+            rule_name: Allowed interpretation rule name.
+            aggregation_method: 'Weighted Average' or 'Dominant Component'.
+
+        Returns:
+            List of parsed interpretation rows per mukey.
+
+        Raises:
+            SDAValidationError: If mukeys or rule/aggregation names are invalid.
+            SDAQueryError: If SDA query fails.
+        """
+        if not mukeys:
+            return []
+
+        clean_mukeys = [self.validate_mukey(k) for k in mukeys]
+        mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
+
+        # Validation: Check against allowed config list or cached rule names or safe format
+        rule_clean = str(rule_name).strip()
+        if any(c in rule_clean for c in [";", "--", "/*", "*/", "DROP", "EXEC", "'"]):
+            raise SDAValidationError(
+                f"Invalid characters in interpretation rule name: '{rule_name}'"
+            )
+
+        if rule_clean not in settings.sda_interpretation_rules_allowed:
+            # If not in default allowlist, verify against cached or live catalog
+            try:
+                available = self.get_available_interpretation_rules()
+                if rule_clean not in available:
+                    raise SDAValidationError(
+                        f"Rule '{rule_clean}' not found in SDA cointerp rule catalog."
+                    )
+            except Exception as exc:
+                if isinstance(exc, SDAValidationError):
+                    raise
+                # If catalog check fails (e.g. offline/mocked), ensure rule matches standard characters
+                logger.warning(
+                    "Could not verify rule against live catalog (%s); checking format", exc
+                )
+                if not all(c.isalnum() or c in " -_().,/" for c in rule_clean):
+                    raise SDAValidationError(f"Invalid rule name format: '{rule_clean}'") from exc
+
+        if aggregation_method not in ("Weighted Average", "Dominant Component"):
+            raise SDAValidationError(
+                f"Aggregation method '{aggregation_method}' is not in allowed methods: {settings.sda_aggregation_methods_allowed}"
+            )
+
+        if aggregation_method == "Dominant Component":
+            query = SQL_INTERPRETATION_DOMINANT_COMP.format(
+                mukeys_csv=mukeys_csv,
+                rule_name=rule_clean,
+            )
+        else:
+            query = SQL_INTERPRETATION_WEIGHTED_AVG.format(
+                mukeys_csv=mukeys_csv,
+                rule_name=rule_clean,
+            )
+
         return self._execute_query(query)

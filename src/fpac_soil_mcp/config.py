@@ -47,11 +47,11 @@ class Settings(BaseSettings):
 
     # Census TIGERweb Configuration
     tigerweb_rest_url: str = Field(
-        default="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6",
-        description="Census TIGERweb 2020 Decennial Urban Areas Layer 6 MapServer endpoint",
+        default="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/0",
+        description="Census TIGERweb 2020 Urban Areas Layer endpoint",
     )
     tigerweb_urban_layer_id: int = Field(
-        default=6,
+        default=0,
         description="Layer index for 2020 Census Urban Areas",
     )
     tigerweb_timeout_seconds: float = Field(
@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     # SDA Interpretation Rules & NCCPI Allowlist
     sda_interpretation_rules_allowed: list[str] = Field(
         default_factory=lambda: [
-            "NCCPI - National Commodity Crop Productivity Index (v3)",
+            "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             "NCCPI - Corn and Soybeans Crop Productivity Index",
             "NCCPI - Small Grains Crop Productivity Index",
             "NCCPI - Cotton Crop Productivity Index",
@@ -74,8 +74,6 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "Weighted Average",
             "Dominant Component",
-            "Dominant Condition",
-            "Minimum or Maximum",
         ],
         description="Allowlist of supported component aggregation methods",
     )

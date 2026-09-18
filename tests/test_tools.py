@@ -20,8 +20,12 @@ from fpac_soil_mcp.tools.fppa_tools import (
     list_farmland_classes,
 )
 from fpac_soil_mcp.tools.soil_tools import (
+    analyze_farmland_by_polygon,
+    check_urban_area_exemption,
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
+    get_soil_interpretations,
+    get_soil_polygons_by_geometry,
 )
 
 
@@ -195,3 +199,81 @@ class TestFPPATools:
             == "Prime Farmland under 7 CFR 657.5(a)"
         )
         assert "Not prime farmland" in response.classes
+
+
+class TestPolygonTools:
+    """Tests for analyze_farmland_by_polygon, check_urban_area_exemption, and get_soil_interpretations."""
+
+    @patch("fpac_soil_mcp.tools.soil_tools.PolygonAnalyzer")
+    def test_analyze_farmland_by_polygon(self, mock_analyzer_cls: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_analyzer_cls.return_value = mock_instance
+        mock_instance.analyze_polygon.return_value = {
+            "coverage_status": "covered",
+            "total_aoi_acres": 125.0,
+        }
+
+        res = analyze_farmland_by_polygon({"type": "Polygon", "coordinates": []})
+        assert res["coverage_status"] == "covered"
+        assert res["total_aoi_acres"] == 125.0
+
+    @patch("fpac_soil_mcp.tools.soil_tools.TigerwebClient")
+    def test_check_urban_area_exemption(self, mock_tiger_cls: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_tiger_cls.return_value = mock_instance
+        mock_instance.check_urban_exemption.return_value = {
+            "status": "success",
+            "is_urban_intersected": False,
+        }
+
+        res = check_urban_area_exemption({"type": "Polygon", "coordinates": []})
+        assert res["status"] == "success"
+        assert res["is_urban_intersected"] is False
+
+    @patch("fpac_soil_mcp.tools.soil_tools.SDAClient")
+    def test_get_soil_interpretations(self, mock_sda_cls: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sda_cls.return_value = mock_instance
+        mock_instance.get_interpretations.return_value = [
+            {"mukey": "412915", "numeric_rating": 0.85}
+        ]
+
+        res = get_soil_interpretations(["412915"])
+        assert len(res) == 1
+        assert res[0]["numeric_rating"] == 0.85
+
+    @patch("fpac_soil_mcp.tools.soil_tools.SDAClient")
+    def test_get_soil_polygons_by_geometry(self, mock_sda_cls: MagicMock) -> None:
+        mock_instance = MagicMock()
+        mock_sda_cls.return_value = mock_instance
+        mock_instance.get_spatial_intersection.return_value = [
+            {
+                "mukey": "412915",
+                "musym": "138B",
+                "muname": "Clarion loam",
+                "farmlndcl": "All areas are prime farmland",
+                "areasymbol": "IA169",
+                "area_ac": 25.0,
+                "geom": "POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.1, -93.5 42.0))",
+            }
+        ]
+
+        geojson = {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-93.5, 42.0],
+                    [-93.4, 42.0],
+                    [-93.4, 42.1],
+                    [-93.5, 42.1],
+                    [-93.5, 42.0],
+                ]
+            ],
+        }
+
+        fc = get_soil_polygons_by_geometry(geojson)
+        assert fc["type"] == "FeatureCollection"
+        assert len(fc["features"]) == 1
+        assert fc["features"][0]["properties"]["mukey"] == "412915"
+        assert fc["features"][0]["properties"]["area_ac"] == 25.0
+        assert fc["properties"]["clipped"] is True

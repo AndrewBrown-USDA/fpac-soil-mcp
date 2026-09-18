@@ -32,7 +32,7 @@ class UrbanExemptionRecord(BaseModel):
     geometry_hash: str = Field(description="Deterministic hash of the screened project geometry")
     provenance: Provenance = Field(description="Authoritative source provenance (Census TIGERweb)")
     source_layer: str | None = Field(
-        default="Urban Areas 2020 (Layer 6)",
+        default="Urban Areas 2020 (Layer 0)",
         description="Name or identifier of urban boundary layer",
     )
     layer_version: str | None = Field(default="2020", description="Census urban layer vintage")
@@ -146,7 +146,7 @@ class SoilInterpretationRecord(BaseModel):
     status: IntegrationStatus = Field(description="Integration outcome status")
     mukey: str = Field(description="SSURGO Map Unit Key")
     rule_name: str = Field(
-        description="Name of interpretation rule, e.g. NCCPI - National Commodity Crop Productivity Index (v3)"
+        description="Name of interpretation rule, e.g. NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
     )
     rule_version: str = Field(description="Version of interpretation rule")
     provenance: Provenance = Field(description="Authoritative source provenance (USDA NRCS SDA)")

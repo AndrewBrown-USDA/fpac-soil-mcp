@@ -81,6 +81,7 @@ import re
 import httpx
 from pydantic import BaseModel, Field
 
+
 class NassCountyAgProfile(BaseModel):
     state_alpha: str
     county_name: str
@@ -91,6 +92,7 @@ class NassCountyAgProfile(BaseModel):
     avg_farm_size_acres: Optional[float] = None
     market_value_products_sold_usd: Optional[float] = None
     source_citation: str = "USDA NASS Census of Agriculture Quick Stats"
+
 
 class NassClient:
     BASE_URL = "https://quickstats.nass.usda.gov/api"
@@ -122,9 +124,7 @@ class NassClient:
             data = resp.json().get("data", [])
 
         profile = NassCountyAgProfile(
-            state_alpha=state_alpha.upper(),
-            county_name=county_name.upper(),
-            census_year=year
+            state_alpha=state_alpha.upper(), county_name=county_name.upper(), census_year=year
         )
 
         for rec in data:
@@ -179,6 +179,7 @@ TIGERWEB_URBAN_URL = (
     "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/6/query"
 )
 
+
 class UrbanAreaExemptionResult(BaseModel):
     is_urban_exempt: bool
     exemption_citation: str = "7 CFR 658.2(a) - Urbanized Area Statutory Exemption"
@@ -188,9 +189,8 @@ class UrbanAreaExemptionResult(BaseModel):
     housing_units_2020: Optional[float] = None
     determination_status: str
 
-async def check_urban_exemption(
-    geojson_geometry: Dict[str, Any]
-) -> UrbanAreaExemptionResult:
+
+async def check_urban_exemption(geojson_geometry: Dict[str, Any]) -> UrbanAreaExemptionResult:
     geom_type = geojson_geometry.get("type", "")
     coords = geojson_geometry.get("coordinates", [])
 

@@ -23,7 +23,7 @@ def valid_utc_now() -> datetime:
 def tigerweb_prov(valid_utc_now) -> Provenance:
     return Provenance(
         source_name="Census TIGERweb 2020",
-        source_reference="Layer 6: Urban Areas",
+        source_reference="Layer 0: Urban Areas",
         timestamp_utc=valid_utc_now,
         method_version="tigerweb_rest_v1",
         configuration_version="urban_2020",
@@ -138,7 +138,7 @@ def test_soil_interpretation_record_validation(sda_prov):
     interp = SoilInterpretationRecord(
         status=IntegrationStatus.SUCCESS,
         mukey="123456",
-        rule_name="NCCPI - National Commodity Crop Productivity Index (v3)",
+        rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
         rule_version="3.0",
         provenance=sda_prov,
         aggregation_method="Weighted Average",

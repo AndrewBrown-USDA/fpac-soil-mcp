@@ -132,7 +132,7 @@ def test_phase1_complete_composition(valid_utc_now):
     # 5. Public integration records creation
     tigerweb_prov = Provenance(
         source_name="Census TIGERweb 2020",
-        source_reference="Layer 6: Urban Areas",
+        source_reference="Layer 0: Urban Areas",
         timestamp_utc=valid_utc_now,
         method_version="tigerweb_rest_v1",
         configuration_version="urban_2020",
@@ -173,7 +173,7 @@ def test_phase1_complete_composition(valid_utc_now):
     interp_record = SoilInterpretationRecord(
         status=IntegrationStatus.SUCCESS,
         mukey="408013",
-        rule_name="NCCPI - National Commodity Crop Productivity Index (v3)",
+        rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
         rule_version="3.0",
         provenance=sda_prov,
         numeric_rating=0.82,
@@ -196,7 +196,7 @@ def test_phase1_complete_composition(valid_utc_now):
         claim_id="EX-001",
         citation="7 CFR 658.2(a)",
         rationale="Preliminary screening evaluated urban area overlap",
-        evidence_references=["tigerweb:urban_2020:layer6"],
+        evidence_references=["tigerweb:urban_2020:layer0"],
         status=AuthorityValue.machine_estimate("preliminary_non_urban", provenance=tigerweb_prov),
     )
 
