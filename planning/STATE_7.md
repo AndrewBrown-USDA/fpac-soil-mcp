@@ -23,7 +23,7 @@
 | `7.3.1` | 3 | Multi-County Corridor Analysis & Reconciliation Engine | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.4.1` | 4 | 7 CFR § 658.5(c) Corridor Site Assessment Rules Engine | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.5.1` | 5 | FastMCP Corridor Analysis Tools & Server Registration | done | orchestrator | 2026-09-18 | 2026-09-18 |
-| `7.6.1` | 6 | Phase 3 Contract, End-to-End & Documentation Suite | pending | — | — | — |
+| `7.6.1` | 6 | Phase 3 Contract, End-to-End & Documentation Suite | done | orchestrator | 2026-09-18 | 2026-09-18 |
 
 ## Wave Gates
 
@@ -85,5 +85,11 @@
 - **Files Changed**: `src/fpac_soil_mcp/tools/soil_tools.py` (lines 350-490), `src/fpac_soil_mcp/tools/__init__.py` (lines 1-35), `tests/test_tools.py` (lines 280-360), `tests/test_server.py` (lines 20-35), `planning/tasks/7.5.1.todo.md` (lines 1-35)
 - **Verification**: `uv run pytest tests/test_tools.py tests/test_server.py -q` (24 passed), `uv run pytest -m "not live_sda" -q` (143 passed), `uv run ruff check .` (clean), `uv run ruff format --check .` (clean).
 - **Summary**: Implemented and registered `analyze_corridor_fppa` tool on FastMCP server, integrating corridor buffering, county partitioning, SDA queries, NASS profiles, LE calculation, sum reconciliation, and optional 7 CFR § 658.5(c) CPA-106 LESA scoring.
+
+### 7.6.1: Phase 3 Contract, End-to-End & Documentation Suite
+- **Status**: Completed
+- **Files Changed**: `tests/test_phase3_contracts.py` (lines 1-250), `manifest.yaml` (lines 1-30), `README.md` (lines 220-250), `planning/tasks/7.6.1.todo.md` (lines 1-35)
+- **Verification**: `uv run pytest tests/test_phase3_contracts.py -q` (5 passed), `uv run pytest -m "not live_sda" -q` (148 passed), `uv run ruff check .` (clean), `uv run ruff format --check .` (clean).
+- **Summary**: Implemented end-to-end regression and contract test suite for Phase 3 linear corridors and 7 CFR § 658.5(c) CPA-106 rules; updated `manifest.yaml` tool inventory and `README.md` reference.
 
 
