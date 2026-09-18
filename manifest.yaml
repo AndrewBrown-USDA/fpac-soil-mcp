@@ -14,7 +14,7 @@ tools:
   - name: get_soil_polygons_by_geometry
     description: Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as a GeoJSON FeatureCollection.
   - name: check_urban_area_exemption
-    description: Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6).
+    description: Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 0).
   - name: get_soil_interpretations
     description: Retrieve component-weighted soil interpretations (such as NCCPI v3) from USDA NRCS SDA.
   - name: explain_fppa_screening_scope

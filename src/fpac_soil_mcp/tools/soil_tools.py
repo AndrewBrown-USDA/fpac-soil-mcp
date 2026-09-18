@@ -190,7 +190,7 @@ def analyze_farmland_by_polygon(
 def check_urban_area_exemption(
     geojson: dict | str,
 ) -> UrbanExemptionRecord:
-    """Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6).
+    """Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 0).
 
     Provides automated spatial screening under 7 CFR § 658.2(a) without issuing a binding legal determination.
 
@@ -380,7 +380,7 @@ def register_soil_tools(mcp: FastMCP) -> None:
     mcp.tool(
         name="check_urban_area_exemption",
         description=(
-            "Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 6) "
+            "Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 0) "
             "for preliminary statutory exemption analysis under 7 CFR § 658.2(a)."
         ),
     )(check_urban_area_exemption)

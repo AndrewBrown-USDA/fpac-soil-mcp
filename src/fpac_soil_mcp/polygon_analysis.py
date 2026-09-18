@@ -296,7 +296,7 @@ class PolygonAnalyzer:
             "mapped_soil_units_count": len(unit_models),
             "spatial_clipping_engine": "USDA NRCS SDA STIntersection / STArea",
             "interpretation_rule": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-            "urban_screening_layer": "Census 2020 Urban Areas Layer 6",
+            "urban_screening_layer": "Census 2020 Urban Areas Layer 0",
             "statutory_authority": "Farmland Protection Policy Act (7 U.S.C. 4201 et seq., 7 CFR Part 658)",
         }
 

@@ -262,8 +262,8 @@ Configure settings via environment variables or a `.env` file:
 | `NASS_BASE_URL` | string | `https://quickstats.nass.usda.gov/api/api_GET/` | USDA NASS Quick Stats API GET endpoint |
 | `NASS_ENABLED` | boolean | `false` | Enable USDA NASS integration |
 | `NASS_CENSUS_YEAR` | int | `2022` | Baseline Census of Agriculture year |
-| `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/.../6` | Census TIGERweb 2020 Urban Areas MapServer Layer 6 |
-| `TIGERWEB_URBAN_LAYER_ID` | int | `6` | Layer index for 2020 Census Urban Areas |
+| `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/.../0` | Census TIGERweb 2020 Urban Areas MapServer Layer 0 |
+| `TIGERWEB_URBAN_LAYER_ID` | int | `0` | Layer index for 2020 Census Urban Areas |
 | `TIGERWEB_TIMEOUT_SECONDS` | float | `15.0` | Timeout in seconds for TIGERweb queries |
 | `MCP_TRANSPORT` | string | `stdio` | FastMCP transport mode (`stdio` or `sse`) |
 | `MCP_HOST` | string | `127.0.0.1` | Host to bind for SSE transport |

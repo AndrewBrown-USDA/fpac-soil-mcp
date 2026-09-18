@@ -23,7 +23,7 @@ def valid_utc_now() -> datetime:
 def tigerweb_prov(valid_utc_now) -> Provenance:
     return Provenance(
         source_name="Census TIGERweb 2020",
-        source_reference="Layer 6: Urban Areas",
+        source_reference="Layer 0: Urban Areas",
         timestamp_utc=valid_utc_now,
         method_version="tigerweb_rest_v1",
         configuration_version="urban_2020",

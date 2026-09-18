@@ -1,4 +1,4 @@
-"""Live integration tests for Census TIGERweb REST API (Urban Areas Layer 6).
+"""Live integration tests for Census TIGERweb REST API (Urban Areas Layer 0).
 
 Tests real network queries against Census TIGERweb MapServer endpoint.
 Opt-in via: pytest -m live_sda
