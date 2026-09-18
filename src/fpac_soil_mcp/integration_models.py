@@ -240,3 +240,16 @@ class CountyPartitionGeometry(BaseModel):
         if v is None:
             raise ValueError("geometry must be provided.")
         return v
+
+    def __getitem__(self, item: str) -> Any:
+        """Allow dictionary-style key access for backward compatibility."""
+        if hasattr(self, item):
+            return getattr(self, item)
+        raise KeyError(f"'{item}' is not a valid field on CountyPartitionGeometry")
+
+    def get(self, item: str, default: Any = None) -> Any:
+        """Allow dictionary-style .get() access for backward compatibility."""
+        if hasattr(self, item):
+            val = getattr(self, item)
+            return val if val is not None else default
+        return default

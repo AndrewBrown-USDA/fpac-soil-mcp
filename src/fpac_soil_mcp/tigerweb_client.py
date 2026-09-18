@@ -24,7 +24,11 @@ from fpac_soil_mcp.geometry import (
     compute_geometry_hash,
     parse_geojson_geometry,
 )
-from fpac_soil_mcp.integration_models import IntegrationStatus, UrbanExemptionRecord
+from fpac_soil_mcp.integration_models import (
+    CountyPartitionGeometry,
+    IntegrationStatus,
+    UrbanExemptionRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -314,7 +318,7 @@ class TigerwebClient:
         self,
         geometry_input: dict[str, Any] | str | Polygon | MultiPolygon,
         counties: list[dict[str, Any]] | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[CountyPartitionGeometry]:
         """Spatially intersect and partition a project footprint into county segments.
 
         Args:
@@ -322,8 +326,7 @@ class TigerwebClient:
             counties: Optional pre-fetched county features list. If None, queries TIGERweb.
 
         Returns:
-            List of segment dictionaries containing:
-                - segment_id: Sequential identifier (e.g. 'segment_1')
+            List of CountyPartitionGeometry records containing:
                 - state_fips: 2-digit state FIPS
                 - county_fips: 3-digit county FIPS
                 - county_name: Name of county
@@ -341,18 +344,18 @@ class TigerwebClient:
         if not counties:
             # Fallback: single unsegmented county record if county boundaries unavailable
             return [
-                {
-                    "segment_id": "segment_1",
-                    "state_fips": "00",
-                    "county_fips": "000",
-                    "county_name": "Unsegmented Area",
-                    "geometry": geom,
-                    "calculated_acres": calculate_acreage(geom),
-                }
+                CountyPartitionGeometry(
+                    state_fips="00",
+                    county_fips="000",
+                    county_name="Unsegmented Area",
+                    state_name=None,
+                    geometry=geom,
+                    calculated_acres=calculate_acreage(geom),
+                )
             ]
 
-        segments: list[dict[str, Any]] = []
-        for i, county in enumerate(counties, start=1):
+        segments: list[CountyPartitionGeometry] = []
+        for county in counties:
             county_geom = county["geometry"]
             try:
                 intersected = geom.intersection(county_geom)
@@ -385,14 +388,14 @@ class TigerwebClient:
                 continue
 
             segments.append(
-                {
-                    "segment_id": f"segment_{i}",
-                    "state_fips": county["state_fips"],
-                    "county_fips": county["county_fips"],
-                    "county_name": county["county_name"],
-                    "geometry": seg_shape,
-                    "calculated_acres": seg_acres,
-                }
+                CountyPartitionGeometry(
+                    state_fips=county["state_fips"],
+                    county_fips=county["county_fips"],
+                    county_name=county["county_name"],
+                    state_name=county.get("state_name"),
+                    geometry=seg_shape,
+                    calculated_acres=seg_acres,
+                )
             )
 
         return segments

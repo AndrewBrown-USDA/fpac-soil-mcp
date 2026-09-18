@@ -7,7 +7,7 @@ import httpx
 import pytest
 from shapely.geometry import LinearRing, MultiPolygon, Polygon
 
-from fpac_soil_mcp.integration_models import IntegrationStatus
+from fpac_soil_mcp.integration_models import CountyPartitionGeometry, IntegrationStatus
 from fpac_soil_mcp.tigerweb_client import (
     TigerwebClient,
     _normalize_ring_winding,
@@ -295,5 +295,22 @@ def test_tigerweb_get_intersecting_counties_and_partitioning():
 
     segments = client.partition_geometry_by_counties(corridor_box, counties=counties)
     assert len(segments) == 2
+    assert all(isinstance(s, CountyPartitionGeometry) for s in segments)
+    assert segments[0].calculated_acres > 0
+    assert segments[1].calculated_acres > 0
+    assert {s.county_name for s in segments} == {"Story", "Boone"}
+
+    # Validate backward compatibility with dictionary access and .get()
+    assert segments[0]["state_fips"] == "19"
+    assert segments[0].get("county_fips") in {"169", "015"}
     assert segments[0]["calculated_acres"] > 0
-    assert segments[1]["calculated_acres"] > 0
+    assert segments[0].get("state_name") is None
+    assert segments[0].get("non_existent_key", "default_val") == "default_val"
+
+    # Fallback on empty counties
+    fallback_segments = client.partition_geometry_by_counties(corridor_box, counties=[])
+    assert len(fallback_segments) == 1
+    assert isinstance(fallback_segments[0], CountyPartitionGeometry)
+    assert fallback_segments[0].county_name == "Unsegmented Area"
+    assert fallback_segments[0]["state_fips"] == "00"
+    assert fallback_segments[0]["calculated_acres"] > 0
