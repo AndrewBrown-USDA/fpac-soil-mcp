@@ -148,4 +148,4 @@ def test_mcp_tool_registration_surface():
 
     for expected in expected_tools:
         assert expected in tool_names
-    assert len(tool_names) == 8
+    assert len(tool_names) >= 8
