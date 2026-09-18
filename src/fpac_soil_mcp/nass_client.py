@@ -30,7 +30,7 @@ class NassClient:
         timeout: float | None = None,
         http_client: httpx.Client | None = None,
     ) -> None:
-        self.api_key = api_key or settings.nass_api_key
+        self.api_key = api_key if api_key is not None else settings.nass_api_key
         self.base_url = (base_url or settings.nass_base_url).rstrip("/")
         self.timeout = timeout or settings.request_timeout_seconds
         self._http_client = http_client
@@ -132,14 +132,18 @@ class NassClient:
 
                 val = float(clean_num)
 
-                if desc == "AG LAND - ACRES":
-                    land_in_farms = val
+                if desc in ("FARM OPERATIONS - ACRES OPERATED", "AG LAND - ACRES"):
+                    if land_in_farms is None or desc == "FARM OPERATIONS - ACRES OPERATED":
+                        land_in_farms = val
                 elif desc in ("AG LAND, CROPLAND, HARVESTED - ACRES", "AG LAND, CROPLAND - ACRES"):
                     if total_cropland is None or "HARVESTED" in desc:
                         total_cropland = val
                 elif desc == "FARM OPERATIONS - NUMBER OF OPERATIONS":
                     farm_count = int(val)
-                elif desc == "FARM OPERATIONS - ACRES / OPERATION":
+                elif desc in (
+                    "FARM OPERATIONS - AREA OPERATED, MEASURED IN ACRES / OPERATION",
+                    "FARM OPERATIONS - ACRES / OPERATION",
+                ):
                     avg_farm_size = val
 
             return CountyAgProfile(

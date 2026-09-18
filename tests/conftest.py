@@ -64,6 +64,13 @@ MOCK_SDA_ERROR_RESPONSE: dict[str, Any] = {
 }
 
 
+@pytest.fixture(autouse=True)
+def reset_settings_for_tests(monkeypatch):
+    """Ensure tests run in a pristine default environment without local .env bleeding into test assertions."""
+    monkeypatch.delenv("NASS_API_KEY", raising=False)
+    monkeypatch.delenv("NASS_ENABLED", raising=False)
+
+
 @pytest.fixture
 def mock_sda_prime_response() -> dict[str, Any]:
     """Return mock SDA response with prime farmland map unit."""

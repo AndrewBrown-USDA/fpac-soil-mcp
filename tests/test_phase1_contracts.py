@@ -73,7 +73,7 @@ def test_phase1_complete_composition(valid_utc_now):
     assert len(regional_configs) == 0  # No invented regional configs
 
     # 2. Capability-scoped settings verification
-    settings = Settings()
+    settings = Settings(_env_file=None)
     assert settings.nass_enabled is False
     with pytest.raises(ValueError, match="requires 'nass_api_key'"):
         settings.validate_nass_capability()

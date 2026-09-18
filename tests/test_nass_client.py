@@ -7,7 +7,7 @@ from fpac_soil_mcp.nass_client import NassClient
 
 
 def test_nass_client_no_key_fallback():
-    client = NassClient(api_key=None)
+    client = NassClient(api_key="")
     profile = client.get_county_ag_profile(
         state_fips="19",
         county_fips="169",
