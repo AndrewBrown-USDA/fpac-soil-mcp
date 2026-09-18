@@ -222,3 +222,78 @@ def test_tigerweb_error_handling(sample_geojson):
     assert record.status == IntegrationStatus.ERROR
     assert record.error_message is not None
     assert "Urban screening failed" in record.error_message
+
+
+def test_tigerweb_get_intersecting_counties_and_partitioning():
+    mock_county_response = {
+        "features": [
+            {
+                "attributes": {
+                    "GEOID": "19169",
+                    "NAME": "Story County",
+                    "BASENAME": "Story",
+                    "STATE": "19",
+                    "COUNTY": "169",
+                },
+                "geometry": {
+                    "rings": [
+                        [
+                            [-93.70, 41.85],
+                            [-93.35, 41.85],
+                            [-93.35, 42.15],
+                            [-93.70, 42.15],
+                            [-93.70, 41.85],
+                        ]
+                    ]
+                },
+            },
+            {
+                "attributes": {
+                    "GEOID": "19015",
+                    "NAME": "Boone County",
+                    "BASENAME": "Boone",
+                    "STATE": "19",
+                    "COUNTY": "015",
+                },
+                "geometry": {
+                    "rings": [
+                        [
+                            [-94.05, 41.85],
+                            [-93.70, 41.85],
+                            [-93.70, 42.15],
+                            [-94.05, 42.15],
+                            [-94.05, 41.85],
+                        ]
+                    ]
+                },
+            },
+        ]
+    }
+
+    def county_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=mock_county_response)
+
+    client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(county_handler)))
+
+    # Line spanning both counties: from Boone (-93.8) to Story (-93.5)
+    corridor_box = {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [-93.85, 42.00],
+                [-93.45, 42.00],
+                [-93.45, 42.02],
+                [-93.85, 42.02],
+                [-93.85, 42.00],
+            ]
+        ],
+    }
+
+    counties = client.get_intersecting_counties(corridor_box)
+    assert len(counties) == 2
+    assert {c["county_name"] for c in counties} == {"Story", "Boone"}
+
+    segments = client.partition_geometry_by_counties(corridor_box, counties=counties)
+    assert len(segments) == 2
+    assert segments[0]["calculated_acres"] > 0
+    assert segments[1]["calculated_acres"] > 0
