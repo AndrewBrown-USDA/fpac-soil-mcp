@@ -17,9 +17,9 @@
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
 | `7.1.1` | 1 | Corridor Geodesic Buffering & Geometry Primitives | done | orchestrator | 2026-09-18 | 2026-09-18 |
-| `7.2.1` | 2 | USDA NASS QuickStats REST Client | pending | — | — | — |
-| `7.2.2` | 2 | TIGERweb County Boundary & Partitioning Client | pending | — | — | — |
-| `7.2.3` | 2 | Multi-County Corridor Test Fixture Corpus | pending | — | — | — |
+| `7.2.1` | 2 | USDA NASS QuickStats REST Client | done | orchestrator | 2026-09-18 | 2026-09-18 |
+| `7.2.2` | 2 | TIGERweb County Boundary & Partitioning Client | done | orchestrator | 2026-09-18 | 2026-09-18 |
+| `7.2.3` | 2 | Multi-County Corridor Test Fixture Corpus | done | orchestrator | 2026-09-18 | 2026-09-18 |
 | `7.3.1` | 3 | Multi-County Corridor Analysis & Reconciliation Engine | pending | — | — | — |
 | `7.4.1` | 4 | 7 CFR § 658.5(c) Corridor Site Assessment Rules Engine | pending | — | — | — |
 | `7.5.1` | 5 | FastMCP Corridor Analysis Tools & Server Registration | pending | — | — | — |
@@ -49,4 +49,22 @@
 - **Files Changed**: `src/fpac_soil_mcp/geometry.py` (lines 1-480), `tests/test_geometry.py` (lines 1-280), `planning/tasks/7.1.1.todo.md` (lines 1-32)
 - **Verification**: `uv run pytest tests/test_geometry.py -q` (13 passed), `uv run ruff check .` (clean), `uv run ruff format --check src/ tests/` (clean).
 - **Summary**: Implemented `buffer_centerline` with equal-area projection space (EPSG:6933) buffering across `feet`, `meters`, `miles`; implemented `erase_geometries` for direct/indirect footprint separation without double-counting; added line WKT sanitization and hashing.
+
+### 7.2.1: USDA NASS QuickStats REST Client
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/nass_client.py` (lines 1-200), `tests/test_nass_client.py` (lines 1-90), `planning/tasks/7.2.1.todo.md` (lines 1-35)
+- **Verification**: `uv run pytest tests/test_nass_client.py -q` (4 passed), `uv run ruff check .` (clean), `uv run ruff format --check src/ tests/` (clean).
+- **Summary**: Implemented `NassClient` querying `/api_GET/` for county ag metrics (land in farms, cropland, farm count, avg farm size) with `IntegrationStatus.UNAVAILABLE` graceful fallback when API key is missing or service encounters errors.
+
+### 7.2.2: TIGERweb County Boundary & Partitioning Client
+- **Status**: Completed
+- **Files Changed**: `src/fpac_soil_mcp/tigerweb_client.py` (lines 280-410), `tests/test_tigerweb_client.py` (lines 240-310), `planning/tasks/7.2.2.todo.md` (lines 1-35)
+- **Verification**: `uv run pytest tests/test_tigerweb_client.py -q` (8 passed), `uv run ruff check .` (clean), `uv run ruff format --check src/ tests/` (clean).
+- **Summary**: Added `get_intersecting_counties` and `partition_geometry_by_counties` to query TIGERweb State & County MapServer Layer 1, parse county boundaries into Shapely geometries, and partition corridor footprints with geodesic acreage calculation.
+
+### 7.2.3: Multi-County Corridor Test Fixture Corpus
+- **Status**: Completed
+- **Files Changed**: `tests/fixtures/corridor/multi_county_corridors.json` (lines 1-130), `tests/test_corridor_fixtures.py` (lines 1-60), `planning/tasks/7.2.3.todo.md` (lines 1-35)
+- **Verification**: `uv run pytest tests/test_corridor_fixtures.py -q` (1 passed), `uv run ruff check .` (clean), `uv run ruff format --check src/ tests/` (clean).
+- **Summary**: Created gold-set corridor test scenarios for 2-county, 3-county, and cross-state alignments with centerlines, direct buffer widths, and indirect staging polygons, with benchmark tolerance tests.
 
