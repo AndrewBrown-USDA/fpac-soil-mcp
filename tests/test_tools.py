@@ -326,6 +326,7 @@ class TestCorridorTools:
         mock_analyzer_cls.return_value = mock_instance
 
         mock_seg = MagicMock()
+        mock_seg.total_segment_acres = 250.0
         mock_seg.nass_profile = {"farm_size_acres_avg": 250.0}
 
         mock_response = MagicMock()
@@ -356,3 +357,48 @@ class TestCorridorTools:
         assert lesa["land_evaluation_score"] == 80.0
         assert lesa["site_assessment"]["total_sa_points"] >= 45.0  # 15 + 20 + 10 (from farm ratio)
         assert lesa["total_lesa_score"] >= 125.0
+
+    @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")
+    def test_analyze_corridor_fppa_multi_county_weighted_farm_size(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_analyzer_cls.return_value = mock_instance
+
+        # County 1: 100 acres, avg farm size 200.0
+        mock_seg1 = MagicMock()
+        mock_seg1.total_segment_acres = 100.0
+        mock_seg1.nass_profile = {"farm_size_acres_avg": 200.0}
+
+        # County 2: 300 acres, avg farm size 400.0
+        mock_seg2 = MagicMock()
+        mock_seg2.total_segment_acres = 300.0
+        mock_seg2.nass_profile = {"farm_size_acres_avg": 400.0}
+
+        # Expected weighted avg: (200*100 + 400*300) / (100 + 300) = (20000 + 120000) / 400 = 140000 / 400 = 350.0
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {
+            "query_type": "corridor",
+            "geometry_hash": "sha256:abcdef",
+            "composite_relative_rating": 75.0,
+            "county_segments": [mock_seg1, mock_seg2],
+        }
+        mock_response.county_segments = [mock_seg1, mock_seg2]
+        mock_response.composite_relative_rating = 75.0
+        mock_instance.analyze_corridor.return_value = mock_response
+
+        # Project farm acres = 350.0. Ratio = 350 / 350 = 1.0 (100% -> 10 points)
+        res = analyze_corridor_fppa(
+            centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=50.0,
+            site_assessment_inputs={
+                "project_farm_acres": 350.0,
+            },
+        )
+
+        assert "lesa_evaluation" in res
+        lesa = res["lesa_evaluation"]
+        sa = lesa["site_assessment"]
+        crit7 = next(c for c in sa["criteria"] if c["criterion_number"] == 7)
+        assert crit7["awarded_points"] == 10
+        assert "350.0" in crit7["justification"] or "100.0%" in crit7["justification"]

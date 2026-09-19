@@ -398,11 +398,34 @@ def analyze_corridor_fppa(
         project_farm_acres = site_assessment_inputs.get("project_farm_acres")
         county_avg_acres = site_assessment_inputs.get("county_average_farm_acres")
 
-        # If county_avg_acres not explicitly given, check first county segment's NASS profile
+        # If county_avg_acres not explicitly given, compute area-weighted average from county segments
         if county_avg_acres is None and corridor_response.county_segments:
-            seg0 = corridor_response.county_segments[0]
-            if seg0.nass_profile:
-                county_avg_acres = seg0.nass_profile.get("farm_size_acres_avg")
+            weighted_sum = 0.0
+            total_acres = 0.0
+            for seg in corridor_response.county_segments:
+                seg_profile = getattr(seg, "nass_profile", None)
+                if isinstance(seg, dict):
+                    seg_profile = seg.get("nass_profile")
+                    seg_acres = seg.get("total_segment_acres", 0.0)
+                else:
+                    seg_acres = getattr(seg, "total_segment_acres", 0.0)
+
+                if (
+                    isinstance(seg_profile, dict)
+                    and seg_profile.get("farm_size_acres_avg") is not None
+                    and seg_acres is not None
+                    and seg_acres > 0
+                ):
+                    avg_size = float(seg_profile["farm_size_acres_avg"])
+                    weighted_sum += avg_size * float(seg_acres)
+                    total_acres += float(seg_acres)
+
+            if total_acres > 0:
+                county_avg_acres = weighted_sum / total_acres
+            elif corridor_response.county_segments[0].nass_profile:
+                first_prof = corridor_response.county_segments[0].nass_profile
+                if isinstance(first_prof, dict):
+                    county_avg_acres = first_prof.get("farm_size_acres_avg")
 
         sa_summary = evaluate_corridor_site_assessment(
             criteria_inputs=parsed_crit_inputs,

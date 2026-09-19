@@ -17,7 +17,7 @@
 | `8.2.1` | 2 | Refactor Corridor Scoring & Strategy Evaluators | completed | worker-8.2.1 | 2026-09-18 16:40 | 2026-09-18 16:45 |
 | `8.2.2` | 2 | Typed TIGERweb County Partitioning | completed | worker-8.2.2 | 2026-09-18 16:40 | 2026-09-18 16:45 |
 | `8.3.1` | 3 | Alternative Composite LE & Reconciliation Warnings | completed | worker-8.3.1 | 2026-09-18 17:08 | 2026-09-18 17:12 |
-| `8.4.1` | 4 | Multi-County Criterion 7 Weighting & Tool Integration | pending | — | — | — |
+| `8.4.1` | 4 | Multi-County Criterion 7 Weighting & Tool Integration | completed | worker-8.4.1 | 2026-09-18 17:13 | 2026-09-18 17:16 |
 | `8.5.1` | 5 | End-to-End Phase 3 Contract Suite & Verification | pending | — | — | — |
 
 ## Wave Gates
@@ -68,5 +68,12 @@
   - Enhanced sum reconciliation audit to log structured warning and append explicit reconciliation notice to response `limitations` when variance exceeds 0.1% tolerance.
   - Added unit test in `tests/test_corridor_analysis.py` validating alternative composite LE score computation and reconciliation failure warning emission.
 - **Verification**: `tests/test_corridor_analysis.py` passed (5/5). Full test suite `uv run pytest -m "not live_sda"` passed (150 passed, 10 deselected). Ruff check and format clean.
+
+### Task 8.4.1 Report: Multi-County Criterion 7 Weighting & Tool Integration
+- **Status**: Completed
+- **Changes**:
+  - Updated `analyze_corridor_fppa` in `soil_tools.py` to calculate the area-weighted composite average farm size across all traversed county segments when `county_average_farm_acres` is not explicitly provided in `site_assessment_inputs`.
+  - Added unit test `test_analyze_corridor_fppa_multi_county_weighted_farm_size` in `tests/test_tools.py` verifying multi-county area-weighted farm size integration with Criterion 7 scoring.
+- **Verification**: `tests/test_tools.py` passed (16/16). Full test suite `uv run pytest -m "not live_sda"` passed (151 passed, 10 deselected). Ruff check and format clean.
 
 
