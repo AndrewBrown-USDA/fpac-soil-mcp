@@ -410,14 +410,16 @@ def analyze_corridor_fppa(
                 else:
                     seg_acres = getattr(seg, "total_segment_acres", 0.0)
 
-                if (
-                    isinstance(seg_profile, dict)
-                    and seg_profile.get("farm_size_acres_avg") is not None
-                    and seg_acres is not None
-                    and seg_acres > 0
-                ):
-                    avg_size = float(seg_profile["farm_size_acres_avg"])
-                    weighted_sum += avg_size * float(seg_acres)
+                avg_size = (
+                    seg_profile.get("average_farm_size_acres")
+                    if isinstance(seg_profile, dict)
+                    and seg_profile.get("average_farm_size_acres") is not None
+                    else seg_profile.get("farm_size_acres_avg")
+                    if isinstance(seg_profile, dict)
+                    else None
+                )
+                if avg_size is not None and seg_acres is not None and seg_acres > 0:
+                    weighted_sum += float(avg_size) * float(seg_acres)
                     total_acres += float(seg_acres)
 
             if total_acres > 0:
@@ -425,7 +427,9 @@ def analyze_corridor_fppa(
             elif corridor_response.county_segments[0].nass_profile:
                 first_prof = corridor_response.county_segments[0].nass_profile
                 if isinstance(first_prof, dict):
-                    county_avg_acres = first_prof.get("farm_size_acres_avg")
+                    county_avg_acres = first_prof.get("average_farm_size_acres") or first_prof.get(
+                        "farm_size_acres_avg"
+                    )
 
         sa_summary = evaluate_corridor_site_assessment(
             criteria_inputs=parsed_crit_inputs,

@@ -18,7 +18,7 @@
 | `8.2.2` | 2 | Typed TIGERweb County Partitioning | completed | worker-8.2.2 | 2026-09-18 16:40 | 2026-09-18 16:45 |
 | `8.3.1` | 3 | Alternative Composite LE & Reconciliation Warnings | completed | worker-8.3.1 | 2026-09-18 17:08 | 2026-09-18 17:12 |
 | `8.4.1` | 4 | Multi-County Criterion 7 Weighting & Tool Integration | completed | worker-8.4.1 | 2026-09-18 17:13 | 2026-09-18 17:16 |
-| `8.5.1` | 5 | End-to-End Phase 3 Contract Suite & Verification | pending | — | — | — |
+| `8.5.1` | 5 | End-to-End Phase 3 Contract Suite & Verification | completed | worker-8.5.1 | 2026-09-18 17:16 | 2026-09-18 17:20 |
 
 ## Wave Gates
 
@@ -75,5 +75,14 @@
   - Updated `analyze_corridor_fppa` in `soil_tools.py` to calculate the area-weighted composite average farm size across all traversed county segments when `county_average_farm_acres` is not explicitly provided in `site_assessment_inputs`.
   - Added unit test `test_analyze_corridor_fppa_multi_county_weighted_farm_size` in `tests/test_tools.py` verifying multi-county area-weighted farm size integration with Criterion 7 scoring.
 - **Verification**: `tests/test_tools.py` passed (16/16). Full test suite `uv run pytest -m "not live_sda"` passed (151 passed, 10 deselected). Ruff check and format clean.
+
+### Task 8.5.1 Report: End-to-End Phase 3 Contract Suite & Verification
+- **Status**: Completed
+- **Changes**:
+  - Added contract tests in `tests/test_phase3_contracts.py` for alternative composite LE scoring, multi-county Criterion 7 area-weighting, and sum reconciliation discrepancy warnings.
+  - Updated `analyze_corridor_fppa` tool helper to accept both `average_farm_size_acres` and `farm_size_acres_avg` profile keys.
+  - Updated `README.md` to document multi-county corridor analysis, composite LE scoring, and 7 CFR § 658.5(c) rules.
+- **Verification**: `tests/test_phase3_contracts.py` passed (8/8). Full suite `uv run pytest -m "not live_sda"` passed (154 passed, 10 deselected). Ruff check and format clean.
+
 
 

@@ -75,6 +75,7 @@ flowchart TD
 - **Mukey Lookups**: Retrieves tabular soil attributes by Map Unit Key.
 - **FPPA Screening**: Identifies prime, unique, and statewide important farmland, calculates acreages, and checks Census 2020 urban area boundaries (7 CFR § 658.2(a)).
 - **Soil Interpretations**: Fetches component-weighted interpretation ratings like NCCPI v3.
+- **Multi-County Corridor Analysis & CPA-106 Rules**: Partitions linear corridor geometries across TIGERweb county boundaries, performs area-weighted composite Land Evaluation (LE) scoring (including for project alternatives), aggregates multi-county Criterion 7 farm size benchmarks from USDA NASS agricultural profiles, and enforces statutory 7 CFR § 658.5(c) / § 658.4(c) rules with strict sum reconciliation audits.
 - **Embedded Regulatory Notices**: Attaches 7 CFR Parts 657 & 658 notices to query responses to keep screening distinct from official agency determinations.
 - **FastMCP Transports**: Supports stdio for local clients and SSE for network services.
 - **Retry Handling**: Retries transient USDA SDA gateway and connection timeouts with exponential backoff.
