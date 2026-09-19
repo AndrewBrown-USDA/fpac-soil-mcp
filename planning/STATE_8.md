@@ -16,7 +16,7 @@
 | `8.1.1` | 1 | Centralize Regulatory Constants & Types | completed | worker-8.1.1 | 2026-09-18 16:30 | 2026-09-18 16:35 |
 | `8.2.1` | 2 | Refactor Corridor Scoring & Strategy Evaluators | completed | worker-8.2.1 | 2026-09-18 16:40 | 2026-09-18 16:45 |
 | `8.2.2` | 2 | Typed TIGERweb County Partitioning | completed | worker-8.2.2 | 2026-09-18 16:40 | 2026-09-18 16:45 |
-| `8.3.1` | 3 | Alternative Composite LE & Reconciliation Warnings | pending | — | — | — |
+| `8.3.1` | 3 | Alternative Composite LE & Reconciliation Warnings | completed | worker-8.3.1 | 2026-09-18 17:08 | 2026-09-18 17:12 |
 | `8.4.1` | 4 | Multi-County Criterion 7 Weighting & Tool Integration | pending | — | — | — |
 | `8.5.1` | 5 | End-to-End Phase 3 Contract Suite & Verification | pending | — | — | — |
 
@@ -60,4 +60,13 @@
   - Added dictionary key (`__getitem__`) and `.get()` compatibility to `CountyPartitionGeometry` in `src/fpac_soil_mcp/integration_models.py` for backward compatibility with existing callers.
   - Updated `tests/test_tigerweb_client.py` to assert instances of `CountyPartitionGeometry`, validate attributes and dictionary access fallback.
 - **Verification**: `tests/test_tigerweb_client.py` passed (8/8). Full suite `uv run pytest -m "not live_sda"` passed (149 passed, 10 deselected). Ruff check and format clean.
+
+### Task 8.3.1 Report: Alternative Composite LE & Reconciliation Warnings
+- **Status**: Completed
+- **Changes**:
+  - Updated alternatives processing in `corridor_analysis.py` to partition alternative footprints across intersected counties, query segment soils and NCCPI interpretations, and calculate area-weighted composite LE rating.
+  - Enhanced sum reconciliation audit to log structured warning and append explicit reconciliation notice to response `limitations` when variance exceeds 0.1% tolerance.
+  - Added unit test in `tests/test_corridor_analysis.py` validating alternative composite LE score computation and reconciliation failure warning emission.
+- **Verification**: `tests/test_corridor_analysis.py` passed (5/5). Full test suite `uv run pytest -m "not live_sda"` passed (150 passed, 10 deselected). Ruff check and format clean.
+
 

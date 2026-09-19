@@ -283,7 +283,70 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives():
     assert len(response.alternatives) == 1
     assert response.alternatives[0].alternative_id == "Alternative B (South Alignment)"
     assert response.alternatives[0].direct_acres > 0
+    assert response.alternatives[0].composite_relative_rating == 75.0
     assert response.reconciliation_summary["reconciliation_passed"] is True
+
+
+def test_corridor_analysis_reconciliation_failure_warning(caplog):
+    """Test that sum reconciliation > 0.1% logs a warning and appends to limitations."""
+    import logging
+
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = []
+    mock_sda.get_interpretations.return_value = []
+
+    mock_tiger = MagicMock(spec=TigerwebClient)
+    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.get_intersecting_counties.return_value = [
+        {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
+    ]
+
+    from fpac_soil_mcp.geometry import buffer_centerline, calculate_acreage
+
+    centerline = {
+        "type": "LineString",
+        "coordinates": [[-93.90, 42.03], [-93.50, 42.03]],
+    }
+    buf = buffer_centerline(centerline, 50.0, "feet")
+    tot_ac = calculate_acreage(buf)
+
+    # Intentionally cause a 5% mismatch between total footprint and partition segment
+    mock_tiger.partition_geometry_by_counties.return_value = [
+        {
+            "state_fips": "19",
+            "county_fips": "169",
+            "county_name": "Story",
+            "state_name": "IA",
+            "geometry": buf,
+            "calculated_acres": tot_ac * 1.05,  # 5% variance > 0.1%
+        }
+    ]
+
+    mock_nass = MagicMock()
+    mock_nass.get_county_ag_profile.side_effect = lambda state_fips, county_fips, county_name: (
+        mock_nass_profile(county_name, state_fips, county_fips)
+    )
+
+    analyzer = CorridorAnalyzer(
+        sda_client=mock_sda,
+        tigerweb_client=mock_tiger,
+        nass_client=mock_nass,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        response = analyzer.analyze_corridor(
+            centerline_input=centerline,
+            buffer_distance=50.0,
+            buffer_units="feet",
+        )
+
+    assert response.reconciliation_summary["reconciliation_passed"] is False
+    assert response.reconciliation_summary["variance_pct"] > 0.1
+    assert any(
+        "sum reconciliation exceeded 0.1% tolerance limit" in lim for lim in response.limitations
+    )
+    assert any("Acreage sum reconciliation failed" in rec.message for rec in caplog.records)
 
 
 def test_corridor_analysis_invalid_geometry_fallback():

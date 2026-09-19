@@ -413,6 +413,28 @@ class CorridorAnalyzer:
         )
         is_reconciled = delta_pct <= 0.1  # Reconciled within 0.1% tolerance
 
+        if not is_reconciled:
+            rec_warning = (
+                f"Acreage sum reconciliation exceeded 0.1% tolerance limit: "
+                f"buffered project footprint = {round(total_project_acres, 2)} ac, "
+                f"sum of county partitions = {round(total_segment_acres_sum, 2)} ac "
+                f"(direct = {round(sum_direct_acres, 2)} ac, indirect = {round(sum_indirect_acres, 2)} ac), "
+                f"delta = {round(acreage_delta, 4)} ac ({delta_pct}%)."
+            )
+            logger.warning(
+                "Acreage sum reconciliation failed: %s",
+                {
+                    "buffered_project_acres": round(total_project_acres, 2),
+                    "sum_of_county_segments_acres": round(total_segment_acres_sum, 2),
+                    "direct_acres_sum": round(sum_direct_acres, 2),
+                    "indirect_acres_sum": round(sum_indirect_acres, 2),
+                    "acreage_delta": round(acreage_delta, 4),
+                    "variance_pct": delta_pct,
+                    "tolerance_pct_limit": 0.1,
+                },
+            )
+            limitations.append(rec_warning)
+
         reconciliation_summary = {
             "buffered_footprint_acres": round(total_project_acres, 2),
             "sum_of_county_segments_acres": round(total_segment_acres_sum, 2),
@@ -464,21 +486,127 @@ class CorridorAnalyzer:
                     )
 
                     alt_counties = self.tigerweb_client.get_intersecting_counties(alt_footprint)
-                    alt_county_names = [c.get("county_name", "") for c in alt_counties]
+                    if not alt_counties:
+                        alt_counties = [
+                            {
+                                "state_fips": "00",
+                                "county_fips": "000",
+                                "county_name": "Unspecified County",
+                                "state_name": None,
+                                "geometry": alt_footprint,
+                            }
+                        ]
 
-                    # Quick SDA summary for alternative
-                    alt_wkt = geometry_to_wkt(alt_footprint)
-                    alt_units = self.sda_client.get_spatial_intersection(
-                        alt_wkt, clip=True, geom_acres=True, return_geom=False
+                    alt_county_names = [
+                        c.get("county_name", "") for c in alt_counties if c.get("county_name")
+                    ]
+
+                    # Partition alternative footprint across intersected counties
+                    alt_segments_raw = self.tigerweb_client.partition_geometry_by_counties(
+                        geometry_input=alt_footprint,
+                        counties=alt_counties,
                     )
+
+                    if not alt_segments_raw:
+                        alt_segments_raw = [
+                            {
+                                "state_fips": "00",
+                                "county_fips": "000",
+                                "county_name": "Unspecified County",
+                                "state_name": None,
+                                "geometry": alt_footprint,
+                                "calculated_acres": alt_tot_ac,
+                            }
+                        ]
+
                     alt_fppa_ac = 0.0
-                    for au in alt_units:
-                        fcat = categorize_farmland_class(au.get("farmlndcl"))
-                        if fcat in ("prime", "conditional_prime", "statewide", "local", "unique"):
+                    alt_weighted_le_sum = 0.0
+                    alt_total_seg_acres = 0.0
+
+                    for alt_seg in alt_segments_raw:
+                        alt_seg_geom = (
+                            alt_seg.geometry
+                            if hasattr(alt_seg, "geometry")
+                            else alt_seg.get("geometry")
+                        )
+                        alt_seg_ac = (
+                            alt_seg.calculated_acres
+                            if hasattr(alt_seg, "calculated_acres")
+                            else alt_seg.get("calculated_acres", 0.0)
+                        )
+                        alt_total_seg_acres += alt_seg_ac
+
+                        alt_seg_wkt = geometry_to_wkt(alt_seg_geom)
+                        alt_raw_units: list[dict[str, Any]] = []
+                        try:
+                            alt_raw_units = self.sda_client.get_spatial_intersection(
+                                alt_seg_wkt, clip=True, geom_acres=True, return_geom=False
+                            )
+                        except SDAClientError as exc:
+                            logger.warning(
+                                "Alternative %s SDA query failed for county segment: %s",
+                                alt_id,
+                                exc,
+                            )
+
+                        alt_mukeys = list(
+                            {str(r.get("mukey")) for r in alt_raw_units if r.get("mukey")}
+                        )
+                        alt_interp_map: dict[str, dict[str, Any]] = {}
+                        if include_nccpi and alt_mukeys:
                             try:
-                                alt_fppa_ac += float(au.get("area_ac") or 0.0)
+                                alt_interp_rows = self.sda_client.get_interpretations(
+                                    mukeys=alt_mukeys,
+                                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+                                    aggregation_method="Weighted Average",
+                                )
+                                for irow in alt_interp_rows:
+                                    alt_interp_map[str(irow.get("mukey"))] = irow
+                            except SDAClientError as exc:
+                                logger.warning(
+                                    "Alternative %s NCCPI interpretation error: %s", alt_id, exc
+                                )
+
+                        alt_seg_le_sum = 0.0
+                        alt_seg_le_weight = 0.0
+                        for au in alt_raw_units:
+                            m_str = str(au.get("mukey", ""))
+                            area_val = 0.0
+                            try:
+                                area_val = float(au.get("area_ac") or 0.0)
                             except (ValueError, TypeError):
-                                pass
+                                area_val = 0.0
+
+                            fcat = categorize_farmland_class(au.get("farmlndcl"))
+                            if fcat in (
+                                "prime",
+                                "conditional_prime",
+                                "statewide",
+                                "local",
+                                "unique",
+                            ):
+                                alt_fppa_ac += area_val
+
+                            interp_info = alt_interp_map.get(m_str, {})
+                            num_rating = interp_info.get("numeric_rating")
+                            if num_rating is not None:
+                                try:
+                                    num_rating_flt = float(num_rating)
+                                    le_score = num_rating_flt * 100.0
+                                    alt_seg_le_sum += area_val * le_score
+                                    alt_seg_le_weight += area_val
+                                except (ValueError, TypeError):
+                                    pass
+
+                        if alt_seg_le_weight > 0:
+                            alt_seg_relative_rating = alt_seg_le_sum / alt_seg_le_weight
+                            alt_weighted_le_sum += alt_seg_relative_rating * alt_seg_ac
+
+                    alt_composite_relative_rating: float | None = None
+                    if alt_total_seg_acres > 0 and alt_weighted_le_sum > 0:
+                        alt_composite_relative_rating = round(
+                            alt_weighted_le_sum / alt_total_seg_acres, 1
+                        )
 
                     alt_fppa_pct = (
                         round((alt_fppa_ac / alt_tot_ac * 100.0), 2) if alt_tot_ac > 0 else 0.0
@@ -493,7 +621,7 @@ class CorridorAnalyzer:
                             indirect_acres=round(alt_indirect_ac, 2),
                             total_fppa_protected_acres=round(alt_fppa_ac, 2),
                             total_fppa_protected_pct=alt_fppa_pct,
-                            composite_relative_rating=None,
+                            composite_relative_rating=alt_composite_relative_rating,
                             counties_traversed=alt_county_names,
                         )
                     )
