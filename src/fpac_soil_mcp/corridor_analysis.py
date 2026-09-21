@@ -13,14 +13,17 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from shapely import wkt as shapely_wkt
 from shapely.errors import GEOSException
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
 
+from fpac_soil_mcp.config import Settings
 from fpac_soil_mcp.constants import (
     REGULATORY_LIMITATIONS,
     REGULATORY_NOTICE,
 )
 from fpac_soil_mcp.geometry import (
+    _WKT_PREFIX_PATTERN,
     GeometryValidationError,
     buffer_centerline,
     calculate_acreage,
@@ -28,6 +31,8 @@ from fpac_soil_mcp.geometry import (
     erase_geometries,
     geometry_to_wkt,
     parse_geojson_geometry,
+    validate_and_sanitize_line_wkt,
+    validate_and_sanitize_polygon_wkt,
 )
 from fpac_soil_mcp.models import (
     CorridorAlternativeComparison,
@@ -86,14 +91,29 @@ class CorridorAnalyzer:
         timestamp_str = now.isoformat()
         limitations = list(REGULATORY_LIMITATIONS)
 
-        # 1. Buffer direct corridor centerline
+        # 1. Resolve direct centerline geometry and compute geometry hash from centerline
         try:
+            if isinstance(centerline_input, (LineString, MultiLineString)):
+                centerline_geom = centerline_input
+            elif isinstance(centerline_input, str) and _WKT_PREFIX_PATTERN.match(
+                centerline_input.strip()
+            ):
+                clean_line_wkt = validate_and_sanitize_line_wkt(centerline_input)
+                centerline_geom = shapely_wkt.loads(clean_line_wkt)
+            else:
+                centerline_geom = parse_geojson_geometry(centerline_input, allow_line=True)
+                if not isinstance(centerline_geom, (LineString, MultiLineString)):
+                    raise GeometryValidationError(
+                        f"Centerline geometry must be LineString or MultiLineString; received '{centerline_geom.geom_type}'."
+                    )
+
+            direct_hash = compute_geometry_hash(centerline_geom)
+
             direct_poly = buffer_centerline(
-                centerline_input=centerline_input,
+                centerline_input=centerline_geom,
                 buffer_distance=buffer_distance,
                 distance_unit=buffer_units,
             )
-            direct_hash = compute_geometry_hash(direct_poly)
             direct_acres = calculate_acreage(direct_poly)
         except (GeometryValidationError, ValueError) as exc:
             logger.error("Centerline buffering failed: %s", exc)
@@ -117,13 +137,18 @@ class CorridorAnalyzer:
                 regulatory_notice=REGULATORY_NOTICE,
             )
 
-        # 2. Process indirect staging geometry if supplied
+        # 2. Process indirect staging geometry if supplied (support Polygon/MultiPolygon, GeoJSON, or WKT)
         indirect_poly = None
         indirect_acres = 0.0
         if indirect_geometry_input is not None:
             try:
                 if isinstance(indirect_geometry_input, (Polygon, MultiPolygon)):
                     parsed_indirect = indirect_geometry_input
+                elif isinstance(indirect_geometry_input, str) and _WKT_PREFIX_PATTERN.match(
+                    indirect_geometry_input.strip()
+                ):
+                    clean_poly_wkt = validate_and_sanitize_polygon_wkt(indirect_geometry_input)
+                    parsed_indirect = shapely_wkt.loads(clean_poly_wkt)
                 else:
                     parsed_indirect = parse_geojson_geometry(indirect_geometry_input)
 
@@ -152,9 +177,11 @@ class CorridorAnalyzer:
 
         # 3. Intersect and partition footprint by counties via TIGERweb
         counties = self.tigerweb_client.get_intersecting_counties(project_footprint)
+        county_fallback_occurred = False
         if not counties:
+            county_fallback_occurred = True
             logger.warning(
-                "No intersecting counties found from TIGERweb; treating footprint as single partition."
+                "No intersecting counties found from TIGERweb; treating footprint as single partition fallback."
             )
             counties = [
                 {
@@ -172,7 +199,11 @@ class CorridorAnalyzer:
         )
 
         if not segments_raw:
+            county_fallback_occurred = True
             # Fallback if spatial intersection produces empty segments
+            logger.warning(
+                "County partitioning produced no segments; treating footprint as single partition fallback."
+            )
             segments_raw = [
                 {
                     "state_fips": "00",
@@ -184,9 +215,19 @@ class CorridorAnalyzer:
                 }
             ]
 
+        if county_fallback_occurred:
+            fallback_msg = (
+                "County boundary intersection/partitioning fallback occurred: "
+                "TIGERweb county boundaries were unavailable or did not yield intersecting segments; "
+                "treating project footprint as single unpartitioned segment."
+            )
+            limitations.append(fallback_msg)
+
         # 4. Analyze each county segment
+        settings = Settings()
         county_segment_models: list[CorridorCountySegment] = []
-        weighted_le_sum = 0.0
+        total_le_sum = 0.0
+        total_le_weight = 0.0
         total_segment_acres_sum = 0.0
         sum_direct_acres = 0.0
         sum_indirect_acres = 0.0
@@ -371,14 +412,23 @@ class CorridorAnalyzer:
             segment_relative_rating: float | None = None
             if segment_le_weight > 0:
                 segment_relative_rating = round(segment_le_sum / segment_le_weight, 1)
-                weighted_le_sum += segment_relative_rating * seg_total_acres
+                total_le_sum += segment_le_sum
+                total_le_weight += segment_le_weight
 
             # USDA NASS Profile
             nass_profile = self.nass_client.get_county_ag_profile(
                 state_fips=seg_state_fips,
                 county_fips=seg_county_fips,
                 county_name=seg_county_name,
+                census_year=settings.nass_census_year,
             )
+
+            if not unit_models:
+                coverage_status = "unmapped"
+            elif unmapped_rem > 0:
+                coverage_status = "partially_covered"
+            else:
+                coverage_status = "covered"
 
             county_segment_models.append(
                 CorridorCountySegment(
@@ -390,7 +440,7 @@ class CorridorAnalyzer:
                     indirect_acres=round(seg_indirect_acres, 2),
                     total_segment_acres=round(seg_total_acres, 2),
                     segment_weight_pct=seg_weight_pct,
-                    coverage_status="covered" if unit_models else "unmapped",
+                    coverage_status=coverage_status,
                     urban_screening=urban_dict,
                     farmland_summary=farmland_summary,
                     map_units=unit_models,
@@ -401,8 +451,8 @@ class CorridorAnalyzer:
 
         # 5. Calculate Reconciled Area-Weighted Composite LE Rating
         composite_relative_rating: float | None = None
-        if total_segment_acres_sum > 0 and weighted_le_sum > 0:
-            composite_relative_rating = round(weighted_le_sum / total_segment_acres_sum, 1)
+        if total_le_weight > 0:
+            composite_relative_rating = round(total_le_sum / total_le_weight, 1)
 
         # 6. Perform Sum Reconciliation Audit
         acreage_delta = abs(total_segment_acres_sum - total_project_acres)
@@ -459,21 +509,43 @@ class CorridorAnalyzer:
                     continue
 
                 try:
+                    if isinstance(alt_centerline, (LineString, MultiLineString)):
+                        alt_centerline_geom = alt_centerline
+                    elif isinstance(alt_centerline, str) and _WKT_PREFIX_PATTERN.match(
+                        alt_centerline.strip()
+                    ):
+                        clean_alt_line_wkt = validate_and_sanitize_line_wkt(alt_centerline)
+                        alt_centerline_geom = shapely_wkt.loads(clean_alt_line_wkt)
+                    else:
+                        alt_centerline_geom = parse_geojson_geometry(
+                            alt_centerline, allow_line=True
+                        )
+                        if not isinstance(alt_centerline_geom, (LineString, MultiLineString)):
+                            raise GeometryValidationError(
+                                f"Centerline geometry must be LineString or MultiLineString; received '{alt_centerline_geom.geom_type}'."
+                            )
+
+                    alt_hash = compute_geometry_hash(alt_centerline_geom)
+
                     alt_direct_poly = buffer_centerline(
-                        centerline_input=alt_centerline,
+                        centerline_input=alt_centerline_geom,
                         buffer_distance=alt_buf_dist,
                         distance_unit=alt_buf_units,
                     )
-                    alt_hash = compute_geometry_hash(alt_direct_poly)
                     alt_direct_ac = calculate_acreage(alt_direct_poly)
                     alt_indirect_ac = 0.0
 
                     if alt_indirect is not None:
-                        alt_parsed_ind = (
-                            alt_indirect
-                            if isinstance(alt_indirect, (Polygon, MultiPolygon))
-                            else parse_geojson_geometry(alt_indirect)
-                        )
+                        if isinstance(alt_indirect, (Polygon, MultiPolygon)):
+                            alt_parsed_ind = alt_indirect
+                        elif isinstance(alt_indirect, str) and _WKT_PREFIX_PATTERN.match(
+                            alt_indirect.strip()
+                        ):
+                            clean_alt_poly_wkt = validate_and_sanitize_polygon_wkt(alt_indirect)
+                            alt_parsed_ind = shapely_wkt.loads(clean_alt_poly_wkt)
+                        else:
+                            alt_parsed_ind = parse_geojson_geometry(alt_indirect)
+
                         alt_ind_poly = erase_geometries(alt_parsed_ind, alt_direct_poly)
                         if alt_ind_poly is not None and not alt_ind_poly.is_empty:
                             alt_indirect_ac = calculate_acreage(alt_ind_poly)
@@ -520,7 +592,8 @@ class CorridorAnalyzer:
                         ]
 
                     alt_fppa_ac = 0.0
-                    alt_weighted_le_sum = 0.0
+                    alt_total_le_sum = 0.0
+                    alt_total_le_weight = 0.0
                     alt_total_seg_acres = 0.0
 
                     for alt_seg in alt_segments_raw:
@@ -599,13 +672,13 @@ class CorridorAnalyzer:
                                     pass
 
                         if alt_seg_le_weight > 0:
-                            alt_seg_relative_rating = alt_seg_le_sum / alt_seg_le_weight
-                            alt_weighted_le_sum += alt_seg_relative_rating * alt_seg_ac
+                            alt_total_le_sum += alt_seg_le_sum
+                            alt_total_le_weight += alt_seg_le_weight
 
                     alt_composite_relative_rating: float | None = None
-                    if alt_total_seg_acres > 0 and alt_weighted_le_sum > 0:
+                    if alt_total_le_weight > 0:
                         alt_composite_relative_rating = round(
-                            alt_weighted_le_sum / alt_total_seg_acres, 1
+                            alt_total_le_sum / alt_total_le_weight, 1
                         )
 
                     alt_fppa_pct = (

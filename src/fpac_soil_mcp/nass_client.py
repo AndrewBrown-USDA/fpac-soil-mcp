@@ -41,7 +41,7 @@ class NassClient:
         county_fips: str,
         county_name: str,
         state_alpha: str | None = None,
-        census_year: int = 2022,
+        census_year: int | None = None,
     ) -> CountyAgProfile:
         """Fetch county agricultural demographic baseline from NASS QuickStats.
 
@@ -50,28 +50,40 @@ class NassClient:
             county_fips: 3-digit county FIPS code (e.g. '169').
             county_name: County or parish name (e.g. 'Story').
             state_alpha: Optional 2-letter state postal code (e.g. 'IA').
-            census_year: Census of Agriculture year (default 2022).
+            census_year: Census of Agriculture year (defaults to settings.nass_census_year).
 
         Returns:
             CountyAgProfile with land in farms, cropland, farm count, and average farm size.
         """
+        resolved_year = census_year if census_year is not None else settings.nass_census_year
         now = datetime.now(UTC)
         provenance = Provenance(
             source_name="USDA NASS Census of Agriculture Quick Stats",
             source_reference=self.base_url,
             timestamp_utc=now,
             method_version="1.0.0",
-            configuration_version=f"census_{census_year}",
+            configuration_version=f"census_{resolved_year}",
         )
 
-        # Graceful fallback if API key is not configured
+        # Graceful fallback if integration disabled or API key is not configured
+        if not settings.nass_enabled:
+            return CountyAgProfile(
+                status=IntegrationStatus.UNAVAILABLE,
+                state_fips=state_fips,
+                county_fips=county_fips,
+                county_name=county_name,
+                census_year=resolved_year,
+                provenance=provenance,
+                error_message="USDA NASS integration is disabled (NASS_ENABLED=False).",
+            )
+
         if not (self.api_key and self.api_key.strip()):
             return CountyAgProfile(
                 status=IntegrationStatus.UNAVAILABLE,
                 state_fips=state_fips,
                 county_fips=county_fips,
                 county_name=county_name,
-                census_year=census_year,
+                census_year=resolved_year,
                 provenance=provenance,
                 error_message="USDA NASS API key (NASS_API_KEY) is not configured.",
             )
@@ -81,7 +93,7 @@ class NassClient:
             "source_desc": "CENSUS",
             "sector_desc": "ECONOMICS",
             "agg_level_desc": "COUNTY",
-            "year": census_year,
+            "year": resolved_year,
             "state_fips_code": state_fips.zfill(2),
             "county_code": county_fips.zfill(3),
             "format": "JSON",
@@ -104,9 +116,9 @@ class NassClient:
                     state_fips=state_fips,
                     county_fips=county_fips,
                     county_name=county_name,
-                    census_year=census_year,
+                    census_year=resolved_year,
                     provenance=provenance,
-                    error_message=f"No NASS agricultural census records found for county {county_name} ({state_fips}{county_fips}) in year {census_year}.",
+                    error_message=f"No NASS agricultural census records found for county {county_name} ({state_fips}{county_fips}) in year {resolved_year}.",
                 )
 
             resp.raise_for_status()
@@ -151,7 +163,7 @@ class NassClient:
                 state_fips=state_fips,
                 county_fips=county_fips,
                 county_name=county_name,
-                census_year=census_year,
+                census_year=resolved_year,
                 provenance=provenance,
                 land_in_farms_acres=land_in_farms,
                 total_cropland_acres=total_cropland,
@@ -173,7 +185,7 @@ class NassClient:
                 state_fips=state_fips,
                 county_fips=county_fips,
                 county_name=county_name,
-                census_year=census_year,
+                census_year=resolved_year,
                 provenance=provenance,
                 error_message=f"USDA NASS query error: {exc}",
             )
