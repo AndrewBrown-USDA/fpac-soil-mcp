@@ -34,6 +34,7 @@ from fpac_soil_mcp.geometry import (
     validate_and_sanitize_line_wkt,
     validate_and_sanitize_polygon_wkt,
 )
+from fpac_soil_mcp.integration_models import CountyIdentifier
 from fpac_soil_mcp.models import (
     CorridorAlternativeComparison,
     CorridorCountySegment,
@@ -49,6 +50,16 @@ from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 logger = logging.getLogger(__name__)
+
+
+def _county_identifier(segment: dict[str, Any]) -> CountyIdentifier:
+    """Build one validated county identity from a TIGERweb segment mapping."""
+    return CountyIdentifier(
+        state_fips=str(segment.get("state_fips", "00")),
+        county_fips=str(segment.get("county_fips", "000")),
+        county_name=str(segment.get("county_name", "Unknown County")),
+        state_name=segment.get("state_name"),
+    )
 
 
 class CorridorAnalyzer:
@@ -234,10 +245,11 @@ class CorridorAnalyzer:
 
         for seg in segments_raw:
             seg_geom = seg["geometry"]
-            seg_state_fips = seg.get("state_fips", "00")
-            seg_county_fips = seg.get("county_fips", "000")
-            seg_county_name = seg.get("county_name", "Unknown County")
-            seg_state_name = seg.get("state_name")
+            county = _county_identifier(seg)
+            seg_state_fips = county.state_fips
+            seg_county_fips = county.county_fips
+            seg_county_name = county.county_name
+            seg_state_name = county.state_name
             seg_total_acres = seg.get("calculated_acres", 0.0)
 
             # Direct vs indirect within this segment
@@ -417,9 +429,10 @@ class CorridorAnalyzer:
 
             # USDA NASS Profile
             nass_profile = self.nass_client.get_county_ag_profile(
-                state_fips=seg_state_fips,
-                county_fips=seg_county_fips,
-                county_name=seg_county_name,
+                county=county,
+                state_fips=county.state_fips,
+                county_fips=county.county_fips,
+                county_name=county.county_name,
                 census_year=settings.nass_census_year,
             )
 
