@@ -7,7 +7,7 @@ from fpac_soil_mcp.config import Settings
 
 
 def test_default_settings():
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.sda_tabular_url.startswith("https://")
     assert s.request_timeout_seconds == 30.0
     assert s.max_retries == 3

@@ -1,10 +1,11 @@
 """Provenance-bearing integration domain models for external public data services.
 
 Defines UrbanExemptionRecord (Census TIGERweb), CountyAgProfile (USDA NASS),
-and SoilInterpretationRecord (USDA NRCS SDA).
+SoilInterpretationRecord (USDA NRCS SDA), and CountyPartitionGeometry (Census TIGERweb).
 """
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -201,3 +202,54 @@ class SoilInterpretationRecord(BaseModel):
         elif self.status == IntegrationStatus.ERROR and not self.error_message:
             raise ValueError("error_message must be provided when status is 'error'.")
         return self
+
+
+class CountyPartitionGeometry(BaseModel):
+    """Spatially partitioned geometry segment intersecting a specific county.
+
+    Represents an intersection segment of a project footprint or corridor
+    aligned within a single county boundary for multi-county LESA analysis.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
+
+    state_fips: str = Field(description="2-digit state FIPS code")
+    county_fips: str = Field(description="3-digit county FIPS code")
+    county_name: str = Field(description="County or parish name")
+    state_name: str | None = Field(default=None, description="Optional state name")
+    geometry: Any = Field(
+        description="Shapely geometry (Polygon or MultiPolygon) or GeoJSON structure"
+    )
+    calculated_acres: float = Field(description="Geodesic calculated acreage of this segment")
+
+    @field_validator("state_fips", "county_fips", "county_name")
+    @classmethod
+    def _validate_strings(cls, v: str, info) -> str:
+        return _validate_non_empty_str(v, info.field_name or "field")
+
+    @field_validator("calculated_acres")
+    @classmethod
+    def _validate_acres(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("calculated_acres must be non-negative.")
+        return v
+
+    @field_validator("geometry")
+    @classmethod
+    def _validate_geometry(cls, v: Any) -> Any:
+        if v is None:
+            raise ValueError("geometry must be provided.")
+        return v
+
+    def __getitem__(self, item: str) -> Any:
+        """Allow dictionary-style key access for backward compatibility."""
+        if hasattr(self, item):
+            return getattr(self, item)
+        raise KeyError(f"'{item}' is not a valid field on CountyPartitionGeometry")
+
+    def get(self, item: str, default: Any = None) -> Any:
+        """Allow dictionary-style .get() access for backward compatibility."""
+        if hasattr(self, item):
+            val = getattr(self, item)
+            return val if val is not None else default
+        return default

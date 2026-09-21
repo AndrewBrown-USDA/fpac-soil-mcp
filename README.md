@@ -75,6 +75,7 @@ flowchart TD
 - **Mukey Lookups**: Retrieves tabular soil attributes by Map Unit Key.
 - **FPPA Screening**: Identifies prime, unique, and statewide important farmland, calculates acreages, and checks Census 2020 urban area boundaries (7 CFR § 658.2(a)).
 - **Soil Interpretations**: Fetches component-weighted interpretation ratings like NCCPI v3.
+- **Multi-County Corridor Analysis & CPA-106 Rules**: Partitions linear corridor geometries across TIGERweb county boundaries, performs area-weighted composite Land Evaluation (LE) scoring (including for project alternatives), aggregates multi-county Criterion 7 farm size benchmarks from USDA NASS agricultural profiles, and enforces statutory 7 CFR § 658.5(c) / § 658.4(c) rules with strict sum reconciliation audits.
 - **Embedded Regulatory Notices**: Attaches 7 CFR Parts 657 & 658 notices to query responses to keep screening distinct from official agency determinations.
 - **FastMCP Transports**: Supports stdio for local clients and SSE for network services.
 - **Retry Handling**: Retries transient USDA SDA gateway and connection timeouts with exponential backoff.
@@ -231,6 +232,7 @@ Add to `~/.config/zed/settings.json`:
 | `get_soil_polygons_by_geometry` | `geojson` (dict \| string, required), `clip` (bool, default `true`) | Returns intersecting SSURGO map unit polygon geometries and attributes as a GeoJSON `FeatureCollection`. |
 | `check_urban_area_exemption` | `geojson` (dict \| string, required) | Screens point or polygon geometries against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)). |
 | `get_soil_interpretations` | `mukeys` (list[string], required), `rule_name` (string, default NCCPI v3), `aggregation_method` (string, default `'Weighted Average'`) | Fetches component-weighted soil interpretations from USDA SDA for specified map units. |
+| `analyze_corridor_fppa` | `centerline` (dict \| string, required), `buffer_distance` (float, required), `buffer_units` (string, default `'feet'`), `indirect_geometry` (dict \| string, optional), `alternatives` (list[dict], optional), `include_nccpi` (bool, default `true`), `site_assessment_inputs` (dict, optional) | Performs multi-county linear corridor FPPA screening (Form NRCS-CPA-106): buffers centerline, erases direct corridor overlap from indirect staging, partitions across Census county boundaries, queries SSURGO/NCCPI, retrieves NASS county agricultural baselines, calculates composite Land Evaluation (LE), and evaluates statutory 7 CFR § 658.5(c) Site Assessment rules and alternatives. |
 | `explain_fppa_screening_scope` | None | Explains why SDA preliminary screening (7 CFR 657) differs from formal FPPA LESA reviews and Form AD-1006 (7 CFR 658). |
 | `list_farmland_classes` | None | Returns standard USDA NRCS SSURGO Farmland Classification categories, statutory definitions, and 7 CFR citations. |
 

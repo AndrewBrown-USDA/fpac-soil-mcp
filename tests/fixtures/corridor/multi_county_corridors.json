@@ -1,0 +1,81 @@
+{
+  "description": "Benchmark multi-county linear corridor fixtures for CPA-106 evaluation",
+  "fixtures": [
+    {
+      "fixture_id": "corridor_2county_ia_transmission",
+      "name": "Story-Boone 2-County Electric Transmission Line",
+      "description": "15-mile 161kV transmission line spanning Story and Boone Counties in central Iowa",
+      "centerline": {
+        "type": "LineString",
+        "coordinates": [
+          [-93.90, 42.03],
+          [-93.70, 42.03],
+          [-93.50, 42.03]
+        ]
+      },
+      "buffer_distance": 50.0,
+      "buffer_units": "feet",
+      "indirect_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.72, 42.032],
+            [-93.68, 42.032],
+            [-93.68, 42.040],
+            [-93.72, 42.040],
+            [-93.72, 42.032]
+          ]
+        ]
+      },
+      "expected_counties": ["Boone", "Story"],
+      "expected_direct_acres_min": 150.0,
+      "expected_direct_acres_max": 350.0
+    },
+    {
+      "fixture_id": "corridor_3county_il_pipeline",
+      "name": "DeKalb-Kane-DuPage 3-County Natural Gas Lateral",
+      "description": "Linear gas pipeline corridor traversing rural to suburban gradient in northern Illinois",
+      "centerline": {
+        "type": "LineString",
+        "coordinates": [
+          [-88.75, 41.93],
+          [-88.45, 41.93],
+          [-88.15, 41.93]
+        ]
+      },
+      "buffer_distance": 75.0,
+      "buffer_units": "feet",
+      "alternatives": {
+        "alternative_b": {
+          "type": "LineString",
+          "coordinates": [
+            [-88.75, 41.93],
+            [-88.45, 41.90],
+            [-88.15, 41.90]
+          ]
+        }
+      },
+      "expected_counties": ["DeKalb", "Kane", "DuPage"],
+      "expected_direct_acres_min": 400.0,
+      "expected_direct_acres_max": 800.0
+    },
+    {
+      "fixture_id": "corridor_cross_state_ia_mn",
+      "name": "Worth IA to Freeborn MN Cross-Border Fiber Line",
+      "description": "Subsurface fiber installation crossing state line from Worth County IA into Freeborn County MN",
+      "centerline": {
+        "type": "LineString",
+        "coordinates": [
+          [-93.38, 43.45],
+          [-93.38, 43.50],
+          [-93.38, 43.55]
+        ]
+      },
+      "buffer_distance": 25.0,
+      "buffer_units": "feet",
+      "expected_counties": ["Worth", "Freeborn"],
+      "expected_direct_acres_min": 25.0,
+      "expected_direct_acres_max": 75.0
+    }
+  ]
+}

@@ -24,6 +24,18 @@ class TestServerInitialization:
         assert server.name == "fpac-soil-mcp"
         assert "USDA FPAC Farmland Protection Policy Act" in server.instructions
 
+    @pytest.mark.asyncio
+    async def test_corridor_tool_registered(self) -> None:
+        server = create_mcp_server()
+        tools = await server.list_tools()
+        tool_names = [t.name for t in tools]
+        assert "analyze_corridor_fppa" in tool_names
+        assert "analyze_farmland_by_polygon" in tool_names
+        assert "get_farmland_classification_by_point" in tool_names
+        assert "get_farmland_classification_by_mukey" in tool_names
+        assert "check_urban_area_exemption" in tool_names
+        assert "get_soil_interpretations" in tool_names
+
 
 class TestResourcesAndPrompts:
     """Test resources and prompts registration and outputs."""

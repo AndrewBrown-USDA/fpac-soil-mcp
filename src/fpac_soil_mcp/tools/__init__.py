@@ -10,6 +10,7 @@ from fpac_soil_mcp.tools.fppa_tools import (
     register_fppa_tools,
 )
 from fpac_soil_mcp.tools.soil_tools import (
+    analyze_corridor_fppa,
     analyze_farmland_by_polygon,
     check_urban_area_exemption,
     get_farmland_classification_by_mukey,
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 __all__ = [
+    "analyze_corridor_fppa",
     "analyze_farmland_by_polygon",
     "check_urban_area_exemption",
     "explain_fppa_screening_scope",
