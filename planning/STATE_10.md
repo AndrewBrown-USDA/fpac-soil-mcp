@@ -15,8 +15,8 @@
 | `10.2.1` | 2 | Refactor SDA, Tigerweb, NASS Clients | complete | Subagent 10.2.1 | 2026-09-21T13:17:00 | 2026-09-21T13:21:00 |
 | `10.2.2` | 2 | Refactor Corridor Analysis & Scoring Encapsulation | complete | Subagent 10.2.2 | 2026-09-21T13:17:00 | 2026-09-21T13:21:00 |
 | `10.3.1` | 3 | Full Test Suite Verification & Code Cleanliness | complete | Subagent 10.3.1 | 2026-09-21T13:22:00 | 2026-09-21T13:25:00 |
-| `10.4.1` | 4 | CountyIdentifier Constructors & Caller Cleanup | pending | | | |
-| `10.4.2` | 4 | Clean calculate_composite_le Overload Signatures | pending | | | |
+| `10.4.1` | 4 | CountyIdentifier Constructors & Caller Cleanup | complete | Subagent 10.4.1 | 2026-09-21T14:14:00 | 2026-09-21T14:18:00 |
+| `10.4.2` | 4 | Clean calculate_composite_le Overload Signatures | complete | Subagent 10.4.2 | 2026-09-21T14:14:00 | 2026-09-21T14:18:00 |
 | `10.5.1` | 5 | Final Regression & Standards Verification | pending | | | |
 
 ## Wave Gates
@@ -62,6 +62,22 @@
   - Verified full offline test suite across all Phase 1-3 features and tool contracts.
   - Verified Ruff linter and code formatting cleanliness across the entire repository.
 - **Verification**: `uv run pytest -m "not live_sda"` (170 passed, 10 deselected) + `uv run ruff check .` + `uv run ruff format --check .` (clean).
+
+### 10.4.1
+- **Status**: complete
+- **Changes**:
+  - Added `from_fips` and `from_dict` constructor classmethods on `CountyIdentifier`.
+  - Cleaned up corridor analysis call sites passing `county` to `NassClient.get_county_ag_profile`.
+  - Added unit test coverage for constructors in `tests/test_integration_models.py`.
+- **Verification**: `uv run pytest tests/test_integration_models.py tests/test_corridor_analysis.py` (15 passed).
+
+### 10.4.2
+- **Status**: complete
+- **Changes**:
+  - Added `@overload` type annotations for `calculate_composite_le` in `src/fpac_soil_mcp/corridor_scoring.py` and removed `# type: ignore` annotations.
+  - Added tests for overload signatures and edge cases in `tests/test_corridor_scoring.py`.
+- **Verification**: `uv run pytest tests/test_corridor_scoring.py` (9 passed).
+
 
 
 

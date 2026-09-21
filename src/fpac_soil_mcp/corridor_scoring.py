@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, overload
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -58,6 +58,16 @@ __all__ = [
 ]
 
 
+@overload
+def calculate_composite_le(
+    weighted_scores: Iterable[tuple[float, float]],
+) -> float | None: ...
+
+
+@overload
+def calculate_composite_le(weighted_scores: float, total_weight: float) -> float | None: ...
+
+
 def calculate_composite_le(
     weighted_scores: Iterable[tuple[float, float]] | float,
     total_weight: float | None = None,
@@ -69,13 +79,17 @@ def calculate_composite_le(
     encapsulated for callers processing multiple map units.
     """
     if total_weight is None:
+        if not isinstance(weighted_scores, Iterable):
+            raise TypeError("The iterable calling form requires an iterable of score/weight pairs")
         weighted_sum = 0.0
         weight = 0.0
-        for score, acres in weighted_scores:  # type: ignore[union-attr]
+        for score, acres in weighted_scores:
             weighted_sum += float(score) * float(acres)
             weight += float(acres)
     else:
-        weighted_sum = float(weighted_scores)  # type: ignore[arg-type]
+        if isinstance(weighted_scores, Iterable):
+            raise TypeError("The scalar calling form requires a weighted sum and total weight")
+        weighted_sum = float(weighted_scores)
         weight = float(total_weight)
     return round(weighted_sum / weight, 1) if weight > 0 else None
 

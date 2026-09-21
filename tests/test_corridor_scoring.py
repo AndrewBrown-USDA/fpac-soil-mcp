@@ -121,6 +121,15 @@ def test_criterion_7_farm_size_calculation():
     assert "Invalid or unavailable" in desc
 
 
+def test_calculate_composite_le_supports_iterable_and_scalar_forms():
+    from fpac_soil_mcp.corridor_scoring import calculate_composite_le
+
+    assert calculate_composite_le([(80.0, 2.0), (100.0, 3.0)]) == 92.0
+    assert calculate_composite_le(460.0, 5.0) == 92.0
+    assert calculate_composite_le([]) is None
+    assert calculate_composite_le(460.0, 0.0) is None
+
+
 def test_evaluate_corridor_site_assessment_full():
     """Test full site assessment evaluation with manual and automated inputs."""
     criteria_inputs = {
