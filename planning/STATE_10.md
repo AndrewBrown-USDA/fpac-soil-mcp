@@ -15,12 +15,17 @@
 | `10.2.1` | 2 | Refactor SDA, Tigerweb, NASS Clients | complete | Subagent 10.2.1 | 2026-09-21T13:17:00 | 2026-09-21T13:21:00 |
 | `10.2.2` | 2 | Refactor Corridor Analysis & Scoring Encapsulation | complete | Subagent 10.2.2 | 2026-09-21T13:17:00 | 2026-09-21T13:21:00 |
 | `10.3.1` | 3 | Full Test Suite Verification & Code Cleanliness | complete | Subagent 10.3.1 | 2026-09-21T13:22:00 | 2026-09-21T13:25:00 |
+| `10.4.1` | 4 | CountyIdentifier Constructors & Caller Cleanup | pending | | | |
+| `10.4.2` | 4 | Clean calculate_composite_le Overload Signatures | pending | | | |
+| `10.5.1` | 5 | Final Regression & Standards Verification | pending | | | |
 
 ## Wave Gates
 
 - **Wave 1** depends on baseline. Task `10.1.1` runs solo.
 - **Wave 2** depends on `10.1.1`. Tasks `10.2.1` and `10.2.2` touch disjoint files and run in parallel (max 2 workers).
 - **Wave 3** depends on `10.2.1` and `10.2.2`. Task `10.3.1` runs solo.
+- **Wave 4** depends on `10.3.1`. Tasks `10.4.1` and `10.4.2` touch disjoint files and run in parallel (max 2 workers).
+- **Wave 5** depends on `10.4.1` and `10.4.2`. Task `10.5.1` runs solo.
 - At every wave boundary, run serially:
   - `uv run pytest -m "not live_sda"`
   - `uv run ruff check .`
