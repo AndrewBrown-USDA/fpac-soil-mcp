@@ -17,7 +17,7 @@
 | `10.3.1` | 3 | Full Test Suite Verification & Code Cleanliness | complete | Subagent 10.3.1 | 2026-09-21T13:22:00 | 2026-09-21T13:25:00 |
 | `10.4.1` | 4 | CountyIdentifier Constructors & Caller Cleanup | complete | Subagent 10.4.1 | 2026-09-21T14:14:00 | 2026-09-21T14:18:00 |
 | `10.4.2` | 4 | Clean calculate_composite_le Overload Signatures | complete | Subagent 10.4.2 | 2026-09-21T14:14:00 | 2026-09-21T14:18:00 |
-| `10.5.1` | 5 | Final Regression & Standards Verification | pending | | | |
+| `10.5.1` | 5 | Final Regression & Standards Verification | complete | Subagent 10.5.1 | 2026-09-21T14:19:00 | 2026-09-21T14:22:00 |
 
 ## Wave Gates
 
@@ -77,6 +77,14 @@
   - Added `@overload` type annotations for `calculate_composite_le` in `src/fpac_soil_mcp/corridor_scoring.py` and removed `# type: ignore` annotations.
   - Added tests for overload signatures and edge cases in `tests/test_corridor_scoring.py`.
 - **Verification**: `uv run pytest tests/test_corridor_scoring.py` (9 passed).
+
+### 10.5.1
+- **Status**: complete
+- **Changes**:
+  - Ran full offline test suite across all Phase 1-3 features and tool contracts.
+  - Verified Ruff linter and code formatting cleanliness across the entire repository.
+- **Verification**: `uv run pytest -m "not live_sda"` (172 passed, 10 deselected) + `uv run ruff check .` + `uv run ruff format --check .` (clean).
+
 
 
 
