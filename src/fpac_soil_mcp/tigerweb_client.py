@@ -80,6 +80,117 @@ def _polygon_to_esri_rings(geom: Polygon | MultiPolygon) -> list[list[list[float
     return rings
 
 
+def _esri_rings_to_geometry(
+    rings: list[list[list[float]]],
+) -> Polygon | MultiPolygon | None:
+    """Reconstruct Shapely Polygon or MultiPolygon from ArcGIS REST JSON rings.
+
+    According to the ArcGIS REST API polygon specification:
+    - Exterior rings are oriented clockwise (CW, where LinearRing.is_ccw is False).
+    - Interior rings (holes) are oriented counterclockwise (CCW, where LinearRing.is_ccw is True).
+
+    This function separates exterior rings from interior hole rings and assigns each
+    hole to the exterior ring that geometrically contains it. If standard winding
+    order is not observed (e.g. all rings have the same winding), it falls back to
+    containment-based exterior/hole classification or single-ring polygons.
+
+    Args:
+        rings: List of coordinate rings from an ArcGIS geometry dictionary.
+
+    Returns:
+        Shapely Polygon, MultiPolygon, or None if no valid geometry could be created.
+    """
+    if not rings:
+        return None
+
+    linear_rings: list[LinearRing] = []
+    for ring_coords in rings:
+        if len(ring_coords) >= 4:
+            try:
+                lr = LinearRing(ring_coords)
+                if lr.is_valid and not lr.is_empty:
+                    linear_rings.append(lr)
+            except (ValueError, GEOSException) as exc:
+                logger.debug("Skipping invalid LinearRing coordinates: %s", exc)
+
+    if not linear_rings:
+        return None
+
+    # Classify by winding order
+    # ArcGIS convention: CW = exterior (not is_ccw), CCW = hole (is_ccw)
+    exteriors = [r for r in linear_rings if not r.is_ccw]
+    holes = [r for r in linear_rings if r.is_ccw]
+
+    # Fallback if winding is non-standard (e.g. all CCW or all CW)
+    if not exteriors:
+        # All rings were CCW: treat the largest area ring(s) as exteriors based on containment
+        # Convert all to solid polygons to determine containment
+        temp_polys = [(Polygon(r), r) for r in linear_rings]
+        # Sort by area descending
+        temp_polys.sort(key=lambda p: p[0].area, reverse=True)
+
+        assigned_exteriors: list[LinearRing] = []
+        assigned_holes: list[LinearRing] = []
+
+        for poly, ring in temp_polys:
+            # If ring is contained inside any already assigned exterior, it's a hole
+            is_contained = any(Polygon(ext).contains(poly) for ext in assigned_exteriors)
+            if is_contained:
+                assigned_holes.append(ring)
+            else:
+                assigned_exteriors.append(ring)
+
+        exteriors = assigned_exteriors
+        holes = assigned_holes
+
+    # Group holes with their containing exterior ring
+    poly_list: list[Polygon] = []
+    exterior_polys = [Polygon(ext) for ext in exteriors]
+    exterior_holes: list[list[LinearRing]] = [[] for _ in exteriors]
+
+    for hole in holes:
+        hole_poly = Polygon(hole)
+        # Find which exterior polygon contains this hole
+        matched = False
+        for idx, ext_poly in enumerate(exterior_polys):
+            if ext_poly.contains(hole_poly):
+                exterior_holes[idx].append(hole)
+                matched = True
+                break
+        if not matched:
+            # If hole is not strictly contained by any exterior (e.g. touches boundary or disjoint),
+            # check intersection or envelope containment, otherwise treat as separate exterior
+            for idx, ext_poly in enumerate(exterior_polys):
+                if ext_poly.intersects(hole_poly) and not ext_poly.equals(hole_poly):
+                    exterior_holes[idx].append(hole)
+                    matched = True
+                    break
+            if not matched:
+                # If truly standalone, promote to an exterior polygon
+                poly_list.append(Polygon(hole))
+
+    for ext_ring, h_list in zip(exteriors, exterior_holes):
+        poly_list.append(Polygon(shell=ext_ring, holes=h_list if h_list else None))
+
+    valid_polys = []
+    for p in poly_list:
+        if not p.is_valid:
+            fixed = make_valid(p)
+            if isinstance(fixed, (Polygon, MultiPolygon)):
+                if isinstance(fixed, Polygon):
+                    valid_polys.append(fixed)
+                else:
+                    valid_polys.extend([g for g in fixed.geoms if isinstance(g, Polygon)])
+        else:
+            valid_polys.append(p)
+
+    if not valid_polys:
+        return None
+    if len(valid_polys) == 1:
+        return valid_polys[0]
+    return MultiPolygon(valid_polys)
+
+
 class TigerwebClientError(Exception):
     """Base exception for Census TIGERweb client errors."""
 
@@ -276,19 +387,11 @@ class TigerwebClient:
                 if not rings:
                     continue
 
-                # Reconstruct Shapely Polygon/MultiPolygon from ESRI rings
-                polys = []
-                for ring in rings:
-                    if len(ring) >= 4:
-                        polys.append(Polygon(ring))
+                # Reconstruct Shapely Polygon/MultiPolygon from ESRI rings respecting winding and holes
+                county_shape = _esri_rings_to_geometry(rings)
 
-                if not polys:
+                if county_shape is None or county_shape.is_empty:
                     continue
-
-                if len(polys) == 1:
-                    county_shape = polys[0]
-                else:
-                    county_shape = MultiPolygon(polys)
 
                 if not county_shape.is_valid:
                     county_shape = make_valid(county_shape)
