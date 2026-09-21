@@ -480,3 +480,29 @@ def test_tigerweb_county_query_donut_county():
     assert len(county_geom.interiors) == 1
     # Outer box area is 1.0, hole is 0.2*0.2 = 0.04 -> county area is 0.96
     assert pytest.approx(county_geom.area, 1e-6) == 0.96
+
+
+def test_esri_rings_to_geometry_non_standard_all_cw_winding_fallback():
+    # All CW rings: outer [0,0] to [10,10], hole [2,2] to [4,4]
+    outer_cw = [
+        [0.0, 0.0],
+        [0.0, 10.0],
+        [10.0, 10.0],
+        [10.0, 0.0],
+        [0.0, 0.0],
+    ]
+    hole_cw = [
+        [2.0, 2.0],
+        [2.0, 4.0],
+        [4.0, 4.0],
+        [4.0, 2.0],
+        [2.0, 2.0],
+    ]
+    assert LinearRing(outer_cw).is_ccw is False
+    assert LinearRing(hole_cw).is_ccw is False
+
+    geom = _esri_rings_to_geometry([outer_cw, hole_cw])
+    assert isinstance(geom, Polygon)
+    assert geom.is_valid
+    assert len(geom.interiors) == 1
+    assert pytest.approx(geom.area, 1e-6) == 96.0

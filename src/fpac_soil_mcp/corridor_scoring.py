@@ -108,25 +108,28 @@ class CorridorSiteAssessmentSummary(BaseModel):
 class LESAEvaluationResult(BaseModel):
     """Complete Land Evaluation and Site Assessment (LESA) evaluation for Form NRCS-CPA-106."""
 
-    land_evaluation_score: float = Field(
+    land_evaluation_score: float | None = Field(
+        default=None,
         ge=0.0,
         le=100.0,
-        description="Relative Land Evaluation (LE) score derived from SSURGO/NCCPI (0-100)",
+        description="Relative Land Evaluation (LE) score derived from SSURGO/NCCPI (0-100), or None if unmapped",
     )
     site_assessment: CorridorSiteAssessmentSummary = Field(
         description="Evaluated CPA-106 Site Assessment criteria and summary"
     )
-    total_lesa_score: float = Field(
+    total_lesa_score: float | None = Field(
+        default=None,
         ge=0.0,
         le=260.0,
-        description="Combined total LESA score (LE + SA) on 0-260 point scale",
+        description="Combined total LESA score (LE + SA) on 0-260 point scale, or None if LE unavailable",
     )
     threshold_score: int = Field(
         default=LESA_THRESHOLD_SCORE,
         description="Statutory threshold under 7 CFR § 658.4(c)(2) (160 points)",
     )
-    threshold_exceeded: bool = Field(
-        description="True if total LESA score >= 160, triggering mandatory alternatives evaluation",
+    threshold_exceeded: bool | None = Field(
+        default=None,
+        description="True if total LESA score >= 160, False if < 160, None if LE unavailable",
     )
     statutory_determination: str = Field(
         description="Statutory recommendation under 7 CFR § 658.4(c)",
@@ -372,7 +375,7 @@ def evaluate_corridor_site_assessment(
 
 
 def evaluate_corridor_lesa(
-    land_evaluation_score: float,
+    land_evaluation_score: float | None,
     site_assessment: CorridorSiteAssessmentSummary,
 ) -> LESAEvaluationResult:
     """Combine Land Evaluation and Site Assessment into a complete LESA determination.
@@ -381,16 +384,36 @@ def evaluate_corridor_lesa(
     - If Total < 160 points: Site requires no further farmland protection review.
     - If Total >= 160 points: Agency must consider alternatives to avoid farmland conversion,
       alternative designs, and measures to minimize corridor impact (§ 658.4(c)(3)-(4)).
+    - If LE is None: Returns partial evaluation without false below-threshold determination.
 
     Args:
-        land_evaluation_score: Composite LE score (0-100).
+        land_evaluation_score: Composite LE score (0-100), or None if unavailable/unmapped.
         site_assessment: Evaluated CorridorSiteAssessmentSummary (0-160).
 
     Returns:
         LESAEvaluationResult with scoring totals, statutory findings, and actions.
     """
-    le = max(0.0, min(100.0, round(float(land_evaluation_score), 2)))
     sa = site_assessment.total_sa_points
+
+    if land_evaluation_score is None:
+        determination = STATUTORY_DETERMINATIONS["LE_UNAVAILABLE"].format(total_sa=sa)
+        actions = [
+            "Obtain official Land Evaluation (LE) score from USDA NRCS State/Local Conservationist (7 CFR § 658.4(a)).",
+            "Combine NRCS LE score with this Site Assessment ({sa:.1f}/160) to determine total LESA score.",
+            "Complete official USDA Form NRCS-CPA-106 Parts IV and V prior to final federal project approval.",
+        ]
+        return LESAEvaluationResult(
+            land_evaluation_score=None,
+            site_assessment=site_assessment,
+            total_lesa_score=None,
+            threshold_score=LESA_THRESHOLD_SCORE,
+            threshold_exceeded=None,
+            statutory_determination=determination,
+            recommended_actions=actions,
+            regulatory_notice=REGULATORY_NOTICE,
+        )
+
+    le = max(0.0, min(100.0, round(float(land_evaluation_score), 2)))
     total_lesa = round(le + sa, 2)
     threshold_exceeded = total_lesa >= LESA_THRESHOLD_SCORE
 

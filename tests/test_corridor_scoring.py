@@ -224,6 +224,27 @@ def test_lesa_threshold_evaluation_below_160():
     assert any("NRCS-CPA-106" in act for act in lesa_res.recommended_actions)
 
 
+def test_lesa_evaluation_when_le_is_none():
+    """Verify LESA evaluation handles missing/unmapped LE without false below-threshold finding."""
+    sa_summary = evaluate_corridor_site_assessment(
+        criteria_inputs={
+            1: {"awarded_points": 10.0, "justification": "Rural"},
+            2: {"awarded_points": 8.0, "justification": "Surrounded by farm"},
+        }
+    )
+    assert sa_summary.total_sa_points == 18.0
+
+    lesa_res = evaluate_corridor_lesa(land_evaluation_score=None, site_assessment=sa_summary)
+
+    assert lesa_res.land_evaluation_score is None
+    assert lesa_res.total_lesa_score is None
+    assert lesa_res.threshold_exceeded is None
+    assert "LAND EVALUATION (LE) SCORE UNAVAILABLE" in lesa_res.statutory_determination
+    assert any(
+        "Obtain official Land Evaluation (LE) score" in act for act in lesa_res.recommended_actions
+    )
+
+
 def test_strategy_evaluator_dispatch():
     """Verify strategy evaluators work as standalone classes and via registry."""
     # Zeroed Evaluator

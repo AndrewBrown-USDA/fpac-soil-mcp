@@ -122,9 +122,8 @@ def _esri_rings_to_geometry(
     holes = [r for r in linear_rings if r.is_ccw]
 
     # Fallback if winding is non-standard (e.g. all CCW or all CW)
-    if not exteriors:
-        # All rings were CCW: treat the largest area ring(s) as exteriors based on containment
-        # Convert all to solid polygons to determine containment
+    # If all rings share the same orientation, classify exterior vs hole using geometric containment
+    if not exteriors or (len(linear_rings) > 1 and not holes):
         temp_polys = [(Polygon(r), r) for r in linear_rings]
         # Sort by area descending
         temp_polys.sort(key=lambda p: p[0].area, reverse=True)

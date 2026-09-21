@@ -163,3 +163,26 @@ def test_nass_client_http_error(monkeypatch: pytest.MonkeyPatch):
 
     assert profile.status == IntegrationStatus.ERROR
     assert "USDA NASS query error" in (profile.error_message or "")
+
+
+def test_nass_client_empty_data_list_returns_unavailable(monkeypatch: pytest.MonkeyPatch):
+    """Verify empty 'data': [] in 200 OK response returns UNAVAILABLE status."""
+    monkeypatch.setattr(settings, "nass_enabled", True)
+
+    def nass_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"data": []})
+
+    mock_transport = httpx.MockTransport(nass_handler)
+    mock_http = httpx.Client(transport=mock_transport)
+
+    client = NassClient(api_key="MOCK_KEY_123", http_client=mock_http)
+    profile = client.get_county_ag_profile(
+        state_fips="19",
+        county_fips="169",
+        county_name="Story",
+        census_year=2022,
+    )
+
+    assert profile.status == IntegrationStatus.UNAVAILABLE
+    assert profile.land_in_farms_acres is None
+    assert "No NASS agricultural census records found" in (profile.error_message or "")

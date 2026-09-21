@@ -158,4 +158,10 @@ STATUTORY_DETERMINATIONS: Final[dict[str, str]] = {
         "Under 7 CFR § 658.4(c)(2), sites receiving a total score of less than 160 points require "
         "no further consideration for protection and no alternative site evaluations."
     ),
+    "LE_UNAVAILABLE": (
+        "LAND EVALUATION (LE) SCORE UNAVAILABLE (Site Assessment: {total_sa:.1f}/160). "
+        "A composite Land Evaluation score (NCCPI/SSURGO) was not computed or mapped for this corridor. "
+        "Under 7 CFR § 658.4(a), an official Form NRCS-CPA-106 determination requires both Land Evaluation "
+        "and Site Assessment scores before threshold evaluation can be finalized."
+    ),
 }

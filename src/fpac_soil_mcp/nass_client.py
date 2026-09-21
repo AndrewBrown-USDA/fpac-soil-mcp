@@ -123,6 +123,16 @@ class NassClient:
 
             resp.raise_for_status()
             data = resp.json().get("data", [])
+            if not data:
+                return CountyAgProfile(
+                    status=IntegrationStatus.UNAVAILABLE,
+                    state_fips=state_fips,
+                    county_fips=county_fips,
+                    county_name=county_name,
+                    census_year=resolved_year,
+                    provenance=provenance,
+                    error_message=f"No NASS agricultural census records found for county {county_name} ({state_fips}{county_fips}) in year {resolved_year}.",
+                )
 
             land_in_farms: float | None = None
             total_cropland: float | None = None

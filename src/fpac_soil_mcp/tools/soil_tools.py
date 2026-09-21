@@ -437,7 +437,7 @@ def analyze_corridor_fppa(
             county_average_farm_acres=county_avg_acres,
         )
 
-        le_score = corridor_response.composite_relative_rating or 0.0
+        le_score = corridor_response.composite_relative_rating
         lesa_result = evaluate_corridor_lesa(
             land_evaluation_score=le_score,
             site_assessment=sa_summary,
