@@ -132,10 +132,8 @@ def test_corridor_analysis_two_counties():
 
     # Mock NASS Client
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -241,10 +239,8 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives():
     ]
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -330,10 +326,8 @@ def test_corridor_analysis_reconciliation_failure_warning(caplog):
     ]
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -381,10 +375,8 @@ def test_corridor_analysis_empty_counties_fallback():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -424,10 +416,8 @@ def test_corridor_centerline_hash_invariance_with_buffer():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -460,10 +450,8 @@ def test_corridor_wkt_indirect_geometry_support():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -514,10 +502,8 @@ def test_corridor_zero_le_score_preservation():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -564,10 +550,8 @@ def test_corridor_partially_covered_status():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(

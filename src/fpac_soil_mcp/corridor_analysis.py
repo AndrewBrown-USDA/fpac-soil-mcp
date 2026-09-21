@@ -54,11 +54,13 @@ logger = logging.getLogger(__name__)
 
 def _county_identifier(segment: dict[str, Any]) -> CountyIdentifier:
     """Build one validated county identity from a TIGERweb segment mapping."""
-    return CountyIdentifier(
-        state_fips=str(segment.get("state_fips", "00")),
-        county_fips=str(segment.get("county_fips", "000")),
-        county_name=str(segment.get("county_name", "Unknown County")),
-        state_name=segment.get("state_name"),
+    return CountyIdentifier.from_dict(
+        {
+            "state_fips": str(segment.get("state_fips", "00")),
+            "county_fips": str(segment.get("county_fips", "000")),
+            "county_name": str(segment.get("county_name", "Unknown County")),
+            "state_name": segment.get("state_name"),
+        }
     )
 
 
@@ -430,9 +432,6 @@ class CorridorAnalyzer:
             # USDA NASS Profile
             nass_profile = self.nass_client.get_county_ag_profile(
                 county=county,
-                state_fips=county.state_fips,
-                county_fips=county.county_fips,
-                county_name=county.county_name,
                 census_year=settings.nass_census_year,
             )
 

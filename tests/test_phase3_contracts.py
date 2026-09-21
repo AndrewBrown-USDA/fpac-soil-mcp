@@ -146,23 +146,25 @@ def test_phase3_multi_county_corridor_analyzer_contract():
 
     mock_nass = MagicMock(spec=NassClient)
     mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: CountyAgProfile(
-            status=IntegrationStatus.SUCCESS,
-            state_fips=state_fips,
-            county_fips=county_fips,
-            county_name=county_name,
-            census_year=2022,
-            provenance=Provenance(
-                source_name="USDA NASS QuickStats",
-                source_reference="https://quickstats.nass.usda.gov/api/api_GET/",
-                timestamp_utc=datetime.now(UTC),
-                method_version="1.0.0",
-                configuration_version="1.0.0",
-            ),
-            land_in_farms_acres=320000.0,
-            total_cropland_acres=250000.0,
-            farm_count=1100,
-            average_farm_size_acres=263.0,
+        lambda county=None, state_fips=None, county_fips=None, county_name=None, **kwargs: (
+            CountyAgProfile(
+                status=IntegrationStatus.SUCCESS,
+                state_fips=county.state_fips if county else (state_fips or "19"),
+                county_fips=county.county_fips if county else (county_fips or "169"),
+                county_name=county.county_name if county else (county_name or "Story"),
+                census_year=2022,
+                provenance=Provenance(
+                    source_name="USDA NASS QuickStats",
+                    source_reference="https://quickstats.nass.usda.gov/api/api_GET/",
+                    timestamp_utc=datetime.now(UTC),
+                    method_version="1.0.0",
+                    configuration_version="1.0.0",
+                ),
+                land_in_farms_acres=320000.0,
+                total_cropland_acres=250000.0,
+                farm_count=1100,
+                average_farm_size_acres=263.0,
+            )
         )
     )
 

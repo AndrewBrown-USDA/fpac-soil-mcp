@@ -31,6 +31,48 @@ class CountyIdentifier(BaseModel):
     state_name: str | None = Field(default=None, description="Optional state name")
     state_alpha: str | None = Field(default=None, description="Optional state abbreviation")
 
+    @classmethod
+    def from_fips(
+        cls,
+        full_fips: str,
+        county_name: str,
+        state_name: str | None = None,
+        state_alpha: str | None = None,
+    ) -> "CountyIdentifier":
+        """Construct an identifier from a five-digit combined FIPS code."""
+        if not isinstance(full_fips, str) or len(full_fips) != 5 or not full_fips.isdigit():
+            raise ValueError("full_fips must be a five-digit numeric FIPS code.")
+        return cls(
+            state_fips=full_fips[:2],
+            county_fips=full_fips[2:],
+            county_name=county_name,
+            state_name=state_name,
+            state_alpha=state_alpha,
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CountyIdentifier":
+        """Construct an identifier from split or combined FIPS mapping data."""
+        if not isinstance(data, dict):
+            raise TypeError("data must be a dictionary.")
+
+        values = dict(data)
+        full_fips = values.pop("full_fips", values.pop("fips", None))
+        if full_fips is not None:
+            return cls.from_fips(
+                full_fips=full_fips,
+                county_name=values.pop("county_name"),
+                state_name=values.pop("state_name", None),
+                state_alpha=values.pop("state_alpha", None),
+            )
+        return cls(
+            state_fips=values.pop("state_fips"),
+            county_fips=values.pop("county_fips"),
+            county_name=values.pop("county_name"),
+            state_name=values.pop("state_name", None),
+            state_alpha=values.pop("state_alpha", None),
+        )
+
     @field_validator("state_fips")
     @classmethod
     def _validate_state_fips(cls, value: str) -> str:
