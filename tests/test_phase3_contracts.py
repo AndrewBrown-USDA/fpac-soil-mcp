@@ -7,9 +7,11 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import httpx
+import pytest
 from fastmcp import FastMCP
 
 from fpac_soil_mcp.authority import Provenance
+from fpac_soil_mcp.config import settings
 from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer
 from fpac_soil_mcp.corridor_scoring import (
     evaluate_corridor_lesa,
@@ -379,8 +381,10 @@ def test_statutory_7_cfr_658_5_c_rules_enforcement():
     assert lesa_res.threshold_exceeded == (lesa_res.total_lesa_score >= 160.0)
 
 
-def test_nass_graceful_fallback_contract():
+def test_nass_graceful_fallback_contract(monkeypatch: pytest.MonkeyPatch):
     """Verify NASS client graceful degradation when disabled or unavailable."""
+    monkeypatch.setattr(settings, "nass_enabled", True)
+
     # 1. When API key is empty / not configured
     client_unconfigured = NassClient(api_key="")
     profile_unconfigured = client_unconfigured.get_county_ag_profile(
