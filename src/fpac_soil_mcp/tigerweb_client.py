@@ -24,6 +24,11 @@ from fpac_soil_mcp.geometry import (
     compute_geometry_hash,
     parse_geojson_geometry,
 )
+from fpac_soil_mcp.http_client import (
+    HttpRequestError,
+    HttpStatusError,
+    execute_http_request_with_retry,
+)
 from fpac_soil_mcp.integration_models import (
     CountyPartitionGeometry,
     IntegrationStatus,
@@ -262,13 +267,9 @@ class TigerwebClient:
                 f"{self.base_url}/query" if not self.base_url.endswith("/query") else self.base_url
             )
 
-            if self._http_client is not None:
-                resp = self._http_client.post(query_url, data=params, timeout=self.timeout)
-            else:
-                with httpx.Client(timeout=self.timeout) as client:
-                    resp = client.post(query_url, data=params)
-
-            resp.raise_for_status()
+            resp = execute_http_request_with_retry(
+                "POST", query_url, data=params, timeout=self.timeout, client=self._http_client
+            )
             data = resp.json()
 
             if "error" in data:
@@ -299,7 +300,13 @@ class TigerwebClient:
                 urban_area_names=urban_names,
             )
 
-        except (httpx.HTTPError, GeometryValidationError, ValueError, KeyError) as exc:
+        except (
+            HttpRequestError,
+            HttpStatusError,
+            GeometryValidationError,
+            ValueError,
+            KeyError,
+        ) as exc:
             logger.error("TIGERweb screening failed: %s", exc)
             fallback_hash = (
                 compute_geometry_hash(geom)
@@ -361,13 +368,9 @@ class TigerwebClient:
                 else self.county_url
             )
 
-            if self._http_client is not None:
-                resp = self._http_client.post(query_url, data=params, timeout=self.timeout)
-            else:
-                with httpx.Client(timeout=self.timeout) as client:
-                    resp = client.post(query_url, data=params)
-
-            resp.raise_for_status()
+            resp = execute_http_request_with_retry(
+                "POST", query_url, data=params, timeout=self.timeout, client=self._http_client
+            )
             data = resp.json()
 
             if "error" in data:
@@ -412,7 +415,7 @@ class TigerwebClient:
 
             return counties
 
-        except (httpx.HTTPError, ValueError, KeyError) as exc:
+        except (HttpRequestError, HttpStatusError, ValueError, KeyError) as exc:
             logger.error("Failed to query intersecting counties from TIGERweb: %s", exc)
             return []
 
