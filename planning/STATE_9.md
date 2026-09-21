@@ -16,7 +16,7 @@
 | `9.1.1` | 1 | ArcGIS Rings Geometry Reconstruction & Tests | complete | Subagent 9.1.1 | 2026-09-21T08:14:41 | 2026-09-21T08:19:00 |
 | `9.2.1` | 2 | NASS Client Config & Year Propagation | complete | Subagent 9.2.1 | 2026-09-21T08:16:21 | 2026-09-21T08:22:00 |
 | `9.2.2` | 2 | Corridor Scoring, LE Basis, Hashing & WKT Support | complete | Subagent 9.2.2 | 2026-09-21T08:24:00 | 2026-09-21T08:28:00 |
-| `9.3.1` | 3 | Contract Verification & Tool Inventory Test Update | pending | - | - | - |
+| `9.3.1` | 3 | Contract Verification & Tool Inventory Test Update | complete | Subagent 9.3.1 | 2026-09-21T09:07:00 | 2026-09-21T09:12:00 |
 
 ## Wave Gates
 
@@ -61,4 +61,15 @@
   - In `tests/test_corridor_analysis.py`:
     - Added test cases covering centerline hash buffer invariance, indirect WKT geometry parsing, 0.0 LE rating preservation, partial coverage status, and updated mock signatures for `census_year`.
 - **Verification**: `uv run pytest tests/test_corridor_analysis.py -q` passed (9 passed). Full suite `uv run pytest -m "not live_sda" -q` (166 passed) + `uv run ruff check .` + `uv run ruff format --check .` clean.
+
+### 9.3.1
+- **Status**: complete
+- **Changes**:
+  - In `tests/test_phase2_contracts.py:test_mcp_tool_registration_surface`:
+    - Updated expected tool list to include `analyze_corridor_fppa` and asserted exact tool registration count of 9 tools matching the full MCP surface.
+  - In `tests/test_phase3_contracts.py`:
+    - Added assertions for WKT indirect geometry parsing, centerline invariant hashing, and partial-coverage status in end-to-end corridor screening contract test (`test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage`).
+    - Verified proper geometry hash formatting and segment metadata.
+- **Verification**: `uv run pytest -m "not live_sda" -q` (167 passed, 10 deselected) + `uv run ruff check .` + `uv run ruff format --check .` clean.
+
 
