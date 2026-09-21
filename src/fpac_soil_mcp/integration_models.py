@@ -20,6 +20,41 @@ class IntegrationStatus(str, Enum):
     ERROR = "error"
 
 
+class CountyIdentifier(BaseModel):
+    """Validated identifier and display metadata for a county."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    state_fips: str = Field(description="2-digit state FIPS code")
+    county_fips: str = Field(description="3-digit county FIPS code")
+    county_name: str = Field(description="County or parish name")
+    state_name: str | None = Field(default=None, description="Optional state name")
+    state_alpha: str | None = Field(default=None, description="Optional state abbreviation")
+
+    @field_validator("state_fips")
+    @classmethod
+    def _validate_state_fips(cls, value: str) -> str:
+        if len(value) != 2 or not value.isdigit():
+            raise ValueError("state_fips must be a two-digit numeric FIPS code.")
+        return value
+
+    @field_validator("county_fips")
+    @classmethod
+    def _validate_county_fips(cls, value: str) -> str:
+        if len(value) != 3 or not value.isdigit():
+            raise ValueError("county_fips must be a three-digit numeric FIPS code.")
+        return value
+
+    @field_validator("county_name")
+    @classmethod
+    def _validate_county_name(cls, value: str) -> str:
+        return _validate_non_empty_str(value, "county_name")
+
+    @property
+    def full_fips(self) -> str:
+        return f"{self.state_fips}{self.county_fips}"
+
+
 class UrbanExemptionRecord(BaseModel):
     """Screening result against Census TIGERweb Urban Areas (7 CFR 658.2(a)).
 
