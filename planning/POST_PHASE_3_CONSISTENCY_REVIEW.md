@@ -111,8 +111,8 @@ All public MCP tools, resources, prompts, and routes are synchronized across cod
 - **Status:** Resolved. The codebase (`src/fpac_soil_mcp/config.py:34`, `src/fpac_soil_mcp/tigerweb_client.py:27`) and `planning/MASTER_PLAN.md` architecture diagram correctly use `Layer 0`.
 
 ### 3. Pytest Marker Granularity for Live TIGERweb Tests
-- **Finding:** In `tests/test_live_tigerweb.py:13`, tests are marked with `pytestmark = pytest.mark.live_sda`. While effective for excluding all network-dependent tests during default test runs (`pytest -m "not live_sda"`), it bundles Census TIGERweb tests under the SDA label.
-- **Status:** Documented in `planning/MASTER_PLAN.md` Phase 7 scope. In planned test refactorings, introduce a unified `live_network` marker or distinct `live_tigerweb` marker.
+- **Finding:** In `tests/test_live_tigerweb.py:13`, tests were formerly marked with `pytestmark = pytest.mark.live_sda`. While effective for excluding all network-dependent tests during default test runs (`pytest -m "not live_sda"`), it bundled Census TIGERweb tests under the SDA label.
+- **Status:** Resolved. Pytest markers have been generalized to `live_network` across `pyproject.toml`, test suites, and documentation.
 
 ---
 

@@ -34,5 +34,5 @@ target-version = "py311"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 markers = [
-    "live_sda: mark test as requiring live SDA network connection (opt-in)",
+    "live_network: marks tests requiring external network access (USDA SDA, Census TIGERweb, etc.) (deselect with -m 'not live_network')",
 ]

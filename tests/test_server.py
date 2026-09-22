@@ -10,7 +10,6 @@ from starlette.requests import Request
 
 from fpac_soil_mcp.app import create_mcp_server
 from fpac_soil_mcp.constants import CITATIONS, REGULATORY_NOTICE
-from fpac_soil_mcp.prompts.fppa_prompts import register_fppa_prompts
 from fpac_soil_mcp.routes import register_routes
 from fpac_soil_mcp.sda_client import SDAClient
 from fpac_soil_mcp.tools.soil_tools import get_farmland_classification_by_point
@@ -36,39 +35,236 @@ class TestServerInitialization:
         assert "check_urban_area_exemption" in tool_names
         assert "get_soil_interpretations" in tool_names
 
+    @pytest.mark.asyncio
+    async def test_server_initialization_includes_all_tools_and_prompts(self) -> None:
+        server = create_mcp_server()
+        prompts = await server.list_prompts()
+        prompt_names = [p.name for p in prompts]
+        assert "fppa_screening_assistant" in prompt_names
+        assert "fppa_corridor_screening_assistant" in prompt_names
+        assert "fppa_urban_exemption_assistant" in prompt_names
+        assert "fppa_site_assessment_assistant" in prompt_names
+
 
 class TestResourcesAndPrompts:
     """Test resources and prompts registration and outputs."""
 
-    def test_fppa_resources(self) -> None:
-        # Test directly the resource functions
+    @pytest.mark.asyncio
+    async def test_fppa_resources(self) -> None:
         server = create_mcp_server()
-        # Verify resources can be retrieved or registered without error
-        assert server is not None
+        resources = await server.list_resources()
+        resource_uris = {str(r.uri) for r in resources}
 
-    def test_fppa_screening_assistant_prompt(self) -> None:
-        mock_mcp = MagicMock()
-        registered_prompts = {}
+        expected_uris = {
+            "fppa://regulatory-notice",
+            "fppa://screening-guidance",
+            "fppa://farmland-classes",
+        }
+        assert expected_uris.issubset(resource_uris)
 
-        def mock_prompt_decorator(name):
-            def decorator(fn):
-                registered_prompts[name] = fn
-                return fn
+        # Validate regulatory notice resource schema and keys
+        reg_res = await server.read_resource("fppa://regulatory-notice")
+        reg_data = json.loads(reg_res.contents[0].content)
+        assert "regulatory_notice" in reg_data
+        assert "limitations" in reg_data
+        assert "citations" in reg_data
+        assert isinstance(reg_data["limitations"], list)
+        assert isinstance(reg_data["citations"], dict)
+        assert reg_data["regulatory_notice"] == REGULATORY_NOTICE
 
-            return decorator
+        # Validate screening guidance resource schema and keys
+        guidance_res = await server.read_resource("fppa://screening-guidance")
+        guidance_data = json.loads(guidance_res.contents[0].content)
+        assert "sda_screening_scope" in guidance_data
+        assert "lesa_determination_scope" in guidance_data
+        assert "regulatory_notice" in guidance_data
+        assert "limitations" in guidance_data
 
-        mock_mcp.prompt.side_effect = mock_prompt_decorator
-        register_fppa_prompts(mock_mcp)
+        # Validate farmland classes resource schema and keys
+        classes_res = await server.read_resource("fppa://farmland-classes")
+        classes_data = json.loads(classes_res.contents[0].content)
+        assert "classes" in classes_data
+        assert "authority" in classes_data
+        assert "All areas are prime farmland" in classes_data["classes"]
+        assert "Not prime farmland" in classes_data["classes"]
 
-        assert "fppa_screening_assistant" in registered_prompts
-        prompt_fn = registered_prompts["fppa_screening_assistant"]
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_snippets"),
+        [
+            (
+                {},
+                [
+                    "get_farmland_classification_by_point",
+                    "get_farmland_classification_by_mukey",
+                    "analyze_farmland_by_polygon",
+                    "analyze_corridor_fppa",
+                    "check_urban_area_exemption",
+                    "get_soil_interpretations",
+                    "get_soil_polygons_by_geometry",
+                    "list_farmland_classes",
+                    "explain_fppa_screening_scope",
+                    "7 CFR Part 657",
+                    "7 CFR Part 658",
+                    "Form AD-1006",
+                    "NRCS-CPA-106",
+                    "fppa://regulatory-notice",
+                    "fppa://screening-guidance",
+                    "fppa://farmland-classes",
+                ],
+            ),
+            (
+                {
+                    "project_name": "Bridge Expansion",
+                    "location": "39.7684, -86.1581",
+                    "geometry_type": "polygon",
+                },
+                [
+                    "Bridge Expansion",
+                    "39.7684, -86.1581",
+                    "polygon",
+                    "get_farmland_classification_by_point",
+                    "analyze_farmland_by_polygon",
+                    "7 CFR Part 657",
+                    "7 CFR Part 658",
+                    "fppa://regulatory-notice",
+                ],
+            ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_fppa_screening_assistant_prompt(
+        self, kwargs: dict[str, str], expected_snippets: list[str]
+    ) -> None:
+        server = create_mcp_server()
+        result = await server.render_prompt("fppa_screening_assistant", kwargs)
+        prompt_text = result.messages[0].content.text
+        for snippet in expected_snippets:
+            assert snippet in prompt_text
 
-        prompt_text = prompt_fn(project_name="Bridge Expansion", location="39.7684, -86.1581")
-        assert "Bridge Expansion" in prompt_text
-        assert "39.7684, -86.1581" in prompt_text
-        assert "get_farmland_classification_by_point" in prompt_text
-        assert "7 CFR Part 657" in prompt_text
-        assert "7 CFR Part 658" in prompt_text
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_snippets"),
+        [
+            (
+                {},
+                [
+                    "analyze_corridor_fppa",
+                    "7 CFR § 658.5(c)",
+                    "160 points",
+                    "Form NRCS-CPA-106",
+                    "fppa://regulatory-notice",
+                    "fppa://screening-guidance",
+                    "fppa://farmland-classes",
+                ],
+            ),
+            (
+                {
+                    "project_name": "Interstate Highway 69 Expansion",
+                    "corridor_length_miles": "14.5",
+                },
+                [
+                    "Interstate Highway 69 Expansion",
+                    "14.5",
+                    "analyze_corridor_fppa",
+                    "7 CFR § 658.5(c)",
+                    "160 points",
+                    "Form NRCS-CPA-106",
+                    "fppa://regulatory-notice",
+                ],
+            ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_fppa_corridor_screening_assistant_prompt(
+        self, kwargs: dict[str, str], expected_snippets: list[str]
+    ) -> None:
+        server = create_mcp_server()
+        result = await server.render_prompt("fppa_corridor_screening_assistant", kwargs)
+        prompt_text = result.messages[0].content.text
+        for snippet in expected_snippets:
+            assert snippet in prompt_text
+
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_snippets"),
+        [
+            (
+                {},
+                [
+                    "check_urban_area_exemption",
+                    "7 CFR § 658.2(a)",
+                    "fppa://regulatory-notice",
+                    "fppa://screening-guidance",
+                    "fppa://farmland-classes",
+                ],
+            ),
+            (
+                {
+                    "project_name": "Metro Transit Hub",
+                    "jurisdiction": "City of Indianapolis, Marion County",
+                },
+                [
+                    "Metro Transit Hub",
+                    "City of Indianapolis, Marion County",
+                    "check_urban_area_exemption",
+                    "7 CFR § 658.2(a)",
+                    "fppa://regulatory-notice",
+                ],
+            ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_fppa_urban_exemption_assistant_prompt(
+        self, kwargs: dict[str, str], expected_snippets: list[str]
+    ) -> None:
+        server = create_mcp_server()
+        result = await server.render_prompt("fppa_urban_exemption_assistant", kwargs)
+        prompt_text = result.messages[0].content.text
+        for snippet in expected_snippets:
+            assert snippet in prompt_text
+
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_snippets"),
+        [
+            (
+                {},
+                [
+                    "Form AD-1006",
+                    "NRCS-CPA-106",
+                    "160 points",
+                    "220 points",
+                    "7 CFR § 658.4",
+                    "7 CFR § 658.5",
+                    "fppa://regulatory-notice",
+                    "fppa://screening-guidance",
+                    "fppa://farmland-classes",
+                ],
+            ),
+            (
+                {
+                    "project_name": "Federal Research Facility",
+                    "evaluation_type": "site",
+                },
+                [
+                    "Federal Research Facility",
+                    "site",
+                    "Form AD-1006",
+                    "NRCS-CPA-106",
+                    "160 points",
+                    "220 points",
+                    "7 CFR § 658.4",
+                    "fppa://regulatory-notice",
+                ],
+            ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_fppa_site_assessment_assistant_prompt(
+        self, kwargs: dict[str, str], expected_snippets: list[str]
+    ) -> None:
+        server = create_mcp_server()
+        result = await server.render_prompt("fppa_site_assessment_assistant", kwargs)
+        prompt_text = result.messages[0].content.text
+        for snippet in expected_snippets:
+            assert snippet in prompt_text
 
 
 class TestCustomRoutes:
@@ -126,11 +322,11 @@ class TestCustomRoutes:
         assert body["citations"] == CITATIONS
 
 
-class TestLiveSDAIntegration:
+class TestLiveNetworkIntegration:
     """Opt-in live tests verifying network communication against USDA SDA Tabular REST service."""
 
-    @pytest.mark.live_sda
-    def test_live_sda_point_lookup_prime_farmland(self) -> None:
+    @pytest.mark.live_network
+    def test_live_network_sda_point_lookup_prime_farmland(self) -> None:
         """Query real USDA SDA service for Indianapolis, IN prime farmland coordinate."""
         client = SDAClient()
         results = client.get_by_point(39.7684, -86.1581)
@@ -144,8 +340,8 @@ class TestLiveSDAIntegration:
         assert "farmlndcl" in mapunit
         assert "areasymbol" in mapunit
 
-    @pytest.mark.live_sda
-    def test_live_sda_mukey_lookup(self) -> None:
+    @pytest.mark.live_network
+    def test_live_network_sda_mukey_lookup(self) -> None:
         """Query real USDA SDA service for known SSURGO map unit key."""
         client = SDAClient()
         # Query known SSURGO map unit key (e.g. 3104713 from Indianapolis survey area IN097)
@@ -155,8 +351,8 @@ class TestLiveSDAIntegration:
         assert len(results) > 0
         assert results[0]["mukey"] == "3104713"
 
-    @pytest.mark.live_sda
-    def test_live_tool_execution(self) -> None:
+    @pytest.mark.live_network
+    def test_live_network_tool_execution(self) -> None:
         """Execute get_farmland_classification_by_point tool against live SDA."""
         response = get_farmland_classification_by_point(latitude=39.7684, longitude=-86.1581)
         assert response.coverage_status in ("covered", "unmapped")

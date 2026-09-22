@@ -13,6 +13,8 @@ def main() -> None:
         server = create_mcp_server()
         if settings.mcp_transport.lower() == "sse":
             server.run(transport="sse", host=settings.mcp_host, port=settings.mcp_port)
+        elif settings.mcp_transport.lower() in ("http", "streamable-http"):
+            server.run(transport="http", host=settings.mcp_host, port=settings.mcp_port)
         else:
             server.run(transport="stdio")
     except ImportError:

@@ -52,7 +52,7 @@ flowchart TD
         Router["Transport Layer\nstdio / SSE / HTTP"]
         Tools["9 Tools Registry"]
         Resources["3 Resources Registry"]
-        Prompts["1 Prompt Registry"]
+        Prompts["4 Prompts Registry"]
         Routes["2 HTTP Routes: /health, /meta"]
         ClientModule["SDAClient / httpx"]
         TIGERClient["TIGERweb Client / httpx"]
@@ -183,6 +183,8 @@ uv run fpac-soil-mcp
 
 ### Docker Container
 
+The repository includes a production multi-stage `Dockerfile` with dedicated build and slim runtime stages (`ghcr.io/astral-sh/uv:python3.11-bookworm-slim`), non-root `appuser` execution, and a built-in container health check.
+
 ```powershell
 # Build container image
 docker build -t fpac-soil-mcp .
@@ -263,9 +265,12 @@ The server exposes **9 core MCP tools** for spatial soil query, farmland classif
 - `fppa://screening-guidance`: Guidance distinguishing preliminary soil inventory queries from full LESA scoring and Form AD-1006 / NRCS-CPA-106 workflows.
 - `fppa://farmland-classes`: Reference listing of SSURGO farmland classification categories and statutory criteria.
 
-### Prompts (1)
+### Prompts (4)
 
-- `fppa_screening_assistant`: Guided prompt template ensuring LLMs maintain regulatory boundaries, avoid score hallucinations, preserve SDA categories, and direct project sponsors to local USDA NRCS offices for formal determinations.
+- `fppa_screening_assistant`: Guided prompt template ensuring LLMs maintain regulatory boundaries, avoid score hallucinations, preserve SDA categories, and direct project sponsors to local USDA NRCS offices for formal determinations. Supports `project_name`, `location`, and `geometry_type` arguments.
+- `fppa_corridor_screening_assistant`: Guided prompt template for linear infrastructure corridor screening (highways, pipelines, utility corridors). Guides multi-county partitioning, application of statutory 7 CFR § 658.5(c) rules (Criteria 5 & 6 zeroed, Criteria 8 & 11 increased to 25 pts), and Form NRCS-CPA-106 evaluation. Supports `project_name` and `corridor_length_miles` arguments.
+- `fppa_urban_exemption_assistant`: Guided prompt template for evaluating statutory 7 CFR § 658.2(a) urban area exemptions using Census 2020 Urban Areas Layer 0 screening and density documentation. Supports `project_name` and `jurisdiction` arguments.
+- `fppa_site_assessment_assistant`: Guided prompt template for Part VI Site Assessment (7 CFR § 658.5) scoring, 160/220 point statutory decision thresholds, Land Evaluation (LE) score handling, and Form AD-1006 vs NRCS-CPA-106 selection. Supports `project_name` and `evaluation_type` arguments.
 
 ### HTTP Routes (2)
 
@@ -302,13 +307,13 @@ Configure settings via environment variables or a `.env` file (see [`.env.exampl
 
 ```powershell
 # Run unit and mocked tests (offline default)
-uv run pytest -m "not live_sda"
+uv run pytest -m "not live_network"
 
 # Run all unit tests
 uv run pytest
 
-# Run live SDA integration tests (requires network access)
-uv run pytest -m live_sda
+# Run live network integration tests (requires network access)
+uv run pytest -m live_network
 
 # Check linting
 uv run ruff check .

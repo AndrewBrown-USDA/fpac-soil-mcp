@@ -30,3 +30,46 @@ resources:
   - uri: fppa://screening-guidance
     name: FPPA Screening Guidance
     description: Technical guidance on 7 CFR Parts 657/658 and Form AD-1006 / NRCS-CPA-106 workflows.
+  - uri: fppa://farmland-classes
+    name: Farmland Classes Reference
+    description: Reference listing of SSURGO farmland classification categories and statutory criteria.
+prompts:
+  - name: fppa_screening_assistant
+    description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 9 tools, and regulatory disclaimers.
+    arguments:
+      - name: project_name
+        description: Optional name or description of the proposed project.
+        required: false
+      - name: location
+        description: Optional geographic location, coordinates, or geometry of the project.
+        required: false
+      - name: geometry_type
+        description: Optional geometry type (e.g. 'point', 'polygon', 'mukey', 'corridor').
+        required: false
+  - name: fppa_corridor_screening_assistant
+    description: Guides AI assistants through linear infrastructure corridor screening, multi-county partitioning, and 7 CFR § 658.5(c) rules for Form NRCS-CPA-106.
+    arguments:
+      - name: project_name
+        description: Optional name or description of the linear infrastructure project.
+        required: false
+      - name: corridor_length_miles
+        description: Optional length of the corridor in miles.
+        required: false
+  - name: fppa_urban_exemption_assistant
+    description: Guides AI assistants through statutory 7 CFR § 658.2(a) urban area exemption evaluations using Census 2020 Urban Areas Layer 0.
+    arguments:
+      - name: project_name
+        description: Optional name or description of the proposed project.
+        required: false
+      - name: jurisdiction
+        description: Optional municipality, county, or state jurisdiction.
+        required: false
+  - name: fppa_site_assessment_assistant
+    description: Guides AI assistants through Part VI Site Assessment (7 CFR § 658.5) criteria, 160/220 scoring thresholds, and Form AD-1006 vs NRCS-CPA-106 selection.
+    arguments:
+      - name: project_name
+        description: Optional name or description of the proposed project.
+        required: false
+      - name: evaluation_type
+        description: Evaluation type ('site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106).
+        required: false

@@ -1,7 +1,7 @@
 """Live integration tests for Census TIGERweb REST API (Urban Areas Layer 0).
 
 Tests real network queries against Census TIGERweb MapServer endpoint.
-Opt-in via: pytest -m live_sda
+Opt-in via: pytest -m live_network
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import pytest
 from fpac_soil_mcp.integration_models import IntegrationStatus
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
-pytestmark = pytest.mark.live_sda
+pytestmark = pytest.mark.live_network
 
 
 class TestLiveTigerweb:
