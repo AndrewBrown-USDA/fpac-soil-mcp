@@ -9,7 +9,6 @@ and robust retry logic.
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any
 
 import httpx
@@ -18,6 +17,11 @@ from fpac_soil_mcp.config import settings
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     validate_and_sanitize_polygon_wkt,
+)
+from fpac_soil_mcp.http_client import (
+    HttpRequestError,
+    HttpStatusError,
+    execute_http_request_with_retry,
 )
 
 logger = logging.getLogger(__name__)
@@ -193,6 +197,10 @@ class SDAQueryError(SDAClientError):
     """Raised when SDA returns an API-level error or invalid response."""
 
 
+class SDATimeoutError(SDAClientError):
+    """Raised when an SDA request times out."""
+
+
 class SDAClient:
     """Client for USDA NRCS Soil Data Access (SDA) REST service."""
 
@@ -293,58 +301,29 @@ class SDAClient:
             SDAQueryError: If query execution or response parsing fails after retries.
         """
         payload = {"query": query, "format": "JSON+COLUMNNAME"}
-        last_exception: Exception | None = None
-
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                if self._http_client is not None:
-                    response = self._http_client.post(
-                        self.base_url,
-                        json=payload,
-                        timeout=self.timeout,
-                    )
-                else:
-                    with httpx.Client(timeout=self.timeout) as client:
-                        response = client.post(
-                            self.base_url,
-                            json=payload,
-                        )
-
-                response.raise_for_status()
-                data = response.json()
-                return self._parse_table_response(data)
-
-            except httpx.HTTPStatusError as exc:
-                last_exception = exc
-                logger.warning(
-                    "SDA HTTP status error on attempt %d/%d: %s",
-                    attempt,
-                    self.max_retries,
-                    exc,
-                )
-                if exc.response.status_code < 500:
-                    # Client errors (4xx) are not retried
-                    raise SDAQueryError(
-                        f"SDA client error ({exc.response.status_code}): {exc.response.text}"
-                    ) from exc
-            except (httpx.RequestError, httpx.TimeoutException) as exc:
-                last_exception = exc
-                logger.warning(
-                    "SDA request error on attempt %d/%d: %s",
-                    attempt,
-                    self.max_retries,
-                    exc,
-                )
-            except SDAQueryError:
-                raise
-
-            if attempt < self.max_retries:
-                backoff_delay = 0.5 * (2 ** (attempt - 1))
-                time.sleep(backoff_delay)
-
-        raise SDAQueryError(
-            f"Failed to query SDA after {self.max_retries} attempts: {last_exception}"
-        ) from last_exception
+        try:
+            response = execute_http_request_with_retry(
+                "POST",
+                self.base_url,
+                json=payload,
+                timeout=self.timeout,
+                max_retries=max(0, self.max_retries - 1),
+                client=self._http_client,
+            )
+            return self._parse_table_response(response.json())
+        except HttpStatusError as exc:
+            text = exc.response.text
+            if exc.status_code < 500:
+                raise SDAQueryError(f"SDA client error ({exc.status_code}): {text}") from exc
+            raise SDAQueryError(
+                f"Failed to query SDA after {self.max_retries} attempts: {exc}"
+            ) from exc
+        except HttpRequestError as exc:
+            if isinstance(exc.__cause__, httpx.TimeoutException) or "timed out" in str(exc).lower():
+                raise SDATimeoutError(f"SDA request timed out: {exc}") from exc
+            raise SDAQueryError(
+                f"Failed to query SDA after {self.max_retries} attempts: {exc}"
+            ) from exc
 
     @staticmethod
     def _parse_table_response(data: Any) -> list[dict[str, Any]]:

@@ -68,6 +68,9 @@ Refactor domain abstractions, data clumps, feature envy, and HTTP client duplica
   ├── 10.2.1 Refactor SDAClient, TigerwebClient, and NassClient to Shared HTTP & CountyIdentifier (sda_client.py, tigerweb_client.py, nass_client.py)
   └── 10.2.2 Refactor Corridor Analysis & Scoring Encapsulation (corridor_analysis.py, corridor_scoring.py)
          └── 10.3.1 Full Test Suite Verification & Code Cleanliness (tests/)
+               ├── 10.4.1 CountyIdentifier Helper Constructors & Clean Calling Conventions (integration_models.py, corridor_analysis.py)
+               └── 10.4.2 Clean Up calculate_composite_le Type Signatures (corridor_scoring.py)
+                      └── 10.5.1 Final Regression & Standards Verification (tests/)
 ```
 
 ---
@@ -140,3 +143,53 @@ Refactor domain abstractions, data clumps, feature envy, and HTTP client duplica
   - No changes to MCP tool schemas or tool names.
 - **Acceptance command**:
   `uv run pytest -m "not live_sda" && uv run ruff check . && uv run ruff format --check .`
+
+---
+
+### Task 10.4.1: CountyIdentifier Helper Constructors & Clean Calling Conventions
+- **ID**: `10.4.1`
+- **Files in scope**: `src/fpac_soil_mcp/integration_models.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `tests/test_integration_models.py`, `tests/test_corridor_analysis.py`
+- **Depends on**: `10.3.1` (Wave 4)
+- **Spec prose**:
+  1. In `src/fpac_soil_mcp/integration_models.py`, implement convenience constructor classmethods on `CountyIdentifier`:
+     - `from_fips(full_fips: str, county_name: str, state_name: str | None = None, state_alpha: str | None = None) -> CountyIdentifier`: parses 5-digit combined FIPS codes.
+     - `from_dict(data: dict[str, Any]) -> CountyIdentifier`: parses dictionaries containing either split or combined FIPS keys.
+  2. In `src/fpac_soil_mcp/corridor_analysis.py`, clean up call sites passing `county` to `NassClient.get_county_ag_profile` so redundant individual keyword arguments (`state_fips`, `county_fips`, `county_name`) are omitted when passing `county=county`.
+  3. Update unit tests in `tests/test_integration_models.py` to cover helper constructors and edge cases.
+- **Constraints**:
+  - Preserve all existing Pydantic validation rules and immutability.
+- **Acceptance command**:
+  `uv run pytest tests/test_integration_models.py tests/test_corridor_analysis.py`
+
+---
+
+### Task 10.4.2: Clean Up calculate_composite_le Type Signatures
+- **ID**: `10.4.2`
+- **Files in scope**: `src/fpac_soil_mcp/corridor_scoring.py`, `tests/test_corridor_scoring.py`
+- **Depends on**: `10.3.1` (Wave 4)
+- **Spec prose**:
+  1. In `src/fpac_soil_mcp/corridor_scoring.py`, provide clean typing with `@overload` for `calculate_composite_le`:
+     - Overload for `(weighted_scores: Iterable[tuple[float, float]]) -> float | None`
+     - Overload for `(weighted_scores: float, total_weight: float) -> float | None`
+     - Implementation eliminating `# type: ignore` suppressions.
+  2. Verify all unit tests in `tests/test_corridor_scoring.py` pass cleanly.
+- **Constraints**:
+  - Preserve exact arithmetic, rounding, and None-return behavior for zero weights.
+- **Acceptance command**:
+  `uv run pytest tests/test_corridor_scoring.py`
+
+---
+
+### Task 10.5.1: Final Regression & Standards Verification
+- **ID**: `10.5.1`
+- **Files in scope**: `tests/test_phase3_contracts.py`, `tests/test_tools.py`, `tests/test_server.py`
+- **Depends on**: `10.4.1`, `10.4.2` (Wave 5)
+- **Spec prose**:
+  1. Run full offline test suite across all Phase 1-3 features.
+  2. Verify all tool registrations and end-to-end contracts.
+  3. Verify Ruff lint and formatting cleanliness across the entire codebase.
+- **Constraints**:
+  - No changes to MCP tool schemas or tool names.
+- **Acceptance command**:
+  `uv run pytest -m "not live_sda" && uv run ruff check . && uv run ruff format --check .`
+

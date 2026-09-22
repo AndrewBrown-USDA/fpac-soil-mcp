@@ -19,7 +19,8 @@ Key statutory rules under 7 CFR § 658.5(c):
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from collections.abc import Iterable
+from typing import Any, overload
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -50,10 +51,92 @@ __all__ = [
     "LESAEvaluationResult",
     "StandardCriterionEvaluator",
     "ZeroedCriterionEvaluator",
+    "calculate_composite_le",
     "calculate_criterion_7_score",
     "evaluate_corridor_lesa",
     "evaluate_corridor_site_assessment",
 ]
+
+
+@overload
+def calculate_composite_le(
+    weighted_scores: Iterable[tuple[float, float]],
+) -> float | None: ...
+
+
+@overload
+def calculate_composite_le(weighted_scores: float, total_weight: float) -> float | None: ...
+
+
+def calculate_composite_le(
+    weighted_scores: Iterable[tuple[float, float]] | float,
+    total_weight: float | None = None,
+) -> float | None:
+    """Calculate a rounded area-weighted composite Land Evaluation score.
+
+    The two-argument form preserves the useful low-level aggregation contract
+    (weighted sum, total weight); the iterable form keeps accumulation details
+    encapsulated for callers processing multiple map units.
+    """
+    if total_weight is None:
+        if not isinstance(weighted_scores, Iterable):
+            raise TypeError("The iterable calling form requires an iterable of score/weight pairs")
+        weighted_sum = 0.0
+        weight = 0.0
+        for score, acres in weighted_scores:
+            weighted_sum += float(score) * float(acres)
+            weight += float(acres)
+    else:
+        if isinstance(weighted_scores, Iterable):
+            raise TypeError("The scalar calling form requires a weighted sum and total weight")
+        weighted_sum = float(weighted_scores)
+        weight = float(total_weight)
+    return round(weighted_sum / weight, 1) if weight > 0 else None
+
+
+class _SiteAssessmentAggregator:
+    """Encapsulate criterion evaluation and statutory total reconciliation."""
+
+    def __init__(
+        self,
+        inputs: dict[int, dict[str, Any]],
+        project_farm_acres: float | None,
+        county_average_farm_acres: float | None,
+    ) -> None:
+        self.inputs = inputs
+        self.project_farm_acres = project_farm_acres
+        self.county_average_farm_acres = county_average_farm_acres
+
+    def evaluate(self) -> CorridorSiteAssessmentSummary:
+        criteria: list[CriterionEvaluation] = []
+        total = 0.0
+        all_justified = True
+        for crit_num in range(1, 13):
+            evaluator = CRITERION_EVALUATORS.get(crit_num) or StandardCriterionEvaluator(crit_num)
+            crit_input = self.inputs.get(crit_num)
+            item = evaluator.evaluate(
+                crit_input=crit_input,
+                project_farm_acres=self.project_farm_acres,
+                county_average_farm_acres=self.county_average_farm_acres,
+            )
+            if (
+                item.awarded_points > 0
+                and not item.is_automated
+                and (
+                    not crit_input
+                    or not crit_input.get("justification")
+                    or not crit_input.get("justification").strip()
+                )
+            ):
+                all_justified = False
+            criteria.append(item)
+            total += item.awarded_points
+        return CorridorSiteAssessmentSummary(
+            criteria=criteria,
+            total_sa_points=min(160.0, round(total, 2)),
+            max_sa_points=MAX_SITE_ASSESSMENT_SCORE,
+            all_criteria_justified=all_justified,
+        )
 
 
 class CriterionEvaluation(BaseModel):
@@ -336,42 +419,9 @@ def evaluate_corridor_site_assessment(
     Returns:
         CorridorSiteAssessmentSummary object.
     """
-    inputs = criteria_inputs or {}
-    criteria_list: list[CriterionEvaluation] = []
-    total_sa = 0.0
-    all_justified = True
-
-    for crit_num in range(1, 13):
-        evaluator = CRITERION_EVALUATORS.get(crit_num) or StandardCriterionEvaluator(crit_num)
-        crit_input = inputs.get(crit_num)
-        eval_item = evaluator.evaluate(
-            crit_input=crit_input,
-            project_farm_acres=project_farm_acres,
-            county_average_farm_acres=county_average_farm_acres,
-        )
-
-        if (
-            eval_item.awarded_points > 0
-            and not eval_item.is_automated
-            and (
-                not crit_input
-                or not crit_input.get("justification")
-                or not crit_input.get("justification").strip()
-            )
-        ):
-            all_justified = False
-
-        criteria_list.append(eval_item)
-        total_sa += eval_item.awarded_points
-
-    total_sa = min(160.0, round(total_sa, 2))
-
-    return CorridorSiteAssessmentSummary(
-        criteria=criteria_list,
-        total_sa_points=total_sa,
-        max_sa_points=MAX_SITE_ASSESSMENT_SCORE,
-        all_criteria_justified=all_justified,
-    )
+    return _SiteAssessmentAggregator(
+        criteria_inputs or {}, project_farm_acres, county_average_farm_acres
+    ).evaluate()
 
 
 def evaluate_corridor_lesa(

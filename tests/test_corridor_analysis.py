@@ -132,10 +132,8 @@ def test_corridor_analysis_two_counties():
 
     # Mock NASS Client
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -241,10 +239,8 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives():
     ]
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -330,10 +326,8 @@ def test_corridor_analysis_reconciliation_failure_warning(caplog):
     ]
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -381,10 +375,8 @@ def test_corridor_analysis_empty_counties_fallback():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -424,10 +416,8 @@ def test_corridor_centerline_hash_invariance_with_buffer():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -460,10 +450,8 @@ def test_corridor_wkt_indirect_geometry_support():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -514,10 +502,8 @@ def test_corridor_zero_le_score_preservation():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -564,10 +550,8 @@ def test_corridor_partially_covered_status():
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
 
     mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = (
-        lambda state_fips, county_fips, county_name, **kwargs: mock_nass_profile(
-            county_name, state_fips, county_fips
-        )
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
     )
 
     analyzer = CorridorAnalyzer(
@@ -587,3 +571,74 @@ def test_corridor_partially_covered_status():
     seg = res.county_segments[0]
     assert seg.coverage_status == "partially_covered"
     assert seg.farmland_summary.unmapped_acres > 0
+
+
+def test_corridor_analysis_with_county_partition_geometry_models():
+    """Verify analyze_corridor processes CountyPartitionGeometry Pydantic model objects."""
+    from shapely.geometry import box
+
+    from fpac_soil_mcp.integration_models import CountyPartitionGeometry
+
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = [
+        {
+            "mukey": "1001",
+            "musym": "101",
+            "muname": "Clarion loam",
+            "farmlndcl": "All areas are prime farmland",
+            "areasymbol": "IA169",
+            "area_ac": "10.0",
+        }
+    ]
+    mock_sda.get_interpretations.return_value = [
+        {"mukey": "1001", "numeric_rating": "0.85", "rating_class": "High"}
+    ]
+
+    mock_tiger = MagicMock(spec=TigerwebClient)
+    mock_tiger.get_intersecting_counties.return_value = [
+        {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
+    ]
+    # Return actual CountyPartitionGeometry model instance
+    poly = box(-93.80, 42.02, -93.60, 42.04)
+    from fpac_soil_mcp.geometry import calculate_acreage
+
+    acres = calculate_acreage(poly)
+
+    partition_models = [
+        CountyPartitionGeometry(
+            state_fips="19",
+            county_fips="169",
+            county_name="Story",
+            state_name="Iowa",
+            geometry=poly,
+            calculated_acres=acres,
+        )
+    ]
+    mock_tiger.partition_geometry_by_counties.return_value = partition_models
+    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+
+    mock_nass = MagicMock()
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
+    )
+
+    analyzer = CorridorAnalyzer(
+        sda_client=mock_sda,
+        tigerweb_client=mock_tiger,
+        nass_client=mock_nass,
+    )
+
+    line_wkt = "LINESTRING(-93.80 42.03, -93.60 42.03)"
+    res = analyzer.analyze_corridor(
+        centerline_input=line_wkt,
+        buffer_distance=50.0,
+        buffer_units="feet",
+    )
+
+    assert len(res.county_segments) == 1
+    seg = res.county_segments[0]
+    assert seg.county_name == "Story"
+    assert seg.state_fips == "19"
+    assert seg.county_fips == "169"
+    assert seg.total_segment_acres == acres

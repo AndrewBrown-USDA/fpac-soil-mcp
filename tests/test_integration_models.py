@@ -8,10 +8,38 @@ from pydantic import ValidationError
 from fpac_soil_mcp.authority import Provenance
 from fpac_soil_mcp.integration_models import (
     CountyAgProfile,
+    CountyIdentifier,
     IntegrationStatus,
     SoilInterpretationRecord,
     UrbanExemptionRecord,
 )
+
+
+def test_county_identifier_helper_constructors():
+    county = CountyIdentifier.from_fips("19169", "Story", "Iowa", "IA")
+    assert county.state_fips == "19"
+    assert county.county_fips == "169"
+    assert county.full_fips == "19169"
+    assert county.state_name == "Iowa"
+    assert county.state_alpha == "IA"
+
+    assert (
+        CountyIdentifier.from_dict(
+            {"state_fips": "19", "county_fips": "169", "county_name": "Story"}
+        ).full_fips
+        == "19169"
+    )
+    assert (
+        CountyIdentifier.from_dict(
+            {"fips": "19015", "county_name": "Boone", "state_alpha": "IA"}
+        ).county_fips
+        == "015"
+    )
+
+    with pytest.raises(ValueError, match="five-digit"):
+        CountyIdentifier.from_fips("1916", "Story")
+    with pytest.raises((KeyError, ValidationError)):
+        CountyIdentifier.from_dict({"fips": "19169"})
 
 
 @pytest.fixture
