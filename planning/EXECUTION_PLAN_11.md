@@ -105,9 +105,7 @@ Remediate the 5 code review findings identified on PR #5 across `http_client.py`
      - Change `retryable = retry_status_codes or frozenset({429, 500, 502, 503, 504})` to:
        ```python
        retryable = (
-           retry_status_codes
-           if retry_status_codes is not None
-           else frozenset({429, 500, 502, 503, 504})
+           retry_status_codes if retry_status_codes is not None else frozenset({429, 500, 502, 503, 504})
        )
        ```
      - Preserve all other retry, exponential backoff, client ownership, and error normalization behaviors.

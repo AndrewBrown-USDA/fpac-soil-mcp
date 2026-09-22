@@ -11,10 +11,10 @@
 
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
-| `11.1.1` | 1 | HTTP Client Retry Disambiguation & Unit Tests | pending | unassigned | - | - |
-| `11.2.1` | 2 | NASS Client Positional Compatibility & 404 Mapping | pending | unassigned | - | - |
-| `11.2.2` | 2 | Corridor Analysis Partition Geometry & Segment Compatibility | pending | unassigned | - | - |
-| `11.3.1` | 3 | Full Suite Verification & Code Cleanliness | pending | unassigned | - | - |
+| `11.1.1` | 1 | HTTP Client Retry Disambiguation & Unit Tests | complete | Orchestrator | 2026-09-21T17:50:00 | 2026-09-21T17:53:00 |
+| `11.2.1` | 2 | NASS Client Positional Compatibility & 404 Mapping | complete | Orchestrator | 2026-09-21T17:54:00 | 2026-09-21T17:57:00 |
+| `11.2.2` | 2 | Corridor Analysis Partition Geometry & Segment Compatibility | complete | Orchestrator | 2026-09-21T17:54:00 | 2026-09-21T17:57:00 |
+| `11.3.1` | 3 | Full Suite Verification & Code Cleanliness | complete | Orchestrator | 2026-09-21T17:58:00 | 2026-09-21T18:00:00 |
 
 ## Wave Gates
 
@@ -30,4 +30,34 @@
 
 ## Task Reports
 
-<!-- Subagents append task outcome reports here upon completion -->
+### 11.1.1
+- **Status**: complete
+- **Changes**:
+  - Updated `src/fpac_soil_mcp/http_client.py` to check `if retry_status_codes is not None`, allowing `set()` or `frozenset()` to disable status retries.
+  - Created `tests/test_http_client.py` with 8 comprehensive unit tests for status retries, backoff, network errors, and client lifecycle.
+- **Verification**: `uv run pytest tests/test_http_client.py` (8 passed) + `ruff check` + `ruff format --check` clean.
+
+### 11.2.1
+- **Status**: complete
+- **Changes**:
+  - Updated `NassClient.get_county_ag_profile` signature and dispatch in `src/fpac_soil_mcp/nass_client.py` to support 3-argument positional calling and CountyIdentifier instances.
+  - Added 404 `HttpStatusError` interception to map missing NASS records cleanly to `IntegrationStatus.UNAVAILABLE`.
+  - Added unit tests in `tests/test_nass_client.py` for positional calling and 404 handling.
+- **Verification**: `uv run pytest tests/test_nass_client.py` (10 passed) + `ruff check` + `ruff format --check` clean.
+
+### 11.2.2
+- **Status**: complete
+- **Changes**:
+  - Updated `_county_identifier` and segment acreage extraction in `src/fpac_soil_mcp/corridor_analysis.py` to support both `CountyPartitionGeometry` models and dict mappings.
+  - Added unit test in `tests/test_corridor_analysis.py` verifying full corridor screening with `CountyPartitionGeometry` model instances.
+- **Verification**: `uv run pytest tests/test_corridor_analysis.py` (10 passed) + `ruff check` + `ruff format --check` clean.
+
+### 11.3.1
+- **Status**: complete
+- **Changes**:
+  - Ran full test suite across entire repository (184 passed, 10 deselected).
+  - Verified Ruff linter and code formatting cleanliness across all 167 files.
+- **Verification**: `uv run pytest -m "not live_sda"` + `uv run ruff check .` + `uv run ruff format --check .` (clean).
+
+
+
