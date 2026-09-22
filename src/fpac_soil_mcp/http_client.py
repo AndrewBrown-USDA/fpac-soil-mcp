@@ -45,7 +45,11 @@ def execute_http_request_with_retry(
     if backoff_factor < 0:
         raise ValueError("backoff_factor must be non-negative")
 
-    retryable = retry_status_codes or frozenset({429, 500, 502, 503, 504})
+    retryable = (
+        retry_status_codes
+        if retry_status_codes is not None
+        else frozenset({429, 500, 502, 503, 504})
+    )
     owns_client = client is None
     http_client = client or httpx.Client(timeout=timeout)
     try:
