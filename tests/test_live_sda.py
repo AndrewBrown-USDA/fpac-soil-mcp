@@ -1,7 +1,7 @@
 """Live integration tests for USDA NRCS Soil Data Access (SDA) API.
 
 Tests real network queries against SDA Tabular REST endpoint.
-Opt-in via: pytest -m live_sda
+Opt-in via: pytest -m live_network
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import pytest
 
 from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
 
-pytestmark = pytest.mark.live_sda
+pytestmark = pytest.mark.live_network
 
 
 class TestLiveSDA:
