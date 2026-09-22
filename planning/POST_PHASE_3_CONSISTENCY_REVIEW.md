@@ -31,29 +31,29 @@ The audit confirms that **Phases 0, 1, 2, and 3** of the 7-phase Master Plan are
 
 ```mermaid
 graph TD
-    subgraph Client Layer
-        A[MCP Client / LLM Agent]
+    subgraph Client_Layer ["Client Layer"]
+        A["MCP Client / LLM Agent"]
     end
 
-    subgraph FastMCP Application Interface
-        B[src/fpac_soil_mcp/app.py]
-        B --> T1[Soil & Corridor Tools]
-        B --> T2[FPPA Governance Tools]
-        B --> R[Resources & Prompts]
-        B --> H[HTTP Routes: /health, /meta]
+    subgraph FastMCP_Application_Interface ["FastMCP Application Interface"]
+        B["src/fpac_soil_mcp/app.py"]
+        B --> T1["Soil & Corridor Tools"]
+        B --> T2["FPPA Governance Tools"]
+        B --> R["Resources & Prompts"]
+        B --> H["HTTP Routes: /health, /meta"]
     end
 
-    subgraph Core Domain Engines
-        T1 --> G[Geospatial Engine: EPSG:6933 & WGS84 Geodesics]
-        T1 --> CA[Corridor & Partitioning Engine]
-        T1 --> CS[7 CFR 658.5c LESA Scoring Engine]
-        T2 --> GOV[Authority & Privacy Sanitizer]
+    subgraph Core_Domain_Engines ["Core Domain Engines"]
+        T1 --> G["Geospatial Engine: EPSG:6933 & WGS84 Geodesics"]
+        T1 --> CA["Corridor & Partitioning Engine"]
+        T1 --> CS["7 CFR 658.5c LESA Scoring Engine"]
+        T2 --> GOV["Authority & Privacy Sanitizer"]
     end
 
-    subgraph External Public Integration Clients
-        G --> SDA[USDA NRCS Soil Data Access]
-        CA --> TW[Census Bureau TIGERweb REST]
-        CS --> NASS[USDA NASS QuickStats API]
+    subgraph External_Public_Integration_Clients ["External Public Integration Clients"]
+        G --> SDA["USDA NRCS Soil Data Access"]
+        CA --> TW["Census Bureau TIGERweb REST"]
+        CS --> NASS["USDA NASS QuickStats API"]
     end
 
     A <--> B

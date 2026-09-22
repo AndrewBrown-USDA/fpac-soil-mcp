@@ -59,30 +59,30 @@ The server does not:
 
 ```mermaid
 flowchart LR
-    U[User / AI Agent] --> H[MCP Client]
-    H --> M[FastMCP Server]
+    U["User / AI Agent"] --> H["MCP Client"]
+    H --> M["FastMCP Server"]
 
-    subgraph Core[fpac-soil-mcp Core Engine]
-        M --> V[Input Validation & Geometry Engine]
-        V --> T{Tool Router}
-        T --> PT[Point / Map Unit Lookup]
-        T --> AOI[Polygon AOI Analysis]
-        T --> COR[Multi-County Corridor Engine]
-        T --> LESA[Preliminary LE-SA Workbench]
-        T --> ALT[Alternatives Comparison]
-        T --> DOC[Draft Form & Letter Generator]
-        T --> CPA2[CPA-2 Annual Reporting Engine]
+    subgraph Core ["fpac-soil-mcp Core Engine"]
+        M --> V["Input Validation & Geometry Engine"]
+        V --> T{"Tool Router"}
+        T --> PT["Point / Map Unit Lookup"]
+        T --> AOI["Polygon AOI Analysis"]
+        T --> COR["Multi-County Corridor Engine"]
+        T --> LESA["Preliminary LE-SA Workbench"]
+        T --> ALT["Alternatives Comparison"]
+        T --> DOC["Draft Form & Letter Generator"]
+        T --> CPA2["CPA-2 Annual Reporting Engine"]
 
-        PT --> SDA[(USDA NRCS SDA REST API\nLive Soil Map Units & NCCPI)]
+        PT --> SDA[("USDA NRCS SDA REST API\nLive Soil Map Units & NCCPI")]
         AOI --> SDA
         COR --> SDA
-        AOI --> TIGER[(US Census TIGERweb REST API\nUrban Area Overlay Layer 0)]
+        AOI --> TIGER[("US Census TIGERweb REST API\nUrban Area Overlay Layer 0")]
         COR --> TIGER
-        COR --> NASS[(USDA NASS QuickStats REST API\nCounty Ag Baselines)]
+        COR --> NASS[("USDA NASS QuickStats REST API\nCounty Ag Baselines")]
         LESA --> NASS
         LESA --> SDA
 
-        SDA --> DB[(Project SQLite Case Store\nCases, Geometries, Audit Logs)]
+        SDA --> DB[("Project SQLite Case Store\nCases, Geometries, Audit Logs")]
         TIGER --> DB
         NASS --> DB
         LESA --> DB
@@ -91,7 +91,7 @@ flowchart LR
         CPA2 --> DB
     end
 
-    DB --> OUT[Draft Artifacts, Forms, Letters & CPA-2 Rollup]
+    DB --> OUT["Draft Artifacts, Forms, Letters & CPA-2 Rollup"]
     OUT --> H
 ```
 

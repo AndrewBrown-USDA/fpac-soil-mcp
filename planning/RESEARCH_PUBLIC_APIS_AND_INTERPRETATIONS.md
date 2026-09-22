@@ -21,23 +21,23 @@ The Farmland Protection Policy Act (FPPA, 7 U.S.C. § 4201 et seq.; 7 CFR Part 6
 
 ```mermaid
 flowchart TD
-    subgraph Clients["External Service Clients"]
-        SDA[SDAClient\nUSDA NRCS Soil Data Access]
-        NASS[NassClient\nUSDA NASS Quick Stats API]
-        TIGER[TigerwebClient\nCensus TIGERweb 2020 Urban MapServer]
+    subgraph Clients ["External Service Clients"]
+        SDA["SDAClient\nUSDA NRCS Soil Data Access"]
+        NASS["NassClient\nUSDA NASS Quick Stats API"]
+        TIGER["TigerwebClient\nCensus TIGERweb 2020 Urban MapServer"]
     end
 
-    subgraph CoreEngines["Core Analysis & Calculation Engines"]
-        INTERP[Soil Interpretation Engine\n- NCCPI v3 Irrigated / Non-Irrigated\n- Component Weighted Average / Dominant\n- Sub-rule Reason Extraction]
-        EXEMPT[Urban Exemption & Spatial Screening\n- 7 CFR 658.2(a) Census Urban Area Check\n- 1-Mile Perimeter & Non-Urban Ratio Analysis]
-        LESA[LE-SA Calculation Workbench\n- Part IV Land Evaluation: 0-100 pts\n- Part V/VI Site Assessment: 0-160 pts\n- 160-Point Alternatives Threshold Evaluation]
+    subgraph CoreEngines ["Core Analysis & Calculation Engines"]
+        INTERP["Soil Interpretation Engine\n- NCCPI v3 Irrigated / Non-Irrigated\n- Component Weighted Average / Dominant\n- Sub-rule Reason Extraction"]
+        EXEMPT["Urban Exemption & Spatial Screening\n- 7 CFR 658.2(a) Census Urban Area Check\n- 1-Mile Perimeter & Non-Urban Ratio Analysis"]
+        LESA["LE-SA Calculation Workbench\n- Part IV Land Evaluation: 0-100 pts\n- Part V/VI Site Assessment: 0-160 pts\n- 160-Point Alternatives Threshold Evaluation"]
     end
 
-    subgraph FastMCPTools["FastMCP Tool Surface"]
-        T_INTERP[get_soil_interpretations\nFetch NCCPI or custom SDA rules]
-        T_EXEMPT[check_urban_area_exemption\nCensus 2020 Urban Area screening]
-        T_NASS[get_county_agricultural_stats\nNASS Census of Ag baselines]
-        T_LESA[calculate_preliminary_lesa\nFull 260-point candidate scoring]
+    subgraph FastMCPTools ["FastMCP Tool Surface"]
+        T_INTERP["get_soil_interpretations\nFetch NCCPI or custom SDA rules"]
+        T_EXEMPT["check_urban_area_exemption\nCensus 2020 Urban Area screening"]
+        T_NASS["get_county_agricultural_stats\nNASS Census of Ag baselines"]
+        T_LESA["calculate_preliminary_lesa\nFull 260-point candidate scoring"]
     end
 
     SDA --> INTERP

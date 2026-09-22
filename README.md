@@ -46,29 +46,29 @@ Federal projects, environmental reviews (NEPA), agricultural evaluations, and si
 
 ```mermaid
 flowchart TD
-    Client[MCP Host / LLM Client\nPi coding agent, Enterprise Agents]
+    Client["MCP Host / LLM Client\nPi coding agent, Enterprise Agents"]
     
-    subgraph FastMCP Server [fpac-soil-mcp FastMCP Server]
-        Router[Transport Layer\nstdio / SSE / HTTP]
-        Tools[9 Tools Registry]
-        Resources[3 Resources Registry]
-        Prompts[1 Prompt Registry]
-        Routes[2 HTTP Routes: /health, /meta]
-        ClientModule[SDAClient / httpx]
-        TIGERClient[TIGERweb Client / httpx]
-        NASSClient[NASS Client / httpx]
+    subgraph FastMCP_Server ["fpac-soil-mcp FastMCP Server"]
+        Router["Transport Layer\nstdio / SSE / HTTP"]
+        Tools["9 Tools Registry"]
+        Resources["3 Resources Registry"]
+        Prompts["1 Prompt Registry"]
+        Routes["2 HTTP Routes: /health, /meta"]
+        ClientModule["SDAClient / httpx"]
+        TIGERClient["TIGERweb Client / httpx"]
+        NASSClient["NASS Client / httpx"]
     end
 
-    subgraph External APIs [External Federal APIs]
-        subgraph SDA [USDA NRCS Soil Data Access (SDA) REST]
+    subgraph External_APIs ["External Federal APIs"]
+        subgraph SDA ["USDA NRCS Soil Data Access (SDA) REST"]
             SDATabular["Tabular Queries\n• mapunit & legend (mukey, musym, farmlndcl)\n• cointerp (NCCPI v3 Weighted Avg)"]
             SDASpatial["Spatial Geometries & Intersections\n• mupolygongeo spatial layers\n• SDA_Get_Mukey_from_intersection_with_WktWgs84\n• STIntersection & STArea clipping"]
         end
-        subgraph TIGERweb [U.S. Census Bureau TIGERweb REST API]
+        subgraph TIGERweb ["U.S. Census Bureau TIGERweb REST API"]
             TIGERUrban["2020 Urban Areas (Layer 0)\n7 CFR § 658.2(a) exemption screening"]
             TIGERCounty["State & County Boundaries (Layer 82/86)\nCorridor county partitioning"]
         end
-        subgraph NASS [USDA NASS QuickStats REST API]
+        subgraph NASS ["USDA NASS QuickStats REST API"]
             NASSStats["Ag Census County Baselines\nLand in farms, cropland, farm count, avg farm size\n7 CFR § 658.5(c) Criterion 7"]
         end
     end

@@ -27,27 +27,27 @@ By modernizing these workflows into an AI-orchestrated Model Context Protocol (M
 
 ```mermaid
 flowchart TB
-    subgraph Desktop_Legacy["State-of-the-Art Desktop Workflow (Colorado NRCS ArcGIS Pro v3 / v4-test)"]
-        User_Desktop[GIS Specialist in ArcGIS Pro] --> Manual_NASS[Manual NASS QuickStats CSV Downloads\n3 Tables per Census Cycle]
-        User_Desktop --> Manual_SSURGO[Pre-calculated Statewide SSURGO GDB\nRequires 'rating_' and 'farmland_class' attributes]
-        User_Desktop --> Local_GDB[(Reference_Data.gdb\nUrban Areas, Counties, States)]
+    subgraph Desktop_Legacy ["State-of-the-Art Desktop Workflow (Colorado NRCS ArcGIS Pro v3 / v4-test)"]
+        User_Desktop["GIS Specialist in ArcGIS Pro"] --> Manual_NASS["Manual NASS QuickStats CSV Downloads\n3 Tables per Census Cycle"]
+        User_Desktop --> Manual_SSURGO["Pre-calculated Statewide SSURGO GDB\nRequires 'rating_' and 'farmland_class' attributes"]
+        User_Desktop --> Local_GDB[("Reference_Data.gdb\nUrban Areas, Counties, States")]
         User_Desktop --> Single_County_Gap["Single-County Simplification Gap\n(Forces largest county by area)"]
-        Single_County_Gap --> ArcPy_Script[Execute ArcGIS Pro FPPA Toolbox.pyt\nRequires arcpy & Pro Layout Template]
-        ArcPy_Script --> Docx_Out[Word AD-1006 / CPA-106 & Letter]
-        ArcPy_Script --> Excel_Out[Log to FPPA_DATA.xlsx & CPA-2 Annual Report]
+        Single_County_Gap --> ArcPy_Script["Execute ArcGIS Pro FPPA Toolbox.pyt\nRequires arcpy & Pro Layout Template"]
+        ArcPy_Script --> Docx_Out["Word AD-1006 / CPA-106 & Letter"]
+        ArcPy_Script --> Excel_Out["Log to FPPA_DATA.xlsx & CPA-2 Annual Report"]
     end
 
-    subgraph MCP_Modern["Next-Generation Cloud-Native Workflow (fpac-soil-mcp)"]
-        User_Agent[User / AI Agent via Natural Language] --> Agent_Intake["Input: AOI Polygon or Corridor Centerline + Buffer\n(Optional: State/County LE/SA Custom Weights)"]
-        Agent_Intake --> MCP_Server[FPAC Soil FastMCP Server]
+    subgraph MCP_Modern ["Next-Generation Cloud-Native Workflow (fpac-soil-mcp)"]
+        User_Agent["User / AI Agent via Natural Language"] --> Agent_Intake["Input: AOI Polygon or Corridor Centerline + Buffer\n(Optional: State/County LE/SA Custom Weights)"]
+        Agent_Intake --> MCP_Server["FPAC Soil FastMCP Server"]
         
-        MCP_Server --> SDA_API[(USDA NRCS Soil Data Access REST API\nLive WKT Spatial Clipping & NCCPI v3)]
-        MCP_Server --> Census_API[(US Census TIGERweb REST API\nLive 2020 Urban Area Boundary Layer 6)]
-        MCP_Server --> NASS_API[(USDA NASS QuickStats REST API\nLive County Ag Census Baselines)]
+        MCP_Server --> SDA_API[("USDA NRCS Soil Data Access REST API\nLive WKT Spatial Clipping & NCCPI v3")]
+        MCP_Server --> Census_API[("US Census TIGERweb REST API\nLive 2020 Urban Area Boundary Layer 6")]
+        MCP_Server --> NASS_API[("USDA NASS QuickStats REST API\nLive County Ag Census Baselines")]
         
-        MCP_Server --> MultiCounty_Engine[True Multi-County Corridor Engine\nPartitioning, Segment Scoring & Sum Reconciliation]
-        MultiCounty_Engine --> Engine_LESA[Preliminary LE-SA Scoring Engine\n7 CFR 658.5(c) Corridor / Site Logic]
-        Engine_LESA --> Artifact_Gen[Draft Form AD-1006 / CPA-106 Package\nCPA-2 Case Database Rollup]
+        MCP_Server --> MultiCounty_Engine["True Multi-County Corridor Engine\nPartitioning, Segment Scoring & Sum Reconciliation"]
+        MultiCounty_Engine --> Engine_LESA["Preliminary LE-SA Scoring Engine\n7 CFR 658.5(c) Corridor / Site Logic"]
+        Engine_LESA --> Artifact_Gen["Draft Form AD-1006 / CPA-106 Package\nCPA-2 Case Database Rollup"]
     end
 
     Desktop_Legacy -.->|Modernized into| MCP_Modern
@@ -99,13 +99,13 @@ The Colorado Toolbox implements the standard NRCS Part V (or Part IV on AD-1006)
 
 ```mermaid
 flowchart TD
-    A[AOI Geometry + County Boundary] --> B[SDA Spatial Intersection: Clipped Soil Map Units]
-    B --> C[Fetch Soil Productivity Ratings: NCCPI v3 or Local Index]
+    A["AOI Geometry + County Boundary"] --> B["SDA Spatial Intersection: Clipped Soil Map Units"]
+    B --> C["Fetch Soil Productivity Ratings: NCCPI v3 or Local Index"]
     C --> D["Normalize per Unit: RR_i = Rating_i / Max_County_Rating"]
     D --> E["Calculate Weighted AOI Relative Rating: RR_AOI = SUM(RR_i * Area_i / Total_Area)"]
     E --> F["Query County Soils where RR >= RR_AOI AND Is_Farmland == True"]
     F --> G["Compute % County Farmland with Equal or Higher Relative Value"]
-    G --> H[Populate Part V of AD-1006 / CPA-106]
+    G --> H["Populate Part V of AD-1006 / CPA-106"]
 ```
 
 ### 3.2 Site Assessment (SA) Scoring Rules & Corridor Variations (7 CFR § 658.5)
