@@ -3,7 +3,7 @@
 ## Green Baseline Checklist
 
 - [x] Orchestrations 1 through 11 complete.
-- [x] Baseline test suite verified: `uv run pytest -m "not live_sda" -q` -> `184 passed, 10 deselected`.
+- [x] Baseline test suite verified: `uv run pytest -m "not live_network" -q` -> `184 passed, 10 deselected`.
 - [x] Baseline lint verified: `uv run ruff check .` -> clean.
 - [x] Baseline formatting verified: `uv run ruff format --check .` -> clean.
 
@@ -21,7 +21,7 @@
 - **Wave 1** depends on baseline. Tasks `12.1.1` and `12.1.2` touch disjoint files and run in parallel (max 2 workers).
 - **Wave 2** depends on Wave 1 completion. Tasks `12.2.1` and `12.2.2` touch disjoint files and run in parallel (max 2 workers).
 - At every wave boundary, run serially:
-  - `uv run pytest -m "not live_sda"`
+  - `uv run pytest -m "not live_network"`
   - `uv run ruff check .`
   - `uv run ruff format --check .`
 

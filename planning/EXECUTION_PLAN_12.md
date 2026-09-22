@@ -178,5 +178,5 @@ Productionize the `Dockerfile` for enterprise container deployments (IBM Cloud /
      - Update "Resources, Prompts & HTTP Routes" section to document all 4 prompts with their parameters and use cases.
      - Update Docker instructions to highlight the multi-stage non-root container deployment.
 - **Grep Anchors**: `fppa_corridor_screening_assistant` in `manifest.yaml` and `README.md`
-- **Acceptance Command**: `uv run pytest -m "not live_sda" ; if ($?) { uv run ruff check . } ; if ($?) { uv run ruff format --check . }`
+- **Acceptance Command**: `uv run pytest -m "not live_network" ; if ($?) { uv run ruff check . } ; if ($?) { uv run ruff format --check . }`
 
