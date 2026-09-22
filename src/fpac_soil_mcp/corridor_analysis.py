@@ -34,7 +34,7 @@ from fpac_soil_mcp.geometry import (
     validate_and_sanitize_line_wkt,
     validate_and_sanitize_polygon_wkt,
 )
-from fpac_soil_mcp.integration_models import CountyIdentifier
+from fpac_soil_mcp.integration_models import CountyIdentifier, CountyPartitionGeometry
 from fpac_soil_mcp.models import (
     CorridorAlternativeComparison,
     CorridorCountySegment,
@@ -52,8 +52,17 @@ from fpac_soil_mcp.tigerweb_client import TigerwebClient
 logger = logging.getLogger(__name__)
 
 
-def _county_identifier(segment: dict[str, Any]) -> CountyIdentifier:
-    """Build one validated county identity from a TIGERweb segment mapping."""
+def _county_identifier(
+    segment: dict[str, Any] | CountyPartitionGeometry,
+) -> CountyIdentifier:
+    """Build one validated county identity from a TIGERweb segment mapping or model."""
+    if isinstance(segment, CountyPartitionGeometry):
+        return CountyIdentifier(
+            state_fips=segment.state_fips,
+            county_fips=segment.county_fips,
+            county_name=segment.county_name,
+            state_name=segment.state_name,
+        )
     return CountyIdentifier.from_dict(
         {
             "state_fips": str(segment.get("state_fips", "00")),
@@ -246,13 +255,17 @@ class CorridorAnalyzer:
         sum_indirect_acres = 0.0
 
         for seg in segments_raw:
-            seg_geom = seg["geometry"]
+            seg_geom = seg.geometry if isinstance(seg, CountyPartitionGeometry) else seg["geometry"]
             county = _county_identifier(seg)
             seg_state_fips = county.state_fips
             seg_county_fips = county.county_fips
             seg_county_name = county.county_name
             seg_state_name = county.state_name
-            seg_total_acres = seg.get("calculated_acres", 0.0)
+            seg_total_acres = (
+                seg.calculated_acres
+                if isinstance(seg, CountyPartitionGeometry)
+                else seg.get("calculated_acres", 0.0)
+            )
 
             # Direct vs indirect within this segment
             seg_direct_acres = 0.0
