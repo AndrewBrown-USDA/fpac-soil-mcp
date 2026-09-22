@@ -5,7 +5,7 @@
 [![FastMCP](https://img.shields.io/badge/FastMCP-2.0+-green.svg)](https://github.com/jlowin/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jlowin/fastmcp) that gives LLM clients direct access to USDA Natural Resources Conservation Service (NRCS) **Soil Data Access (SDA)** tabular queries and preliminary **Farmland Protection Policy Act (FPPA)** screening.
+A Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jlowin/fastmcp) that gives LLM clients direct access to USDA Natural Resources Conservation Service (NRCS) **Soil Data Access (SDA)** spatial geometry layers and tabular SSURGO queries, integrated with U.S. Census Bureau and USDA NASS services for preliminary **Farmland Protection Policy Act (FPPA)** screening.
 
 ---
 
@@ -18,9 +18,9 @@ A Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jl
 - [Data Sources & Relationship to py-soildb](#data-sources--relationship-to-py-soildb)
 - [Installation & Setup](#installation--setup)
 - [Execution Modes](#execution-modes)
-- [MCP Client Setup](#mcp-client-setup)
+- [Standard MCP Client Configuration](#standard-mcp-client-configuration)
 - [Tool Reference](#tool-reference)
-- [Resources & Prompts](#resources--prompts)
+- [Resources, Prompts & HTTP Routes](#resources-prompts--http-routes)
 - [Configuration Reference](#configuration-reference)
 - [Development Commands](#development-commands)
 - [License](#license)
@@ -31,10 +31,13 @@ A Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jl
 
 Federal projects, environmental reviews (NEPA), agricultural evaluations, and site selection often require checking for **Prime Farmland**, **Unique Farmland**, or **Farmland of Statewide/Local Importance** under USDA NRCS SSURGO datasets and 7 CFR Part 657.
 
-`fpac-soil-mcp` connects LLMs directly to the USDA NRCS Soil Data Access REST API to:
-- Find soil map unit keys (`mukey`), symbols (`musym`), names (`muname`), and farmland classification ratings (`farmlndcl`) by geographic coordinates or `mukey`.
-- Screen project polygons for farmland categories and Census 2020 urban area exemptions.
-- Retrieve soil interpretation ratings (such as NCCPI v3 crop productivity indices).
+`fpac-soil-mcp` connects LLMs directly to upstream federal REST APIs to:
+- Retrieve **both spatial geometry layers and tabular SSURGO attributes** from USDA NRCS Soil Data Access (SDA):
+  - Spatial intersections and geometries (`mupolygongeo`, `SDA_Get_Mukey_from_intersection_with_WktWgs84`, `STIntersection`/`STArea`) with exact clipping.
+  - Tabular queries across SSURGO `mapunit`, `legend`, and `cointerp` component-weighted NCCPI v3 crop productivity indices.
+- Screen project coordinates and polygons for farmland classification ratings (`farmlndcl`), prime/unique farmland acreages, and Census 2020 urban area exemptions.
+- Query U.S. Census Bureau TIGERweb REST APIs for 2020 Urban Areas (Layer 0 for 7 CFR § 658.2(a) exemption screening) and State/County Boundaries (MapServer Layer 82/86 or Layer 1 for multi-county corridor partitioning).
+- Query USDA NASS QuickStats REST API for Agricultural Census county baselines (land in farms, cropland, farm count, average farm size for 7 CFR § 658.5(c) Criterion 7).
 - Provide MCP Prompts and Resources that explain statutory FPPA boundaries and prevent fabricated Land Evaluation (LE) or Site Assessment (SA) scores.
 
 ---
@@ -43,28 +46,46 @@ Federal projects, environmental reviews (NEPA), agricultural evaluations, and si
 
 ```mermaid
 flowchart TD
-    Client[LLM Client / MCP Host\nClaude Desktop, Cursor, Zed]
+    Client[MCP Host / LLM Client\nPi coding agent, Enterprise Agents]
     
     subgraph FastMCP Server [fpac-soil-mcp FastMCP Server]
-        Router[Transport Layer\nstdio / SSE]
-        Tools[Tools Registry]
-        Resources[Resources Registry]
-        Prompts[Prompts Registry]
+        Router[Transport Layer\nstdio / SSE / HTTP]
+        Tools[9 Tools Registry]
+        Resources[3 Resources Registry]
+        Prompts[1 Prompt Registry]
+        Routes[2 HTTP Routes: /health, /meta]
         ClientModule[SDAClient / httpx]
+        TIGERClient[TIGERweb Client / httpx]
+        NASSClient[NASS Client / httpx]
     end
 
-    subgraph USDA SDA [USDA NRCS Soil Data Access]
-        TabularAPI["REST Endpoint\n/Tabular/post.rest"]
-        SSURGODB[(SSURGO / Soil Data Mart\nSpatial & Tabular Database)]
+    subgraph External APIs [External Federal APIs]
+        subgraph SDA [USDA NRCS Soil Data Access (SDA) REST]
+            SDATabular["Tabular Queries\n• mapunit & legend (mukey, musym, farmlndcl)\n• cointerp (NCCPI v3 Weighted Avg)"]
+            SDASpatial["Spatial Geometries & Intersections\n• mupolygongeo spatial layers\n• SDA_Get_Mukey_from_intersection_with_WktWgs84\n• STIntersection & STArea clipping"]
+        end
+        subgraph TIGERweb [U.S. Census Bureau TIGERweb REST API]
+            TIGERUrban["2020 Urban Areas (Layer 0)\n7 CFR § 658.2(a) exemption screening"]
+            TIGERCounty["State & County Boundaries (Layer 82/86)\nCorridor county partitioning"]
+        end
+        subgraph NASS [USDA NASS QuickStats REST API]
+            NASSStats["Ag Census County Baselines\nLand in farms, cropland, farm count, avg farm size\n7 CFR § 658.5(c) Criterion 7"]
+        end
     end
 
-    Client <-->|JSON-RPC via stdio or SSE| Router
+    Client <-->|JSON-RPC via stdio or SSE/HTTP| Router
     Router --> Tools
     Router --> Resources
     Router --> Prompts
+    Router --> Routes
     Tools --> ClientModule
-    ClientModule -->|WKT Point Intersect / Mukey SQL| TabularAPI
-    TabularAPI <--> SSURGODB
+    Tools --> TIGERClient
+    Tools --> NASSClient
+    ClientModule -->|SQL & Geometry Intersections| SDASpatial
+    ClientModule -->|SQL Tabular & cointerp Queries| SDATabular
+    TIGERClient -->|ArcGIS REST /query| TIGERUrban
+    TIGERClient -->|ArcGIS REST /query| TIGERCounty
+    NASSClient -->|REST GET /api_GET/| NASSStats
 ```
 
 ---
@@ -107,7 +128,7 @@ flowchart TD
 
 ## Data Sources & Relationship to py-soildb
 
-- **Data Sources**: Tabular and spatial data come from the USDA NRCS **Soil Data Access (SDA)** REST service (`https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest`) and Census TIGERweb REST APIs.
+- **Data Sources**: Both spatial geometry layers (`mupolygongeo`, spatial intersections, clipping) and tabular SSURGO attributes (`mapunit`, `legend`, `cointerp` NCCPI ratings) come from the USDA NRCS **Soil Data Access (SDA)** REST service (`https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest`). Urban boundaries and county partitioning layers are retrieved from the U.S. Census Bureau **TIGERweb** REST APIs, and agricultural census baselines are queried from the USDA **NASS QuickStats** REST API.
 - **Relationship to `py-soildb`**: While `py-soildb` is an actively maintained package for soil database workflows and serves as a proven reference implementation, `fpac-soil-mcp` implements its own direct SDA query logic. This keeps the server self-contained and lets it manage endpoints and formats (such as GeoJSON clipping and Census urban layers) outside `py-soildb`'s scope without extra dependencies.
 
 ---
@@ -139,21 +160,23 @@ pip install -e .
 
 ## Execution Modes
 
-### Standard I/O (Default, `stdio`)
+The server is built with FastMCP and supports local command execution as well as enterprise containerized deployment (e.g., in IBM Cloud or Databricks container/job environments):
 
-For local desktop clients such as Claude Desktop, Cursor, and Zed:
+- **Standard I/O (`stdio`)**: Default mode for local MCP clients and CLI agents.
+- **Server-Sent Events (`sse`)** / **HTTP**: Network mode for remote or containerized MCP hosting.
+- **Environment Targeting**: Tested locally with the Pi coding agent and configured for enterprise container execution.
+
+### Local Stdio
 
 ```powershell
 uv run fpac-soil-mcp
 ```
 
-### Server-Sent Events (`sse`)
-
-For network services:
+### Network SSE / HTTP
 
 ```powershell
 $env:MCP_TRANSPORT="sse"
-$env:MCP_HOST="127.0.0.1"
+$env:MCP_HOST="0.0.0.0"
 $env:MCP_PORT="8000"
 uv run fpac-soil-mcp
 ```
@@ -161,17 +184,23 @@ uv run fpac-soil-mcp
 ### Docker Container
 
 ```powershell
+# Build container image
 docker build -t fpac-soil-mcp .
+
+# Run container over stdio
 docker run -i --rm -e MCP_TRANSPORT=stdio fpac-soil-mcp
+
+# Run container over SSE / HTTP
+docker run -d --rm -p 8000:8000 -e MCP_TRANSPORT=sse -e MCP_HOST=0.0.0.0 -e MCP_PORT=8000 --name fpac-soil-mcp fpac-soil-mcp
 ```
 
 ---
 
-## MCP Client Setup
+## Standard MCP Client Configuration
 
-### Claude Desktop
+Standard boilerplate JSON configuration snippets for any standard MCP host.
 
-Add to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+### Standard I/O (`stdio`) Boilerplate
 
 ```json
 {
@@ -180,7 +209,7 @@ Add to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/App
       "command": "uv",
       "args": [
         "--directory",
-        "D:\\workspace\\fpac-soil-mcp",
+        "/path/to/fpac-soil-mcp",
         "run",
         "fpac-soil-mcp"
       ],
@@ -192,29 +221,15 @@ Add to `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/App
 }
 ```
 
-### Cursor
+*Note for Windows hosts: use Windows-style directory paths (e.g., `"D:\\workspace\\fpac-soil-mcp"`).*
 
-In Cursor's **Features > MCP Servers** settings:
-
-- **Name**: `fpac-soil`
-- **Type**: `command`
-- **Command**: `uv --directory D:\workspace\fpac-soil-mcp run fpac-soil-mcp`
-
-### Zed
-
-Add to `~/.config/zed/settings.json`:
+### Network / Remote (`sse` or `http`) Boilerplate
 
 ```json
 {
-  "context_servers": {
+  "mcpServers": {
     "fpac-soil": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "D:\\workspace\\fpac-soil-mcp",
-        "run",
-        "fpac-soil-mcp"
-      ]
+      "url": "http://127.0.0.1:8000/sse"
     }
   }
 }
@@ -223,6 +238,8 @@ Add to `~/.config/zed/settings.json`:
 ---
 
 ## Tool Reference
+
+The server exposes **9 core MCP tools** for spatial soil query, farmland classification, and corridor assessment:
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
@@ -238,23 +255,30 @@ Add to `~/.config/zed/settings.json`:
 
 ---
 
-## Resources & Prompts
+## Resources, Prompts & HTTP Routes
 
-### Resources
+### Resources (3)
 
-- `fppa://regulatory-notice`: Statutory notice, limitations, and citations.
-- `fppa://screening-guidance`: Guidance contrasting 7 CFR 657 inventory queries with 7 CFR 658 AD-1006 reviews.
-- `fppa://farmland-classes`: Reference list of SSURGO farmland classification categories.
+- `fppa://regulatory-notice`: Statutory notice, legal limitations, and formal 7 CFR Parts 657 & 658 citations.
+- `fppa://screening-guidance`: Guidance distinguishing preliminary soil inventory queries from full LESA scoring and Form AD-1006 / NRCS-CPA-106 workflows.
+- `fppa://farmland-classes`: Reference listing of SSURGO farmland classification categories and statutory criteria.
 
-### Prompts
+### Prompts (1)
 
-- `fppa_screening_assistant`: Guided prompt ensuring LLMs maintain regulatory boundaries, avoid score hallucinations, and direct users to local USDA NRCS offices when formal determinations are required.
+- `fppa_screening_assistant`: Guided prompt template ensuring LLMs maintain regulatory boundaries, avoid score hallucinations, preserve SDA categories, and direct project sponsors to local USDA NRCS offices for formal determinations.
+
+### HTTP Routes (2)
+
+When running under network transport modes (`sse` or `http`), the server exposes two operational endpoints:
+
+- `GET /health`: Health-check endpoint returning service status, transport mode, and UTC timestamp.
+- `GET /meta`: Metadata endpoint detailing service capabilities, SDA backend endpoint, and statutory citations.
 
 ---
 
 ## Configuration Reference
 
-Configure settings via environment variables or a `.env` file:
+Configure settings via environment variables or a `.env` file (see [`.env.example`](.env.example)):
 
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -265,19 +289,22 @@ Configure settings via environment variables or a `.env` file:
 | `NASS_BASE_URL` | string | `https://quickstats.nass.usda.gov/api/api_GET/` | USDA NASS Quick Stats API GET endpoint |
 | `NASS_ENABLED` | boolean | `false` | Enable USDA NASS integration |
 | `NASS_CENSUS_YEAR` | int | `2022` | Baseline Census of Agriculture year |
-| `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/.../0` | Census TIGERweb 2020 Urban Areas MapServer Layer 0 |
+| `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/0` | Census TIGERweb 2020 Urban Areas MapServer Layer 0 |
 | `TIGERWEB_URBAN_LAYER_ID` | int | `0` | Layer index for 2020 Census Urban Areas |
 | `TIGERWEB_TIMEOUT_SECONDS` | float | `15.0` | Timeout in seconds for TIGERweb queries |
 | `MCP_TRANSPORT` | string | `stdio` | FastMCP transport mode (`stdio` or `sse`) |
-| `MCP_HOST` | string | `127.0.0.1` | Host to bind for SSE transport |
-| `MCP_PORT` | int | `8000` | Port to bind for SSE transport |
+| `MCP_HOST` | string | `127.0.0.1` | Host to bind for network transport |
+| `MCP_PORT` | int | `8000` | Port to bind for network transport |
 
 ---
 
 ## Development Commands
 
 ```powershell
-# Run unit tests with mocked SDA responses
+# Run unit and mocked tests (offline default)
+uv run pytest -m "not live_sda"
+
+# Run all unit tests
 uv run pytest
 
 # Run live SDA integration tests (requires network access)

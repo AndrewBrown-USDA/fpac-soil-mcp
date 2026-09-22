@@ -76,7 +76,7 @@ flowchart LR
         PT --> SDA[(USDA NRCS SDA REST API\nLive Soil Map Units & NCCPI)]
         AOI --> SDA
         COR --> SDA
-        AOI --> TIGER[(US Census TIGERweb REST API\nUrban Area Overlay Layer 6)]
+        AOI --> TIGER[(US Census TIGERweb REST API\nUrban Area Overlay Layer 0)]
         COR --> TIGER
         COR --> NASS[(USDA NASS QuickStats REST API\nCounty Ag Baselines)]
         LESA --> NASS
@@ -150,7 +150,7 @@ flowchart TD
 
 ---
 
-### Phase 1: Domain, Governance & Case State Model
+### Phase 1: Domain, Governance & Case State Model (Complete)
 
 **Goal**: Define the legal, data, and lifecycle state models before adding spatial and calculation features.
 
@@ -171,7 +171,7 @@ flowchart TD
 
 ---
 
-### Phase 2: Polygon AOI Screening & Farmland Analysis
+### Phase 2: Polygon AOI Screening & Farmland Analysis (Complete)
 
 **Goal**: Enable polygon Area of Interest (AOI) intake and spatial soil intersection.
 
@@ -194,7 +194,7 @@ flowchart TD
 
 ---
 
-### Phase 3: Multi-County Corridor Analysis (CPA-106)
+### Phase 3: Multi-County Corridor Analysis & Partitioning Engine (CPA-106 Rules) (Complete)
 
 **Goal**: Support linear infrastructure projects (e.g., utility lines, pipelines, transportation rights-of-way) spanning one or multiple counties with geodesic precision and true multi-county segment reconciliation.
 
@@ -358,6 +358,7 @@ flowchart TD
 4. **Documentation & Packaging**: Synchronize README.md, manifest.yaml, server.json, and quickstart guides.
 5. **Presentation Materials**: Prepare 5-7 minute demo script, slides, and fallback video recording.
 6. **Offline Public-Data Corpus**: Add recorded NASS, TIGERweb, and SDA interpretation/NCCPI fixtures covering success, unavailable-data, malformed-response, and partial-upstream-failure scenarios.
+7. **Test Marker Refactoring**: Refactor pytest test markers to introduce a unified `live_network` marker (or distinct service-specific markers like `live_tigerweb` and `live_nass`) rather than bundling all live external network tests under the legacy `live_sda` marker.
 
 **Exit Criteria**:
 - 100% pass rate on unit, integration, and offline evaluation tests.
