@@ -322,11 +322,11 @@ class TestCustomRoutes:
         assert body["citations"] == CITATIONS
 
 
-class TestLiveSDAIntegration:
+class TestLiveNetworkIntegration:
     """Opt-in live tests verifying network communication against USDA SDA Tabular REST service."""
 
     @pytest.mark.live_network
-    def test_live_sda_point_lookup_prime_farmland(self) -> None:
+    def test_live_network_sda_point_lookup_prime_farmland(self) -> None:
         """Query real USDA SDA service for Indianapolis, IN prime farmland coordinate."""
         client = SDAClient()
         results = client.get_by_point(39.7684, -86.1581)
@@ -341,7 +341,7 @@ class TestLiveSDAIntegration:
         assert "areasymbol" in mapunit
 
     @pytest.mark.live_network
-    def test_live_sda_mukey_lookup(self) -> None:
+    def test_live_network_sda_mukey_lookup(self) -> None:
         """Query real USDA SDA service for known SSURGO map unit key."""
         client = SDAClient()
         # Query known SSURGO map unit key (e.g. 3104713 from Indianapolis survey area IN097)
@@ -352,7 +352,7 @@ class TestLiveSDAIntegration:
         assert results[0]["mukey"] == "3104713"
 
     @pytest.mark.live_network
-    def test_live_tool_execution(self) -> None:
+    def test_live_network_tool_execution(self) -> None:
         """Execute get_farmland_classification_by_point tool against live SDA."""
         response = get_farmland_classification_by_point(latitude=39.7684, longitude=-86.1581)
         assert response.coverage_status in ("covered", "unmapped")
