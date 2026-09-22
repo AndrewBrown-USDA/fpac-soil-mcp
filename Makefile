@@ -28,12 +28,12 @@ run-sse: ## Run MCP server locally over SSE network transport
 	MCP_TRANSPORT=sse MCP_HOST=$(MCP_HOST) MCP_PORT=$(MCP_PORT) $(UV) run fpac-soil-mcp
 
 test: ## Run unit and mocked test suite (offline)
-	$(UV) run pytest -m "not live_sda"
+	$(UV) run pytest -m "not live_network"
 
 test-unit: test ## Alias for offline test suite
 
-test-live: ## Run live USDA SDA integration tests (requires network)
-	$(UV) run pytest -m live_sda
+test-live: ## Run live network integration tests (requires network)
+	$(UV) run pytest -m live_network
 
 lint: ## Run Ruff linter checks
 	$(UV) run ruff check .

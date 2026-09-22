@@ -358,7 +358,7 @@ flowchart TD
 4. **Documentation & Packaging**: Synchronize README.md, manifest.yaml, server.json, and quickstart guides.
 5. **Presentation Materials**: Prepare 5-7 minute demo script, slides, and fallback video recording.
 6. **Offline Public-Data Corpus**: Add recorded NASS, TIGERweb, and SDA interpretation/NCCPI fixtures covering success, unavailable-data, malformed-response, and partial-upstream-failure scenarios.
-7. **Test Marker Refactoring**: Refactor pytest test markers to introduce a unified `live_network` marker (or distinct service-specific markers like `live_tigerweb` and `live_nass`) rather than bundling all live external network tests under the legacy `live_sda` marker.
+7. **Test Marker Refactoring**: Refactor pytest test markers to introduce a unified `live_network` marker for all external network tests (USDA SDA, Census TIGERweb, etc.). *(Implemented)*
 
 **Exit Criteria**:
 - 100% pass rate on unit, integration, and offline evaluation tests.
