@@ -42,25 +42,31 @@ class NassClient:
 
     def get_county_ag_profile(
         self,
-        county: CountyIdentifier | None = None,
-        state_fips: str | None = None,
+        state_fips: str | CountyIdentifier | None = None,
         county_fips: str | None = None,
         county_name: str | None = None,
         state_alpha: str | None = None,
         census_year: int | None = None,
+        *,
+        county: CountyIdentifier | None = None,
     ) -> CountyAgProfile:
         """Fetch county agricultural demographic baseline from NASS QuickStats.
 
         Args:
-            state_fips: 2-digit state FIPS code (e.g. '19').
+            state_fips: 2-digit state FIPS code (e.g. '19') or CountyIdentifier instance.
             county_fips: 3-digit county FIPS code (e.g. '169').
             county_name: County or parish name (e.g. 'Story').
             state_alpha: Optional 2-letter state postal code (e.g. 'IA').
             census_year: Census of Agriculture year (defaults to settings.nass_census_year).
+            county: Optional CountyIdentifier instance.
 
         Returns:
             CountyAgProfile with land in farms, cropland, farm count, and average farm size.
         """
+        if isinstance(state_fips, CountyIdentifier):
+            county = state_fips
+            state_fips = None
+
         if county is not None:
             state_fips, county_fips, county_name = (
                 county.state_fips,
@@ -195,7 +201,34 @@ class NassClient:
                 unavailable_fields=unavailable,
             )
 
-        except (HttpRequestError, HttpStatusError, ValueError, KeyError) as exc:
+        except HttpStatusError as exc:
+            if exc.status_code == 404 or "No results found" in exc.response.text:
+                return CountyAgProfile(
+                    status=IntegrationStatus.UNAVAILABLE,
+                    state_fips=state_fips,
+                    county_fips=county_fips,
+                    county_name=county_name,
+                    census_year=resolved_year,
+                    provenance=provenance,
+                    error_message=f"No NASS agricultural census records found for county {county_name} ({state_fips}{county_fips}) in year {resolved_year}.",
+                )
+            logger.warning(
+                "USDA NASS API request failed for %s (%s%s): %s",
+                county_name,
+                state_fips,
+                county_fips,
+                exc,
+            )
+            return CountyAgProfile(
+                status=IntegrationStatus.ERROR,
+                state_fips=state_fips,
+                county_fips=county_fips,
+                county_name=county_name,
+                census_year=resolved_year,
+                provenance=provenance,
+                error_message=f"USDA NASS query error: {exc}",
+            )
+        except (HttpRequestError, ValueError, KeyError) as exc:
             logger.warning(
                 "USDA NASS API request failed for %s (%s%s): %s",
                 county_name,

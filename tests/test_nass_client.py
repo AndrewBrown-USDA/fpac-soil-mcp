@@ -186,3 +186,85 @@ def test_nass_client_empty_data_list_returns_unavailable(monkeypatch: pytest.Mon
     assert profile.status == IntegrationStatus.UNAVAILABLE
     assert profile.land_in_farms_acres is None
     assert "No NASS agricultural census records found" in (profile.error_message or "")
+
+
+def test_nass_client_404_response_returns_unavailable(monkeypatch: pytest.MonkeyPatch):
+    """Verify 404 response returns UNAVAILABLE status."""
+    monkeypatch.setattr(settings, "nass_enabled", True)
+
+    def nass_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text="No results found")
+
+    mock_transport = httpx.MockTransport(nass_handler)
+    mock_http = httpx.Client(transport=mock_transport)
+
+    client = NassClient(api_key="MOCK_KEY_123", http_client=mock_http)
+    profile = client.get_county_ag_profile("19", "169", "Story")
+
+    assert profile.status == IntegrationStatus.UNAVAILABLE
+    assert profile.land_in_farms_acres is None
+    assert "No NASS agricultural census records found" in (profile.error_message or "")
+
+
+def test_nass_client_positional_arguments_compatibility(monkeypatch: pytest.MonkeyPatch):
+    """Verify legacy 3-positional-argument calling convention works."""
+    monkeypatch.setattr(settings, "nass_enabled", True)
+
+    mock_response_data = {
+        "data": [
+            {
+                "short_desc": "AG LAND - ACRES",
+                "Value": "100,000",
+            }
+        ]
+    }
+
+    def nass_handler(request: httpx.Request) -> httpx.Response:
+        assert "state_fips_code=19" in str(request.url)
+        assert "county_code=169" in str(request.url)
+        return httpx.Response(200, json=mock_response_data)
+
+    mock_transport = httpx.MockTransport(nass_handler)
+    mock_http = httpx.Client(transport=mock_transport)
+
+    client = NassClient(api_key="MOCK_KEY_123", http_client=mock_http)
+    # Legacy positional calling
+    profile = client.get_county_ag_profile("19", "169", "Story")
+    assert profile.status == IntegrationStatus.SUCCESS
+    assert profile.state_fips == "19"
+    assert profile.county_fips == "169"
+    assert profile.county_name == "Story"
+    assert profile.land_in_farms_acres == 100000.0
+
+
+def test_nass_client_county_identifier_positional(monkeypatch: pytest.MonkeyPatch):
+    """Verify passing CountyIdentifier as first positional parameter works."""
+    from fpac_soil_mcp.integration_models import CountyIdentifier
+
+    monkeypatch.setattr(settings, "nass_enabled", True)
+
+    mock_response_data = {
+        "data": [
+            {
+                "short_desc": "AG LAND - ACRES",
+                "Value": "200,000",
+            }
+        ]
+    }
+
+    def nass_handler(request: httpx.Request) -> httpx.Response:
+        assert "state_fips_code=19" in str(request.url)
+        assert "county_code=169" in str(request.url)
+        return httpx.Response(200, json=mock_response_data)
+
+    mock_transport = httpx.MockTransport(nass_handler)
+    mock_http = httpx.Client(transport=mock_transport)
+
+    client = NassClient(api_key="MOCK_KEY_123", http_client=mock_http)
+    county = CountyIdentifier(state_fips="19", county_fips="169", county_name="Story")
+    profile = client.get_county_ag_profile(county)
+    assert profile.status == IntegrationStatus.SUCCESS
+    assert profile.state_fips == "19"
+    assert profile.county_fips == "169"
+    assert profile.county_name == "Story"
+    assert profile.land_in_farms_acres == 200000.0
