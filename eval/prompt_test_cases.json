@@ -1,0 +1,300 @@
+{
+  "version": "1.0.0",
+  "description": "Structured test cases and natural-language prompt benchmarks for FPAC Soil MCP Server tools, resources, and prompt templates.",
+  "test_cases": [
+    {
+      "id": "DISC-01",
+      "category": "Phase 1 - Discovery",
+      "target_type": "tool",
+      "target_name": "explain_fppa_screening_scope",
+      "user_prompt": "Explain the difference between preliminary SDA soil screening under 7 CFR Part 657 and a formal FPPA LESA determination or Form AD-1006 / NRCS-CPA-106 under 7 CFR Part 658.",
+      "expected_tools": ["explain_fppa_screening_scope"],
+      "expected_keywords": [
+        "7 CFR",
+        "preliminary",
+        "AD-1006",
+        "NRCS-CPA-106"
+      ]
+    },
+    {
+      "id": "DISC-02",
+      "category": "Phase 1 - Discovery",
+      "target_type": "tool",
+      "target_name": "list_farmland_classes",
+      "user_prompt": "List all official USDA NRCS SSURGO farmland classification categories, their definitions, and their FPPA protection status.",
+      "expected_tools": ["list_farmland_classes"],
+      "expected_keywords": [
+        "Prime Farmland",
+        "Statewide Importance",
+        "Unique"
+      ]
+    },
+    {
+      "id": "POINT-01",
+      "category": "Phase 1 - Point Screening",
+      "target_type": "tool",
+      "target_name": "get_farmland_classification_by_point",
+      "user_prompt": "What is the USDA soil map unit, farmland classification, and FPPA status at latitude 41.8781, longitude -93.0977 (Story County, IA)?",
+      "expected_tools": ["get_farmland_classification_by_point"],
+      "expected_keywords": [
+        "prime farmland",
+        "mukey"
+      ],
+      "sample_geometry": {
+        "type": "Point",
+        "coordinates": [-93.0977, 41.8781]
+      }
+    },
+    {
+      "id": "POINT-02",
+      "category": "Phase 1 - Point Screening",
+      "target_type": "tool",
+      "target_name": "get_farmland_classification_by_point",
+      "user_prompt": "Can you check the soil map unit and farmland classification for latitude 39.7684 and longitude -87.1581?",
+      "expected_tools": ["get_farmland_classification_by_point"],
+      "expected_keywords": [
+        "mukey",
+        "farmland"
+      ],
+      "sample_geometry": {
+        "type": "Point",
+        "coordinates": [-87.1581, 39.7684]
+      }
+    },
+    {
+      "id": "MUKEY-01",
+      "category": "Phase 1 - Mukey Lookup",
+      "target_type": "tool",
+      "target_name": "get_farmland_classification_by_mukey",
+      "user_prompt": "Retrieve the official farmland classification and soil map unit details for SSURGO map unit key (mukey) 412850.",
+      "expected_tools": ["get_farmland_classification_by_mukey"],
+      "expected_keywords": [
+        "412850",
+        "statewide importance"
+      ]
+    },
+    {
+      "id": "POLY-01",
+      "category": "Phase 2 - Polygon Analysis",
+      "target_type": "tool",
+      "target_name": "analyze_farmland_by_polygon",
+      "user_prompt": "Analyze the farmland classification and acreage breakdown for this proposed solar farm parcel in Story County, IA: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Please include NCCPI crop productivity index ratings and check for Census 2020 urban area overlap.",
+      "expected_tools": ["analyze_farmland_by_polygon"],
+      "expected_keywords": [
+        "acres",
+        "prime farmland",
+        "nccpi"
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.65, 42.02],
+            [-93.63, 42.02],
+            [-93.63, 42.04],
+            [-93.65, 42.04],
+            [-93.65, 42.02]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "POLY-02",
+      "category": "Phase 2 - SSURGO Geometry",
+      "target_type": "tool",
+      "target_name": "get_soil_polygons_by_geometry",
+      "user_prompt": "Retrieve the clipped SSURGO soil map unit polygon boundaries and properties as a GeoJSON FeatureCollection for the following project boundary: POLYGON((-93.65 42.02, -93.63 42.02, -93.63 42.04, -93.65 42.04, -93.65 42.02))",
+      "expected_tools": ["get_soil_polygons_by_geometry"],
+      "expected_keywords": [
+        "feature",
+        "polygon"
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.65, 42.02],
+            [-93.63, 42.02],
+            [-93.63, 42.04],
+            [-93.65, 42.04],
+            [-93.65, 42.02]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "URBAN-01",
+      "category": "Phase 3 - Urban Exemption",
+      "target_type": "tool",
+      "target_name": "check_urban_area_exemption",
+      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR § 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
+      "expected_tools": ["check_urban_area_exemption"],
+      "expected_keywords": [
+        "urban",
+        "7 CFR"
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.62, 41.58],
+            [-93.60, 41.58],
+            [-93.60, 41.60],
+            [-93.62, 41.60],
+            [-93.62, 41.58]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "INTERP-01",
+      "category": "Phase 3 - Soil Interpretations",
+      "target_type": "tool",
+      "target_name": "get_soil_interpretations",
+      "user_prompt": "Retrieve the component-weighted National Commodity Crop Productivity Index (NCCPI v3) ratings for SSURGO map unit keys 412850, 412851, and 413100.",
+      "expected_tools": ["get_soil_interpretations"],
+      "expected_keywords": [
+        "rating",
+        "nccpi"
+      ]
+    },
+    {
+      "id": "CORR-01",
+      "category": "Phase 3 - Corridor Analysis",
+      "target_type": "tool",
+      "target_name": "analyze_corridor_fppa",
+      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR § 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
+      "expected_tools": ["analyze_corridor_fppa"],
+      "expected_keywords": [
+        "corridor",
+        "county",
+        "lesa",
+        "score"
+      ],
+      "sample_geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-93.62, 42.02],
+          [-93.55, 42.08],
+          [-93.45, 42.15]
+        ]
+      }
+    },
+    {
+      "id": "CORR-02",
+      "category": "Phase 3 - Corridor Analysis",
+      "target_type": "tool",
+      "target_name": "analyze_corridor_fppa",
+      "user_prompt": "Compare two highway bypass alignments for FPPA farmland conversion impact: Primary Alignment: LINESTRING(-93.60 42.00, -93.50 42.10) with 100-foot buffer, versus Alternative Alignment B: LINESTRING(-93.62 42.00, -93.58 42.06, -93.50 42.10) with 100-foot buffer. Which route minimizes Prime Farmland conversion?",
+      "expected_tools": ["analyze_corridor_fppa"],
+      "expected_keywords": [
+        "alignment",
+        "prime farmland",
+        "acres"
+      ],
+      "sample_geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-93.60, 42.00],
+          [-93.50, 42.10]
+        ]
+      }
+    },
+    {
+      "id": "RES-01",
+      "category": "Resources",
+      "target_type": "resource",
+      "target_name": "fppa://regulatory-notice",
+      "user_prompt": "Read the MCP resource fppa://regulatory-notice (or call fpac-soil_read_get_regulatory_notice_resource) and summarize the FPPA regulatory notice and statutory limitations.",
+      "expected_tools": [],
+      "expected_keywords": [
+        "7 CFR Part 657",
+        "7 CFR Part 658",
+        "preliminary"
+      ]
+    },
+    {
+      "id": "RES-02",
+      "category": "Resources",
+      "target_type": "resource",
+      "target_name": "fppa://screening-guidance",
+      "user_prompt": "Read the MCP resource fppa://screening-guidance (or call fpac-soil_read_get_screening_guidance_resource) explaining the distinction between Form AD-1006 and Form NRCS-CPA-106.",
+      "expected_tools": [],
+      "expected_keywords": [
+        "AD-1006",
+        "NRCS-CPA-106"
+      ]
+    },
+    {
+      "id": "RES-03",
+      "category": "Resources",
+      "target_type": "resource",
+      "target_name": "fppa://farmland-classes",
+      "user_prompt": "Read the MCP resource fppa://farmland-classes (or call fpac-soil_read_get_farmland_classes_resource) containing SSURGO farmland categories.",
+      "expected_tools": [],
+      "expected_keywords": [
+        "Prime Farmland",
+        "Statewide Importance",
+        "Unique"
+      ]
+    },
+    {
+      "id": "PROMPT-01",
+      "category": "Assistant Prompts",
+      "target_type": "prompt",
+      "target_name": "fppa_screening_assistant",
+      "user_prompt": "Use the fppa_screening_assistant prompt to evaluate a proposed 50-acre rural water treatment facility in Boone County, IA at -93.88, 42.05.",
+      "expected_tools": [
+        "get_farmland_classification_by_point",
+        "analyze_farmland_by_polygon"
+      ],
+      "expected_keywords": [
+        "screening",
+        "farmland",
+        "Boone"
+      ]
+    },
+    {
+      "id": "PROMPT-02",
+      "category": "Assistant Prompts",
+      "target_type": "prompt",
+      "target_name": "fppa_corridor_screening_assistant",
+      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR § 658.5(c).",
+      "expected_tools": [
+        "analyze_corridor_fppa"
+      ],
+      "expected_keywords": [
+        "corridor",
+        "658.5(c)"
+      ]
+    },
+    {
+      "id": "PROMPT-03",
+      "category": "Assistant Prompts",
+      "target_type": "prompt",
+      "target_name": "fppa_urban_exemption_assistant",
+      "user_prompt": "Use the fppa_urban_exemption_assistant prompt to evaluate a proposed logistics park expansion on the fringe of Cedar Rapids, IA.",
+      "expected_tools": [
+        "check_urban_area_exemption"
+      ],
+      "expected_keywords": [
+        "urban",
+        "exemption"
+      ]
+    },
+    {
+      "id": "PROMPT-04",
+      "category": "Assistant Prompts",
+      "target_type": "prompt",
+      "target_name": "fppa_site_assessment_assistant",
+      "user_prompt": "Use the fppa_site_assessment_assistant prompt to evaluate Part VI Site Assessment criteria and Form AD-1006 decision thresholds for a new USDA-funded community health facility.",
+      "expected_tools": [
+        "explain_fppa_screening_scope"
+      ],
+      "expected_keywords": [
+        "AD-1006",
+        "threshold"
+      ]
+    }
+  ]
+}
