@@ -1,6 +1,6 @@
 [project]
 name = "fpac-soil-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "FastMCP server for querying USDA NRCS Soil Data Access (SDA) farmland classification and preliminary FPPA screening"
 readme = "README.md"
 requires-python = ">=3.11"
