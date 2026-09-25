@@ -32,6 +32,41 @@ def normalize_text(text: str) -> str:
     return normalized
 
 
+def parse_pi_events(output: str) -> list[dict[str, Any]]:
+    """Parse pi's JSONL event stream, ignoring non-JSON diagnostic lines."""
+    events: list[dict[str, Any]] = []
+    for line in output.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict):
+            events.append(event)
+    return events
+
+
+def event_text(event: dict[str, Any]) -> str:
+    """Flatten an event to searchable text for compatibility across pi event versions."""
+    return json.dumps(event, ensure_ascii=False).lower()
+
+
+def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return events representing MCP/tool invocations from pi's JSON stream."""
+    calls: list[dict[str, Any]] = []
+    for event in events:
+        text = event_text(event)
+        event_type = str(event.get("type", "")).lower()
+        if (
+            "toolcall" in event_type
+            or "tool_call" in event_type
+            or event_type in {"call", "tool_use"}
+            or '"toolcall"' in text
+            or '"tool_call"' in text
+        ):
+            calls.append(event)
+    return calls
+
+
 def get_pi_executable() -> str | None:
     """Resolve the pi executable path cross-platform (including Windows .cmd/.bat)."""
     pi_path = shutil.which("pi")
@@ -152,6 +187,8 @@ def test_pi_point_screening_evaluation(
     cmd = [
         pi_exe,
         "--no-session",
+        "--mode",
+        "json",
         "--mcp-config",
         str(sandbox_env / "mcp_config.json"),
         "--append-system-prompt",
@@ -175,6 +212,27 @@ def test_pi_point_screening_evaluation(
     )
 
     assert result.returncode == 0, f"pi invocation failed: {result.stderr}"
+    events = parse_pi_events(result.stdout or "")
+    assert events, f"pi returned no JSON events: {result.stdout}"
+
+    event_stream = "\n".join(event_text(event) for event in events)
+    assert "initialize" in event_stream, (
+        f"MCP initialization event not found in pi event stream: {result.stdout}"
+    )
+
+    tool_calls = extract_tool_calls(events)
+    target_tool = case["target_name"]
+    matching_calls = [event for event in tool_calls if target_tool.lower() in event_text(event)]
+    assert matching_calls, (
+        f"Expected MCP tool call '{target_tool}' not found in pi event stream: {result.stdout}"
+    )
+
+    for expected_value in ("41.8781", "-93.0977"):
+        assert any(expected_value in event_text(event) for event in matching_calls), (
+            f"Expected parameter '{expected_value}' not found in call to {target_tool}: "
+            f"{result.stdout}"
+        )
+
     norm_stdout = normalize_text(result.stdout or "").lower()
 
     # Verify key expected content or keywords

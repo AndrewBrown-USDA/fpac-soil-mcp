@@ -117,6 +117,9 @@ def load_test_cases(category: str, case_id: str | None) -> list[dict[str, Any]]:
 
 
 def create_sandbox(sandbox_dir: Path) -> None:
+    # The temporary working directory keeps the agent away from the repository
+    # files. A future hardening step can replace this with pi-sandbox/container
+    # isolation: https://github.com/brownag/pi-sandbox
     mcp_config = {
         "mcpServers": {
             "fpac-soil": {
@@ -164,10 +167,13 @@ def run_case(
     case_id = case["id"]
     prompt = case["user_prompt"]
     expected_keywords = case.get("expected_keywords", [])
+    expected_tools = case.get("expected_tools", [])
 
     cmd = [
         pi_exe,
         "--no-session",
+        "--mode",
+        "json",
         "--mcp-config",
         str(sandbox_dir / "mcp_config.json"),
         "--append-system-prompt",
@@ -201,13 +207,30 @@ def run_case(
             status = "FAIL"
             error_msg = f"Non-zero exit code ({proc.returncode}): {(proc.stderr or '').strip()}"
         else:
+            executed_tools: set[str] = set()
+            for line in output.splitlines():
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                event_text = json.dumps(event)
+                for tool_name in expected_tools:
+                    if re.search(rf"(?<![\w-]){re.escape(tool_name)}(?![\w-])", event_text):
+                        executed_tools.add(tool_name)
+
+            missing_tools = [tool for tool in expected_tools if tool not in executed_tools]
             norm_output = normalize_text(output).lower()
             missing_keywords = [
                 kw for kw in expected_keywords if normalize_text(kw).lower() not in norm_output
             ]
+            failures = []
+            if missing_tools:
+                failures.append(f"Missing tools: {', '.join(missing_tools)}")
             if missing_keywords:
-                status = "WARN"
-                error_msg = f"Missing keywords: {', '.join(missing_keywords)}"
+                failures.append(f"Missing keywords: {', '.join(missing_keywords)}")
+            if failures:
+                status = "FAIL"
+                error_msg = "; ".join(failures)
 
         if verbose:
             print(f"\n[{case_id}] Output:\n{output}\n")
@@ -232,6 +255,7 @@ def run_case(
         "error": error_msg,
         "output": output,
         "expected_keywords": expected_keywords,
+        "expected_tools": expected_tools,
     }
 
 
@@ -287,7 +311,7 @@ def main() -> None:
 
     passed = sum(1 for r in results if r["status"] == "PASS")
     warned = sum(1 for r in results if r["status"] == "WARN")
-    failed = sum(1 for r in results if r["status"] in ("FAIL", "ERROR", "TIMEOUT"))
+    failed = sum(1 for r in results if r["status"] in ("FAIL", "ERROR", "TIMEOUT", "WARN"))
 
     print(
         f"\nSummary: {passed} Passed, {warned} Warnings, {failed} Failed out of {len(results)} total cases.\n"
