@@ -50,19 +50,97 @@ def event_text(event: dict[str, Any]) -> str:
     return json.dumps(event, ensure_ascii=False).lower()
 
 
+def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
+    """Extract tool names specifically from dedicated name/function fields in an event."""
+    names: set[str] = set()
+    event_type = str(event.get("type", "")).lower()
+
+    if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
+        for key in ("tool_name", "tool", "name", "function_name"):
+            val = event.get(key)
+            if isinstance(val, str) and val:
+                names.add(val)
+
+        tool_call_obj = event.get("tool_call") or event.get("call") or event.get("function")
+        if isinstance(tool_call_obj, dict):
+            for key in ("name", "tool_name", "tool"):
+                val = tool_call_obj.get(key)
+                if isinstance(val, str) and val:
+                    names.add(val)
+
+    message = event.get("message")
+    if isinstance(message, dict):
+        tool_calls = message.get("tool_calls")
+        if isinstance(tool_calls, list):
+            for tc in tool_calls:
+                if isinstance(tc, dict):
+                    fn = tc.get("function")
+                    if isinstance(fn, dict) and isinstance(fn.get("name"), str):
+                        names.add(fn["name"])
+                    elif isinstance(tc.get("name"), str):
+                        names.add(tc["name"])
+
+    content = event.get("content")
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") in {"tool_use", "tool_call"}:
+                val = block.get("name") or block.get("tool")
+                if isinstance(val, str) and val:
+                    names.add(val)
+
+    return names
+
+
+def extract_assistant_content(event: dict[str, Any]) -> str:
+    """Extract assistant response text or tool output from an event."""
+    event_type = str(event.get("type", "")).lower()
+    role = str(event.get("role", "")).lower()
+    text_parts: list[str] = []
+
+    if role in {"assistant", "model", "tool"} or event_type in {
+        "assistant",
+        "message",
+        "text",
+        "response",
+        "tool_result",
+        "tool_output",
+    }:
+        content = (
+            event.get("content") or event.get("text") or event.get("result") or event.get("output")
+        )
+        if isinstance(content, str):
+            text_parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif (
+                    isinstance(block, dict)
+                    and block.get("type") in {"text", "output", "result"}
+                    and isinstance(block.get("text") or block.get("content"), str)
+                ):
+                    text_parts.append(block.get("text") or block.get("content") or "")
+
+    message = event.get("message")
+    if isinstance(message, dict) and str(message.get("role", "")).lower() in {"assistant", "model"}:
+        msg_content = message.get("content")
+        if isinstance(msg_content, str):
+            text_parts.append(msg_content)
+        elif isinstance(msg_content, list):
+            for block in msg_content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif isinstance(block, dict) and isinstance(block.get("text"), str):
+                    text_parts.append(block["text"])
+
+    return " ".join(text_parts)
+
+
 def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return events representing MCP/tool invocations from pi's JSON stream."""
     calls: list[dict[str, Any]] = []
     for event in events:
-        text = event_text(event)
-        event_type = str(event.get("type", "")).lower()
-        if (
-            "toolcall" in event_type
-            or "tool_call" in event_type
-            or event_type in {"call", "tool_use"}
-            or '"toolcall"' in text
-            or '"tool_call"' in text
-        ):
+        if extract_structured_tool_names(event):
             calls.append(event)
     return calls
 
@@ -233,11 +311,15 @@ def test_pi_point_screening_evaluation(
             f"{result.stdout}"
         )
 
-    norm_stdout = normalize_text(result.stdout or "").lower()
+    assistant_texts = [
+        extract_assistant_content(ev) for ev in events if extract_assistant_content(ev)
+    ]
+    combined_content = " ".join(assistant_texts) if assistant_texts else (result.stdout or "")
+    norm_content = normalize_text(combined_content).lower()
 
     # Verify key expected content or keywords
     for kw in case.get("expected_keywords", []):
         norm_kw = normalize_text(kw).lower()
-        assert norm_kw in norm_stdout, (
-            f"Expected keyword '{kw}' not found in normalized output: {result.stdout}"
+        assert norm_kw in norm_content, (
+            f"Expected keyword '{kw}' not found in normalized assistant output: {result.stdout}"
         )

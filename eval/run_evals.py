@@ -156,6 +156,96 @@ def normalize_text(text: str) -> str:
     return normalized
 
 
+def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
+    """Extract tool names specifically from dedicated name/function fields in an event."""
+    names: set[str] = set()
+    event_type = str(event.get("type", "")).lower()
+
+    # Direct tool execution or tool call events
+    if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
+        for key in ("tool_name", "tool", "name", "function_name"):
+            val = event.get(key)
+            if isinstance(val, str) and val:
+                names.add(val)
+
+        tool_call_obj = event.get("tool_call") or event.get("call") or event.get("function")
+        if isinstance(tool_call_obj, dict):
+            for key in ("name", "tool_name", "tool"):
+                val = tool_call_obj.get(key)
+                if isinstance(val, str) and val:
+                    names.add(val)
+
+    # Tool calls embedded inside message objects
+    message = event.get("message")
+    if isinstance(message, dict):
+        tool_calls = message.get("tool_calls")
+        if isinstance(tool_calls, list):
+            for tc in tool_calls:
+                if isinstance(tc, dict):
+                    fn = tc.get("function")
+                    if isinstance(fn, dict) and isinstance(fn.get("name"), str):
+                        names.add(fn["name"])
+                    elif isinstance(tc.get("name"), str):
+                        names.add(tc["name"])
+
+    # Nested content blocks (e.g. Claude/Pi tool_use content blocks)
+    content = event.get("content")
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") in {"tool_use", "tool_call"}:
+                val = block.get("name") or block.get("tool")
+                if isinstance(val, str) and val:
+                    names.add(val)
+
+    return names
+
+
+def extract_assistant_content(event: dict[str, Any]) -> str:
+    """Extract assistant response text or tool output from an event."""
+    event_type = str(event.get("type", "")).lower()
+    role = str(event.get("role", "")).lower()
+    text_parts: list[str] = []
+
+    # Messages/responses from assistant or tool results
+    if role in {"assistant", "model", "tool"} or event_type in {
+        "assistant",
+        "message",
+        "text",
+        "response",
+        "tool_result",
+        "tool_output",
+    }:
+        content = (
+            event.get("content") or event.get("text") or event.get("result") or event.get("output")
+        )
+        if isinstance(content, str):
+            text_parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif (
+                    isinstance(block, dict)
+                    and block.get("type") in {"text", "output", "result"}
+                    and isinstance(block.get("text") or block.get("content"), str)
+                ):
+                    text_parts.append(block.get("text") or block.get("content") or "")
+
+    message = event.get("message")
+    if isinstance(message, dict) and str(message.get("role", "")).lower() in {"assistant", "model"}:
+        msg_content = message.get("content")
+        if isinstance(msg_content, str):
+            text_parts.append(msg_content)
+        elif isinstance(msg_content, list):
+            for block in msg_content:
+                if isinstance(block, str):
+                    text_parts.append(block)
+                elif isinstance(block, dict) and isinstance(block.get("text"), str):
+                    text_parts.append(block["text"])
+
+    return " ".join(text_parts)
+
+
 def run_case(
     case: dict[str, Any],
     sandbox_dir: Path,
@@ -208,20 +298,25 @@ def run_case(
             error_msg = f"Non-zero exit code ({proc.returncode}): {(proc.stderr or '').strip()}"
         else:
             executed_tools: set[str] = set()
+            assistant_texts: list[str] = []
+
             for line in output.splitlines():
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                event_text = json.dumps(event)
-                for tool_name in expected_tools:
-                    if re.search(rf"(?<![\w-]){re.escape(tool_name)}(?![\w-])", event_text):
-                        executed_tools.add(tool_name)
+                if isinstance(event, dict):
+                    executed_tools.update(extract_structured_tool_names(event))
+                    txt = extract_assistant_content(event)
+                    if txt:
+                        assistant_texts.append(txt)
+
+            combined_assistant_text = " ".join(assistant_texts) if assistant_texts else output
+            norm_content = normalize_text(combined_assistant_text).lower()
 
             missing_tools = [tool for tool in expected_tools if tool not in executed_tools]
-            norm_output = normalize_text(output).lower()
             missing_keywords = [
-                kw for kw in expected_keywords if normalize_text(kw).lower() not in norm_output
+                kw for kw in expected_keywords if normalize_text(kw).lower() not in norm_content
             ]
             failures = []
             if missing_tools:
