@@ -276,7 +276,7 @@ The server exposes **9 core MCP tools** for spatial soil query, farmland classif
 
 ```text
 User:
-"We are preparing NEPA documentation for a 15-mile 161kV transmission line project traversing Story and Marshall counties in Iowa. Centerline: LINESTRING(-93.35 42.03, -93.15 42.03, -92.90 42.05). Right-of-way requires a 50-foot buffer on each side (100-ft total width), plus a 12-acre laydown yard at POLYGON((-93.16 42.02, -93.14 42.02, -93.14 42.04, -93.16 42.04, -93.16 42.02)). Can you run a corridor analysis, partition by county, fetch agricultural baselines, and evaluate our Form NRCS-CPA-106 LESA score?"
+"We are preparing NEPA documentation for a 23.2-mile 161kV transmission line project traversing Story and Marshall counties in Iowa. Centerline: LINESTRING(-93.35 42.03, -93.15 42.03, -92.90 42.05). Right-of-way requires a 50-foot buffer on each side (100-ft total width), plus a 12-acre laydown yard at POLYGON((-93.16 42.02, -93.14 42.02, -93.14 42.04, -93.16 42.04, -93.16 42.02)). Include this Part VI payload for the illustrative scoring run: {\"site_assessment_inputs\":{\"project_farm_acres\":350,\"criteria_inputs\":{\"1\":{\"awarded_points\":8,\"justification\":\"Rural zoning; no urban services.\"},\"2\":{\"awarded_points\":7,\"justification\":\"No existing nonfarm development on the tract.\"},\"3\":{\"awarded_points\":6,\"justification\":\"No protected lands identified in the project record.\"}}}}. Can you run a corridor analysis, partition by county, fetch agricultural baselines, and evaluate our Form NRCS-CPA-106 LESA score?"
 
 Assistant (Invoking analyze_corridor_fppa):
 1. Buffers centerline by 50 feet in equal-area projection (EPSG:6933).
@@ -288,8 +288,8 @@ Assistant (Invoking analyze_corridor_fppa):
 7. Audits and reconciles multi-county acreage sums.
 
 Output:
-- Total Impact Area: 181.82 acres (169.82 ac direct ROW + 12.00 ac staging yard).
-- Farmland Protected: 168.50 acres (92.7% Prime Farmland / Statewide Importance).
+- Total Impact Area: approximately 293.00 acres (approximately 281.00 ac direct ROW + 12.00 ac staging yard; 23.2 miles × 100 feet ÷ 43,560).
+- Farmland Protected: 279.68 acres (illustrative result; 95.5% Prime Farmland / Statewide Importance).
 - Total LESA Score: 182.2 / 260 points (LE: 84.2, SA: 98.0).
 - Statutory Determination (7 CFR § 658.4(c)(2)): Total score >= 160 points; sponsoring agency must evaluate alternative alignments or mitigation to minimize conversion.
 - Mandatory Notice: Preliminary inventory estimate. Official Form NRCS-CPA-106 processing requires coordination with the USDA NRCS State Conservationist.

@@ -112,7 +112,20 @@ Once connected, test the server tools, resources, and prompt templates using the
   > - **Indirect Staging Yard**: `POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07))`
   > - **Site Assessment Inputs**: Project farm tract size is 350 acres.
   > 
-  > *Please partition by county, query NASS agricultural statistics, apply 7 CFR § 658.5(c) corridor rules (zeroing criteria 5 & 6), and evaluate whether the total LESA score exceeds the 160-point threshold."*
+  > - **Part VI scoring payload**: Provide `site_assessment_inputs.criteria_inputs` for each non-automated criterion, with an `awarded_points` value and a `justification`. For example:
+  >   ```json
+  >   {
+  >     "site_assessment_inputs": {
+  >       "project_farm_acres": 350,
+  >       "criteria_inputs": {
+  >         "1": {"awarded_points": 8, "justification": "Rural zoning; no urban services."},
+  >         "2": {"awarded_points": 7, "justification": "No existing nonfarm development on the tract."},
+  >         "3": {"awarded_points": 6, "justification": "No protected lands identified in the project record."}
+  >       }
+  >     }
+  >   }
+  >   ```
+  > *Please partition by county, query NASS agricultural statistics, apply 7 CFR § 658.5(c) corridor rules (zeroing criteria 5 & 6), and evaluate whether the total LESA score exceeds the 160-point threshold. Supply the remaining applicable criteria in `criteria_inputs`; omitted non-automated criteria default to zero and do not represent an official NRCS determination."*
 - **Corridor Alternative Alignment Comparison**:
   > *"Compare two highway bypass alignments for FPPA farmland conversion impact:*
   > - **Primary Alignment**: `LINESTRING(-93.60 42.00, -93.50 42.10)`, buffer 100 feet
