@@ -16,8 +16,8 @@ Implement the prompt and documentation enhancements defined in `planning/RESEARC
 3. **Pi Agent Evaluation Harness & Pytest Suite (`eval/test_agent_eval.py`, `pyproject.toml`)**:
    - Add `agent_eval` marker to `pyproject.toml` with default exclusion instructions (`-m "not agent_eval and not live_network"`).
    - Implement `eval/test_agent_eval.py` that sets up an isolated temporary workspace outside the repository (preventing the agent from reading source code directly), generates an ephemeral `.mcp.json` pointing to `fpac-soil-mcp`, executes `pi` in non-interactive mode (`--mode json -p`), verifies MCP tool loading, and asserts on tool call chains and expected outputs.
-4. **Standalone Release Evaluation CLI Script (`eval/run_evals.py` or `scripts/run_agent_evals.py`)**:
-   - Create `eval/run_evals.py` (and symlink/alias or companion in `scripts/run_agent_evals.py` if needed) allowing developers to execute agent evaluation benchmarks between releases with configurable models (`AGENT_EVAL_MODEL`), filtered test categories, timing metrics, and summary reporting.
+4. **Standalone Release Evaluation CLI Script (`eval/run_evals.py`)**:
+   - Create `eval/run_evals.py` allowing developers to execute agent evaluation benchmarks between releases with configurable models (`AGENT_EVAL_MODEL`), filtered test categories, timing metrics, and summary reporting.
 5. **Quality & Validation**:
    - Verify all unit tests remain green (`uv run pytest -m "not live_network and not agent_eval"`).
    - Verify code formatting and linting (`uv run ruff check .`, `uv run ruff format --check .`).
@@ -28,9 +28,9 @@ Implement the prompt and documentation enhancements defined in `planning/RESEARC
 - Committing API keys or ephemeral agent session logs.
 
 ### Verbatim Constraints
-- "JSON format for prompt dataset, located at `tests/fixtures/prompts/prompt_test_cases.json`, shared with docs, at least 1 example that targets each tool."
+- "JSON format for prompt dataset, located at `eval/prompt_test_cases.json`, shared with docs, at least 1 example that targets each tool."
 - "Isolation strategy: `temp_sandbox_dir`, MCP config generation: `temp_mcp_config` so the agent cannot cheat by reading repository source files."
-- "Pytest marker: `agent_eval`, default exclusion: true, runner helper script: `scripts/run_agent_evals.py`."
+- "Pytest marker: `agent_eval`, default exclusion: true, runner helper script: `eval/run_evals.py`."
 - "Execution mode: `json_mode`, model override env var: `AGENT_EVAL_MODEL`, tool verification: `verify_mcp_and_assertion`."
 - "Preserve all existing 192 unit tests green and lint clean."
 
@@ -38,11 +38,11 @@ Implement the prompt and documentation enhancements defined in `planning/RESEARC
 
 ## Decision Log
 
-- **2026-09-23**: Prompt test cases structured in JSON format at `tests/fixtures/prompts/prompt_test_cases.json` representing all 9 tools, 3 resources, and 4 assistant prompts.
+- **2026-09-23**: Prompt test cases structured in JSON format at `eval/prompt_test_cases.json` representing all 9 tools, 3 resources, and 4 assistant prompts.
 - **2026-09-23**: Documentation (`QUICKSTART.md`, `README.md`) updated with Phase 1–3 categorized prompt examples, inline GeoJSON/WKT geometries, and multi-turn transmission line corridor workflow.
 - **2026-09-23**: `pyproject.toml` updated with `@pytest.mark.agent_eval` marker for release-time evaluation runs.
 - **2026-09-23**: Pi agent evaluation harness built with temporary isolated working directories (`temp_sandbox_dir`), ephemeral MCP configuration, and `--mode json -p` invocation.
-- **2026-09-23**: CLI evaluation script `scripts/run_agent_evals.py` created for standalone test runs between releases.
+- **2026-09-23**: CLI evaluation script `eval/run_evals.py` created for standalone test runs between releases.
 - **2026-09-23**: 3-wave execution plan designed to maintain strict disjoint file boundaries across parallel workers.
 
 ---
@@ -51,10 +51,10 @@ Implement the prompt and documentation enhancements defined in `planning/RESEARC
 
 - **Target Files & Locations**:
   - Documentation: `QUICKSTART.md`, `README.md`, `manifest.yaml`, `server.json`
-  - Fixtures: `tests/fixtures/prompts/prompt_test_cases.json`
+  - Fixtures: `eval/prompt_test_cases.json`
   - Test Suite & Config: `pyproject.toml`, `tests/test_agent_eval.py`
-  - Scripts: `scripts/run_agent_evals.py`
-- **Existing Tests Baseline**: `192 passed, 10 deselected in 13.65s`
+  - Scripts: `eval/run_evals.py`
+- **Existing Tests Baseline**: `192 passed, 12 deselected`
 - **Pi CLI Check**: `pi` version 0.87.1 installed at `C:\Users\Andrew.G.Brown\AppData\Roaming\npm\pi.cmd`.
 - **Linter Baseline**: `uv run ruff check .` clean; `uv run ruff format --check .` clean.
 
