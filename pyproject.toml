@@ -33,7 +33,7 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "eval"]
 addopts = "-m 'not live_network and not agent_eval'"
 markers = [
     "live_network: marks tests requiring external network access (USDA SDA, Census TIGERweb, etc.) (deselect with -m 'not live_network')",
