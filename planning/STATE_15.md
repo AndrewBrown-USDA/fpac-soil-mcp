@@ -2,7 +2,7 @@
 
 ## Green Baseline Checklist
 
-- [x] Baseline test suite verified: `uv run pytest -m "not live_network and not agent_eval" -q` -> `192 passed, 10 deselected`.
+- [x] Baseline test suite verified: `uv run pytest -m "not live_network and not agent_eval" -q` -> `192 passed, 12 deselected`.
 - [x] Baseline lint verified: `uv run ruff check .` -> clean.
 - [x] Baseline formatting verified: `uv run ruff format --check .` -> clean.
 

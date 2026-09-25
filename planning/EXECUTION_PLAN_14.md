@@ -52,7 +52,7 @@ Implement the prompt and documentation enhancements defined in `planning/RESEARC
 - **Target Files & Locations**:
   - Documentation: `QUICKSTART.md`, `README.md`, `manifest.yaml`, `server.json`
   - Fixtures: `eval/prompt_test_cases.json`
-  - Test Suite & Config: `pyproject.toml`, `tests/test_agent_eval.py`
+  - Test Suite & Config: `pyproject.toml`, `eval/test_agent_eval.py`
   - Scripts: `eval/run_evals.py`
 - **Existing Tests Baseline**: `192 passed, 12 deselected`
 - **Pi CLI Check**: `pi` version 0.87.1 installed at `C:\Users\Andrew.G.Brown\AppData\Roaming\npm\pi.cmd`.
