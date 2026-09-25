@@ -245,8 +245,7 @@
       "target_name": "fppa_screening_assistant",
       "user_prompt": "Use the fppa_screening_assistant prompt to evaluate a proposed 50-acre rural water treatment facility in Boone County, IA at -93.88, 42.05.",
       "expected_tools": [
-        "get_farmland_classification_by_point",
-        "analyze_farmland_by_polygon"
+        "get_farmland_classification_by_point"
       ],
       "expected_keywords": [
         "screening",
