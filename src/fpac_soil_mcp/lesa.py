@@ -177,14 +177,14 @@ def calculate_relative_ratings(
             )
             continue
 
-        # Null-sentinel check: unrated indicators 999, -999, negative numbers, or out-of-range when county_max <= 1.0.
+        # Null-sentinel check: unrated indicators are screened consistently across
+        # productivity index scales, regardless of county_max.
         # Note: If explicit_is_rated is provided, respect it; otherwise flag sentinels.
         is_sentinel = (
             explicit_is_rated is False
-            or num_raw in (999.0, -999.0, -99.0)
+            or num_raw in (99.0, 999.0, -99.0, -999.0)
             or num_raw < 0
             or (county_max <= 1.0 and num_raw > 1.0)
-            or (county_max <= 1.0 and num_raw in (99.0, 999.0))
         )
 
         if is_sentinel:
@@ -739,6 +739,15 @@ def evaluate_lesa(
     Returns:
         PreliminaryLESAResponse object.
     """
+    # Normalize once so fallback summaries preserve the requested index type.
+    if isinstance(productivity_index, str):
+        try:
+            normalized_productivity_index = ProductivityIndexType(productivity_index.upper())
+        except ValueError:
+            normalized_productivity_index = ProductivityIndexType.CUSTOM
+    else:
+        normalized_productivity_index = productivity_index
+
     # 1. Resolve Land Evaluation Summary
     if isinstance(land_evaluation, LandEvaluationSummary):
         le_summary = land_evaluation
@@ -746,11 +755,7 @@ def evaluate_lesa(
     elif isinstance(land_evaluation, (int, float)):
         le_score = max(0.0, min(100.0, float(land_evaluation)))
         le_summary = LandEvaluationSummary(
-            productivity_index=(
-                productivity_index
-                if isinstance(productivity_index, ProductivityIndexType)
-                else ProductivityIndexType.NCCPI
-            ),
+            productivity_index=normalized_productivity_index,
             aoi_relative_rating=round(le_score / 100.0, 4),
             candidate_le_score=le_score,
             rated_acreage=0.0,
@@ -761,11 +766,7 @@ def evaluate_lesa(
     else:
         le_score = 0.0
         le_summary = LandEvaluationSummary(
-            productivity_index=(
-                productivity_index
-                if isinstance(productivity_index, ProductivityIndexType)
-                else ProductivityIndexType.NCCPI
-            ),
+            productivity_index=normalized_productivity_index,
             aoi_relative_rating=0.0,
             candidate_le_score=0.0,
             rated_acreage=0.0,

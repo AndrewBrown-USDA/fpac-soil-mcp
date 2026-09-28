@@ -87,8 +87,8 @@
           "musym": "L85A",
           "muname": "Nicollet clay loam, 1 to 3 percent slopes",
           "acres": 40.0,
-          "raw_rating": 99.0,
-          "normalized_relative_rating": 0.99,
+          "raw_rating": 96.0,
+          "normalized_relative_rating": 0.96,
           "is_rated": true,
           "unrated_reason": null
         }
@@ -98,8 +98,8 @@
         "unrated_acreage": 0.0,
         "total_acreage": 100.0,
         "coverage_percent": 100.0,
-        "aoi_relative_rating": 0.954,
-        "candidate_le_score": 95.4,
+        "aoi_relative_rating": 0.942,
+        "candidate_le_score": 94.2,
         "county_farmland_percentile_higher": 88.2
       },
       "site_assessment": {
@@ -107,7 +107,7 @@
         "criteria_count": 12
       },
       "expected_lesa_summary": {
-        "total_lesa_score": 170.4,
+        "total_lesa_score": 169.2,
         "mandatory_alternatives_required": true,
         "threshold_note": "Score >= 160 triggers consideration of alternative project sites per FPPA guidelines."
       }

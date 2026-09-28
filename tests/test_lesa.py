@@ -69,11 +69,11 @@ class TestRelativeRatingNormalization:
     def test_cpi_normalization(self) -> None:
         ratings = [
             {"mukey": "415201", "musym": "L83A", "raw_rating": 93.0},
-            {"mukey": "415205", "musym": "L85A", "raw_rating": 99.0},
+            {"mukey": "415205", "musym": "L85A", "raw_rating": 96.0},
         ]
         results = calculate_relative_ratings(ratings, county_max=100.0)
         assert results[0].normalized_relative_rating == 0.93
-        assert results[1].normalized_relative_rating == 0.99
+        assert results[1].normalized_relative_rating == 0.96
 
     def test_storie_normalization(self) -> None:
         ratings = [

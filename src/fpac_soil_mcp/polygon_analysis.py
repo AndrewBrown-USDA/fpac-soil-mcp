@@ -160,7 +160,10 @@ class PolygonAnalyzer:
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
         interp_map: dict[str, dict[str, Any]] = {}
         rating_map: dict[str, dict[str, Any]] = {}
-        if (include_nccpi or productivity_index) and mukeys:
+        if (
+            include_nccpi
+            or (productivity_index and str(productivity_index).strip().lower() != "nccpi")
+        ) and mukeys:
             if norm_idx == "nccpi":
                 try:
                     interp_rows = self.sda_client.get_interpretations(
@@ -172,14 +175,18 @@ class PolygonAnalyzer:
                         mukey_val = str(irow.get("mukey"))
                         interp_map[mukey_val] = irow
                         num_r = irow.get("numeric_rating")
+                        try:
+                            parsed_num_r = float(num_r) if num_r is not None else None
+                        except (ValueError, TypeError):
+                            parsed_num_r = None
                         rating_map[mukey_val] = {
                             "mukey": mukey_val,
-                            "numeric_rating": num_r,
+                            "numeric_rating": parsed_num_r,
                             "rating_class": irow.get("rating_class"),
                             "rated_pct": irow.get("rated_pct"),
                             "total_pct": irow.get("total_pct"),
-                            "is_rated": num_r is not None
-                            and str(num_r).strip() not in ("", "None", "99", "999"),
+                            "is_rated": parsed_num_r is not None
+                            and parsed_num_r not in (99, 999),
                             "caveats": [],
                         }
                 except SDAClientError as exc:
@@ -207,23 +214,20 @@ class PolygonAnalyzer:
 
         # Determine county max benchmark
         county_max = max_county_rating_override
-        if county_max is None:
-            if norm_idx == "nccpi":
-                county_max = 1.0
-            elif raw_units:
-                areasymbols = [str(u.get("areasymbol")) for u in raw_units if u.get("areasymbol")]
-                primary_areasymbol = areasymbols[0] if areasymbols else None
-                if primary_areasymbol:
-                    try:
-                        county_max = self.sda_client.get_county_max_productivity_rating(
-                            areasymbol=primary_areasymbol,
-                            index_type=norm_idx,
-                        )
-                    except SDAClientError as exc:
-                        logger.warning(
-                            "County max rating query failed for %s: %s", primary_areasymbol, exc
-                        )
-                        limitations.append(f"County max rating query warning: {exc}")
+        if county_max is None and raw_units:
+            areasymbols = [str(u.get("areasymbol")) for u in raw_units if u.get("areasymbol")]
+            primary_areasymbol = areasymbols[0] if areasymbols else None
+            if primary_areasymbol:
+                try:
+                    county_max = self.sda_client.get_county_max_productivity_rating(
+                        areasymbol=primary_areasymbol,
+                        index_type="nccpi" if norm_idx == "nccpi" else norm_idx,
+                    )
+                except SDAClientError as exc:
+                    logger.warning(
+                        "County max rating query failed for %s: %s", primary_areasymbol, exc
+                    )
+                    limitations.append(f"County max rating query warning: {exc}")
 
         if county_max is None or county_max <= 0:
             county_max = 1.0 if norm_idx == "nccpi" else 100.0
