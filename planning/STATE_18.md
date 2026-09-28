@@ -10,8 +10,8 @@
 
 | Task ID | Wave | Title | Status | Worker | Assigned At | Completed At |
 | --- | --- | --- | --- | --- | --- | --- |
-| `18.1.1` | 1 | Generalized Dynamic SDV Attribute Query Engine in SDA Client | pending | unassigned | - | - |
-| `18.1.2` | 1 | Model Bounds Enforcement & Server Registry Sync | pending | unassigned | - | - |
+| `18.1.1` | 1 | Generalized Dynamic SDV Attribute Query Engine in SDA Client | done | worker-18-1-1 | 2026-09-28 | 2026-09-28 |
+| `18.1.2` | 1 | Model Bounds Enforcement & Server Registry Sync | done | worker-18-1-2 | 2026-09-28 | 2026-09-28 |
 | `18.2.1` | 2 | Sentinel Null Screening, Strict Percentile Math & LESA Engine Cleanup | pending | unassigned | - | - |
 | `18.2.2` | 2 | Unit, Mocked & Benchmark Verification Suite Expansion | pending | unassigned | - | - |
 | `18.3.1` | 3 | End-to-End Test Suite Verification, State & Documentation Finalization | pending | unassigned | - | - |
@@ -30,4 +30,13 @@
 
 ## Task Reports
 
-<!-- Task reports will be appended here as tasks complete -->
+### Task 18.1.1 Report: Generalized Dynamic SDV Attribute Query Engine in SDA Client
+- **Status**: done
+- **Files**: `src/fpac_soil_mcp/sda_client.py`
+- **Verification**: `uv run pytest tests/test_sda_client.py -q` passed (55 passed). Implemented `build_dynamic_sdv_query` and `build_dynamic_sdv_county_max_query` with table allowlist validation and dynamic resolution.
+
+### Task 18.1.2 Report: Model Bounds Enforcement & Server Registry Sync
+- **Status**: done
+- **Files**: `src/fpac_soil_mcp/models.py`, `server.json`
+- **Verification**: `SiteAssessmentCriterion` field and model validators enforce non-negative points and `awarded <= max`; `server.json` synchronized. Passed full suite.
+

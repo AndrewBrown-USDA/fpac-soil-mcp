@@ -4,10 +4,12 @@ Defines data models for Soil Map Units, Query Sources, Farmland Classification r
 FPPA Scope responses, and Farmland Class listings.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SoilMapUnit(BaseModel):
@@ -447,12 +449,27 @@ class SiteAssessmentCriterion(BaseModel):
             raise ValueError(f"criterion_number must be between 1 and 12, got {v}")
         return v
 
+    @field_validator("max_points")
+    @classmethod
+    def validate_max_points(cls, v: float) -> float:
+        if v < 0.0:
+            raise ValueError(f"max_points cannot be negative, got {v}")
+        return v
+
     @field_validator("awarded_points")
     @classmethod
     def validate_awarded_points(cls, v: float) -> float:
         if v < 0.0:
             raise ValueError(f"awarded_points cannot be negative, got {v}")
         return v
+
+    @model_validator(mode="after")
+    def validate_awarded_not_exceed_max(self) -> SiteAssessmentCriterion:
+        if self.awarded_points > self.max_points:
+            raise ValueError(
+                f"awarded_points ({self.awarded_points}) cannot exceed max_points ({self.max_points}) for criterion {self.criterion_number}"
+            )
+        return self
 
 
 class SiteAssessmentSummary(BaseModel):
