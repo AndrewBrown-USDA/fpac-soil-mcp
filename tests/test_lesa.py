@@ -136,11 +136,26 @@ class TestUnratedAndSentinelFiltering:
             {"mukey": "101", "raw_rating": -1.0},
             {"mukey": "102", "raw_rating": 999.0},
             {"mukey": "103", "raw_rating": -999.0},
+            {"mukey": "104", "raw_rating": 99.0, "is_rated": False},
         ]
         results = calculate_relative_ratings(ratings, county_max=100.0)
         for r in results:
             assert r.is_rated is False
-            assert "Rating sentinel value" in (r.unrated_reason or "")
+            assert (
+                "unrated" in (r.unrated_reason or "").lower()
+                or "sentinel" in (r.unrated_reason or "").lower()
+            )
+            assert r.normalized_relative_rating is None
+
+    def test_nccpi_out_of_range_sentinel(self) -> None:
+        ratings = [
+            {"mukey": "101", "raw_rating": 99.0},
+            {"mukey": "102", "raw_rating": 999.0},
+        ]
+        results = calculate_relative_ratings(ratings, county_max=0.94)
+        for r in results:
+            assert r.is_rated is False
+            assert r.normalized_relative_rating is None
 
 
 class TestAreaWeightingAndAggregation:
@@ -181,6 +196,19 @@ class TestAreaWeightingAndAggregation:
         ]
         # Total acres = 1000.0
         # AOI RR = 0.75 -> qualifying (>= 0.75) are 0.9 (200) + 0.8 (300) = 500 acres = 50.0%
+        percentile = calculate_county_farmland_percentile(0.75, distribution)
+        assert percentile == 50.0
+
+    def test_calculate_county_farmland_percentile_excludes_unrated_acres(self) -> None:
+        distribution = [
+            {"rating": 0.9, "acres": 200.0},
+            {"rating": 0.8, "acres": 300.0},
+            {"rating": 0.7, "acres": 500.0},
+            {"rating": None, "acres": 400.0},  # unrated/water tract
+            {"rating": 99.0, "acres": 100.0},  # sentinel tract
+        ]
+        # Total rated acres = 1000.0 (unrated 400 + 100 ignored in denominator)
+        # Qualifying = 500.0 -> 50.0%
         percentile = calculate_county_farmland_percentile(0.75, distribution)
         assert percentile == 50.0
 
@@ -450,4 +478,45 @@ class TestBenchmarkSuiteValidation:
             assert (
                 resp.mandatory_alternatives_required
                 == expected_lesa["mandatory_alternatives_required"]
+            )
+
+    def test_site_assessment_criterion_validation_bounds(self) -> None:
+        from pydantic import ValidationError
+
+        from fpac_soil_mcp.models import SiteAssessmentCriterion
+
+        # Valid bounds
+        c = SiteAssessmentCriterion(
+            criterion_number=1,
+            name="Valid Criterion",
+            max_points=15.0,
+            awarded_points=10.0,
+        )
+        assert c.awarded_points == 10.0
+
+        # Max points negative or zero
+        with pytest.raises(ValidationError, match="max_points cannot be negative"):
+            SiteAssessmentCriterion(
+                criterion_number=1,
+                name="Invalid",
+                max_points=-5.0,
+                awarded_points=0.0,
+            )
+
+        # Awarded points exceeding max points
+        with pytest.raises(ValidationError, match="awarded_points .* cannot exceed max_points"):
+            SiteAssessmentCriterion(
+                criterion_number=1,
+                name="Invalid",
+                max_points=10.0,
+                awarded_points=15.0,
+            )
+
+        # Awarded points negative
+        with pytest.raises(ValidationError, match="awarded_points cannot be negative"):
+            SiteAssessmentCriterion(
+                criterion_number=1,
+                name="Invalid",
+                max_points=10.0,
+                awarded_points=-1.0,
             )

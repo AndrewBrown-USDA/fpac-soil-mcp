@@ -12,9 +12,9 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | `18.1.1` | 1 | Generalized Dynamic SDV Attribute Query Engine in SDA Client | done | worker-18-1-1 | 2026-09-28 | 2026-09-28 |
 | `18.1.2` | 1 | Model Bounds Enforcement & Server Registry Sync | done | worker-18-1-2 | 2026-09-28 | 2026-09-28 |
-| `18.2.1` | 2 | Sentinel Null Screening, Strict Percentile Math & LESA Engine Cleanup | pending | unassigned | - | - |
-| `18.2.2` | 2 | Unit, Mocked & Benchmark Verification Suite Expansion | pending | unassigned | - | - |
-| `18.3.1` | 3 | End-to-End Test Suite Verification, State & Documentation Finalization | pending | unassigned | - | - |
+| `18.2.1` | 2 | Sentinel Null Screening, Strict Percentile Math & LESA Engine Cleanup | done | worker-18-2-1 | 2026-09-28 | 2026-09-28 |
+| `18.2.2` | 2 | Unit, Mocked & Benchmark Verification Suite Expansion | done | worker-18-2-2 | 2026-09-28 | 2026-09-28 |
+| `18.3.1` | 3 | End-to-End Test Suite Verification, State & Documentation Finalization | done | orchestrator | 2026-09-28 | 2026-09-28 |
 
 ## Wave Gates
 
@@ -39,4 +39,19 @@
 - **Status**: done
 - **Files**: `src/fpac_soil_mcp/models.py`, `server.json`
 - **Verification**: `SiteAssessmentCriterion` field and model validators enforce non-negative points and `awarded <= max`; `server.json` synchronized. Passed full suite.
+
+### Task 18.2.1 Report: Sentinel Null Screening, Strict Percentile Math & LESA Engine Cleanup
+- **Status**: done
+- **Files**: `src/fpac_soil_mcp/lesa.py`
+- **Verification**: `calculate_county_farmland_percentile` excludes unrated acres from the qualifying denominator; sentinel values (99, 999, negative) are rigorously identified and flagged as unrated with informative reasons; removed unused variables.
+
+### Task 18.2.2 Report: Unit, Mocked & Benchmark Verification Suite Expansion
+- **Status**: done
+- **Files**: `tests/test_sda_client.py`, `tests/test_lesa.py`
+- **Verification**: Added comprehensive unit tests for dynamic SDV query generation across tables (`cointerp`, `component`, `mapunit`), custom metadata overrides, unrated percentile denominator math, sentinel edge cases, and criterion bounds validation. All 243 unit and integration tests passing.
+
+### Task 18.3.1 Report: End-to-End Test Suite Verification, State & Documentation Finalization
+- **Status**: done
+- **Files**: `planning/STATE_18.md`, `planning/tasks/18.*.todo.md`
+- **Verification**: Full test suite passes (243 passed, 12 live_network deselected). Ruff check and format cleanly validated across all files. All Plan 18 wave tasks completed.
 

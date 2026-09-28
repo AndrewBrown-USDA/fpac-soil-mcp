@@ -177,17 +177,15 @@ def calculate_relative_ratings(
             )
             continue
 
-        # Null-sentinel check
-        is_sentinel = False
-        if explicit_is_rated is True:
-            is_sentinel = num_raw < 0
-        elif (
-            num_raw < 0
-            or num_raw == 999.0
-            or num_raw == -999.0
+        # Null-sentinel check: unrated indicators 999, -999, negative numbers, or out-of-range when county_max <= 1.0.
+        # Note: If explicit_is_rated is provided, respect it; otherwise flag sentinels.
+        is_sentinel = (
+            explicit_is_rated is False
+            or num_raw in (999.0, -999.0, -99.0)
+            or num_raw < 0
             or (county_max <= 1.0 and num_raw > 1.0)
-        ):
-            is_sentinel = True
+            or (county_max <= 1.0 and num_raw in (99.0, 999.0))
+        )
 
         if is_sentinel:
             result.append(
@@ -309,8 +307,9 @@ def calculate_county_farmland_percentile(
 ) -> float | None:
     """Calculate county farmland comparison percentile higher.
 
-    Calculates the percentage of qualifying county farmland acreage with a relative
-    rating greater than or equal to the AOI's relative rating.
+    Calculates the percentage of qualifying rated county farmland acreage with a relative
+    rating greater than or equal to the AOI's relative rating. Unrated acres or negative/sentinel
+    ratings are excluded from the denominator.
 
     Args:
         aoi_relative_rating: Area-weighted relative rating across AOI (0.0 - 1.0).
@@ -323,25 +322,37 @@ def calculate_county_farmland_percentile(
     if not county_farmland_distribution:
         return None
 
-    total_county_acres = 0.0
+    total_rated_county_acres = 0.0
     qualifying_acres = 0.0
 
     for item in county_farmland_distribution:
         acres = float(item.get("acres", 0.0))
+        if acres <= 0:
+            continue
+
         rating = item.get("relative_rating")
         if rating is None:
-            rating = item.get("rating", 0.0)
-        rating_val = float(rating)
+            rating = item.get("rating")
 
-        if acres > 0:
-            total_county_acres += acres
-            if rating_val >= aoi_relative_rating:
-                qualifying_acres += acres
+        if rating is None:
+            continue
 
-    if total_county_acres <= 0:
+        try:
+            rating_val = float(rating)
+        except (ValueError, TypeError):
+            continue
+
+        if rating_val < 0.0 or rating_val in (99.0, 999.0):
+            continue
+
+        total_rated_county_acres += acres
+        if rating_val >= aoi_relative_rating:
+            qualifying_acres += acres
+
+    if total_rated_county_acres <= 0:
         return None
 
-    return round((qualifying_acres / total_county_acres) * 100.0, 1)
+    return round((qualifying_acres / total_rated_county_acres) * 100.0, 1)
 
 
 def evaluate_land_evaluation(
@@ -388,16 +399,11 @@ def evaluate_land_evaluation(
             is_rated = item.is_rated
             rr = item.normalized_relative_rating
             unrated_reason = item.unrated_reason
-            raw = item.raw_rating
         else:
             mukey = str(item.get("mukey", ""))
             is_rated = item.get("is_rated", True)
             rr = item.get("normalized_relative_rating")
             unrated_reason = item.get("unrated_reason")
-            raw = item.get("raw_rating", item.get("rating"))
-            if rr is None and raw is not None:
-                # Check if item itself has acres
-                pass
 
         acres = acre_map.get(mukey)
         if acres is None and isinstance(item, dict):

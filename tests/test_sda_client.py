@@ -711,3 +711,85 @@ class TestSDAClientExecution:
             SDAValidationError, match="Invalid characters in attribute search pattern"
         ):
             client.lookup_sdv_attribute("Farmland; DROP TABLE sdvattribute;--")
+
+    def test_build_dynamic_sdv_query_cointerp(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "National Commodity Crop Productivity Index",
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001', '1002'")
+        assert "cointerp" in query
+        assert "NCCPI - National Commodity Crop Productivity Index" in query
+        assert "WHERE m.mukey IN ('1001', '1002')" in query
+
+    def test_build_dynamic_sdv_query_component(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "Corn Yield",
+            "attributetablename": "component",
+            "attributecolumnname": "cornyld",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "c.cornyld" in query
+        assert "CAST(c.cornyld AS float) AS rating" in query
+        assert (
+            "ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END)"
+            in query
+        )
+
+    def test_build_dynamic_sdv_query_mapunit(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "Map Unit Farmland Class",
+            "attributetablename": "mapunit",
+            "attributecolumnname": "farmlndcl",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "m.farmlndcl" in query
+
+    def test_build_dynamic_sdv_query_invalid_table(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributetablename": "unauthorized_table",
+            "attributecolumnname": "col",
+        }
+        with pytest.raises(SDAValidationError, match="Unsupported or unallowed SDV table"):
+            build_dynamic_sdv_query(meta, "'1001'")
+
+    def test_get_productivity_ratings_with_attribute_meta(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["1001", "IA169", "138B", "Clarion loam", 91.0, 95.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"c.cornyld" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        meta = {
+            "attributename": "Corn Yield",
+            "attributetablename": "component",
+            "attributecolumnname": "cornyld",
+        }
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["1001"], attribute_meta=meta)
+        assert len(results) == 1
+        assert results[0]["numeric_rating"] == 91.0
+        assert results[0]["is_rated"] is True
