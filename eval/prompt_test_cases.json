@@ -294,6 +294,104 @@
         "AD-1006",
         "threshold"
       ]
+    },
+    {
+      "id": "LESA-01",
+      "category": "Phase 4 - Land Evaluation & Site Assessment",
+      "target_type": "tool",
+      "target_name": "calculate_preliminary_lesa",
+      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Check if the total score triggers the 160-point statutory threshold under 7 CFR § 658.4(c)(2).",
+      "expected_tools": ["calculate_preliminary_lesa"],
+      "expected_keywords": [
+        "LESA",
+        "land evaluation",
+        "site assessment",
+        "160"
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.65, 42.02],
+            [-93.63, 42.02],
+            [-93.63, 42.04],
+            [-93.65, 42.04],
+            [-93.65, 42.02]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "LESA-02",
+      "category": "Phase 4 - Land Evaluation & Site Assessment",
+      "target_type": "tool",
+      "target_name": "calculate_preliminary_lesa",
+      "user_prompt": "Perform a complete preliminary Form AD-1006 LESA calculation for a proposed 45-acre regional medical clinic in Story County, IA: POLYGON((-93.58 42.01, -93.56 42.01, -93.56 42.03, -93.58 42.03, -93.58 42.01)). Use Iowa Corn Suitability Rating 2 (CSR2) as the productivity index and evaluate whether comprehensive site assessment scoring requires consideration of alternative non-farmland sites.",
+      "expected_tools": ["calculate_preliminary_lesa"],
+      "expected_keywords": [
+        "AD-1006",
+        "csr2",
+        "land evaluation",
+        "threshold"
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.58, 42.01],
+            [-93.56, 42.01],
+            [-93.56, 42.03],
+            [-93.58, 42.03],
+            [-93.58, 42.01]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "LESA-03",
+      "category": "Phase 4 - Land Evaluation & Site Assessment",
+      "target_type": "tool",
+      "target_name": "calculate_preliminary_lesa",
+      "user_prompt": "Evaluate candidate Land Evaluation (LE) score and Form NRCS-CPA-106 corridor LESA metrics for a linear water pipeline right-of-way in Illinois using Crop Productivity Index (CPI): LINESTRING(-89.20 40.10, -89.10 40.20). Assess whether corridor alternative scoring exceeds the statutory protection threshold.",
+      "expected_tools": ["calculate_preliminary_lesa"],
+      "expected_keywords": [
+        "NRCS-CPA-106",
+        "cpi",
+        "corridor",
+        "score"
+      ],
+      "sample_geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-89.20, 40.10],
+          [-89.10, 40.20]
+        ]
+      }
+    },
+    {
+      "id": "PROD-01",
+      "category": "Phase 4 - Productivity Ratings",
+      "target_type": "tool",
+      "target_name": "analyze_farmland_by_polygon",
+      "user_prompt": "Analyze the agricultural parcel POLYGON((-93.65 42.02, -93.63 42.02, -93.63 42.04, -93.65 42.04, -93.65 42.02)) in Story County, IA for state-specific soil productivity using CSR2 (Iowa Corn Suitability Rating 2) and return the area-weighted candidate LE score.",
+      "expected_tools": ["analyze_farmland_by_polygon"],
+      "expected_keywords": [
+        "csr2",
+        "Story",
+        "candidate_le_score"
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.65, 42.02],
+            [-93.63, 42.02],
+            [-93.63, 42.04],
+            [-93.65, 42.04],
+            [-93.65, 42.02]
+          ]
+        ]
+      }
     }
   ]
 }
