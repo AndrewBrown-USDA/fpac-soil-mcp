@@ -17,6 +17,8 @@ tools:
     description: Screen a project footprint against Census Bureau 2020 Urban Area boundaries (Layer 0).
   - name: get_soil_interpretations
     description: Retrieve component-weighted soil interpretations (such as NCCPI v3) from USDA NRCS SDA.
+  - name: calculate_preliminary_lesa
+    description: Calculate unified candidate Land Evaluation (LE) and Site Assessment (LESA) scores for site (Form AD-1006) and corridor (Form NRCS-CPA-106) projects under 7 CFR Part 658.
   - name: analyze_corridor_fppa
     description: Execute multi-county corridor screening and Form NRCS-CPA-106 LESA evaluation under 7 CFR § 658.5(c).
   - name: explain_fppa_screening_scope

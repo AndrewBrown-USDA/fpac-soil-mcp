@@ -50,7 +50,7 @@ flowchart TD
     
     subgraph FastMCP_Server ["fpac-soil-mcp FastMCP Server"]
         Router["Transport Layer\nstdio / SSE / HTTP"]
-        Tools["9 Tools Registry"]
+        Tools["10 Tools Registry"]
         Resources["3 Resources Registry"]
         Prompts["4 Prompts Registry"]
         Routes["2 HTTP Routes: /health, /meta"]
@@ -241,13 +241,14 @@ Standard boilerplate JSON configuration snippets for any standard MCP host.
 
 ## Tool Reference
 
-The server exposes **9 core MCP tools** for spatial soil query, farmland classification, and corridor assessment:
+The server exposes **10 core MCP tools** for spatial soil query, farmland classification, and corridor assessment:
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
 | `get_farmland_classification_by_point` | `latitude` (float, required), `longitude` (float, required) | Queries SDA for soil map unit attributes and farmland classification at a point. |
 | `get_farmland_classification_by_mukey` | `mukey` (string, required) | Fetches soil map unit details and farmland classification by Map Unit Key. |
-| `analyze_farmland_by_polygon` | `geojson` (dict \| string, required), `include_nccpi` (bool, default `true`) | Performs preliminary FPPA screening on a polygon: calculates acreage, checks 2020 Census urban area exemptions, intersects SSURGO map units with spatial clipping, summarizes farmland categories, and fetches NCCPI v3 ratings. |
+| `analyze_farmland_by_polygon` | `geojson` (dict \| string, required), `include_nccpi` (bool, default `true`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional) | Performs preliminary FPPA screening on a polygon: calculates acreage, checks 2020 Census urban area exemptions, intersects SSURGO map units with spatial clipping, summarizes farmland categories, and fetches productivity ratings (NCCPI, CSR2, CPI, Storie) with candidate Land Evaluation scoring. |
+| `calculate_preliminary_lesa` | `project_name` (string, required), `geometry` (dict \| string, required), `project_type` (string, default `'site'`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional), `site_assessment_inputs` (dict, optional) | Performs unified Land Evaluation and Site Assessment (LESA) evaluation for site (Form AD-1006) and corridor (Form NRCS-CPA-106) projects: computes normalized relative ratings, area-weighted candidate LE scores (0–100), applies 7 CFR § 658.5(c) rules, and evaluates the statutory 160-point mandatory alternatives threshold under 7 CFR § 658.4(c)(2). |
 | `get_soil_polygons_by_geometry` | `geojson` (dict \| string, required), `clip` (bool, default `true`) | Returns intersecting SSURGO map unit polygon geometries and attributes as a GeoJSON `FeatureCollection`. |
 | `check_urban_area_exemption` | `geojson` (dict \| string, required) | Screens point or polygon geometries against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)). |
 | `get_soil_interpretations` | `mukeys` (list[string], required), `rule_name` (string, default NCCPI v3), `aggregation_method` (string, default `'Weighted Average'`) | Fetches component-weighted soil interpretations from USDA SDA for specified map units. |
