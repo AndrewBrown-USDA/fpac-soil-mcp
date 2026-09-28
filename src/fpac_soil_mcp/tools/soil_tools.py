@@ -27,9 +27,13 @@ from fpac_soil_mcp.geometry import (
     parse_geojson_geometry,
 )
 from fpac_soil_mcp.integration_models import UrbanExemptionRecord
+from fpac_soil_mcp.lesa import evaluate_lesa
 from fpac_soil_mcp.models import (
     FarmlandClassificationResponse,
+    LandEvaluationSummary,
     PolygonFarmlandAnalysisResponse,
+    PreliminaryLESAResponse,
+    ProductivityIndexType,
     QuerySource,
     SoilMapUnit,
 )
@@ -174,22 +178,32 @@ def get_farmland_classification_by_mukey(
 def analyze_farmland_by_polygon(
     geojson: dict | str,
     include_nccpi: bool = True,
+    productivity_index: str = "nccpi",
+    max_county_rating_override: float | None = None,
 ) -> PolygonFarmlandAnalysisResponse:
     """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
 
     Calculates geodesic surface acreage, checks Census 2020 Urban Area boundaries,
-    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches NCCPI crop
-    productivity ratings, and summarizes acreage across statutory farmland categories.
+    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches crop
+    productivity ratings (NCCPI, CSR2, CPI, Storie, or custom), computes candidate Land
+    Evaluation scores, and summarizes acreage across statutory farmland categories.
 
     Args:
         geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
-        include_nccpi: Whether to retrieve NCCPI v3 crop productivity ratings.
+        include_nccpi: Whether to retrieve crop productivity ratings.
+        productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie'). Default is 'nccpi'.
+        max_county_rating_override: Optional user-supplied maximum county rating benchmark.
 
     Returns:
         PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
     """
     analyzer = PolygonAnalyzer()
-    return analyzer.analyze_polygon(geojson, include_nccpi=include_nccpi)
+    return analyzer.analyze_polygon(
+        geojson,
+        include_nccpi=include_nccpi,
+        productivity_index=productivity_index,
+        max_county_rating_override=max_county_rating_override,
+    )
 
 
 def check_urban_area_exemption(
@@ -447,6 +461,94 @@ def analyze_corridor_fppa(
     return result
 
 
+def calculate_preliminary_lesa(
+    project_name: str,
+    geometry: dict[str, Any] | str,
+    project_type: str = "site",
+    productivity_index: str = "nccpi",
+    max_county_rating_override: float | None = None,
+    site_assessment_inputs: dict[str, Any] | None = None,
+) -> PreliminaryLESAResponse:
+    """Calculate preliminary Land Evaluation and Site Assessment (LESA) scores and statutory threshold triggers.
+
+    Performs spatial SSURGO soil clipping across the AOI geometry, computes area-weighted Land Evaluation (LE, 0-100),
+    evaluates statutory Site Assessment (SA, 0-160) criteria for Form AD-1006 (site) or Form NRCS-CPA-106 (corridor),
+    and enforces the statutory 160-point mandatory alternatives consideration threshold under 7 CFR § 658.4(c)(2).
+
+    Args:
+        project_name: Project name or tracking identifier.
+        geometry: GeoJSON geometry dict or string (Polygon or MultiPolygon for site; LineString/Polygon for corridor).
+        project_type: Project geometry type ('site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106).
+        productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie'). Default is 'nccpi'.
+        max_county_rating_override: Optional user-supplied maximum county rating benchmark.
+        site_assessment_inputs: Optional dictionary of Part V/VI Site Assessment parameters:
+            - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
+            - 'project_farm_acres': float (size of affected farm holding)
+            - 'county_average_farm_acres': float (county average farm holding size)
+
+    Returns:
+        PreliminaryLESAResponse containing Land Evaluation summary, Site Assessment criteria breakdown,
+        total LESA score (0-260), mandatory alternatives threshold flag, and regulatory citations.
+    """
+    analyzer = PolygonAnalyzer()
+    polygon_response = analyzer.analyze_polygon(
+        geojson_input=geometry,
+        include_nccpi=True,
+        productivity_index=productivity_index,
+        max_county_rating_override=max_county_rating_override,
+    )
+
+    manifest = polygon_response.manifest or {}
+    le_raw = manifest.get("land_evaluation")
+    if isinstance(le_raw, dict):
+        try:
+            le_summary = LandEvaluationSummary(**le_raw)
+        except (ValueError, TypeError, KeyError):
+            le_summary = LandEvaluationSummary(
+                productivity_index=ProductivityIndexType.NCCPI,
+                candidate_le_score=float(manifest.get("candidate_le_score", 0.0) or 0.0),
+                aoi_relative_rating=round(
+                    float(manifest.get("candidate_le_score", 0.0) or 0.0) / 100.0, 4
+                ),
+                total_acreage=polygon_response.total_aoi_acres,
+            )
+    else:
+        le_summary = LandEvaluationSummary(
+            productivity_index=ProductivityIndexType.NCCPI,
+            candidate_le_score=float(manifest.get("candidate_le_score", 0.0) or 0.0),
+            aoi_relative_rating=round(
+                float(manifest.get("candidate_le_score", 0.0) or 0.0) / 100.0, 4
+            ),
+            total_acreage=polygon_response.total_aoi_acres,
+        )
+
+    # Extract farm acres and criteria inputs if present
+    sa_inputs = site_assessment_inputs or {}
+    criteria_inputs = sa_inputs.get("criteria_inputs", sa_inputs)
+    project_farm_acres = sa_inputs.get("project_farm_acres")
+    county_average_farm_acres = sa_inputs.get("county_average_farm_acres")
+
+    norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
+
+    lesa_response = evaluate_lesa(
+        project_name=project_name,
+        land_evaluation=le_summary,
+        site_assessment=criteria_inputs,
+        project_type=norm_project_type,
+        project_farm_acres=project_farm_acres,
+        county_average_farm_acres=county_average_farm_acres,
+        productivity_index=productivity_index,
+    )
+
+    # Append any polygon limitations or warnings
+    if polygon_response.limitations:
+        for lim in polygon_response.limitations:
+            if lim not in lesa_response.limitations:
+                lesa_response.limitations.append(lim)
+
+    return lesa_response
+
+
 def register_soil_tools(mcp: FastMCP) -> None:
     """Register soil query tools on the provided FastMCP instance.
 
@@ -475,10 +577,21 @@ def register_soil_tools(mcp: FastMCP) -> None:
         description=(
             "Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI. "
             "Calculates total equal-area acreage, checks Census 2020 Urban Area statutory exemption status, "
-            "queries intersecting SSURGO map units via SDA with exact spatial clipping, retrieves NCCPI crop "
-            "productivity ratings, and generates acreage breakdowns by farmland classification."
+            "queries intersecting SSURGO map units via SDA with exact spatial clipping, retrieves crop "
+            "productivity ratings (NCCPI, CSR2, CPI, Storie), calculates candidate Land Evaluation (LE) scores, "
+            "and generates acreage breakdowns by farmland classification."
         ),
     )(analyze_farmland_by_polygon)
+
+    mcp.tool(
+        name="calculate_preliminary_lesa",
+        description=(
+            "Calculate preliminary Land Evaluation and Site Assessment (LESA) scores and statutory threshold triggers. "
+            "Performs spatial SSURGO soil clipping across the AOI geometry, computes area-weighted Land Evaluation (LE, 0-100), "
+            "evaluates statutory Site Assessment (SA, 0-160) criteria for Form AD-1006 (site) or Form NRCS-CPA-106 (corridor), "
+            "and enforces the statutory 160-point mandatory alternatives consideration threshold under 7 CFR § 658.4(c)(2)."
+        ),
+    )(calculate_preliminary_lesa)
 
     mcp.tool(
         name="get_soil_polygons_by_geometry",
