@@ -122,7 +122,8 @@ flowchart TD
     P4 --> P5[Phase 5: Alternatives & Form Generation]
     P5 --> P6[Phase 6: Case Archival & CPA-2 Reporting]
     P6 --> P7[Phase 7: Hardening, Evaluation & Demo]
-    P7 --> PROD[(Post-Hackathon: Production Auth)]
+    P7 --> P8[Phase 8: Spatial Visualization & Interactive Client Demo]
+    P8 --> PROD[(Post-Hackathon: Controlled Production Authorization)]
 
     style P0 fill:#d4edda,stroke:#28a745
     style P1 fill:#d1ecf1,stroke:#17a2b8
@@ -132,6 +133,7 @@ flowchart TD
     style P5 fill:#d1ecf1,stroke:#17a2b8
     style P6 fill:#d1ecf1,stroke:#17a2b8
     style P7 fill:#d1ecf1,stroke:#17a2b8
+    style P8 fill:#d1ecf1,stroke:#17a2b8
     style PROD fill:#fff3cd,stroke:#ffc107
 ```
 
@@ -365,6 +367,44 @@ flowchart TD
 - 0 unhandled exceptions across all gold-set scenarios.
 - All public metadata and tool signatures match runtime capabilities.
 - Parcel, corridor, LE-SA, and review-package gold-set cases run without live public APIs and reproduce expected provenance-bearing evidence.
+
+---
+
+### Phase 8: Spatial Visualization & Interactive Client Demo
+
+**Goal**: Deliver a structured, machine-readable MCP visualization contract and a responsive, open-source demonstration client (Marimo + ipyleaflet) enabling bi-directional map interaction, geometry staging, layer rendering, and resilient live/offline presentation.
+
+**Scope & Deliverables** (referencing `planning/SPATIAL_VISUALIZATION_STRATEGY.md`):
+1. **Structured MCP Visualization Response Envelope & Layer Contract**:
+   - Standardize a versioned JSON output envelope (`schema_version: "1.0"`) across spatial tools returning:
+     - `analysis_id`, `analysis_type`, `status`, `data_mode` (`live | cached | fixture`), `source_status` breakdown.
+     - `authority` metadata (`machine_estimate`, `analyst_proposed`, `agency_approved`, `nrcs_official`).
+     - `map` block containing `display_crs` (EPSG:4326), bounding box, and typed `layers` descriptors (`farmland_classes`, `urban_context`, `county_segments`, `corridor_buffers`).
+     - Layer metadata including stable category codes, display legends, color ramps, and bounded GeoJSON FeatureCollections (or MCP Resource URIs for large payloads).
+     - Full provenance records (query timestamps, calculation CRS `EPSG:6933`, rule versions, and upstream service vintages).
+     - Privacy and Section 1619 redaction states.
+2. **Interactive Demonstration UI & Map Client (`demos/hackathon_demo.py`)**:
+   - Implement an open-source reactive client using **Marimo** and **ipyleaflet** with zero proprietary GIS or API key dependencies.
+   - **Bi-Modal Geometry Ingestion**: Support drawing AOI polygons and multi-alternative corridor centerlines directly on the interactive map, alongside chat/form parameter inputs (buffer distance, unit selection, route naming).
+   - **Explicit Dispatch Control**: Provide an explicit *"Run Preliminary Screening"* / *"Evaluate Corridor Alternatives"* trigger button to stage geometries before executing MCP tool calls (preventing accidental queries during drawing).
+   - **Accessible Results Visualization**: Render thematic farmland choropleths, Census urban contextual boundaries, and corridor impact buffers alongside an accessible tabular equivalent displaying direct/indirect acreages, farmland breakdowns, and objective comparative metrics.
+3. **Resilient Hybrid Execution & Pre-packaged Benchmark Testbeds**:
+   - Connect live by default to USDA SDA, Census TIGERweb, and USDA NASS QuickStats endpoints.
+   - Implement explicit (non-silent) fallback to local GeoPackage / DuckDB Spatial snapshots (`src/fpac_soil_mcp/data/fixtures/demo_testbeds.gpkg`) with prominent UI data-mode banners when network connectivity is constrained.
+   - Pre-package two benchmark demonstration scenarios:
+     - **Testbed 1 (Agricultural Core - Boone/Story County, IA)**: High Prime Farmland parcel screening, urban fringe exclusion check, and CSR2 productivity integration.
+     - **Testbed 2 (Linear Corridor Alternative Routing)**: Direct cross-country route through prime agricultural soils vs. co-located route along an existing highway right-of-way, showcasing 7 CFR § 658.5(c) corridor scoring and multi-county partitioning.
+4. **Demonstration Symbology & Accessibility Standard**:
+   - Implement multi-modal styling (color + secondary label/hatching) for Prime Farmland (`#2E7D32`, `[P]`), Statewide Importance (`#F9A825`, `[S]`), Unique (`#6A1B9A`, `[U]`), Local (`#0288D1`, `[L]`), and Not Prime (`#9E9E9E`, `[NP]`).
+   - Distinguish non-prime farmland from urban areas and unmapped soils.
+   - Maintain clear non-presumptive language: identify lowest modeled impact without asserting official regulatory approval or compliance.
+
+**Exit Criteria**:
+- MCP spatial tools return schema-validated visualization envelopes consumed cleanly by both headless LLM callers and map clients.
+- Presenter can draw an AOI and two corridor alternatives, stage geometries, and trigger end-to-end MCP analysis entirely within `demos/hackathon_demo.py`.
+- Map layers render styled farmland categories and buffer footprints matching server-calculated acreages and table values within 0.1% tolerance.
+- Offline demonstration mode runs seamlessly against `demo_testbeds.gpkg` with explicit `"data_mode": "fixture"` provenance banners.
+- All visualization outputs display preliminary screening notices and explicit authority levels.
 
 ---
 
