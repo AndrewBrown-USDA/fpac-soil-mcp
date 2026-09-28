@@ -349,4 +349,4 @@ uv run ruff format --check .
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+This project is in the worldwide public domain domestically under 17 U.S.C. § 105 and licensed under the [MIT License](LICENSE.md) internationally and for third-party contributions. See [INTENT.md](INTENT.md) and [LICENSE.md](LICENSE.md) for full licensing details and government notices.
