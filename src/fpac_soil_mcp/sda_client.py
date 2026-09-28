@@ -184,6 +184,202 @@ FROM ranked_components
 WHERE rnk = 1
 """
 
+SQL_SDV_ATTRIBUTE_LOOKUP = """\
+SELECT
+    attributekey,
+    attributename,
+    attributetablename,
+    attributecolumnname,
+    attributelogicaldatatype,
+    nasisrulename
+FROM sdvattribute
+WHERE attributename LIKE '{pattern}'
+   OR nasisrulename LIKE '{pattern}'
+ORDER BY attributename
+"""
+
+SQL_PRODUCTIVITY_NCCPI = """\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.interphr AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_name}'
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_PRODUCTIVITY_CSR2 = """\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        COALESCE(cia.csr2, mia.csr2) AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN coiacsr2 AS cia ON cia.cokey = c.cokey
+    LEFT JOIN iacsr2 AS mia ON mia.mukey = m.mukey
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_PRODUCTIVITY_CPI = """\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        COALESCE(ci.cpi, mcpi.cpi) AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cocpi AS ci ON ci.cokey = c.cokey
+    LEFT JOIN cpi AS mcpi ON mcpi.mukey = m.mukey
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_PRODUCTIVITY_STORIE = """\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        COALESCE(ci.interphr, cs.storie_index) AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
+    LEFT JOIN cstorie AS cs ON cs.cokey = c.cokey
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI = """\
+SELECT
+    MAX(ci.interphr) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND ci.ruledepth = 0
+  AND ci.mrulename = '{rule_name}'
+  AND ci.interphr IS NOT NULL
+  AND ci.interphr NOT IN (99, 999)
+  AND c.compkind != 'miscellaneous area'
+"""
+
+SQL_PRODUCTIVITY_COUNTY_MAX_CSR2 = """\
+SELECT
+    MAX(COALESCE(cia.csr2, mia.csr2)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+LEFT JOIN coiacsr2 AS cia ON cia.cokey = c.cokey
+LEFT JOIN iacsr2 AS mia ON mia.mukey = m.mukey
+WHERE l.areasymbol = '{areasymbol}'
+  AND COALESCE(cia.csr2, mia.csr2) IS NOT NULL
+  AND COALESCE(cia.csr2, mia.csr2) NOT IN (99, 999)
+  AND c.compkind != 'miscellaneous area'
+"""
+
+SQL_PRODUCTIVITY_COUNTY_MAX_CPI = """\
+SELECT
+    MAX(COALESCE(ci.cpi, mcpi.cpi)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+LEFT JOIN cocpi AS ci ON ci.cokey = c.cokey
+LEFT JOIN cpi AS mcpi ON mcpi.mukey = m.mukey
+WHERE l.areasymbol = '{areasymbol}'
+  AND COALESCE(ci.cpi, mcpi.cpi) IS NOT NULL
+  AND COALESCE(ci.cpi, mcpi.cpi) NOT IN (99, 999)
+  AND c.compkind != 'miscellaneous area'
+"""
+
+SQL_PRODUCTIVITY_COUNTY_MAX_STORIE = """\
+SELECT
+    MAX(COALESCE(ci.interphr, cs.storie_index)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+    AND ci.ruledepth = 0
+    AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
+LEFT JOIN cstorie AS cs ON cs.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND COALESCE(ci.interphr, cs.storie_index) IS NOT NULL
+  AND COALESCE(ci.interphr, cs.storie_index) NOT IN (99, 999)
+  AND c.compkind != 'miscellaneous area'
+"""
+
 
 class SDAClientError(Exception):
     """Base exception for SDA Client errors."""
@@ -564,3 +760,203 @@ class SDAClient:
             )
 
         return self._execute_query(query)
+
+    def lookup_sdv_attribute(self, search_pattern: str) -> list[dict[str, Any]]:
+        """Look up Soil Data Viewer (SDV) attribute table and column metadata.
+
+        Args:
+            search_pattern: Substring or SQL LIKE pattern to match against attributename or nasisrulename.
+
+        Returns:
+            List of matching attribute metadata records.
+
+        Raises:
+            SDAValidationError: If search pattern contains invalid characters.
+            SDAQueryError: If SDA query fails.
+        """
+        pattern_clean = str(search_pattern).strip()
+        if any(c in pattern_clean for c in [";", "--", "/*", "*/", "DROP", "EXEC", "'"]):
+            raise SDAValidationError(
+                f"Invalid characters in attribute search pattern: '{search_pattern}'"
+            )
+        if not ("%" in pattern_clean or "_" in pattern_clean):
+            pattern_clean = f"%{pattern_clean}%"
+
+        query = SQL_SDV_ATTRIBUTE_LOOKUP.format(pattern=pattern_clean)
+        return self._execute_query(query)
+
+    def get_county_max_productivity_rating(
+        self,
+        areasymbol: str,
+        index_type: str = "nccpi",
+    ) -> float | None:
+        """Query maximum baseline productivity rating for a specific county/soil survey area.
+
+        Args:
+            areasymbol: 5-character soil survey area symbol (e.g. 'IA169', 'IN097', 'CA001').
+            index_type: Productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
+
+        Returns:
+            Maximum rating float if found, else None.
+
+        Raises:
+            SDAValidationError: If areasymbol or index_type is invalid.
+            SDAQueryError: If query execution fails.
+        """
+        clean_area = str(areasymbol).strip().upper()
+        if not (2 <= len(clean_area) <= 10 and clean_area.isalnum()):
+            raise SDAValidationError(f"Invalid soil survey area symbol '{areasymbol}'.")
+
+        idx = index_type.strip().lower()
+        if idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
+                areasymbol=clean_area,
+                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            )
+        elif idx in ("csr2", "iacsr2", "iowa csr2"):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
+        elif idx in ("cpi", "minnesota cpi"):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
+        elif idx in ("storie", "storie_index", "california storie"):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_STORIE.format(areasymbol=clean_area)
+        else:
+            raise SDAValidationError(
+                f"Unsupported productivity index type '{index_type}'. Supported: 'nccpi', 'csr2', 'cpi', 'storie'."
+            )
+
+        rows = self._execute_query(query)
+        if not rows:
+            return None
+
+        val = rows[0].get("max_county_rating")
+        if val is None or val in ("", "None", 99, 999, "99", "999"):
+            return None
+        try:
+            val_float = float(val)
+            if val_float in (99.0, 999.0) or val_float <= 0:
+                return None
+            return round(val_float, 3 if idx.startswith("nccpi") else 2)
+        except (ValueError, TypeError):
+            return None
+
+    def get_productivity_ratings(
+        self,
+        mukeys: list[str | int],
+        index_type: str = "nccpi",
+        areasymbol: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query map unit and component-level productivity ratings with unrated screening.
+
+        Args:
+            mukeys: List of map unit keys (integers or numeric strings).
+            index_type: 'nccpi', 'csr2', 'cpi', or 'storie'.
+            areasymbol: Optional county/survey area symbol filter or override.
+
+        Returns:
+            List of structured rating dictionaries with component rated percentages and caveats.
+
+        Raises:
+            SDAValidationError: If mukeys or index_type are invalid.
+            SDAQueryError: If SDA query fails.
+        """
+        if not mukeys:
+            return []
+
+        clean_mukeys = [self.validate_mukey(k) for k in mukeys]
+        mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
+
+        idx = index_type.strip().lower()
+        if idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
+            norm_idx = "nccpi"
+            query = SQL_PRODUCTIVITY_NCCPI.format(
+                mukeys_csv=mukeys_csv,
+                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            )
+        elif idx in ("csr2", "iacsr2", "iowa csr2"):
+            norm_idx = "csr2"
+            query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
+        elif idx in ("cpi", "minnesota cpi"):
+            norm_idx = "cpi"
+            query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
+        elif idx in ("storie", "storie_index", "california storie"):
+            norm_idx = "storie"
+            query = SQL_PRODUCTIVITY_STORIE.format(mukeys_csv=mukeys_csv)
+        else:
+            raise SDAValidationError(
+                f"Unsupported productivity index type '{index_type}'. Supported: 'nccpi', 'csr2', 'cpi', 'storie'."
+            )
+
+        raw_rows = self._execute_query(query)
+        rows_by_mukey = {str(r.get("mukey")): r for r in raw_rows}
+
+        results: list[dict[str, Any]] = []
+        for k in clean_mukeys:
+            row = rows_by_mukey.get(k)
+            if not row:
+                results.append(
+                    {
+                        "mukey": k,
+                        "areasymbol": areasymbol,
+                        "musym": None,
+                        "muname": None,
+                        "index_type": norm_idx,
+                        "numeric_rating": None,
+                        "rated_pct": 0.0,
+                        "total_pct": 0.0,
+                        "is_rated": False,
+                        "caveats": ["Map unit not found in SDA query results."],
+                    }
+                )
+                continue
+
+            raw_rating = row.get("numeric_rating")
+            raw_rated_pct = row.get("rated_pct")
+            raw_total_pct = row.get("total_pct")
+
+            rated_pct = float(raw_rated_pct) if raw_rated_pct is not None else 0.0
+            total_pct = float(raw_total_pct) if raw_total_pct is not None else 0.0
+
+            numeric_rating: float | None = None
+            is_rated = False
+            caveats: list[str] = []
+
+            if raw_rating is not None and str(raw_rating).strip() not in ("", "None"):
+                try:
+                    r_val = float(raw_rating)
+                    if r_val in (99.0, 999.0) or r_val < 0:
+                        caveats.append(
+                            f"Map unit contains unrated placeholder/sentinel code ({raw_rating})."
+                        )
+                    elif rated_pct <= 0:
+                        caveats.append("Map unit has 0% rated component coverage.")
+                    else:
+                        numeric_rating = round(r_val, 3 if norm_idx == "nccpi" else 2)
+                        is_rated = True
+                except (ValueError, TypeError):
+                    caveats.append(f"Unparseable rating value '{raw_rating}'.")
+            else:
+                caveats.append("Map unit has no numeric productivity rating.")
+
+            if is_rated and total_pct > 0 and rated_pct < total_pct:
+                caveats.append(
+                    f"Partially rated map unit: {round(rated_pct, 1)}% rated out of {round(total_pct, 1)}% total component coverage."
+                )
+
+            results.append(
+                {
+                    "mukey": str(row.get("mukey", k)),
+                    "areasymbol": str(row.get("areasymbol"))
+                    if row.get("areasymbol")
+                    else areasymbol,
+                    "musym": str(row.get("musym")) if row.get("musym") else None,
+                    "muname": str(row.get("muname")) if row.get("muname") else None,
+                    "index_type": norm_idx,
+                    "numeric_rating": numeric_rating,
+                    "rated_pct": round(rated_pct, 2),
+                    "total_pct": round(total_pct, 2),
+                    "is_rated": is_rated,
+                    "caveats": caveats,
+                }
+            )
+
+        return results
