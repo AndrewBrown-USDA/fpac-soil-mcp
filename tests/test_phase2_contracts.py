@@ -139,6 +139,7 @@ def test_mcp_tool_registration_surface():
         "get_farmland_classification_by_point",
         "get_farmland_classification_by_mukey",
         "analyze_farmland_by_polygon",
+        "calculate_preliminary_lesa",
         "get_soil_polygons_by_geometry",
         "check_urban_area_exemption",
         "get_soil_interpretations",
@@ -149,5 +150,5 @@ def test_mcp_tool_registration_surface():
 
     for expected in expected_tools:
         assert expected in tool_names
-    assert len(tool_names) == 9
+    assert len(tool_names) == 10
     assert set(tool_names) == set(expected_tools)
