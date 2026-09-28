@@ -19,8 +19,7 @@ Key statutory rules under 7 CFR § 658.5(c):
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
-from typing import Any, overload
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -33,6 +32,10 @@ from fpac_soil_mcp.constants import (
     MAX_TOTAL_LESA_SCORE,
     REGULATORY_NOTICE,
     STATUTORY_DETERMINATIONS,
+)
+from fpac_soil_mcp.lesa import (
+    calculate_composite_le,
+    calculate_criterion_7_score,
 )
 
 # Re-export constants for backwards compatibility
@@ -56,42 +59,6 @@ __all__ = [
     "evaluate_corridor_lesa",
     "evaluate_corridor_site_assessment",
 ]
-
-
-@overload
-def calculate_composite_le(
-    weighted_scores: Iterable[tuple[float, float]],
-) -> float | None: ...
-
-
-@overload
-def calculate_composite_le(weighted_scores: float, total_weight: float) -> float | None: ...
-
-
-def calculate_composite_le(
-    weighted_scores: Iterable[tuple[float, float]] | float,
-    total_weight: float | None = None,
-) -> float | None:
-    """Calculate a rounded area-weighted composite Land Evaluation score.
-
-    The two-argument form preserves the useful low-level aggregation contract
-    (weighted sum, total weight); the iterable form keeps accumulation details
-    encapsulated for callers processing multiple map units.
-    """
-    if total_weight is None:
-        if not isinstance(weighted_scores, Iterable):
-            raise TypeError("The iterable calling form requires an iterable of score/weight pairs")
-        weighted_sum = 0.0
-        weight = 0.0
-        for score, acres in weighted_scores:
-            weighted_sum += float(score) * float(acres)
-            weight += float(acres)
-    else:
-        if isinstance(weighted_scores, Iterable):
-            raise TypeError("The scalar calling form requires a weighted sum and total weight")
-        weighted_sum = float(weighted_scores)
-        weight = float(total_weight)
-    return round(weighted_sum / weight, 1) if weight > 0 else None
 
 
 class _SiteAssessmentAggregator:
@@ -358,43 +325,6 @@ CRITERION_EVALUATORS: dict[int, CriterionEvaluator] = {
     11: StandardCriterionEvaluator(11),
     12: StandardCriterionEvaluator(12),
 }
-
-
-def calculate_criterion_7_score(
-    project_farm_acres: float,
-    county_average_farm_acres: float,
-) -> tuple[float, str]:
-    """Calculate Criterion 7 (farm size compared to county average) score under 7 CFR § 658.5(b)(7).
-
-    Statutory scale (Max 10 points):
-    - Farm size is > 100% of county average: 10 points
-    - Farm size is 50% - 100% of county average: 5 points
-    - Farm size is < 50% of county average: 0 points
-
-    Args:
-        project_farm_acres: Size of affected agricultural holding/parcel in acres.
-        county_average_farm_acres: NASS county average farm size in acres.
-
-    Returns:
-        Tuple of (awarded_points, justification_string).
-    """
-    if county_average_farm_acres <= 0 or project_farm_acres < 0:
-        return 0.0, "Invalid or unavailable county average farm size; awarded 0 points."
-
-    ratio = project_farm_acres / county_average_farm_acres
-    pct = ratio * 100.0
-
-    if ratio >= 1.0:
-        points = 10.0
-        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (>=100%): 10 points awarded."
-    elif ratio >= 0.5:
-        points = 5.0
-        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (50%-99%): 5 points awarded."
-    else:
-        points = 0.0
-        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (<50%): 0 points awarded."
-
-    return points, desc
 
 
 def evaluate_corridor_site_assessment(
