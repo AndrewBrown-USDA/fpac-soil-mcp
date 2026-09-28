@@ -9,6 +9,7 @@ and robust retry logic.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -385,8 +386,6 @@ ALLOWED_SDV_TABLES = {
     "cointerp",
     "component",
     "mapunit",
-    "cocropyld",
-    "corestrictions",
     "coiacsr2",
     "iacsr2",
     "cocpi",
@@ -394,10 +393,17 @@ ALLOWED_SDV_TABLES = {
     "cstorie",
 }
 
+def validate_survey_area_symbol(areasymbol: str) -> str:
+    """Validate and normalize a soil survey area symbol."""
+    clean_area = str(areasymbol).strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{2,10}", clean_area):
+        raise SDAValidationError(f"Invalid soil survey area symbol '{areasymbol}'.")
+    return clean_area
+
 
 def build_dynamic_sdv_query(
     attribute_meta: dict[str, Any],
-    mukeys_csv: str,
+    mukeys_csv: str | list[str | int],
 ) -> str:
     """Dynamically build an SDA query from an sdvattribute metadata record.
 
@@ -405,13 +411,29 @@ def build_dynamic_sdv_query(
     an injection-safe SQL query for component-weighted or mapunit values.
     """
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
-    col = str(attribute_meta.get("attributecolumnname", "")).strip()
-    rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
-
     if table not in ALLOWED_SDV_TABLES:
         raise SDAValidationError(
             f"Unsupported or unallowed SDV table '{table}'. Allowed: {sorted(ALLOWED_SDV_TABLES)}"
         )
+
+    if isinstance(mukeys_csv, str):
+        mukey_items = mukeys_csv.split(",")
+    else:
+        mukey_items = mukeys_csv
+    try:
+        clean_mukeys = [str(item).strip().strip("'") for item in mukey_items]
+        if not clean_mukeys or any(
+            not re.fullmatch(r"[1-9][0-9]*", mukey) for mukey in clean_mukeys
+        ):
+            raise ValueError
+    except (TypeError, ValueError) as exc:
+        raise SDAValidationError(
+            f"Map unit keys must be positive numeric digits; received '{mukeys_csv}'"
+        ) from exc
+    mukeys_sql = ", ".join(f"'{mukey}'" for mukey in clean_mukeys)
+
+    col = str(attribute_meta.get("attributecolumnname", "")).strip()
+    rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
 
     if table == "cointerp" or rule_name:
         rule_clean = rule_name.replace("'", "''")
@@ -431,7 +453,7 @@ WITH comp_rating AS (
     LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
         AND ci.ruledepth = 0
         AND ci.mrulename = '{rule_clean}'
-    WHERE m.mukey IN ({mukeys_csv})
+    WHERE m.mukey IN ({mukeys_sql})
       AND c.compkind != 'miscellaneous area'
 )
 SELECT
@@ -461,7 +483,7 @@ SELECT
     100.0 AS total_pct
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
-WHERE m.mukey IN ({mukeys_csv})
+WHERE m.mukey IN ({mukeys_sql})
 """
 
     # Default to component-level attribute
@@ -478,7 +500,7 @@ WITH comp_rating AS (
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
-    WHERE m.mukey IN ({mukeys_csv})
+    WHERE m.mukey IN ({mukeys_sql})
       AND c.compkind != 'miscellaneous area'
 )
 SELECT
@@ -499,6 +521,7 @@ def build_dynamic_sdv_county_max_query(
     areasymbol: str,
 ) -> str:
     """Dynamically build an SDA query for maximum county rating from sdvattribute metadata."""
+    areasymbol = validate_survey_area_symbol(areasymbol)
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
     col = str(attribute_meta.get("attributecolumnname", "")).strip()
     rule_name = str(attribute_meta.get("nasisrulename", "")).strip()

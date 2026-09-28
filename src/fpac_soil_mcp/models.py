@@ -528,3 +528,13 @@ class PreliminaryLESAResponse(BaseModel):
         if v < 0.0 or v > 260.0:
             raise ValueError(f"total_lesa_score must be between 0.0 and 260.0, got {v}")
         return v
+
+    @model_validator(mode="after")
+    def validate_mandatory_alternatives_required(self) -> PreliminaryLESAResponse:
+        expected = self.total_lesa_score >= 160.0
+        if self.mandatory_alternatives_required != expected:
+            raise ValueError(
+                "mandatory_alternatives_required must equal "
+                f"(total_lesa_score >= 160.0), expected {expected}"
+            )
+        return self
