@@ -86,6 +86,67 @@ def test_analyze_polygon_success():
     assert res.manifest["spatial_clipping_engine"] == "USDA NRCS SDA STIntersection / STArea"
 
 
+def test_analyze_polygon_include_nccpi_false_skips_rating_query():
+    geojson = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
+        ],
+    }
+    spatial = {
+        "Table": [
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", 10.0],
+        ]
+    }
+
+    def sda_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=spatial)
+
+    class NoNccpiClient(SDAClient):
+        def get_interpretations(self, *args, **kwargs):
+            raise AssertionError("NCCPI query should be skipped")
+
+    sda_client = NoNccpiClient(http_client=httpx.Client(transport=httpx.MockTransport(sda_handler)))
+    tiger_client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
+        )
+    )
+    result = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client).analyze_polygon(
+        geojson, include_nccpi=False
+    )
+    assert result.map_units[0].nccpi_rating is None
+
+
+def test_analyze_polygon_treats_decimal_99_as_unrated_nccpi():
+    geojson = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
+        ],
+    }
+    spatial = {
+        "Table": [
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            ["412915", "138B", "Clarion", "All areas are prime farmland", "IA169", 10.0],
+        ]
+    }
+    interp = {"Table": [["mukey", "numeric_rating"], ["412915", 99.0]]}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=interp if b"comp_interp" in request.content else spatial)
+
+    sda = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    tiger = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
+        )
+    )
+    result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(geojson)
+    assert result.map_units[0].nccpi_rating is None
+
+
 def test_analyze_polygon_fully_covered():
     geojson = {
         "type": "Polygon",

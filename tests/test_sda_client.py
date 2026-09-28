@@ -6,11 +6,14 @@ import httpx
 import pytest
 
 from fpac_soil_mcp.sda_client import (
+    ALLOWED_SDV_TABLES,
     SQL_MUKEY_LOOKUP,
     SQL_POINT_LOOKUP,
     SDAClient,
     SDAQueryError,
     SDAValidationError,
+    build_dynamic_sdv_county_max_query,
+    build_dynamic_sdv_query,
 )
 
 
@@ -88,6 +91,24 @@ class TestSDAValidation:
     def test_validate_wkt_non_polygon_rejected(self) -> None:
         with pytest.raises(SDAValidationError, match="must be a Polygon or MultiPolygon"):
             SDAClient.validate_wkt("POINT(-86.1581 39.7684)")
+
+    def test_dynamic_sdv_query_rejects_invalid_mukeys(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                ["123; DROP TABLE mapunit;--"],
+            )
+
+    def test_dynamic_sdv_county_max_query_rejects_invalid_areasymbol(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_county_max_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                "IA169'; DROP TABLE mapunit;--",
+            )
+
+    def test_dynamic_sdv_table_allowlist_excludes_unsupported_tables(self) -> None:
+        assert "cocropyld" not in ALLOWED_SDV_TABLES
+        assert "corestrictions" not in ALLOWED_SDV_TABLES
 
 
 class TestSDAParsing:

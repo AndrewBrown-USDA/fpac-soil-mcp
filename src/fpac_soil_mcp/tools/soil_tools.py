@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from shapely import wkt as shapely_wkt
 from shapely.errors import GEOSException, ShapelyError
-from shapely.geometry import mapping
+from shapely.geometry import LineString, MultiLineString, mapping
 
 from fpac_soil_mcp.constants import REGULATORY_LIMITATIONS, REGULATORY_NOTICE
 from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer
@@ -22,6 +22,7 @@ from fpac_soil_mcp.corridor_scoring import (
 )
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
+    buffer_centerline,
     calculate_acreage,
     geometry_to_wkt,
     parse_geojson_geometry,
@@ -490,9 +491,23 @@ def calculate_preliminary_lesa(
         PreliminaryLESAResponse containing Land Evaluation summary, Site Assessment criteria breakdown,
         total LESA score (0-260), mandatory alternatives threshold flag, and regulatory citations.
     """
+    analysis_geometry: dict[str, Any] | str = geometry
+    if isinstance(geometry, (LineString, MultiLineString)):
+        parsed_geometry = geometry
+    else:
+        parsed_geometry = parse_geojson_geometry(geometry, allow_line=True)
+
+    if isinstance(parsed_geometry, (LineString, MultiLineString)):
+        buffered_geometry = buffer_centerline(
+            centerline_input=parsed_geometry,
+            buffer_distance=100.0,
+            distance_unit="feet",
+        )
+        analysis_geometry = mapping(buffered_geometry)
+
     analyzer = PolygonAnalyzer()
     polygon_response = analyzer.analyze_polygon(
-        geojson_input=geometry,
+        geojson_input=analysis_geometry,
         include_nccpi=True,
         productivity_index=productivity_index,
         max_county_rating_override=max_county_rating_override,

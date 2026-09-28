@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from shapely.geometry import LineString
+
 from fpac_soil_mcp.constants import (
     FARMLAND_CLASS_DEFINITIONS,
     REGULATORY_LIMITATIONS,
@@ -22,6 +24,7 @@ from fpac_soil_mcp.tools.fppa_tools import (
 from fpac_soil_mcp.tools.soil_tools import (
     analyze_corridor_fppa,
     analyze_farmland_by_polygon,
+    calculate_preliminary_lesa,
     check_urban_area_exemption,
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
@@ -200,6 +203,21 @@ class TestFPPATools:
             == "Prime Farmland under 7 CFR 657.5(a)"
         )
         assert "Not prime farmland" in response.classes
+
+    @patch("fpac_soil_mcp.tools.soil_tools.PolygonAnalyzer")
+    def test_calculate_preliminary_lesa_accepts_linestring_corridor(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_analyzer_cls.return_value.analyze_polygon.return_value = MagicMock(
+            land_evaluation=MagicMock(candidate_le_score=0.0),
+            total_aoi_acres=1.0,
+        )
+        response = calculate_preliminary_lesa(
+            project_name="corridor",
+            geometry=LineString([(0, 0), (1, 1)]),
+            project_type="corridor",
+        )
+        assert response.project_name == "corridor"
 
 
 class TestPolygonTools:

@@ -393,6 +393,7 @@ ALLOWED_SDV_TABLES = {
     "cstorie",
 }
 
+
 def validate_survey_area_symbol(areasymbol: str) -> str:
     """Validate and normalize a soil survey area symbol."""
     clean_area = str(areasymbol).strip().upper()

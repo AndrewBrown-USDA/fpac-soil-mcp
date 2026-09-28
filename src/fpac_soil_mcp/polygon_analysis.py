@@ -185,8 +185,7 @@ class PolygonAnalyzer:
                             "rating_class": irow.get("rating_class"),
                             "rated_pct": irow.get("rated_pct"),
                             "total_pct": irow.get("total_pct"),
-                            "is_rated": parsed_num_r is not None
-                            and parsed_num_r not in (99, 999),
+                            "is_rated": parsed_num_r is not None and parsed_num_r not in (99, 999),
                             "caveats": [],
                         }
                 except SDAClientError as exc:
@@ -311,8 +310,16 @@ class PolygonAnalyzer:
                     areasymbol=u.get("areasymbol"),
                     calculated_acres=calc_ac,
                     percentage_of_aoi=pct,
-                    nccpi_rating=numeric_rating,
-                    nccpi_class=interp_info.get("rating_class"),
+                    nccpi_rating=(
+                        None
+                        if numeric_rating is not None and numeric_rating in (99, 999)
+                        else numeric_rating
+                    ),
+                    nccpi_class=(
+                        None
+                        if numeric_rating is not None and numeric_rating in (99, 999)
+                        else interp_info.get("rating_class")
+                    ),
                 )
             )
 

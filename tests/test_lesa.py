@@ -28,6 +28,7 @@ from fpac_soil_mcp.lesa import (
 from fpac_soil_mcp.models import (
     LandEvaluationSummary,
     MapUnitProductivityRating,
+    PreliminaryLESAResponse,
     ProductivityIndexType,
     SiteAssessmentSummary,
 )
@@ -156,6 +157,40 @@ class TestUnratedAndSentinelFiltering:
         for r in results:
             assert r.is_rated is False
             assert r.normalized_relative_rating is None
+
+    def test_99_is_unrated_for_zero_to_hundred_indexes(self) -> None:
+        for index in (
+            ProductivityIndexType.CSR2,
+            ProductivityIndexType.CPI,
+            ProductivityIndexType.STORIE,
+        ):
+            results = calculate_relative_ratings(
+                [{"mukey": "101", "raw_rating": 99.0}], county_max=100.0
+            )
+            assert results[0].is_rated is False
+            assert results[0].normalized_relative_rating is None
+
+
+def test_preliminary_lesa_rejects_inconsistent_threshold_flag() -> None:
+    with pytest.raises(ValueError, match="mandatory_alternatives_required"):
+        PreliminaryLESAResponse(
+            project_name="inconsistent",
+            project_type="site",
+            land_evaluation=LandEvaluationSummary(),
+            site_assessment=SiteAssessmentSummary(),
+            total_lesa_score=160.0,
+            mandatory_alternatives_required=False,
+            regulatory_notice="notice",
+        )
+
+
+def test_evaluate_lesa_normalizes_string_productivity_index() -> None:
+    result = evaluate_lesa(
+        project_name="CSR2 project",
+        land_evaluation=50.0,
+        productivity_index="CSR2",
+    )
+    assert result.land_evaluation.productivity_index == ProductivityIndexType.CSR2
 
 
 class TestAreaWeightingAndAggregation:
