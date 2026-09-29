@@ -103,3 +103,51 @@ class TestLiveSDA:
         for row in results:
             assert "geom" in row
             assert row["geom"].startswith(("POLYGON", "MULTIPOLYGON"))
+
+    def test_live_out_of_state_productivity_indices(self) -> None:
+        """Verify state-specific indices return null/unrated when queried on out-of-state mukeys."""
+        client = SDAClient()
+        # 1. Fetch an Iowa mukey (Story County)
+        ia_pts = client.get_by_point(latitude=42.0308, longitude=-93.6319)
+        if not ia_pts or not ia_pts[0].get("mukey"):
+            pytest.skip("Could not fetch Iowa mukey")
+        ia_mukey = str(ia_pts[0]["mukey"])
+
+        # 2. Fetch a California mukey (Fresno County)
+        ca_pts = client.get_by_point(latitude=36.7468, longitude=-119.7726)
+        if not ca_pts or not ca_pts[0].get("mukey"):
+            pytest.skip("Could not fetch California mukey")
+        ca_mukey = str(ca_pts[0]["mukey"])
+
+        # Test 1: Query California Storie on Iowa mukey -> should return None/unrated rating
+        ia_storie_res = client.get_productivity_ratings(mukeys=[ia_mukey], index_type="storie")
+        assert len(ia_storie_res) >= 1
+        assert ia_storie_res[0].get("numeric_rating") is None
+        assert ia_storie_res[0].get("is_rated") is False
+
+        # Test 2: Query California Storie on in-state California mukey -> should return valid rating or None cleanly
+        ca_storie_res = client.get_productivity_ratings(mukeys=[ca_mukey], index_type="storie")
+        assert len(ca_storie_res) >= 1
+        assert "numeric_rating" in ca_storie_res[0]
+
+    def test_live_dynamic_sdv_queries_and_unrated_water_urban(self) -> None:
+        """Verify dynamic SDV query generation on live SDA with real attribute metadata."""
+        client = SDAClient()
+        # Query water/urban area (e.g. Lake Michigan coordinates near Chicago: 41.90, -87.60)
+        water_pts = client.get_by_point(latitude=41.9000, longitude=-87.6000)
+        if water_pts and water_pts[0].get("mukey"):
+            water_mukey = str(water_pts[0]["mukey"])
+            nccpi_res = client.get_interpretations(
+                mukeys=[water_mukey],
+                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            )
+            if nccpi_res:
+                # In water/urban land, numeric rating is None or sentinel (99/999)
+                assert nccpi_res[0].get("numeric_rating") is None or nccpi_res[0].get(
+                    "numeric_rating"
+                ) in (99, 999, 99.0, 999.0)
+
+        # Query dynamic SDV county maximum for NCCPI in Iowa
+        max_val = client.get_county_max_productivity_rating(areasymbol="IA169", index_type="nccpi")
+        assert max_val is not None
+        assert max_val > 0.0

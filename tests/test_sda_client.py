@@ -470,7 +470,7 @@ class TestSDAClientExecution:
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"iacsr2" in request.content
+            assert b"CSR2" in request.content or b"cointerp" in request.content
             assert b"areasymbol = 'IA169'" in request.content
             return httpx.Response(200, json=mock_resp)
 
@@ -597,7 +597,7 @@ class TestSDAClientExecution:
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"iacsr2" in request.content
+            assert b"CSR2" in request.content or b"cointerp" in request.content
             return httpx.Response(200, json=mock_resp)
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
@@ -625,7 +625,7 @@ class TestSDAClientExecution:
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"cpi" in request.content
+            assert b"CPI" in request.content or b"cointerp" in request.content
             return httpx.Response(200, json=mock_resp)
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
@@ -652,7 +652,7 @@ class TestSDAClientExecution:
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"storie" in request.content
+            assert b"Storie" in request.content or b"storie" in request.content
             return httpx.Response(200, json=mock_resp)
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))

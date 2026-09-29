@@ -239,12 +239,13 @@ WITH comp_rating AS (
         m.muname,
         c.cokey,
         c.comppct_r,
-        COALESCE(cia.csr2, mia.csr2) AS rating
+        ci.interphr AS rating
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN coiacsr2 AS cia ON cia.cokey = c.cokey
-    LEFT JOIN iacsr2 AS mia ON mia.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND (ci.mrulename LIKE '%CSR2%' OR ci.mrulename LIKE '%csr2%' OR ci.mrulename LIKE '%Corn Suitability Rating%')
     WHERE m.mukey IN ({mukeys_csv})
       AND c.compkind != 'miscellaneous area'
 )
@@ -253,8 +254,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -269,12 +270,13 @@ WITH comp_rating AS (
         m.muname,
         c.cokey,
         c.comppct_r,
-        COALESCE(ci.cpi, mcpi.cpi) AS rating
+        ci.interphr AS rating
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN cocpi AS ci ON ci.cokey = c.cokey
-    LEFT JOIN cpi AS mcpi ON mcpi.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND (ci.mrulename LIKE '%CPI%' OR ci.mrulename LIKE '%Crop Productivity Index%')
     WHERE m.mukey IN ({mukeys_csv})
       AND c.compkind != 'miscellaneous area'
 )
@@ -283,8 +285,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -299,14 +301,13 @@ WITH comp_rating AS (
         m.muname,
         c.cokey,
         c.comppct_r,
-        COALESCE(ci.interphr, cs.storie_index) AS rating
+        ci.interphr AS rating
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
     LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
         AND ci.ruledepth = 0
         AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
-    LEFT JOIN cstorie AS cs ON cs.cokey = c.cokey
     WHERE m.mukey IN ({mukeys_csv})
       AND c.compkind != 'miscellaneous area'
 )
@@ -315,8 +316,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -333,51 +334,52 @@ WHERE l.areasymbol = '{areasymbol}'
   AND ci.ruledepth = 0
   AND ci.mrulename = '{rule_name}'
   AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999)
+  AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
 """
 
 SQL_PRODUCTIVITY_COUNTY_MAX_CSR2 = """\
 SELECT
-    MAX(COALESCE(cia.csr2, mia.csr2)) AS max_county_rating
+    MAX(ci.interphr) AS max_county_rating
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
-LEFT JOIN coiacsr2 AS cia ON cia.cokey = c.cokey
-LEFT JOIN iacsr2 AS mia ON mia.mukey = m.mukey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
 WHERE l.areasymbol = '{areasymbol}'
-  AND COALESCE(cia.csr2, mia.csr2) IS NOT NULL
-  AND COALESCE(cia.csr2, mia.csr2) NOT IN (99, 999)
+  AND ci.ruledepth = 0
+  AND (ci.mrulename LIKE '%CSR2%' OR ci.mrulename LIKE '%csr2%' OR ci.mrulename LIKE '%Corn Suitability Rating%')
+  AND ci.interphr IS NOT NULL
+  AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
 """
 
 SQL_PRODUCTIVITY_COUNTY_MAX_CPI = """\
 SELECT
-    MAX(COALESCE(ci.cpi, mcpi.cpi)) AS max_county_rating
+    MAX(ci.interphr) AS max_county_rating
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
-LEFT JOIN cocpi AS ci ON ci.cokey = c.cokey
-LEFT JOIN cpi AS mcpi ON mcpi.mukey = m.mukey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
 WHERE l.areasymbol = '{areasymbol}'
-  AND COALESCE(ci.cpi, mcpi.cpi) IS NOT NULL
-  AND COALESCE(ci.cpi, mcpi.cpi) NOT IN (99, 999)
+  AND ci.ruledepth = 0
+  AND (ci.mrulename LIKE '%CPI%' OR ci.mrulename LIKE '%Crop Productivity Index%')
+  AND ci.interphr IS NOT NULL
+  AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
 """
 
 SQL_PRODUCTIVITY_COUNTY_MAX_STORIE = """\
 SELECT
-    MAX(COALESCE(ci.interphr, cs.storie_index)) AS max_county_rating
+    MAX(ci.interphr) AS max_county_rating
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
-LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
-    AND ci.ruledepth = 0
-    AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
-LEFT JOIN cstorie AS cs ON cs.cokey = c.cokey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
 WHERE l.areasymbol = '{areasymbol}'
-  AND COALESCE(ci.interphr, cs.storie_index) IS NOT NULL
-  AND COALESCE(ci.interphr, cs.storie_index) NOT IN (99, 999)
+  AND ci.ruledepth = 0
+  AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
+  AND ci.interphr IS NOT NULL
+  AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
 """
 
@@ -386,11 +388,7 @@ ALLOWED_SDV_TABLES = {
     "cointerp",
     "component",
     "mapunit",
-    "coiacsr2",
-    "iacsr2",
-    "cocpi",
-    "cpi",
-    "cstorie",
+    "sdvattribute",
 }
 
 
