@@ -5,9 +5,9 @@
 - [x] `uv sync` environment available
 - [x] Offline baseline: `uv run pytest -m "not live_network"` — 280 passed,
   12 deselected, 0 failed in 32.83s
-- [ ] Targeted task tests pass
-- [ ] `uv run ruff check .`
-- [ ] `uv run ruff format --check .`
+- [x] Targeted task tests pass
+- [x] `uv run ruff check .` — passed after import-order correction
+- [x] `uv run ruff format --check .` — passed; 288 files already formatted
 - [x] Live-network tests remain opt-in and are not a completion gate
 - [x] Intentional breaking change recorded: remove `nccpi_rating` and
   `nccpi_class`; replace with generic fields plus rating provenance
@@ -24,7 +24,7 @@
 | 3 | 23.3.2 Testing corridor routing and propagation | done | 0 |
 | 3 | 23.3.3 Testing LESA fallback and invalid indexes | done | 0 |
 | 3 | 23.3.4 Updating public rating documentation | done | 0 |
-| 4 | 23.4.1 Running complete offline verification | pending | 0 |
+| 4 | 23.4.1 Running complete offline verification | done | 1 |
 
 ## Task Reports
 
@@ -105,8 +105,35 @@
 
 ## Verification Record
 
-- Base/plan commit: to be recorded when the plan is approved and committed.
+- Base/plan commit: `bd15891`; final verification commits recorded below.
 - Full-suite owner: 23.4.1; workers must not run the full suite or
   repository-wide Ruff.
 - Escalation rule: one targeted-test retry; second failure escalates to a
   mid-tier worker and increments the task's retry/escalation column.
+
+## 23.4.1
+- Status: done; verification executed serially in the approved order.
+- Working tree prerequisite: only the pre-existing untracked
+  `planning/tasks/23.4.1.todo.md` was present; all prerequisite Wave 3
+  reports were present.
+- `uv run pytest tests\test_models.py tests\test_polygon_analysis.py`:
+  33 passed, 0 failed, 0 deselected, 0.10s.
+- `uv run pytest tests\test_tools.py tests\test_phase3_contracts.py`:
+  34 passed, 0 failed, 0 deselected, 3.65s.
+- `uv run pytest tests\test_lesa.py`: 47 passed, 0 failed, 0 deselected,
+  0.08s.
+- `uv run pytest tests\test_sda_client.py`: 68 passed, 0 failed,
+  0 deselected, 3.48s.
+- `uv run pytest tests\test_server.py`: 15 passed, 0 failed,
+  3 deselected, 0.48s.
+- Initial `uv run pytest -m "not live_network"`: 308 passed, 1 failed,
+  12 deselected; the failure was the stale removed-field assertion in
+  `tests\test_phase2_contracts.py`.
+- Corrective contract update committed as `6467c19`; the focused file passed:
+  `uv run pytest tests\test_phase2_contracts.py` — 2 passed.
+- Ruff import/format corrections committed as `b85d415`; `uv run ruff check .`
+  passed and `uv run ruff format --check .` passed with 288 files formatted.
+- Final `uv run pytest -m "not live_network"` passed: 309 passed,
+  12 deselected in 28.32s.
+- Live-network tests remained deselected and opt-in; deviations: one bounded
+  corrective retry for the stale contract and formatting gate.
