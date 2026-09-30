@@ -15,13 +15,23 @@
 | 2 | 22.2.1 Correcting LESA index propagation and simplifying aggregation | done |
 | 3 | 22.3.1 Completing corridor LESA routing and index propagation | done |
 | 3 | 22.3.2 Updating public metadata and planning history | done |
-| 4 | 22.4.1 Testing LESA core corrections | pending |
-| 4 | 22.4.2 Testing public corridor and metadata behavior | pending |
+| 4 | 22.4.1 Testing LESA core corrections | done |
+| 4 | 22.4.2 Testing public corridor and metadata behavior | done |
 | 5 | 22.5.1 Running final offline and lint verification | pending |
 
 ## Task Reports
 
 <!-- Workers append reports here, each no more than 15 lines. -->
+
+## 22.4.2
+- Added polygon-plus-corridor routing coverage with explicit buffer distance and units.
+- Added CSR2, CPI, and Storie corridor parameter coverage.
+- Verified non-NCCPI requests disable NCCPI retrieval while preserving the requested index.
+- Added published `server.json` metadata assertions for LESA and corridor capabilities.
+- Kept all test doubles offline and scoped implementation edits to the approved test files.
+- `uv run pytest tests/test_tools.py tests/test_server.py` passed: 38 selected, 3 deselected.
+- Dependent gotcha: polygon input is normalized through a mocked parser to exercise corridor routing;
+  the current implementation otherwise retains its existing geometry-parser branch behavior.
 
 ## 22.1.1
 - Added typed site LESA criterion maximum-point constants.
@@ -54,3 +64,10 @@
 - Corrected Plan 19 history to state that removed SDV table entries remain excluded.
 - Parsed `server.json` successfully.
 - `uv run ruff check .` failed on pre-existing errors in `src/fpac_soil_mcp/lesa.py:748` (F841) and `src/fpac_soil_mcp/tools/soil_tools.py:38` (F401); neither file was in scope.
+
+## 22.4.1
+- Added fallback regression coverage for CSR2, CPI, and Storie.
+- Verified requested indexes survive numeric and unavailable fallback inputs.
+- Asserted fallback score, coverage, and unavailable notice semantics.
+- Preserved existing weighted aggregation and sentinel regression coverage.
+- `uv run pytest tests/test_lesa.py` passed: 43 tests.

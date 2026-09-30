@@ -204,6 +204,38 @@ def test_evaluate_lesa_normalizes_string_productivity_index(
     assert result.land_evaluation.productivity_index != ProductivityIndexType.NCCPI
 
 
+@pytest.mark.parametrize(
+    ("land_evaluation", "available", "expected_score"),
+    [(50.0, True, 50.0), (None, False, 0.0)],
+)
+@pytest.mark.parametrize(
+    ("productivity_index", "expected"),
+    [
+        ("CSR2", ProductivityIndexType.CSR2),
+        ("CPI", ProductivityIndexType.CPI),
+        ("Storie", ProductivityIndexType.STORIE),
+    ],
+)
+def test_evaluate_lesa_fallback_preserves_requested_index(
+    land_evaluation: float | None,
+    available: bool,
+    expected_score: float,
+    productivity_index: str,
+    expected: ProductivityIndexType,
+) -> None:
+    result = evaluate_lesa(
+        project_name=f"{productivity_index} fallback",
+        land_evaluation=land_evaluation,
+        productivity_index=productivity_index,
+    )
+
+    summary = result.land_evaluation
+    assert summary.productivity_index == expected
+    assert summary.candidate_le_score == expected_score
+    assert summary.coverage_percent == (100.0 if available else 0.0)
+    assert summary.notices == ([] if available else ["Land Evaluation score unavailable."])
+
+
 def test_calculate_relative_ratings_treats_all_sentinels_as_unrated() -> None:
     ratings = [
         {"mukey": str(index), "raw_rating": value}
