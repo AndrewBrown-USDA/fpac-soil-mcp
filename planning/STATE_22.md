@@ -11,7 +11,7 @@
 
 | Wave | Task | Status |
 |---|---|---|
-| 1 | 22.1.1 Centralizing LESA regulatory constants | pending |
+| 1 | 22.1.1 Centralizing LESA regulatory constants | done |
 | 2 | 22.2.1 Correcting LESA index propagation and simplifying aggregation | pending |
 | 3 | 22.3.1 Completing corridor LESA routing and index propagation | pending |
 | 3 | 22.3.2 Updating public metadata and planning history | pending |
@@ -22,3 +22,11 @@
 ## Task Reports
 
 <!-- Workers append reports here, each no more than 15 lines. -->
+
+## 22.1.1
+- Added typed site LESA criterion maximum-point constants.
+- Added typed site LESA criterion name constants.
+- Added the two cited LESA action-guidance string constants.
+- Preserved all existing statutory values and wording.
+- Verified `fpac_soil_mcp.constants` imports successfully.
+- `uv run ruff check src/fpac_soil_mcp/constants.py` passed.

@@ -140,6 +140,48 @@ CORRIDOR_CRITERIA_NAMES: Final[dict[int, str]] = {
     12: "Compatibility of corridor project with existing agricultural uses",
 }
 
+# Standard Point Limits for Form AD-1006 (Site Projects) under 7 CFR § 658.5(b)
+SITE_CRITERIA_MAX_POINTS: Final[dict[int, int]] = {
+    1: 15,  # Area of non-urban land within 1 mile
+    2: 10,  # Perimeter in agricultural/non-urban land
+    3: 20,  # Land farmed >5 of last 10 years
+    4: 20,  # Agricultural protection status (zoning/easements)
+    5: 15,  # Distance to urban built-up area
+    6: 15,  # Distance to municipal water/sewer
+    7: 10,  # Size of farm compared to county average
+    8: 10,  # Non-farmable remnant acreage
+    9: 5,  # Agricultural support services availability
+    10: 20,  # On-farm investments (buildings/irrigation/conservation)
+    11: 10,  # Reduction in agricultural support demand
+    12: 10,  # Land use incompatibility
+}
+
+# Statutory Names and Descriptions for Form AD-1006 Criteria (7 CFR § 658.5(b))
+SITE_CRITERIA_NAMES: Final[dict[int, str]] = {
+    1: "Area of non-urban land in 1-mile buffer",
+    2: "Perimeter of farmable land surrounding site",
+    3: "Percentage of site farmed in 5 of last 10 years",
+    4: "Agricultural protection status (easement/zoning)",
+    5: "Distance to urban built-up area",
+    6: "Distance to municipal water/sewer",
+    7: "Farm size compared to county average",
+    8: "Creation of non-farmable or inaccessible remnant parcels",
+    9: "Availability of agricultural support services",
+    10: "On-farm capital investments and conservation measures",
+    11: "Reduction in local agricultural supply/service demand",
+    12: "Compatibility of site project with existing agricultural uses",
+}
+
+# Cited LESA action guidance under 7 CFR § 658.4(c)(3)-(4)
+LESA_ACTION_AVOID_MINIMIZE_CONVERSION: Final[str] = (
+    "Assess alternative project designs and configurations that avoid or minimize conversion "
+    "of farmland (7 CFR § 658.4(c)(3))."
+)
+LESA_ACTION_REDUCE_FOOTPRINT: Final[str] = (
+    "Evaluate options with reduced footprint or alternative access to minimize acreage taken "
+    "(7 CFR § 658.4(c)(4))."
+)
+
 # Statutory Scoring Maximums and Thresholds under 7 CFR Part 658
 MAX_SITE_ASSESSMENT_SCORE: Final[int] = 160
 MAX_LAND_EVALUATION_SCORE: Final[int] = 100
