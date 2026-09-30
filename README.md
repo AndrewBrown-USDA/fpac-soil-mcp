@@ -34,7 +34,7 @@ Federal projects, environmental reviews (NEPA), agricultural evaluations, and si
 `fpac-soil-mcp` connects LLMs directly to upstream federal REST APIs to:
 - Retrieve **both spatial geometry layers and tabular SSURGO attributes** from USDA NRCS Soil Data Access (SDA):
   - Spatial intersections and geometries (`mupolygongeo`, `SDA_Get_Mukey_from_intersection_with_WktWgs84`, `STIntersection`/`STArea`) with exact clipping.
-  - Tabular queries across SSURGO `mapunit`, `legend`, and `cointerp` component-weighted NCCPI v3 crop productivity indices.
+  - Tabular queries across SSURGO `mapunit`, `legend`, and `cointerp` component-weighted crop productivity interpretations.
 - Screen project coordinates and polygons for farmland classification ratings (`farmlndcl`), prime/unique farmland acreages, and Census 2020 urban area exemptions.
 - Query U.S. Census Bureau TIGERweb REST APIs for 2020 Urban Areas (Layer 0 for 7 CFR § 658.2(a) exemption screening) and State/County Boundaries (MapServer Layer 82/86 or Layer 1 for multi-county corridor partitioning).
 - Query USDA NASS QuickStats REST API for Agricultural Census county baselines (land in farms, cropland, farm count, average farm size for 7 CFR § 658.5(c) Criterion 7).
@@ -61,7 +61,7 @@ flowchart TD
 
     subgraph External_APIs ["External Federal APIs"]
         subgraph SDA ["USDA NRCS Soil Data Access (SDA) REST"]
-            SDATabular["Tabular Queries\n• mapunit & legend (mukey, musym, farmlndcl)\n• cointerp (NCCPI v3 Weighted Avg)"]
+            SDATabular["Tabular Queries\n• mapunit & legend (mukey, musym, farmlndcl)\n• cointerp (requested productivity index)"]
             SDASpatial["Spatial Geometries & Intersections\n• mupolygongeo spatial layers\n• SDA_Get_Mukey_from_intersection_with_WktWgs84\n• STIntersection & STArea clipping"]
         end
         subgraph TIGERweb ["U.S. Census Bureau TIGERweb REST API"]
@@ -95,7 +95,8 @@ flowchart TD
 - **Spatial Soil Queries**: Intersects WGS84 coordinates and GeoJSON polygons directly with live USDA Soil Data Mart spatial layers.
 - **Mukey Lookups**: Retrieves tabular soil attributes by Map Unit Key.
 - **FPPA Screening**: Identifies prime, unique, and statewide important farmland, calculates acreages, and checks Census 2020 urban area boundaries (7 CFR § 658.2(a)).
-- **Soil Interpretations**: Fetches component-weighted interpretation ratings like NCCPI v3.
+- **Soil Interpretations**: Fetches component-weighted interpretation ratings for the requested productivity index.
+- **Generic productivity contract**: Polygon, LESA, and corridor results expose `productivity_rating`, `productivity_rating_class`, and `productivity_rating_source`. The source identifies the SDA interpretation/rule or catalog source used for the returned rating. Supported indexes are `NCCPI`, `CSR2`, `CPI`, and `Storie`; `productivity_index` selects the index and `max_county_rating_override` optionally supplies the normalization benchmark where supported. The former `nccpi_rating` and `nccpi_class` aliases are intentionally removed from the public response schema.
 - **Multi-County Corridor Analysis & CPA-106 Rules**: Partitions linear corridor geometries across TIGERweb county boundaries, performs area-weighted composite Land Evaluation (LE) scoring (including for project alternatives), aggregates multi-county Criterion 7 farm size benchmarks from USDA NASS agricultural profiles, and enforces statutory 7 CFR § 658.5(c) / § 658.4(c) rules with strict sum reconciliation audits.
 - **Embedded Regulatory Notices**: Attaches 7 CFR Parts 657 & 658 notices to query responses to keep screening distinct from official agency determinations.
 - **FastMCP Transports**: Supports stdio for local clients and SSE for network services.
@@ -128,7 +129,7 @@ flowchart TD
 
 ## Data Sources & Relationship to py-soildb
 
-- **Data Sources**: Both spatial geometry layers (`mupolygongeo`, spatial intersections, clipping) and tabular SSURGO attributes (`mapunit`, `legend`, `cointerp` NCCPI ratings) come from the USDA NRCS **Soil Data Access (SDA)** REST service (`https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest`). Urban boundaries and county partitioning layers are retrieved from the U.S. Census Bureau **TIGERweb** REST APIs, and agricultural census baselines are queried from the USDA **NASS QuickStats** REST API.
+- **Data Sources**: Both spatial geometry layers (`mupolygongeo`, spatial intersections, clipping) and tabular SSURGO attributes (`mapunit`, `legend`, `cointerp` productivity interpretations) come from the USDA NRCS **Soil Data Access (SDA)** REST service (`https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest`). Urban boundaries and county partitioning layers are retrieved from the U.S. Census Bureau **TIGERweb** REST APIs, and agricultural census baselines are queried from the USDA **NASS QuickStats** REST API.
 - **Relationship to `py-soildb`**: While `py-soildb` is an actively maintained package for soil database workflows and serves as a proven reference implementation, `fpac-soil-mcp` implements its own direct SDA query logic. This keeps the server self-contained and lets it manage endpoints and formats (such as GeoJSON clipping and Census urban layers) outside `py-soildb`'s scope without extra dependencies.
 
 ---
@@ -247,12 +248,12 @@ The server exposes **10 core MCP tools** for spatial soil query, farmland classi
 | :--- | :--- | :--- |
 | `get_farmland_classification_by_point` | `latitude` (float, required), `longitude` (float, required) | Queries SDA for soil map unit attributes and farmland classification at a point. |
 | `get_farmland_classification_by_mukey` | `mukey` (string, required) | Fetches soil map unit details and farmland classification by Map Unit Key. |
-| `analyze_farmland_by_polygon` | `geojson` (dict \| string, required), `include_nccpi` (bool, default `true`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional) | Performs preliminary FPPA screening on a polygon: calculates acreage, checks 2020 Census urban area exemptions, intersects SSURGO map units with spatial clipping, summarizes farmland categories, and fetches productivity ratings (NCCPI, CSR2, CPI, Storie) with candidate Land Evaluation scoring. |
-| `calculate_preliminary_lesa` | `project_name` (string, required), `geometry` (dict \| string, required), `project_type` (string, default `'site'`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional), `site_assessment_inputs` (dict, optional) | Performs unified Land Evaluation and Site Assessment (LESA) evaluation for site (Form AD-1006) and corridor (Form NRCS-CPA-106) projects: computes normalized relative ratings, area-weighted candidate LE scores (0–100), applies 7 CFR § 658.5(c) rules, and evaluates the statutory 160-point mandatory alternatives threshold under 7 CFR § 658.4(c)(2). |
+| `analyze_farmland_by_polygon` | `geojson` (dict \| string, required), `include_nccpi` (bool, default `true`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional) | Performs preliminary FPPA screening on a polygon, summarizes farmland categories, and fetches the requested productivity index (`NCCPI`, `CSR2`, `CPI`, or `Storie`) with candidate Land Evaluation scoring. Results use generic `productivity_rating`, `productivity_rating_class`, and `productivity_rating_source` fields; `nccpi_rating` and `nccpi_class` are not public aliases. |
+| `calculate_preliminary_lesa` | `project_name` (string, required), `geometry` (dict \| string, required), `project_type` (string, default `'site'`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional), `site_assessment_inputs` (dict, optional) | Performs unified Land Evaluation and Site Assessment (LESA) evaluation for site or corridor projects using the requested supported index, normalized against the county benchmark or supported override, with optional corridor assessment inputs. |
 | `get_soil_polygons_by_geometry` | `geojson` (dict \| string, required), `clip` (bool, default `true`) | Returns intersecting SSURGO map unit polygon geometries and attributes as a GeoJSON `FeatureCollection`. |
 | `check_urban_area_exemption` | `geojson` (dict \| string, required) | Screens point or polygon geometries against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)). |
 | `get_soil_interpretations` | `mukeys` (list[string], required), `rule_name` (string, default NCCPI v3), `aggregation_method` (string, default `'Weighted Average'`) | Fetches component-weighted soil interpretations from USDA SDA for specified map units. |
-| `analyze_corridor_fppa` | `centerline` (dict \| string, required), `buffer_distance` (float, required), `buffer_units` (string, default `'feet'`), `indirect_geometry` (dict \| string, optional), `alternatives` (list[dict], optional), `include_nccpi` (bool, default `true`), `site_assessment_inputs` (dict, optional) | Performs multi-county linear corridor FPPA screening (Form NRCS-CPA-106): buffers centerline, erases direct corridor overlap from indirect staging, partitions across Census county boundaries, queries SSURGO/NCCPI, retrieves NASS county agricultural baselines, calculates composite Land Evaluation (LE), and evaluates statutory 7 CFR § 658.5(c) Site Assessment rules and alternatives. |
+| `analyze_corridor_fppa` | `centerline` (dict \| string, required), `buffer_distance` (float, required), `buffer_units` (string, default `'feet'`), `indirect_geometry` (dict \| string, optional), `alternatives` (list[dict], optional), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional), `site_assessment_inputs` (dict, optional) | Performs multi-county corridor screening: buffers the `centerline` by `buffer_distance` in `buffer_units` (`feet`, `meters`, or `miles`), removes direct overlap from optional `indirect_geometry`, partitions by county, and evaluates the requested `NCCPI`, `CSR2`, `CPI`, or `Storie` index. Optional `alternatives` may provide per-alternative centerlines/buffers; `site_assessment_inputs` supplies corridor-specific assessment inputs. Results use the generic productivity fields and source provenance. |
 | `explain_fppa_screening_scope` | None | Explains why SDA preliminary screening (7 CFR 657) differs from formal FPPA LESA reviews and Form AD-1006 (7 CFR 658). |
 | `list_farmland_classes` | None | Returns standard USDA NRCS SSURGO Farmland Classification categories, statutory definitions, and 7 CFR citations. |
 
@@ -283,7 +284,7 @@ Assistant (Invoking analyze_corridor_fppa):
 1. Buffers centerline by 50 feet in equal-area projection (EPSG:6933).
 2. Topologically erases direct ROW overlap from the laydown yard to prevent double-counting.
 3. Partitions corridor across Census TIGERweb county boundaries (Story FIPS 19169, Marshall FIPS 19127).
-4. Queries SDA for intersecting SSURGO map units and component-weighted NCCPI ratings per segment.
+4. Queries SDA for intersecting SSURGO map units and component-weighted ratings for the requested productivity index per segment.
 5. Queries NASS QuickStats for county average farm sizes and cropland baselines.
 6. Calculates composite Land Evaluation (LE) and executes 7 CFR § 658.5(c) Site Assessment (Criteria 5 & 6 zeroed; Criterion 7 auto-scored; Criteria 8 & 11 evaluated at 25 max pts).
 7. Audits and reconciles multi-county acreage sums.
