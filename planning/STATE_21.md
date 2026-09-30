@@ -17,8 +17,8 @@
 | 2 | 21.2.2 Testing county partition and opt-out behavior | done |
 | 3 | 21.3.1 Correcting LESA index fallback and sentinel behavior | pending |
 | 3 | 21.3.2 Wiring WKT and configurable corridor buffers | pending |
-| 3 | 21.3.3 Testing LESA and corridor public inputs | pending |
-| 4 | 21.4.1 Running final offline and lint verification | pending |
+| 4 | 21.3.3 Testing LESA and corridor public inputs | pending |
+| 5 | 21.4.1 Running final offline and lint verification | pending |
 
 ## Task Reports
 

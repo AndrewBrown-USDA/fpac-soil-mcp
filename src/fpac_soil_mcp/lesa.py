@@ -93,6 +93,18 @@ __all__ = [
 # --- Core Land Evaluation Normalization & Scoring ---
 
 
+def _normalize_productivity_index(
+    productivity_index: ProductivityIndexType | str,
+) -> ProductivityIndexType:
+    """Normalize public productivity-index inputs for summary construction."""
+    if isinstance(productivity_index, str):
+        try:
+            return ProductivityIndexType(productivity_index.upper())
+        except ValueError:
+            return ProductivityIndexType.CUSTOM
+    return productivity_index
+
+
 def calculate_relative_ratings(
     ratings: list[dict[str, Any]],
     county_max: float,
@@ -372,13 +384,7 @@ def evaluate_land_evaluation(
     Returns:
         LandEvaluationSummary instance.
     """
-    if isinstance(productivity_index, str):
-        try:
-            prod_enum = ProductivityIndexType(productivity_index.upper())
-        except ValueError:
-            prod_enum = ProductivityIndexType.CUSTOM
-    else:
-        prod_enum = productivity_index
+    prod_enum = _normalize_productivity_index(productivity_index)
 
     # Acreage lookup map
     acre_map: dict[str, float] = {}
@@ -740,13 +746,7 @@ def evaluate_lesa(
         PreliminaryLESAResponse object.
     """
     # Normalize once so fallback summaries preserve the requested index type.
-    if isinstance(productivity_index, str):
-        try:
-            normalized_productivity_index = ProductivityIndexType(productivity_index.upper())
-        except ValueError:
-            normalized_productivity_index = ProductivityIndexType.CUSTOM
-    else:
-        normalized_productivity_index = productivity_index
+    normalized_productivity_index = _normalize_productivity_index(productivity_index)
 
     # 1. Resolve Land Evaluation Summary
     if isinstance(land_evaluation, LandEvaluationSummary):

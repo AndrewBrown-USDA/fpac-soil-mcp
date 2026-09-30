@@ -71,8 +71,8 @@ corridor tool honor documented WKT and buffer inputs.
 | 2 | 21.2.2 | Testing county partition and opt-out behavior | `tests/test_polygon_analysis.py` | 21.1.1 |
 | 3 | 21.3.1 | Correcting LESA index fallback and sentinel behavior | `src/fpac_soil_mcp/lesa.py` | 21.2.1 |
 | 3 | 21.3.2 | Wiring WKT and configurable corridor buffers | `src/fpac_soil_mcp/tools/soil_tools.py` | 21.2.1 |
-| 3 | 21.3.3 | Testing LESA and corridor public inputs | `tests/test_lesa.py`, `tests/test_tools.py` | 21.3.1, 21.3.2 |
-| 4 | 21.4.1 | Running final offline and lint verification | `planning/STATE_21.md` | 21.1.2, 21.2.2, 21.3.3 |
+| 4 | 21.3.3 | Testing LESA and corridor public inputs | `tests/test_lesa.py`, `tests/test_tools.py` | 21.3.1, 21.3.2 |
+| 5 | 21.4.1 | Running final offline and lint verification | `planning/STATE_21.md` | 21.1.2, 21.2.2, 21.3.3 |
 
 ## Task Specifications
 
