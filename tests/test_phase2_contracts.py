@@ -103,9 +103,17 @@ def test_phase2_end_to_end_screening_with_fixtures():
 
     # 2. Map units and interpretations populated
     assert len(res.map_units) == 3
-    assert res.map_units[0].nccpi_rating == 0.88
-    assert res.map_units[1].nccpi_rating == 0.82
-    assert res.map_units[2].nccpi_rating == 0.71
+    assert [unit.productivity_rating for unit in res.map_units] == [0.88, 0.82, 0.71]
+    assert [unit.productivity_rating_class for unit in res.map_units] == [
+        "High",
+        "High",
+        "Moderate",
+    ]
+    assert all(
+        unit.productivity_rating_source
+        == "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+        for unit in res.map_units
+    )
 
     # 3. Farmland breakdown sums correctly
     summary = res.farmland_summary
