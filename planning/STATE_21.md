@@ -15,9 +15,9 @@
 | 1 | 21.1.2 Adding SDA regression coverage | done |
 | 2 | 21.2.1 Partitioning polygon ratings by county | done |
 | 2 | 21.2.2 Testing county partition and opt-out behavior | done |
-| 3 | 21.3.1 Correcting LESA index fallback and sentinel behavior | pending |
-| 3 | 21.3.2 Wiring WKT and configurable corridor buffers | pending |
-| 4 | 21.3.3 Testing LESA and corridor public inputs | pending |
+| 3 | 21.3.1 Correcting LESA index fallback and sentinel behavior | done |
+| 3 | 21.3.2 Wiring WKT and configurable corridor buffers | done |
+| 4 | 21.3.3 Testing LESA and corridor public inputs | done |
 | 5 | 21.4.1 Running final offline and lint verification | pending |
 
 ## Task Reports
@@ -50,4 +50,25 @@
 - **Files**: `tests/test_polygon_analysis.py`
 - **Validation**: `uv run pytest tests/test_polygon_analysis.py -q` — 10 passed.
 - **Changes**: covered separate-area benchmarks, acreage weighting, opt-out request suppression, and all four sentinel forms.
+- **Deviations**: none.
+
+## 21.3.1
+- **Status**: done
+- **Files**: `src/fpac_soil_mcp/lesa.py`
+- **Validation**: `uv run pytest tests/test_lesa.py` — 34 passed
+- **Changes**: normalized supported productivity-index strings in fallback summaries.
+- **Deviations**: none.
+
+## 21.3.2
+- **Status**: done
+- **Files**: `src/fpac_soil_mcp/tools/soil_tools.py`
+- **Validation**: `uv run pytest tests/test_tools.py` — 17 passed
+- **Changes**: added WKT geometry handling, corridor routing, and configurable buffer parameters.
+- **Deviations**: none.
+
+## 21.3.3
+- **Status**: done
+- **Files**: `tests/test_lesa.py`, `tests/test_tools.py`
+- **Validation**: `uv run pytest tests/test_lesa.py tests/test_tools.py` — 56 passed
+- **Changes**: covered index fallbacks, all sentinels, WKT polygon/line inputs, and buffer propagation.
 - **Deviations**: none.
