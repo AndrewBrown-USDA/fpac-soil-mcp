@@ -223,8 +223,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -277,6 +277,7 @@ WITH comp_rating AS (
     LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
         AND ci.ruledepth = 0
         AND (ci.mrulename LIKE '%CPI%' OR ci.mrulename LIKE '%Crop Productivity Index%')
+        AND ci.mrulename NOT LIKE '%NCCPI%'
     WHERE m.mukey IN ({mukeys_csv})
       AND c.compkind != 'miscellaneous area'
 )
@@ -363,6 +364,7 @@ INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
 WHERE l.areasymbol = '{areasymbol}'
   AND ci.ruledepth = 0
   AND (ci.mrulename LIKE '%CPI%' OR ci.mrulename LIKE '%Crop Productivity Index%')
+  AND ci.mrulename NOT LIKE '%NCCPI%'
   AND ci.interphr IS NOT NULL
   AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
@@ -460,8 +462,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -543,7 +545,7 @@ WHERE l.areasymbol = '{areasymbol}'
   AND ci.ruledepth = 0
   AND ci.mrulename = '{rule_clean}'
   AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999)
+  AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
 """
 
@@ -998,9 +1000,7 @@ class SDAClient:
             SDAValidationError: If areasymbol or index_type is invalid.
             SDAQueryError: If query execution fails.
         """
-        clean_area = str(areasymbol).strip().upper()
-        if not (2 <= len(clean_area) <= 10 and clean_area.isalnum()):
-            raise SDAValidationError(f"Invalid soil survey area symbol '{areasymbol}'.")
+        clean_area = validate_survey_area_symbol(areasymbol)
 
         idx = index_type.strip().lower()
         if attribute_meta:
