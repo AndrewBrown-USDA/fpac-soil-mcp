@@ -365,6 +365,8 @@ def analyze_corridor_fppa(
     alternatives: list[dict] | None = None,
     include_nccpi: bool = True,
     site_assessment_inputs: dict[str, Any] | None = None,
+    productivity_index: str = "nccpi",
+    max_county_rating_override: float | None = None,
 ) -> dict[str, Any]:
     """Execute multi-county linear corridor FPPA screening and statutory CPA-106 analysis.
 
@@ -381,6 +383,10 @@ def analyze_corridor_fppa(
         indirect_geometry: Optional GeoJSON Polygon/MultiPolygon or WKT for staging/access areas.
         alternatives: Optional list of alternative alignment dicts [{'alternative_id': 'Alt B', 'centerline': ...}].
         include_nccpi: Whether to retrieve component-weighted NCCPI v3 crop productivity ratings.
+        productivity_index: Requested soil productivity index. Corridor analysis currently
+            supports NCCPI retrieval; other indices disable NCCPI retrieval.
+        max_county_rating_override: Optional county benchmark override retained for
+            consistent tool routing; corridor scoring does not currently consume it.
         site_assessment_inputs: Optional dictionary of Part VI Site Assessment inputs for CPA-106 scoring:
             - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
             - 'project_farm_acres': float (size of affected farm holding)
@@ -396,7 +402,7 @@ def analyze_corridor_fppa(
         buffer_units=buffer_units,
         indirect_geometry_input=indirect_geometry,
         alternatives=alternatives,
-        include_nccpi=include_nccpi,
+        include_nccpi=include_nccpi and productivity_index.strip().lower() == "nccpi",
     )
 
     result = corridor_response.model_dump()
@@ -497,6 +503,8 @@ def calculate_preliminary_lesa(
         total LESA score (0-260), mandatory alternatives threshold flag, and regulatory citations.
     """
     analysis_geometry: dict[str, Any] | str = geometry
+    norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
+    normalized_productivity_index = ProductivityIndexType(productivity_index.strip().upper())
     if isinstance(geometry, (LineString, MultiLineString)):
         parsed_geometry = geometry
     elif isinstance(geometry, str) and geometry.strip().upper().startswith(
@@ -512,16 +520,20 @@ def calculate_preliminary_lesa(
         parsed_geometry = parse_geojson_geometry(geometry, allow_line=True)
 
     if isinstance(parsed_geometry, (LineString, MultiLineString)):
-        corridor_result = analyze_corridor_fppa(
-            centerline=geometry,
-            buffer_distance=corridor_buffer_distance,
-            buffer_units=corridor_buffer_units,
-            include_nccpi=True,
-        )
+        corridor_kwargs: dict[str, Any] = {
+            "centerline": geometry,
+            "buffer_distance": corridor_buffer_distance,
+            "buffer_units": corridor_buffer_units,
+            "include_nccpi": productivity_index.strip().lower() == "nccpi",
+        }
+        if productivity_index.strip().lower() != "nccpi" or max_county_rating_override is not None:
+            corridor_kwargs["productivity_index"] = productivity_index
+            corridor_kwargs["max_county_rating_override"] = max_county_rating_override
+        corridor_result = analyze_corridor_fppa(**corridor_kwargs)
         le_score = float(corridor_result.get("composite_relative_rating") or 0.0)
         reconciliation = corridor_result.get("reconciliation_summary") or {}
         le_summary = LandEvaluationSummary(
-            productivity_index=ProductivityIndexType.NCCPI,
+            productivity_index=normalized_productivity_index,
             candidate_le_score=le_score,
             aoi_relative_rating=round(le_score / 100.0, 4),
             total_acreage=float(reconciliation.get("buffered_footprint_acres") or 0.0),
@@ -531,8 +543,8 @@ def calculate_preliminary_lesa(
         analyzer = PolygonAnalyzer()
         polygon_response = analyzer.analyze_polygon(
             geojson_input=analysis_geometry,
-            include_nccpi=True,
-            productivity_index=productivity_index,
+            include_nccpi=productivity_index.strip().lower() == "nccpi",
+            productivity_index=normalized_productivity_index,
             max_county_rating_override=max_county_rating_override,
         )
 
@@ -543,7 +555,7 @@ def calculate_preliminary_lesa(
                 le_summary = LandEvaluationSummary(**le_raw)
             except (ValueError, TypeError, KeyError):
                 le_summary = LandEvaluationSummary(
-                    productivity_index=ProductivityIndexType.NCCPI,
+                    productivity_index=productivity_index,
                     candidate_le_score=float(manifest.get("candidate_le_score", 0.0) or 0.0),
                     aoi_relative_rating=round(
                         float(manifest.get("candidate_le_score", 0.0) or 0.0) / 100.0, 4
@@ -552,7 +564,7 @@ def calculate_preliminary_lesa(
                 )
         else:
             le_summary = LandEvaluationSummary(
-                productivity_index=ProductivityIndexType.NCCPI,
+                productivity_index=productivity_index,
                 candidate_le_score=float(manifest.get("candidate_le_score", 0.0) or 0.0),
                 aoi_relative_rating=round(
                     float(manifest.get("candidate_le_score", 0.0) or 0.0) / 100.0, 4
@@ -565,8 +577,6 @@ def calculate_preliminary_lesa(
     criteria_inputs = sa_inputs.get("criteria_inputs", sa_inputs)
     project_farm_acres = sa_inputs.get("project_farm_acres")
     county_average_farm_acres = sa_inputs.get("county_average_farm_acres")
-
-    norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
 
     lesa_response = evaluate_lesa(
         project_name=project_name,

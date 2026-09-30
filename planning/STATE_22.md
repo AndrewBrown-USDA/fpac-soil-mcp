@@ -13,8 +13,8 @@
 |---|---|---|
 | 1 | 22.1.1 Centralizing LESA regulatory constants | done |
 | 2 | 22.2.1 Correcting LESA index propagation and simplifying aggregation | done |
-| 3 | 22.3.1 Completing corridor LESA routing and index propagation | pending |
-| 3 | 22.3.2 Updating public metadata and planning history | pending |
+| 3 | 22.3.1 Completing corridor LESA routing and index propagation | done |
+| 3 | 22.3.2 Updating public metadata and planning history | done |
 | 4 | 22.4.1 Testing LESA core corrections | pending |
 | 4 | 22.4.2 Testing public corridor and metadata behavior | pending |
 | 5 | 22.5.1 Running final offline and lint verification | pending |
@@ -38,3 +38,19 @@
 - Preserved normalized productivity index propagation and existing summary defaults.
 - Retained area-weighted aggregation shape and rounding/clamping behavior.
 - `uv run pytest tests/test_lesa.py` passed: 37 tests.
+
+## 22.3.1
+- Routed line and multiline LESA inputs through buffered corridor analysis.
+- Propagated requested productivity-index semantics into corridor and polygon paths.
+- Kept NCCPI retrieval enabled only for the NCCPI index.
+- Preserved corridor buffer defaults, explicit buffer options, and response shape.
+- Retained county benchmark override propagation without changing corridor algorithms.
+- Existing working-tree changes outside the task files were left untouched.
+- `uv run pytest tests/test_tools.py` passed: 19 tests.
+
+## 22.3.2
+- Added public LESA and corridor capability metadata to `server.json`.
+- Kept descriptions synchronized with `manifest.yaml`.
+- Corrected Plan 19 history to state that removed SDV table entries remain excluded.
+- Parsed `server.json` successfully.
+- `uv run ruff check .` failed on pre-existing errors in `src/fpac_soil_mcp/lesa.py:748` (F841) and `src/fpac_soil_mcp/tools/soil_tools.py:38` (F401); neither file was in scope.
