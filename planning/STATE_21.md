@@ -11,8 +11,8 @@
 
 | Wave | Task | Status |
 |---|---|---|
-| 1 | 21.1.1 Hardening SDA query builders and interpretation SQL | pending |
-| 1 | 21.1.2 Adding SDA regression coverage | pending |
+| 1 | 21.1.1 Hardening SDA query builders and interpretation SQL | done |
+| 1 | 21.1.2 Adding SDA regression coverage | done |
 | 2 | 21.2.1 Partitioning polygon ratings by county | pending |
 | 2 | 21.2.2 Testing county partition and opt-out behavior | pending |
 | 3 | 21.3.1 Correcting LESA index fallback and sentinel behavior | pending |
@@ -23,3 +23,17 @@
 ## Task Reports
 
 <!-- Workers append reports here, each no more than 15 lines. -->
+
+## 21.1.1
+- **Status**: done
+- **Files**: `src/fpac_soil_mcp/sda_client.py`
+- **Validation**: `uv run pytest tests/test_sda_client.py` — 68 passed
+- **Changes**: hardened dynamic builder boundaries, negative sentinels, and CPI/NCCPI matching.
+- **Deviations**: none.
+
+## 21.1.2
+- **Status**: done
+- **Files**: `tests/test_sda_client.py`
+- **Validation**: `uv run pytest tests/test_sda_client.py` — 68 passed after 21.1.1
+- **Changes**: added injection, area-symbol, sentinel, and CPI/NCCPI regression coverage.
+- **Deviations**: none.
