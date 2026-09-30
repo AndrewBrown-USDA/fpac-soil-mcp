@@ -201,7 +201,20 @@ def test_evaluate_lesa_normalizes_string_productivity_index(
         productivity_index=productivity_index,
     )
     assert result.land_evaluation.productivity_index == expected
+    assert result.land_evaluation.productivity_index.value == expected.value
     assert result.land_evaluation.productivity_index != ProductivityIndexType.NCCPI
+
+
+def test_evaluate_lesa_unsupported_productivity_index_uses_custom() -> None:
+    result = evaluate_lesa(
+        project_name="Custom index project",
+        land_evaluation=50.0,
+        productivity_index="not-an-index",
+    )
+
+    assert result.land_evaluation.productivity_index is ProductivityIndexType.CUSTOM
+    assert result.land_evaluation.productivity_index.value == "CUSTOM"
+    assert result.land_evaluation.candidate_le_score == 50.0
 
 
 @pytest.mark.parametrize(
@@ -214,6 +227,7 @@ def test_evaluate_lesa_normalizes_string_productivity_index(
         ("CSR2", ProductivityIndexType.CSR2),
         ("CPI", ProductivityIndexType.CPI),
         ("Storie", ProductivityIndexType.STORIE),
+        ("not-an-index", ProductivityIndexType.CUSTOM),
     ],
 )
 def test_evaluate_lesa_fallback_preserves_requested_index(
@@ -231,6 +245,7 @@ def test_evaluate_lesa_fallback_preserves_requested_index(
 
     summary = result.land_evaluation
     assert summary.productivity_index == expected
+    assert summary.productivity_index.value == expected.value
     assert summary.candidate_le_score == expected_score
     assert summary.coverage_percent == (100.0 if available else 0.0)
     assert summary.notices == ([] if available else ["Land Evaluation score unavailable."])
@@ -247,6 +262,31 @@ def test_calculate_relative_ratings_treats_all_sentinels_as_unrated() -> None:
     assert len(results) == 4
     assert all(result.is_rated is False for result in results)
     assert all(result.normalized_relative_rating is None for result in results)
+
+
+def test_sentinel_and_unavailable_units_do_not_contribute_to_land_evaluation() -> None:
+    ratings = calculate_relative_ratings(
+        [
+            {"mukey": "1", "raw_rating": 99.0},
+            {"mukey": "2", "raw_rating": 999.0},
+            {"mukey": "3", "raw_rating": -99.0},
+            {"mukey": "4", "raw_rating": -999.0},
+            {"mukey": "5", "raw_rating": None},
+        ],
+        county_max=100.0,
+    )
+
+    summary = evaluate_land_evaluation(
+        ratings,
+        acreages={"1": 10.0, "2": 20.0, "3": 30.0, "4": 40.0, "5": 50.0},
+        productivity_index="CSR2",
+    )
+
+    assert summary.rated_acreage == 0.0
+    assert summary.unrated_acreage == 150.0
+    assert summary.coverage_percent == 0.0
+    assert summary.candidate_le_score == 0.0
+    assert summary.productivity_index is ProductivityIndexType.CSR2
 
 
 class TestAreaWeightingAndAggregation:
