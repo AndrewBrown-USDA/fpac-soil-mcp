@@ -2,10 +2,10 @@
 
 ## Baseline Checklist
 - [x] `uv sync` environment available
-- [x] Offline baseline: `uv run pytest -m "not live_network"` — 254 passed, 12 deselected
+- [x] Offline verification: `uv run pytest -m "not live_network"` — 269 passed, 12 deselected
 - [x] `uv run ruff check .` — passed
-- [x] `uv run ruff format --check .` — passed
-- [ ] Live SDA tests remain opt-in and are not a completion gate
+- [x] `uv run ruff format --check .` — passed after formatting 3 changed files
+- [x] Live SDA tests remain opt-in and are not a completion gate
 
 ## Wave Board
 
@@ -18,7 +18,7 @@
 | 3 | 21.3.1 Correcting LESA index fallback and sentinel behavior | done |
 | 3 | 21.3.2 Wiring WKT and configurable corridor buffers | done |
 | 4 | 21.3.3 Testing LESA and corridor public inputs | done |
-| 5 | 21.4.1 Running final offline and lint verification | pending |
+| 5 | 21.4.1 Running final offline and lint verification | done |
 
 ## Task Reports
 
@@ -72,3 +72,11 @@
 - **Validation**: `uv run pytest tests/test_lesa.py tests/test_tools.py` — 56 passed
 - **Changes**: covered index fallbacks, all sentinels, WKT polygon/line inputs, and buffer propagation.
 - **Deviations**: none.
+
+## 21.4.1
+- **Status**: done
+- **Files**: `planning/STATE_21.md`
+- **Validation**: `uv run pytest -m "not live_network"` — 269 passed, 12 deselected; `uv run ruff check .` — passed; `uv run ruff format --check .` — passed after formatting 3 changed files.
+- **Changes**: recorded final offline and lint verification outcomes; applied Ruff formatting to the three changed files reported by the initial check.
+- **Deviations**: initial format check required orchestrator formatting of `src/fpac_soil_mcp/polygon_analysis.py`, `tests/test_polygon_analysis.py`, and `tests/test_tools.py`; the final check passed.
+- **Gotchas**: live SDA tests remain opt-in and are not a completion gate.

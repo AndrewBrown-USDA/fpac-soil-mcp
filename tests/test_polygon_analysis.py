@@ -165,6 +165,7 @@ def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
             ["512915", "138B", "Clarion", "All areas are prime farmland", "IA170", 90.0],
         ]
     }
+
     class PartitionedSDAClient(SDAClient):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -183,7 +184,9 @@ def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
             return {"IA169": 1.0, "IA170": 0.5}[areasymbol]
 
     sda = PartitionedSDAClient(
-        http_client=httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial)))
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial))
+        )
     )
     tiger = TigerwebClient(
         http_client=httpx.Client(
@@ -221,7 +224,9 @@ def test_analyze_polygon_treats_all_nccpi_sentinels_as_unrated(sentinel):
             return 1.0
 
     sda = SentinelSDAClient(
-        http_client=httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial)))
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial))
+        )
     )
     tiger = TigerwebClient(
         http_client=httpx.Client(

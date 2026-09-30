@@ -173,9 +173,8 @@ class PolygonAnalyzer:
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
         interp_map: dict[str, dict[str, Any]] = {}
         rating_map: dict[str, dict[str, Any]] = {}
-        ratings_requested = (
-            include_nccpi
-            or (productivity_index and str(productivity_index).strip().lower() != "nccpi")
+        ratings_requested = include_nccpi or (
+            productivity_index and str(productivity_index).strip().lower() != "nccpi"
         )
         if ratings_requested and mukeys:
             if norm_idx == "nccpi":
@@ -227,9 +226,7 @@ class PolygonAnalyzer:
         partition_max: dict[str, float] = {}
         if ratings_requested and county_max is None and raw_units:
             areasymbols = {
-                str(u.get("areasymbol")).strip()
-                for u in raw_units
-                if u.get("areasymbol")
+                str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
             }
             for areasymbol in areasymbols:
                 try:
@@ -240,9 +237,7 @@ class PolygonAnalyzer:
                     if benchmark is not None and benchmark > 0:
                         partition_max[areasymbol] = float(benchmark)
                 except SDAClientError as exc:
-                    logger.warning(
-                        "County max rating query failed for %s: %s", areasymbol, exc
-                    )
+                    logger.warning("County max rating query failed for %s: %s", areasymbol, exc)
                     limitations.append(f"County max rating query warning: {exc}")
 
         default_county_max = 1.0 if norm_idx == "nccpi" else 100.0

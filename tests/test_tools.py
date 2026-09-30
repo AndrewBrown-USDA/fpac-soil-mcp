@@ -243,9 +243,10 @@ class TestFPPATools:
 
         assert response.project_name == "wkt polygon"
         mock_analyzer_cls.return_value.analyze_polygon.assert_called_once()
-        assert mock_analyzer_cls.return_value.analyze_polygon.call_args.kwargs[
-            "geojson_input"
-        ]["type"] == "Polygon"
+        assert (
+            mock_analyzer_cls.return_value.analyze_polygon.call_args.kwargs["geojson_input"]["type"]
+            == "Polygon"
+        )
 
     @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
     def test_calculate_preliminary_lesa_routes_wkt_line_with_buffer_options(
