@@ -1057,7 +1057,10 @@ class SDAClient:
             attribute_meta: Optional sdvattribute record for dynamic query generation.
 
         Returns:
-            List of structured rating dictionaries with component rated percentages and caveats.
+            List of structured rating dictionaries with component rated percentages,
+            caveats, and ``productivity_rating_source`` identifying the selected
+            SDA interpretation rule/catalog (the validated ``nasisrulename`` or
+            ``attributename`` for dynamic SDV attributes).
 
         Raises:
             SDAValidationError: If mukeys or index_type are invalid.
@@ -1072,27 +1075,44 @@ class SDAClient:
         idx = index_type.strip().lower()
         if attribute_meta:
             norm_idx = str(attribute_meta.get("attributename", index_type)).lower()
+            productivity_rating_source = str(
+                attribute_meta.get("nasisrulename")
+                or attribute_meta.get("attributename")
+                or index_type
+            ).strip()
             query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
         elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
             norm_idx = "nccpi"
+            productivity_rating_source = (
+                "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+            )
             query = SQL_PRODUCTIVITY_NCCPI.format(
                 mukeys_csv=mukeys_csv,
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             )
         elif idx in ("csr2", "iacsr2", "iowa csr2"):
             norm_idx = "csr2"
+            productivity_rating_source = "SDA cointerp rule/catalog matching CSR2"
             query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
         elif idx in ("cpi", "minnesota cpi"):
             norm_idx = "cpi"
+            productivity_rating_source = "SDA cointerp rule/catalog matching CPI (excluding NCCPI)"
             query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
         elif idx in ("storie", "storie_index", "california storie"):
             norm_idx = "storie"
+            productivity_rating_source = "SDA cointerp rule/catalog matching Storie"
             query = SQL_PRODUCTIVITY_STORIE.format(mukeys_csv=mukeys_csv)
         else:
             matched_attrs = self.lookup_sdv_attribute(index_type)
             if matched_attrs:
-                norm_idx = str(matched_attrs[0].get("attributename", index_type)).lower()
-                query = build_dynamic_sdv_query(matched_attrs[0], mukeys_csv)
+                selected_attribute = matched_attrs[0]
+                norm_idx = str(selected_attribute.get("attributename", index_type)).lower()
+                productivity_rating_source = str(
+                    selected_attribute.get("nasisrulename")
+                    or selected_attribute.get("attributename")
+                    or index_type
+                ).strip()
+                query = build_dynamic_sdv_query(selected_attribute, mukeys_csv)
             else:
                 raise SDAValidationError(
                     f"Unsupported productivity index type '{index_type}'. Supported: 'nccpi', 'csr2', 'cpi', 'storie' or valid sdvattribute."
@@ -1112,6 +1132,7 @@ class SDAClient:
                         "musym": None,
                         "muname": None,
                         "index_type": norm_idx,
+                        "productivity_rating_source": productivity_rating_source,
                         "numeric_rating": None,
                         "rated_pct": 0.0,
                         "total_pct": 0.0,
@@ -1163,6 +1184,7 @@ class SDAClient:
                     "musym": str(row.get("musym")) if row.get("musym") else None,
                     "muname": str(row.get("muname")) if row.get("muname") else None,
                     "index_type": norm_idx,
+                    "productivity_rating_source": productivity_rating_source,
                     "numeric_rating": numeric_rating,
                     "rated_pct": round(rated_pct, 2),
                     "total_pct": round(total_pct, 2),
