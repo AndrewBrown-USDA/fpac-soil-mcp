@@ -739,7 +739,12 @@ def evaluate_lesa(
 
     # 1. Resolve Land Evaluation Summary
     if isinstance(land_evaluation, LandEvaluationSummary):
-        le_summary = land_evaluation
+        if land_evaluation.productivity_index != normalized_productivity_index:
+            le_summary = land_evaluation.model_copy(
+                update={"productivity_index": normalized_productivity_index}
+            )
+        else:
+            le_summary = land_evaluation
     elif isinstance(land_evaluation, (int, float)):
         le_summary = fallback_land_evaluation(land_evaluation, available=True)
     else:
