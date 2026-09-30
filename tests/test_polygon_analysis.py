@@ -1,6 +1,7 @@
 """Tests for PolygonFarmlandAnalysis and polygon screening engine."""
 
 import httpx
+import pytest
 
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer, categorize_farmland_class
 from fpac_soil_mcp.sda_client import SDAClient
@@ -107,6 +108,9 @@ def test_analyze_polygon_include_nccpi_false_skips_rating_query():
         def get_interpretations(self, *args, **kwargs):
             raise AssertionError("NCCPI query should be skipped")
 
+        def get_county_max_productivity_rating(self, *args, **kwargs):
+            raise AssertionError("County benchmark query should be skipped")
+
     sda_client = NoNccpiClient(http_client=httpx.Client(transport=httpx.MockTransport(sda_handler)))
     tiger_client = TigerwebClient(
         http_client=httpx.Client(
@@ -144,6 +148,88 @@ def test_analyze_polygon_treats_decimal_99_as_unrated_nccpi():
         )
     )
     result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(geojson)
+    assert result.map_units[0].nccpi_rating is None
+
+
+def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
+    geojson = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
+        ],
+    }
+    spatial = {
+        "Table": [
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            ["412915", "138B", "Clarion", "All areas are prime farmland", "IA169", 10.0],
+            ["512915", "138B", "Clarion", "All areas are prime farmland", "IA170", 90.0],
+        ]
+    }
+    class PartitionedSDAClient(SDAClient):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.interpretation_mukeys = []
+            self.benchmark_areasymbols = []
+
+        def get_interpretations(self, mukeys, *args, **kwargs):
+            self.interpretation_mukeys.append(set(mukeys))
+            return [
+                {"mukey": "412915", "numeric_rating": 0.8},
+                {"mukey": "512915", "numeric_rating": 0.25},
+            ]
+
+        def get_county_max_productivity_rating(self, areasymbol, *args, **kwargs):
+            self.benchmark_areasymbols.append(areasymbol)
+            return {"IA169": 1.0, "IA170": 0.5}[areasymbol]
+
+    sda = PartitionedSDAClient(
+        http_client=httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial)))
+    )
+    tiger = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
+        )
+    )
+    result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(geojson)
+
+    assert sda.interpretation_mukeys == [{"412915", "512915"}]
+    assert set(sda.benchmark_areasymbols) == {"IA169", "IA170"}
+    assert len(sda.benchmark_areasymbols) == 2
+    assert result.manifest["candidate_le_score"] == pytest.approx(53.0)
+
+
+@pytest.mark.parametrize("sentinel", [99.0, 999.0, -99.0, -999.0])
+def test_analyze_polygon_treats_all_nccpi_sentinels_as_unrated(sentinel):
+    geojson = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
+        ],
+    }
+    spatial = {
+        "Table": [
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            ["412915", "138B", "Clarion", "All areas are prime farmland", "IA169", 10.0],
+        ]
+    }
+
+    class SentinelSDAClient(SDAClient):
+        def get_interpretations(self, *args, **kwargs):
+            return [{"mukey": "412915", "numeric_rating": sentinel}]
+
+        def get_county_max_productivity_rating(self, *args, **kwargs):
+            return 1.0
+
+    sda = SentinelSDAClient(
+        http_client=httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial)))
+    )
+    tiger = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
+        )
+    )
+    result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(geojson)
+
     assert result.map_units[0].nccpi_rating is None
 
 
