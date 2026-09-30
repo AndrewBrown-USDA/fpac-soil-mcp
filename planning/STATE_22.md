@@ -12,7 +12,7 @@
 | Wave | Task | Status |
 |---|---|---|
 | 1 | 22.1.1 Centralizing LESA regulatory constants | done |
-| 2 | 22.2.1 Correcting LESA index propagation and simplifying aggregation | pending |
+| 2 | 22.2.1 Correcting LESA index propagation and simplifying aggregation | done |
 | 3 | 22.3.1 Completing corridor LESA routing and index propagation | pending |
 | 3 | 22.3.2 Updating public metadata and planning history | pending |
 | 4 | 22.4.1 Testing LESA core corrections | pending |
@@ -30,3 +30,11 @@
 - Preserved all existing statutory values and wording.
 - Verified `fpac_soil_mcp.constants` imports successfully.
 - `uv run ruff check src/fpac_soil_mcp/constants.py` passed.
+
+## 22.2.1
+- Imported site criterion definitions and action guidance from centralized constants.
+- Preserved `SITE_CRITERIA_MAX_POINTS` and `SITE_CRITERIA_NAMES` public exports.
+- Centralized numeric and unavailable Land Evaluation fallback construction.
+- Preserved normalized productivity index propagation and existing summary defaults.
+- Retained area-weighted aggregation shape and rounding/clamping behavior.
+- `uv run pytest tests/test_lesa.py` passed: 37 tests.

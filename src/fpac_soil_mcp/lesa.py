@@ -15,17 +15,21 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Any, Final, Literal, overload
+from typing import Any, Literal, overload
 
 from fpac_soil_mcp.constants import (
     CORRIDOR_CRITERIA_MAX_POINTS,
     CORRIDOR_CRITERIA_NAMES,
+    LESA_ACTION_AVOID_MINIMIZE_CONVERSION,
+    LESA_ACTION_REDUCE_FOOTPRINT,
     LESA_THRESHOLD_SCORE,
     MAX_LAND_EVALUATION_SCORE,
     MAX_SITE_ASSESSMENT_SCORE,
     MAX_TOTAL_LESA_SCORE,
     REGULATORY_LIMITATIONS,
     REGULATORY_NOTICE,
+    SITE_CRITERIA_MAX_POINTS,
+    SITE_CRITERIA_NAMES,
     STATUTORY_DETERMINATIONS,
 )
 from fpac_soil_mcp.models import (
@@ -36,38 +40,6 @@ from fpac_soil_mcp.models import (
     SiteAssessmentCriterion,
     SiteAssessmentSummary,
 )
-
-# Standard Point Limits for Form AD-1006 (Site Projects) under 7 CFR § 658.5(b)
-SITE_CRITERIA_MAX_POINTS: Final[dict[int, int]] = {
-    1: 15,  # Area of non-urban land within 1 mile
-    2: 10,  # Perimeter in agricultural/non-urban land
-    3: 20,  # Land farmed >5 of last 10 years
-    4: 20,  # Agricultural protection status (zoning/easements)
-    5: 15,  # Distance to urban built-up area
-    6: 15,  # Distance to municipal water/sewer
-    7: 10,  # Size of farm compared to county average
-    8: 10,  # Non-farmable remnant acreage
-    9: 5,  # Agricultural support services availability
-    10: 20,  # On-farm investments (buildings/irrigation/conservation)
-    11: 10,  # Reduction in agricultural support demand
-    12: 10,  # Land use incompatibility
-}
-
-# Statutory Names and Descriptions for Form AD-1006 Criteria (7 CFR § 658.5(b))
-SITE_CRITERIA_NAMES: Final[dict[int, str]] = {
-    1: "Area of non-urban land in 1-mile buffer",
-    2: "Perimeter of farmable land surrounding site",
-    3: "Percentage of site farmed in 5 of last 10 years",
-    4: "Agricultural protection status (easement/zoning)",
-    5: "Distance to urban built-up area",
-    6: "Distance to municipal water/sewer",
-    7: "Farm size compared to county average",
-    8: "Creation of non-farmable or inaccessible remnant parcels",
-    9: "Availability of agricultural support services",
-    10: "On-farm capital investments and conservation measures",
-    11: "Reduction in local agricultural supply/service demand",
-    12: "Compatibility of site project with existing agricultural uses",
-}
 
 __all__ = [
     "CORRIDOR_CRITERIA_MAX_POINTS",
@@ -702,8 +674,8 @@ def evaluate_lesa_threshold(
             total_lesa=total_lesa_score
         )
         actions = [
-            "Assess alternative project designs and configurations that avoid or minimize conversion of farmland (7 CFR § 658.4(c)(3)).",
-            "Evaluate options with reduced footprint or alternative access to minimize acreage taken (7 CFR § 658.4(c)(4)).",
+            LESA_ACTION_AVOID_MINIMIZE_CONVERSION,
+            LESA_ACTION_REDUCE_FOOTPRINT,
             "Consult with USDA NRCS State/Local Conservationist to review Site Assessment criteria scores and mitigation options.",
             f"Complete official USDA {form_ref} prior to final federal project approval.",
         ]
@@ -748,33 +720,33 @@ def evaluate_lesa(
     # Normalize once so fallback summaries preserve the requested index type.
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
 
+    def fallback_land_evaluation(
+        score: float = 0.0,
+        *,
+        available: bool = False,
+    ) -> LandEvaluationSummary:
+        bounded_score = max(0.0, min(100.0, float(score)))
+        return LandEvaluationSummary(
+            productivity_index=normalized_productivity_index,
+            aoi_relative_rating=round(bounded_score / 100.0, 4),
+            candidate_le_score=bounded_score,
+            rated_acreage=0.0,
+            unrated_acreage=0.0,
+            total_acreage=0.0,
+            coverage_percent=100.0 if available else 0.0,
+            notices=[] if available else ["Land Evaluation score unavailable."],
+        )
+
     # 1. Resolve Land Evaluation Summary
     if isinstance(land_evaluation, LandEvaluationSummary):
         le_summary = land_evaluation
         le_score = le_summary.candidate_le_score
     elif isinstance(land_evaluation, (int, float)):
-        le_score = max(0.0, min(100.0, float(land_evaluation)))
-        le_summary = LandEvaluationSummary(
-            productivity_index=normalized_productivity_index,
-            aoi_relative_rating=round(le_score / 100.0, 4),
-            candidate_le_score=le_score,
-            rated_acreage=0.0,
-            unrated_acreage=0.0,
-            total_acreage=0.0,
-            coverage_percent=100.0,
-        )
+        le_summary = fallback_land_evaluation(land_evaluation, available=True)
+        le_score = le_summary.candidate_le_score
     else:
         le_score = 0.0
-        le_summary = LandEvaluationSummary(
-            productivity_index=normalized_productivity_index,
-            aoi_relative_rating=0.0,
-            candidate_le_score=0.0,
-            rated_acreage=0.0,
-            unrated_acreage=0.0,
-            total_acreage=0.0,
-            coverage_percent=0.0,
-            notices=["Land Evaluation score unavailable."],
-        )
+        le_summary = fallback_land_evaluation()
 
     # 2. Resolve Site Assessment Summary
     if isinstance(site_assessment, SiteAssessmentSummary):
