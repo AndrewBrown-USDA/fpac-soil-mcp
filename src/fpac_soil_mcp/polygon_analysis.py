@@ -315,9 +315,7 @@ class PolygonAnalyzer:
                     percentage_of_aoi=pct,
                     productivity_rating=numeric_rating,
                     productivity_rating_class=(
-                        None
-                        if numeric_rating is None
-                        else rating_info.get("rating_class")
+                        None if numeric_rating is None else rating_info.get("rating_class")
                     ),
                     productivity_rating_source=rating_info.get("productivity_rating_source"),
                 )

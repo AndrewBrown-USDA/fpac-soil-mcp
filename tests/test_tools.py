@@ -354,7 +354,9 @@ class TestFPPATools:
         )
 
     @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
-    def test_calculate_preliminary_lesa_normalizes_custom_index(self, mock_corridor: MagicMock) -> None:
+    def test_calculate_preliminary_lesa_normalizes_custom_index(
+        self, mock_corridor: MagicMock
+    ) -> None:
         mock_corridor.return_value = {
             "composite_relative_rating": 42.0,
             "reconciliation_summary": {"buffered_footprint_acres": 1.0},
