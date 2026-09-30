@@ -38,6 +38,19 @@ from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 logger = logging.getLogger(__name__)
 
+_UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
+
+
+def _normalize_numeric_rating(value: Any) -> float | None:
+    """Return a usable productivity rating, excluding SDA sentinel values."""
+    try:
+        rating = float(value) if value is not None else None
+    except (ValueError, TypeError):
+        return None
+    if rating is None or rating in _UNRATED_SENTINELS:
+        return None
+    return rating
+
 
 def categorize_farmland_class(farmlndcl: str | None) -> str:
     """Classify a SSURGO farmlndcl string into normalized category key."""
@@ -160,10 +173,11 @@ class PolygonAnalyzer:
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
         interp_map: dict[str, dict[str, Any]] = {}
         rating_map: dict[str, dict[str, Any]] = {}
-        if (
+        ratings_requested = (
             include_nccpi
             or (productivity_index and str(productivity_index).strip().lower() != "nccpi")
-        ) and mukeys:
+        )
+        if ratings_requested and mukeys:
             if norm_idx == "nccpi":
                 try:
                     interp_rows = self.sda_client.get_interpretations(
@@ -175,17 +189,14 @@ class PolygonAnalyzer:
                         mukey_val = str(irow.get("mukey"))
                         interp_map[mukey_val] = irow
                         num_r = irow.get("numeric_rating")
-                        try:
-                            parsed_num_r = float(num_r) if num_r is not None else None
-                        except (ValueError, TypeError):
-                            parsed_num_r = None
+                        parsed_num_r = _normalize_numeric_rating(num_r)
                         rating_map[mukey_val] = {
                             "mukey": mukey_val,
                             "numeric_rating": parsed_num_r,
                             "rating_class": irow.get("rating_class"),
                             "rated_pct": irow.get("rated_pct"),
                             "total_pct": irow.get("total_pct"),
-                            "is_rated": parsed_num_r is not None and parsed_num_r not in (99, 999),
+                            "is_rated": parsed_num_r is not None,
                             "caveats": [],
                         }
                 except SDAClientError as exc:
@@ -213,45 +224,55 @@ class PolygonAnalyzer:
 
         # Determine county max benchmark
         county_max = max_county_rating_override
-        if county_max is None and raw_units:
-            areasymbols = [str(u.get("areasymbol")) for u in raw_units if u.get("areasymbol")]
-            primary_areasymbol = areasymbols[0] if areasymbols else None
-            if primary_areasymbol:
+        partition_max: dict[str, float] = {}
+        if ratings_requested and county_max is None and raw_units:
+            areasymbols = {
+                str(u.get("areasymbol")).strip()
+                for u in raw_units
+                if u.get("areasymbol")
+            }
+            for areasymbol in areasymbols:
                 try:
-                    county_max = self.sda_client.get_county_max_productivity_rating(
-                        areasymbol=primary_areasymbol,
+                    benchmark = self.sda_client.get_county_max_productivity_rating(
+                        areasymbol=areasymbol,
                         index_type="nccpi" if norm_idx == "nccpi" else norm_idx,
                     )
+                    if benchmark is not None and benchmark > 0:
+                        partition_max[areasymbol] = float(benchmark)
                 except SDAClientError as exc:
                     logger.warning(
-                        "County max rating query failed for %s: %s", primary_areasymbol, exc
+                        "County max rating query failed for %s: %s", areasymbol, exc
                     )
                     limitations.append(f"County max rating query warning: {exc}")
 
-        if county_max is None or county_max <= 0:
-            county_max = 1.0 if norm_idx == "nccpi" else 100.0
+        default_county_max = 1.0 if norm_idx == "nccpi" else 100.0
+        if county_max is not None and county_max > 0:
+            default_county_max = float(county_max)
+        county_max = default_county_max
 
         # 5. Build Map Unit Acreage models & compute LE scores
         unit_models: list[SoilMapUnitAcreage] = []
-        grouped_units: dict[str, dict[str, Any]] = {}
+        grouped_units: dict[tuple[str, str], dict[str, Any]] = {}
         for u in raw_units:
             mukey_str = str(u.get("mukey", ""))
             if not mukey_str:
                 continue
-            if mukey_str not in grouped_units:
-                grouped_units[mukey_str] = {
+            areasymbol = str(u.get("areasymbol") or "").strip()
+            unit_key = (mukey_str, areasymbol)
+            if unit_key not in grouped_units:
+                grouped_units[unit_key] = {
                     "mukey": mukey_str,
                     "musym": u.get("musym"),
                     "muname": u.get("muname"),
                     "farmlndcl": u.get("farmlndcl"),
-                    "areasymbol": u.get("areasymbol"),
+                    "areasymbol": areasymbol or None,
                     "area_ac": 0.0,
                 }
             try:
                 raw_area = float(u.get("area_ac") or 0.0)
             except (ValueError, TypeError):
                 raw_area = 0.0
-            grouped_units[mukey_str]["area_ac"] += raw_area
+            grouped_units[unit_key]["area_ac"] += raw_area
 
         category_acres: dict[str, float] = {
             "prime": 0.0,
@@ -269,7 +290,7 @@ class PolygonAnalyzer:
         unrated_le_acres = 0.0
         le_notices: list[str] = []
 
-        for mukey_str, u in grouped_units.items():
+        for (mukey_str, areasymbol), u in grouped_units.items():
             farmlndcl_str = u.get("farmlndcl")
             calc_ac = round(u["area_ac"], 2)
             total_mapped_acres += calc_ac
@@ -280,18 +301,14 @@ class PolygonAnalyzer:
             cat = categorize_farmland_class(farmlndcl_str)
             category_acres[cat] += calc_ac
 
-            numeric_rating = interp_info.get("numeric_rating")
-            if numeric_rating is not None:
-                try:
-                    numeric_rating = float(numeric_rating)
-                except (ValueError, TypeError):
-                    numeric_rating = None
+            numeric_rating = _normalize_numeric_rating(interp_info.get("numeric_rating"))
 
             is_rated = rating_info.get(
                 "is_rated", numeric_rating is not None and numeric_rating >= 0
             )
             if is_rated and numeric_rating is not None and numeric_rating >= 0:
-                rel_rating = min(1.0, max(0.0, numeric_rating / county_max))
+                benchmark = partition_max.get(areasymbol, county_max)
+                rel_rating = min(1.0, max(0.0, numeric_rating / benchmark))
                 rated_le_acres += calc_ac
                 weighted_rr_sum += rel_rating * calc_ac
             else:
@@ -310,15 +327,9 @@ class PolygonAnalyzer:
                     areasymbol=u.get("areasymbol"),
                     calculated_acres=calc_ac,
                     percentage_of_aoi=pct,
-                    nccpi_rating=(
-                        None
-                        if numeric_rating is not None and numeric_rating in (99, 999)
-                        else numeric_rating
-                    ),
+                    nccpi_rating=numeric_rating,
                     nccpi_class=(
-                        None
-                        if numeric_rating is not None and numeric_rating in (99, 999)
-                        else interp_info.get("rating_class")
+                        None if numeric_rating is None else interp_info.get("rating_class")
                     ),
                 )
             )
