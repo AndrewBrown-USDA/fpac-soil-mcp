@@ -171,11 +171,8 @@ class PolygonAnalyzer:
 
         # 4. Ingest Productivity Ratings if requested
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
-        interp_map: dict[str, dict[str, Any]] = {}
         rating_map: dict[str, dict[str, Any]] = {}
-        ratings_requested = include_nccpi or (
-            productivity_index and str(productivity_index).strip().lower() != "nccpi"
-        )
+        ratings_requested = include_nccpi or norm_idx != "nccpi"
         if ratings_requested and mukeys:
             if norm_idx == "nccpi":
                 try:
@@ -186,13 +183,15 @@ class PolygonAnalyzer:
                     )
                     for irow in interp_rows:
                         mukey_val = str(irow.get("mukey"))
-                        interp_map[mukey_val] = irow
                         num_r = irow.get("numeric_rating")
                         parsed_num_r = _normalize_numeric_rating(num_r)
                         rating_map[mukey_val] = {
                             "mukey": mukey_val,
                             "numeric_rating": parsed_num_r,
                             "rating_class": irow.get("rating_class"),
+                            "productivity_rating_source": (
+                                "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+                            ),
                             "rated_pct": irow.get("rated_pct"),
                             "total_pct": irow.get("total_pct"),
                             "is_rated": parsed_num_r is not None,
@@ -209,14 +208,7 @@ class PolygonAnalyzer:
                     )
                     for pr in prod_ratings:
                         mukey_val = str(pr.get("mukey"))
-                        rating_map[mukey_val] = pr
-                        interp_map[mukey_val] = {
-                            "mukey": mukey_val,
-                            "numeric_rating": pr.get("numeric_rating"),
-                            "rating_class": pr.get("rating_class"),
-                            "rated_pct": pr.get("rated_pct"),
-                            "total_pct": pr.get("total_pct"),
-                        }
+                        rating_map[mukey_val] = dict(pr)
                 except SDAClientError as exc:
                     logger.warning("Productivity rating query failed (%s): %s", norm_idx, exc)
                     limitations.append(f"Productivity rating warning ({norm_idx}): {exc}")
@@ -291,12 +283,11 @@ class PolygonAnalyzer:
             total_mapped_acres += calc_ac
             pct = round((calc_ac / total_acres * 100.0) if total_acres > 0 else 0.0, 2)
 
-            interp_info = interp_map.get(mukey_str, {})
             rating_info = rating_map.get(mukey_str, {})
             cat = categorize_farmland_class(farmlndcl_str)
             category_acres[cat] += calc_ac
 
-            numeric_rating = _normalize_numeric_rating(interp_info.get("numeric_rating"))
+            numeric_rating = _normalize_numeric_rating(rating_info.get("numeric_rating"))
 
             is_rated = rating_info.get(
                 "is_rated", numeric_rating is not None and numeric_rating >= 0
@@ -322,10 +313,13 @@ class PolygonAnalyzer:
                     areasymbol=u.get("areasymbol"),
                     calculated_acres=calc_ac,
                     percentage_of_aoi=pct,
-                    nccpi_rating=numeric_rating,
-                    nccpi_class=(
-                        None if numeric_rating is None else interp_info.get("rating_class")
+                    productivity_rating=numeric_rating,
+                    productivity_rating_class=(
+                        None
+                        if numeric_rating is None
+                        else rating_info.get("rating_class")
                     ),
+                    productivity_rating_source=rating_info.get("productivity_rating_source"),
                 )
             )
 
@@ -417,8 +411,8 @@ class PolygonAnalyzer:
                 "areasymbol",
                 "acres",
                 "pct_of_aoi",
-                "nccpi_rating",
-                "nccpi_class",
+                "productivity_rating",
+                "productivity_rating_class",
             ]
         )
         for um in unit_models:
@@ -431,8 +425,8 @@ class PolygonAnalyzer:
                     um.areasymbol or "",
                     um.calculated_acres,
                     um.percentage_of_aoi,
-                    um.nccpi_rating if um.nccpi_rating is not None else "",
-                    um.nccpi_class or "",
+                    um.productivity_rating if um.productivity_rating is not None else "",
+                    um.productivity_rating_class or "",
                 ]
             )
         csv_str = output_io.getvalue()
