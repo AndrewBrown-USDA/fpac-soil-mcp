@@ -57,7 +57,7 @@ Remediate all 10 code review findings on PR #9 (`feat/phase-4-part-1-land-evalua
 ## Decision Log
 
 - **2026-09-28**: Query Builder Security: Both `build_dynamic_sdv_query` and `build_dynamic_sdv_county_max_query` will validate all inputs at the function boundary, refusing execution if mukeys or areasymbol do not match strict regex formats.
-- **2026-09-28**: Schema Allowlist: `ALLOWED_SDV_TABLES` will only include tables with verified join and column semantics (`cointerp`, `component`, `mapunit`, `coiacsr2`, `iacsr2`, `cocpi`, `cpi`, `cstorie`).
+- **2026-09-28**: Schema Allowlist: The removed table entries (`cocropyld`, `corestrictions`) remain excluded; `ALLOWED_SDV_TABLES` contains only tables with verified join and column semantics (`cointerp`, `component`, `mapunit`, `coiacsr2`, `iacsr2`, `cocpi`, `cpi`, `cstorie`).
 - **2026-09-28**: Sentinel Policy: Values `99.0`, `999.0`, `-99.0`, `-999.0` will be unconditionally treated as unrated non-agricultural sentinels regardless of whether county benchmark is 1.0 or 100.0.
 - **2026-09-28**: Statutory Consistency: `PreliminaryLESAResponse` will automatically derive or strictly validate `mandatory_alternatives_required` against the 160-point threshold under 7 CFR § 658.4(c)(2).
 - **2026-09-28**: Corridor Integration: `calculate_preliminary_lesa` will check geometry type and project type, buffering linear corridor centerlines to produce valid polygon AOIs for soil intersection and LE scoring.
