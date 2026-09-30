@@ -16,8 +16,8 @@
 
 | Wave | Task | Status | Retry/escalation |
 |---|---|---|---|
-| 1 | 23.1.1 Generalizing productivity response fields | pending | 0 |
-| 1 | 23.1.2 Defining rating provenance contract | pending | 0 |
+| 1 | 23.1.1 Generalizing productivity response fields | done | 0 |
+| 1 | 23.1.2 Defining rating provenance contract | done | 0 |
 | 2 | 23.2.1 Scoring requested polygon productivity indexes | pending | 0 |
 | 2 | 23.2.2 Correcting LESA routing and normalization | pending | 0 |
 | 3 | 23.3.1 Testing generic polygon ratings | pending | 0 |
@@ -29,6 +29,24 @@
 ## Task Reports
 
 <!-- Workers append reports here, each no more than 15 lines. -->
+
+## 23.1.1
+- Status: done; implementation committed as `f5e58da`.
+- Changed `src/fpac_soil_mcp/models.py` lines 115-124.
+- Replaced NCCPI-specific fields with generic rating, class, and provenance.
+- Removed aliases and compatibility properties as specified.
+- `uv run python -c "from fpac_soil_mcp.models import SoilMapUnitAcreage"` passed.
+- Deviations: none.
+- Gotcha: downstream consumers still require Wave 2 updates.
+
+## 23.1.2
+- Status: done; implementation committed as `a70d424`.
+- Changed `src/fpac_soil_mcp/sda_client.py` approximately lines 1057-1190.
+- Added truthful SDA rule/catalog provenance to rated and unrated results.
+- Preserved SQL templates, validation, sentinels, and network behavior.
+- `uv run pytest tests\test_sda_client.py` passed: 68 passed in 3.01s.
+- Deviations: none.
+- Gotcha: downstream consumers should read `productivity_rating_source`.
 
 ## Verification Record
 
