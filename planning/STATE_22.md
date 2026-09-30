@@ -2,7 +2,7 @@
 
 ## Baseline Checklist
 - [x] `uv sync` environment available
-- [x] Offline verification: `uv run pytest -m "not live_network"` — 269 passed, 12 deselected
+- [x] Offline verification: `uv run pytest -m "not live_network"` — 280 passed, 12 deselected, 0 failed (31.54s)
 - [x] `uv run ruff check .` — passed
 - [x] `uv run ruff format --check .` — passed; 275 files already formatted
 - [x] Live-network tests remain opt-in and are not a completion gate
@@ -17,11 +17,19 @@
 | 3 | 22.3.2 Updating public metadata and planning history | done |
 | 4 | 22.4.1 Testing LESA core corrections | done |
 | 4 | 22.4.2 Testing public corridor and metadata behavior | done |
-| 5 | 22.5.1 Running final offline and lint verification | pending |
+| 5 | 22.5.1 Running final offline and lint verification | done |
 
 ## Task Reports
 
 <!-- Workers append reports here, each no more than 15 lines. -->
+
+## 22.5.1
+- Confirmed 22.4.1 and 22.4.2 were already marked `done`.
+- Initial lint exposed and the follow-up fix removed one unused `le_score` assignment in `lesa.py`.
+- Final `uv run pytest -m "not live_network"` passed: 280 passed, 12 deselected, 0 failed in 31.54s.
+- Final `uv run ruff check .` passed.
+- Final `uv run ruff format --check .` passed: 275 files already formatted.
+- Live-network tests remain opt-in and are not a completion gate.
 
 ## 22.4.2
 - Added polygon-plus-corridor routing coverage with explicit buffer distance and units.
