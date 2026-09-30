@@ -20,10 +20,10 @@
 | 1 | 23.1.2 Defining rating provenance contract | done | 0 |
 | 2 | 23.2.1 Scoring requested polygon productivity indexes | done | 0 |
 | 2 | 23.2.2 Correcting LESA routing and normalization | done | 1 |
-| 3 | 23.3.1 Testing generic polygon ratings | pending | 0 |
-| 3 | 23.3.2 Testing corridor routing and propagation | pending | 0 |
-| 3 | 23.3.3 Testing LESA fallback and invalid indexes | pending | 0 |
-| 3 | 23.3.4 Updating public rating documentation | pending | 0 |
+| 3 | 23.3.1 Testing generic polygon ratings | done | 0 |
+| 3 | 23.3.2 Testing corridor routing and propagation | done | 0 |
+| 3 | 23.3.3 Testing LESA fallback and invalid indexes | done | 0 |
+| 3 | 23.3.4 Updating public rating documentation | done | 0 |
 | 4 | 23.4.1 Running complete offline verification | pending | 0 |
 
 ## Task Reports
@@ -67,6 +67,41 @@
   linework uses buffered corridor analysis.
 - Final `uv run pytest tests\test_lesa.py tests\test_tools.py`: 66 passed.
 - Retry reason: initial implementation failed two legacy parameter-shape tests.
+
+## 23.3.1
+- Status: done; implementation committed as `9f65010`.
+- Changed `tests/test_polygon_analysis.py` and created `tests/test_models.py`.
+- Added generic rating/class/source coverage for NCCPI, CSR2, CPI, and Storie,
+  non-NCCPI LE scoring, sentinels, partitions, and removed aliases.
+- `uv run pytest tests\test_models.py tests\test_polygon_analysis.py` passed:
+  33 passed in 0.11s.
+- Deviations: none; production code unchanged.
+
+## 23.3.2
+- Status: done; implementation committed as `d842bd6`.
+- Changed `tests/test_tools.py` only.
+- Added polygon-corridor representability, line/WKT buffers, non-NCCPI,
+  benchmark, generic output, and CUSTOM normalization coverage.
+- `uv run pytest tests\test_tools.py tests\test_phase3_contracts.py` passed:
+  34 passed in 3.65s.
+- Deviations: none; polygon corridor asserts the documented clear error.
+
+## 23.3.3
+- Status: done; implementation committed as `54fc21f`.
+- Changed `tests/test_lesa.py` only.
+- Added CUSTOM normalization, non-NCCPI fallback, sentinel, and unavailable
+  acreage/LE regression coverage.
+- `uv run pytest tests\test_lesa.py` passed: 47 passed in 0.07s.
+- Deviations: none.
+
+## 23.3.4
+- Status: done; implementation committed as `0a6dade`.
+- Changed `README.md` and `manifest.yaml` only.
+- Documented generic rating/class/source fields, supported indexes, removed
+  aliases, and corridor parameters/provenance.
+- Manifest YAML parse passed; `uv run pytest tests\test_server.py` passed:
+  15 passed, 3 deselected.
+- Deviations: none.
 
 ## Verification Record
 
