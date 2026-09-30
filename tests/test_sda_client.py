@@ -99,11 +99,25 @@ class TestSDAValidation:
                 ["123; DROP TABLE mapunit;--"],
             )
 
+    def test_dynamic_sdv_query_rejects_direct_mukey_csv_injection(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                "'123', '456' OR 1=1 --",
+            )
+
     def test_dynamic_sdv_county_max_query_rejects_invalid_areasymbol(self) -> None:
         with pytest.raises(SDAValidationError):
             build_dynamic_sdv_county_max_query(
                 {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
                 "IA169'; DROP TABLE mapunit;--",
+            )
+
+    def test_dynamic_sdv_county_max_query_rejects_invalid_direct_areasymbol(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_county_max_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                "IA 169",
             )
 
     def test_dynamic_sdv_table_allowlist_excludes_unsupported_tables(self) -> None:
@@ -746,6 +760,37 @@ class TestSDAClientExecution:
         assert "cointerp" in query
         assert "NCCPI - National Commodity Crop Productivity Index" in query
         assert "WHERE m.mukey IN ('1001', '1002')" in query
+
+    def test_build_dynamic_sdv_query_nccpi_excludes_negative_sentinels(self) -> None:
+        meta = {
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "rating NOT IN (99, 999, -99, -999)" in query
+
+    def test_build_dynamic_sdv_query_cpi_does_not_match_nccpi(self) -> None:
+        meta = {
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "CPI - Crop Productivity Index",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "ci.mrulename = 'CPI - Crop Productivity Index'" in query
+        assert "LIKE '%CPI%'" not in query
+        assert "NCCPI" not in query
+
+    def test_build_dynamic_sdv_county_max_cpi_does_not_match_nccpi(self) -> None:
+        meta = {
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "CPI - Crop Productivity Index",
+        }
+        query = build_dynamic_sdv_county_max_query(meta, "IA169")
+        assert "ci.mrulename = 'CPI - Crop Productivity Index'" in query
+        assert "LIKE '%CPI%'" not in query
+        assert "NCCPI" not in query
 
     def test_build_dynamic_sdv_query_component(self) -> None:
         from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
