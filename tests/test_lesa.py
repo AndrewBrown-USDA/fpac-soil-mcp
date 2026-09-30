@@ -184,13 +184,37 @@ def test_preliminary_lesa_rejects_inconsistent_threshold_flag() -> None:
         )
 
 
-def test_evaluate_lesa_normalizes_string_productivity_index() -> None:
+@pytest.mark.parametrize(
+    ("productivity_index", "expected"),
+    [
+        ("CSR2", ProductivityIndexType.CSR2),
+        ("CPI", ProductivityIndexType.CPI),
+        ("Storie", ProductivityIndexType.STORIE),
+    ],
+)
+def test_evaluate_lesa_normalizes_string_productivity_index(
+    productivity_index: str, expected: ProductivityIndexType
+) -> None:
     result = evaluate_lesa(
-        project_name="CSR2 project",
+        project_name=f"{productivity_index} project",
         land_evaluation=50.0,
-        productivity_index="CSR2",
+        productivity_index=productivity_index,
     )
-    assert result.land_evaluation.productivity_index == ProductivityIndexType.CSR2
+    assert result.land_evaluation.productivity_index == expected
+    assert result.land_evaluation.productivity_index != ProductivityIndexType.NCCPI
+
+
+def test_calculate_relative_ratings_treats_all_sentinels_as_unrated() -> None:
+    ratings = [
+        {"mukey": str(index), "raw_rating": value}
+        for index, value in enumerate((99.0, 999.0, -99.0, -999.0), start=1)
+    ]
+
+    results = calculate_relative_ratings(ratings, county_max=1.0)
+
+    assert len(results) == 4
+    assert all(result.is_rated is False for result in results)
+    assert all(result.normalized_relative_rating is None for result in results)
 
 
 class TestAreaWeightingAndAggregation:

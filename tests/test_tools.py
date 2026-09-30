@@ -219,6 +219,59 @@ class TestFPPATools:
         )
         assert response.project_name == "corridor"
 
+    @patch("fpac_soil_mcp.tools.soil_tools.PolygonAnalyzer")
+    def test_calculate_preliminary_lesa_accepts_wkt_polygon(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.manifest = {
+            "land_evaluation": {
+                "productivity_index": "CSR2",
+                "candidate_le_score": 72.0,
+                "aoi_relative_rating": 0.72,
+                "total_acreage": 1.0,
+            }
+        }
+        mock_response.total_aoi_acres = 1.0
+        mock_response.limitations = []
+        mock_analyzer_cls.return_value.analyze_polygon.return_value = mock_response
+
+        response = calculate_preliminary_lesa(
+            project_name="wkt polygon",
+            geometry="POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
+        )
+
+        assert response.project_name == "wkt polygon"
+        mock_analyzer_cls.return_value.analyze_polygon.assert_called_once()
+        assert mock_analyzer_cls.return_value.analyze_polygon.call_args.kwargs[
+            "geojson_input"
+        ]["type"] == "Polygon"
+
+    @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
+    def test_calculate_preliminary_lesa_routes_wkt_line_with_buffer_options(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 65.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 12.5},
+        }
+
+        response = calculate_preliminary_lesa(
+            project_name="wkt corridor",
+            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            project_type="corridor",
+            corridor_buffer_distance=250.0,
+            corridor_buffer_units="meters",
+        )
+
+        assert response.project_name == "wkt corridor"
+        mock_corridor.assert_called_once_with(
+            centerline="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            buffer_distance=250.0,
+            buffer_units="meters",
+            include_nccpi=True,
+        )
+
 
 class TestPolygonTools:
     """Tests for analyze_farmland_by_polygon, check_urban_area_exemption, and get_soil_interpretations."""
