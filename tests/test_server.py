@@ -35,6 +35,16 @@ class TestServerInitialization:
         assert "check_urban_area_exemption" in tool_names
         assert "get_soil_interpretations" in tool_names
 
+    def test_published_server_metadata_exposes_lesa_capabilities(self) -> None:
+        with open("server.json", encoding="utf-8") as metadata_file:
+            metadata = json.load(metadata_file)
+
+        published_tools = {tool["name"]: tool["description"] for tool in metadata["tools"]}
+        assert "calculate_preliminary_lesa" in published_tools
+        assert "analyze_corridor_fppa" in published_tools
+        assert "LESA" in published_tools["calculate_preliminary_lesa"]
+        assert "corridor" in published_tools["analyze_corridor_fppa"].lower()
+
     @pytest.mark.asyncio
     async def test_server_initialization_includes_all_tools_and_prompts(self) -> None:
         server = create_mcp_server()
