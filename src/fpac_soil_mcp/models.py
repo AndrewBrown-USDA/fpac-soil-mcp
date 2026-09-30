@@ -111,10 +111,16 @@ class SoilMapUnitAcreage(BaseModel):
     areasymbol: str | None = Field(default=None, description="Soil survey area symbol")
     calculated_acres: float = Field(default=0.0, description="Estimated acres of this map unit")
     percentage_of_aoi: float = Field(default=0.0, description="Percentage of total AOI footprint")
-    nccpi_rating: float | None = Field(
-        default=None, description="Weighted NCCPI v3 rating (0.0 - 1.0)"
+    productivity_rating: float | None = Field(
+        default=None, description="Weighted productivity rating for the selected interpretation"
     )
-    nccpi_class: str | None = Field(default=None, description="Qualitative rating class")
+    productivity_rating_class: str | None = Field(
+        default=None, description="Qualitative class for the selected productivity interpretation"
+    )
+    productivity_rating_source: str | None = Field(
+        default=None,
+        description="SDA interpretation rule or catalog provenance used for the productivity rating",
+    )
 
 
 class FarmlandCategoryBreakdown(BaseModel):
