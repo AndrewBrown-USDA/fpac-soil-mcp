@@ -740,12 +740,9 @@ def evaluate_lesa(
     # 1. Resolve Land Evaluation Summary
     if isinstance(land_evaluation, LandEvaluationSummary):
         le_summary = land_evaluation
-        le_score = le_summary.candidate_le_score
     elif isinstance(land_evaluation, (int, float)):
         le_summary = fallback_land_evaluation(land_evaluation, available=True)
-        le_score = le_summary.candidate_le_score
     else:
-        le_score = 0.0
         le_summary = fallback_land_evaluation()
 
     # 2. Resolve Site Assessment Summary
