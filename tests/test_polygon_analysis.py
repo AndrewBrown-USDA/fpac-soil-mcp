@@ -8,6 +8,32 @@ from fpac_soil_mcp.sda_client import SDAClient
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 
+GEOJSON = {
+    "type": "Polygon",
+    "coordinates": [
+        [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
+    ],
+}
+
+
+def _spatial(*rows):
+    return {
+        "Table": [
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            *rows,
+        ]
+    }
+
+
+def _analyzer(sda):
+    tiger = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
+        )
+    )
+    return PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger)
+
+
 def test_categorize_farmland_class():
     assert categorize_farmland_class("All areas are prime farmland") == "prime"
     assert categorize_farmland_class("Prime farmland if drained") == "conditional_prime"
@@ -120,7 +146,7 @@ def test_analyze_polygon_include_nccpi_false_skips_rating_query():
     result = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client).analyze_polygon(
         geojson, include_nccpi=False
     )
-    assert result.map_units[0].nccpi_rating is None
+    assert result.map_units[0].productivity_rating is None
 
 
 def test_analyze_polygon_treats_decimal_99_as_unrated_nccpi():
@@ -148,7 +174,7 @@ def test_analyze_polygon_treats_decimal_99_as_unrated_nccpi():
         )
     )
     result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(geojson)
-    assert result.map_units[0].nccpi_rating is None
+    assert result.map_units[0].productivity_rating is None
 
 
 def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
@@ -201,6 +227,129 @@ def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
     assert result.manifest["candidate_le_score"] == pytest.approx(53.0)
 
 
+@pytest.mark.parametrize(
+    ("index", "rating", "rating_class", "source"),
+    [
+        ("nccpi", 0.88, "High", "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"),
+        ("csr2", 72.0, "Good", "CSR2 source"),
+        ("cpi", 61.0, "Average", "CPI source"),
+        ("storie", 48.0, "Fair", "Storie source"),
+    ],
+)
+def test_requested_index_propagates_generic_rating_class_and_source(
+    index, rating, rating_class, source
+):
+    class RequestedSDA(SDAClient):
+        def get_interpretations(self, mukeys, **kwargs):
+            assert index == "nccpi"
+            return [{
+                "mukey": "1", "numeric_rating": rating, "rating_class": rating_class,
+            }]
+
+        def get_productivity_ratings(self, mukeys, index_type, **kwargs):
+            assert index_type == index
+            return [{
+                "mukey": "1",
+                "numeric_rating": rating,
+                "rating_class": rating_class,
+                "productivity_rating_source": source,
+                "is_rated": True,
+            }]
+
+        def get_county_max_productivity_rating(self, areasymbol, index_type, **kwargs):
+            assert index_type == index
+            return 100.0 if index != "nccpi" else 1.0
+
+    sda = RequestedSDA(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json=_spatial(
+                ["1", "A", "Soil", "All areas are prime farmland", "AA001", 10.0]
+            )))
+        )
+    )
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index=index)
+    unit = result.map_units[0]
+    assert unit.productivity_rating == rating
+    assert unit.productivity_rating_class == rating_class
+    assert unit.productivity_rating_source == source
+    assert result.manifest["productivity_index"] == index.upper()
+
+
+def test_non_nccpi_scoring_uses_requested_values_and_normalization():
+    class RatingSDA(SDAClient):
+        def get_productivity_ratings(self, mukeys, index_type, **kwargs):
+            assert index_type == "csr2"
+            return [{"mukey": "1", "numeric_rating": 25, "rating_class": "Fair",
+                     "productivity_rating_source": "CSR2 source", "is_rated": True}]
+
+        def get_county_max_productivity_rating(self, areasymbol, index_type, **kwargs):
+            assert index_type == "csr2"
+            return 50.0
+
+    sda = RatingSDA(http_client=httpx.Client(transport=httpx.MockTransport(
+        lambda req: httpx.Response(200, json=_spatial(
+            ["1", "A", "Soil", "All areas are prime farmland", "AA001", 10.0]
+        ))
+    )))
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index="csr2")
+    assert result.manifest["candidate_le_score"] == pytest.approx(50.0)
+    assert result.manifest["productivity_index"] == "CSR2"
+
+
+@pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
+@pytest.mark.parametrize("sentinel", [99.0, 999.0, -99.0, -999.0])
+def test_requested_index_sentinels_are_unrated(index, sentinel):
+    class SentinelSDA(SDAClient):
+        def get_interpretations(self, *args, **kwargs):
+            return [{"mukey": "1", "numeric_rating": sentinel}]
+
+        def get_productivity_ratings(self, *args, **kwargs):
+            return [{"mukey": "1", "numeric_rating": sentinel, "is_rated": False}]
+
+        def get_county_max_productivity_rating(self, *args, **kwargs):
+            return 100.0 if index != "nccpi" else 1.0
+
+    sda = SentinelSDA(http_client=httpx.Client(transport=httpx.MockTransport(
+        lambda req: httpx.Response(200, json=_spatial(
+            ["1", "A", "Soil", "All areas are prime farmland", "AA001", 10.0]
+        ))
+    )))
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index=index)
+    assert result.map_units[0].productivity_rating is None
+    assert result.manifest["land_evaluation"]["rated_acreage"] == 0
+    assert result.manifest["candidate_le_score"] == 0
+
+
+def test_requested_index_calls_are_partitioned_and_nccpi_is_not_called_for_non_nccpi():
+    class CallsSDA(SDAClient):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.calls = []
+
+        def get_interpretations(self, *args, **kwargs):
+            raise AssertionError("NCCPI interpretation must not be requested")
+
+        def get_productivity_ratings(self, mukeys, index_type, **kwargs):
+            self.calls.append(("ratings", index_type, tuple(sorted(mukeys))))
+            return [{"mukey": key, "numeric_rating": 50, "is_rated": True}
+                    for key in mukeys]
+
+        def get_county_max_productivity_rating(self, areasymbol, index_type, **kwargs):
+            self.calls.append(("benchmark", index_type, areasymbol))
+            return {"AA001": 100.0, "AA002": 50.0}[areasymbol]
+
+    sda = CallsSDA(http_client=httpx.Client(transport=httpx.MockTransport(
+        lambda req: httpx.Response(200, json=_spatial(
+            ["1", "A", "Soil", "All areas are prime farmland", "AA001", 10.0],
+            ["2", "B", "Soil", "All areas are prime farmland", "AA002", 10.0],
+        ))
+    )))
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index="cpi")
+    assert ("ratings", "cpi", ("1", "2")) in sda.calls
+    assert {call[2] for call in sda.calls if call[0] == "benchmark"} == {"AA001", "AA002"}
+    assert result.manifest["candidate_le_score"] == pytest.approx(75.0)
+
+
 @pytest.mark.parametrize("sentinel", [99.0, 999.0, -99.0, -999.0])
 def test_analyze_polygon_treats_all_nccpi_sentinels_as_unrated(sentinel):
     geojson = {
@@ -235,7 +384,7 @@ def test_analyze_polygon_treats_all_nccpi_sentinels_as_unrated(sentinel):
     )
     result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(geojson)
 
-    assert result.map_units[0].nccpi_rating is None
+    assert result.map_units[0].productivity_rating is None
 
 
 def test_analyze_polygon_fully_covered():
