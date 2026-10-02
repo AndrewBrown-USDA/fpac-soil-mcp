@@ -383,7 +383,9 @@ class CorridorAnalyzer:
 
             partition_max: dict[str, float] = {}
             if ratings_requested and max_county_rating_override is None:
-                areasymbol = {str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")}
+                areasymbol = {
+                    str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
+                }
                 for symbol in areasymbol:
                     try:
                         benchmark = self.sda_client.get_county_max_productivity_rating(
@@ -447,8 +449,7 @@ class CorridorAnalyzer:
                         numeric_rating = float(numeric_rating)
                         benchmark = partition_max.get(
                             str(u.get("areasymbol")).strip(),
-                            max_county_rating_override
-                            or (1.0 if norm_idx == "nccpi" else 100.0),
+                            max_county_rating_override or (1.0 if norm_idx == "nccpi" else 100.0),
                         )
                         le_score = min(1.0, max(0.0, numeric_rating / benchmark)) * 100.0
                         segment_le_sum += calc_ac * le_score

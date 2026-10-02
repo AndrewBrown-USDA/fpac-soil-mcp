@@ -405,7 +405,10 @@ def analyze_corridor_fppa(
         "alternatives": alternatives,
         "include_nccpi": include_nccpi,
     }
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI or max_county_rating_override is not None:
+    if (
+        normalized_productivity_index is not ProductivityIndexType.NCCPI
+        or max_county_rating_override is not None
+    ):
         corridor_kwargs["productivity_index"] = productivity_index
         corridor_kwargs["max_county_rating_override"] = max_county_rating_override
     corridor_response = analyzer.analyze_corridor(
@@ -534,7 +537,10 @@ def calculate_preliminary_lesa(
             "buffer_units": corridor_buffer_units,
             "include_nccpi": normalized_productivity_index is ProductivityIndexType.NCCPI,
         }
-        if normalized_productivity_index is not ProductivityIndexType.NCCPI or max_county_rating_override is not None:
+        if (
+            normalized_productivity_index is not ProductivityIndexType.NCCPI
+            or max_county_rating_override is not None
+        ):
             corridor_kwargs["productivity_index"] = productivity_index
             corridor_kwargs["max_county_rating_override"] = max_county_rating_override
         corridor_result = analyze_corridor_fppa(**corridor_kwargs)
