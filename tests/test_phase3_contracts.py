@@ -104,6 +104,7 @@ def test_phase3_multi_county_corridor_analyzer_contract():
         {"mukey": "1001", "numeric_rating": "0.88", "rating_class": "High"},
         {"mukey": "1002", "numeric_rating": "0.82", "rating_class": "High"},
     ]
+    mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(
@@ -219,6 +220,7 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
     mock_sda.get_interpretations.return_value = [
         {"mukey": "2001", "numeric_rating": "0.90", "rating_class": "High"}
     ]
+    mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(
@@ -486,6 +488,7 @@ def test_contract_alternative_composite_le_scoring():
     mock_sda.get_interpretations.return_value = [
         {"mukey": "3001", "numeric_rating": "0.90", "rating_class": "High"}
     ]
+    mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(

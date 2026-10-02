@@ -295,6 +295,22 @@ class TestFPPATools:
                 project_type="corridor",
             )
 
+    def test_calculate_preliminary_lesa_rejects_multipolygon_corridor(self) -> None:
+        geometry = {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+                [[[2, 2], [3, 2], [3, 3], [2, 2]]],
+            ],
+        }
+
+        with pytest.raises(GeometryValidationError, match="polygon geometry cannot be routed"):
+            calculate_preliminary_lesa(
+                project_name="multipolygon corridor",
+                geometry=geometry,
+                project_type="corridor",
+            )
+
     @pytest.mark.parametrize("productivity_index", ["csr2", "cpi", "storie"])
     @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
     def test_calculate_preliminary_lesa_propagates_non_nccpi_index(
@@ -502,6 +518,54 @@ class TestCorridorTools:
             indirect_geometry_input=None,
             alternatives=None,
             include_nccpi=True,
+        )
+
+    @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")
+    def test_analyze_corridor_fppa_propagates_generic_options(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_analyzer_cls.return_value = mock_instance
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {
+            "query_type": "corridor",
+            "geometry_hash": "sha256:generic",
+            "composite_relative_rating": 70.0,
+            "county_segments": [],
+        }
+        mock_response.county_segments = []
+        mock_response.composite_relative_rating = 70.0
+        mock_instance.analyze_corridor.return_value = mock_response
+
+        alternatives = [
+            {
+                "alternative_id": "B",
+                "centerline": "LINESTRING(-93.6 42.0, -93.5 42.1)",
+                "buffer_distance": 75.0,
+                "buffer_units": "meters",
+            }
+        ]
+        result = analyze_corridor_fppa(
+            centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=125.0,
+            buffer_units="meters",
+            indirect_geometry="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
+            alternatives=alternatives,
+            include_nccpi=False,
+            productivity_index="csr2",
+            max_county_rating_override=88.0,
+        )
+
+        assert result["query_type"] == "corridor"
+        mock_instance.analyze_corridor.assert_called_once_with(
+            centerline_input="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=125.0,
+            buffer_units="meters",
+            indirect_geometry_input="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
+            alternatives=alternatives,
+            include_nccpi=False,
+            productivity_index="csr2",
+            max_county_rating_override=88.0,
         )
 
     @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")
