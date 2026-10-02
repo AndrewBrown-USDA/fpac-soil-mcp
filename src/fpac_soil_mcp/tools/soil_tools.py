@@ -383,10 +383,10 @@ def analyze_corridor_fppa(
         indirect_geometry: Optional GeoJSON Polygon/MultiPolygon or WKT for staging/access areas.
         alternatives: Optional list of alternative alignment dicts [{'alternative_id': 'Alt B', 'centerline': ...}].
         include_nccpi: Whether to retrieve component-weighted NCCPI v3 crop productivity ratings.
-        productivity_index: Requested soil productivity index. Corridor analysis currently
-            supports NCCPI retrieval; other indices disable NCCPI retrieval.
-        max_county_rating_override: Optional county benchmark override retained for
-            consistent tool routing; corridor scoring does not currently consume it.
+        productivity_index: Requested soil productivity index. Supported values include
+            NCCPI, CSR2, CPI, STORIE, and CUSTOM selectors.
+        max_county_rating_override: Optional positive county benchmark override used
+            for corridor normalization and Land Evaluation scoring.
         site_assessment_inputs: Optional dictionary of Part VI Site Assessment inputs for CPA-106 scoring:
             - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
             - 'project_farm_acres': float (size of affected farm holding)
@@ -397,14 +397,19 @@ def analyze_corridor_fppa(
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
     analyzer = CorridorAnalyzer()
+    corridor_kwargs: dict[str, Any] = {
+        "centerline_input": centerline,
+        "buffer_distance": buffer_distance,
+        "buffer_units": buffer_units,
+        "indirect_geometry_input": indirect_geometry,
+        "alternatives": alternatives,
+        "include_nccpi": include_nccpi,
+    }
+    if normalized_productivity_index is not ProductivityIndexType.NCCPI or max_county_rating_override is not None:
+        corridor_kwargs["productivity_index"] = productivity_index
+        corridor_kwargs["max_county_rating_override"] = max_county_rating_override
     corridor_response = analyzer.analyze_corridor(
-        centerline_input=centerline,
-        buffer_distance=buffer_distance,
-        buffer_units=buffer_units,
-        indirect_geometry_input=indirect_geometry,
-        alternatives=alternatives,
-        include_nccpi=include_nccpi
-        and normalized_productivity_index is ProductivityIndexType.NCCPI,
+        **corridor_kwargs,
     )
 
     result = corridor_response.model_dump()
@@ -489,7 +494,8 @@ def calculate_preliminary_lesa(
 
     Args:
         project_name: Project name or tracking identifier.
-        geometry: GeoJSON geometry dict or string (Polygon or MultiPolygon for site; LineString/Polygon for corridor).
+        geometry: GeoJSON geometry dict or string (Polygon or MultiPolygon for site;
+            LineString or MultiLineString for corridor).
         project_type: Project geometry type ('site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106).
         productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie'). Default is 'nccpi'.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
@@ -528,10 +534,7 @@ def calculate_preliminary_lesa(
             "buffer_units": corridor_buffer_units,
             "include_nccpi": normalized_productivity_index is ProductivityIndexType.NCCPI,
         }
-        if (
-            normalized_productivity_index is not ProductivityIndexType.NCCPI
-            or max_county_rating_override is not None
-        ):
+        if normalized_productivity_index is not ProductivityIndexType.NCCPI or max_county_rating_override is not None:
             corridor_kwargs["productivity_index"] = productivity_index
             corridor_kwargs["max_county_rating_override"] = max_county_rating_override
         corridor_result = analyze_corridor_fppa(**corridor_kwargs)
