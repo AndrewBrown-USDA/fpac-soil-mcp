@@ -27,6 +27,14 @@ from fpac_soil_mcp.http_client import (
 
 logger = logging.getLogger(__name__)
 
+PRODUCTIVITY_PROVENANCE = {
+    "nccpi": "SDA:NCCPI_V3",
+    "csr2": "SDA:CSR2",
+    "cpi": "SDA:CPI",
+    "storie": "SDA:STORIE",
+    "custom": "SDA:CUSTOM",
+}
+
 # Fixed SQL query templates - no user SQL passthrough allowed
 SQL_POINT_LOOKUP = """\
 SELECT
@@ -1059,8 +1067,7 @@ class SDAClient:
         Returns:
             List of structured rating dictionaries with component rated percentages,
             caveats, and ``productivity_rating_source`` identifying the selected
-            SDA interpretation rule/catalog (the validated ``nasisrulename`` or
-            ``attributename`` for dynamic SDV attributes).
+            fixed SDA interpretation or custom SDV attribute.
 
         Raises:
             SDAValidationError: If mukeys or index_type are invalid.
@@ -1075,43 +1082,33 @@ class SDAClient:
         idx = index_type.strip().lower()
         if attribute_meta:
             norm_idx = str(attribute_meta.get("attributename", index_type)).lower()
-            productivity_rating_source = str(
-                attribute_meta.get("nasisrulename")
-                or attribute_meta.get("attributename")
-                or index_type
-            ).strip()
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["custom"]
             query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
         elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
             norm_idx = "nccpi"
-            productivity_rating_source = (
-                "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
-            )
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["nccpi"]
             query = SQL_PRODUCTIVITY_NCCPI.format(
                 mukeys_csv=mukeys_csv,
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             )
         elif idx in ("csr2", "iacsr2", "iowa csr2"):
             norm_idx = "csr2"
-            productivity_rating_source = "SDA cointerp rule/catalog matching CSR2"
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
             query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
         elif idx in ("cpi", "minnesota cpi"):
             norm_idx = "cpi"
-            productivity_rating_source = "SDA cointerp rule/catalog matching CPI (excluding NCCPI)"
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
             query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
         elif idx in ("storie", "storie_index", "california storie"):
             norm_idx = "storie"
-            productivity_rating_source = "SDA cointerp rule/catalog matching Storie"
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
             query = SQL_PRODUCTIVITY_STORIE.format(mukeys_csv=mukeys_csv)
         else:
             matched_attrs = self.lookup_sdv_attribute(index_type)
             if matched_attrs:
                 selected_attribute = matched_attrs[0]
                 norm_idx = str(selected_attribute.get("attributename", index_type)).lower()
-                productivity_rating_source = str(
-                    selected_attribute.get("nasisrulename")
-                    or selected_attribute.get("attributename")
-                    or index_type
-                ).strip()
+                productivity_rating_source = PRODUCTIVITY_PROVENANCE["custom"]
                 query = build_dynamic_sdv_query(selected_attribute, mukeys_csv)
             else:
                 raise SDAValidationError(
