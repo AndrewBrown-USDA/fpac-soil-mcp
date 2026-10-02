@@ -11,11 +11,11 @@
   "tools": [
     {
       "name": "calculate_preliminary_lesa",
-      "description": "Calculate unified candidate Land Evaluation (LE) and Site Assessment (LESA) scores for site (Form AD-1006) and corridor (Form NRCS-CPA-106) projects under 7 CFR Part 658."
+      "description": "Calculate unified candidate Land Evaluation (LE) and Site Assessment (LESA) scores for site (Form AD-1006) and corridor (Form NRCS-CPA-106) projects under 7 CFR Part 658 using the requested productivity_index and generic productivity_rating, productivity_rating_class, and productivity_rating_source fields. Normalization uses a validated max_county_rating_override when supplied or the per-area-symbol county benchmark otherwise."
     },
     {
       "name": "analyze_corridor_fppa",
-      "description": "Execute multi-county corridor screening and Form NRCS-CPA-106 LESA evaluation under 7 CFR § 658.5(c)."
+      "description": "Execute multi-county corridor screening and Form NRCS-CPA-106 LESA evaluation under 7 CFR § 658.5(c). Requires line geometry whose centerline represents the corridor; polygon or MultiPolygon corridor geometry is not representable. Supports productivity indexes NCCPI, CSR2, CPI, and Storie, generic productivity fields, exact SDA provenance identifiers (SDA:NCCPI_V3, SDA:CSR2, SDA:CPI, SDA:STORIE, or SDA:CUSTOM), and validated benchmark override or per-area-symbol county fallback behavior."
     }
   ],
   "env": {
