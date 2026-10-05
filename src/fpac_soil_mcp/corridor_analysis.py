@@ -54,6 +54,8 @@ logger = logging.getLogger(__name__)
 
 
 _NCCPI_RULE = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+_NCCPI_SOURCE = "SDA:NCCPI_V3"
+_UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
 _INDEX_ALIASES = {
     "nccpi": "nccpi",
     "nccpi_v3": "nccpi",
@@ -72,6 +74,19 @@ _INDEX_ALIASES = {
 def _normalize_productivity_index(value: str | None) -> str:
     normalized = (value or "nccpi").strip().lower()
     return _INDEX_ALIASES.get(normalized, normalized)
+
+
+def _normalize_corridor_rating(value: Any, is_rated: Any) -> float | None:
+    """Return a valid rated productivity value, preserving zero ratings."""
+    if is_rated is False:
+        return None
+    try:
+        rating = float(value) if value is not None else None
+    except (ValueError, TypeError):
+        return None
+    if rating is None or not math.isfinite(rating) or rating < 0 or rating in _UNRATED_SENTINELS:
+        return None
+    return rating
 
 
 def _get_corridor_ratings(
@@ -160,6 +175,8 @@ class CorridorAnalyzer:
         timestamp_str = now.isoformat()
         limitations = list(REGULATORY_LIMITATIONS)
         norm_idx = _normalize_productivity_index(productivity_index)
+        if norm_idx == "custom":
+            raise ValueError("CUSTOM productivity selectors are not supported")
         if max_county_rating_override is not None and (
             not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
         ):
@@ -443,10 +460,12 @@ class CorridorAnalyzer:
                 cat = categorize_farmland_class(farmlndcl_str)
                 category_acres[cat] += calc_ac
 
-                numeric_rating = interp_info.get("numeric_rating")
+                numeric_rating = _normalize_corridor_rating(
+                    interp_info.get("numeric_rating"),
+                    interp_info.get("is_rated"),
+                )
                 if numeric_rating is not None:
                     try:
-                        numeric_rating = float(numeric_rating)
                         benchmark = partition_max.get(
                             str(u.get("areasymbol")).strip(),
                             max_county_rating_override or (1.0 if norm_idx == "nccpi" else 100.0),
@@ -470,7 +489,7 @@ class CorridorAnalyzer:
                         productivity_rating_class=interp_info.get("rating_class"),
                         productivity_rating_source=interp_info.get(
                             "productivity_rating_source",
-                            _NCCPI_RULE if norm_idx == "nccpi" else norm_idx,
+                            _NCCPI_SOURCE if norm_idx == "nccpi" else norm_idx,
                         ),
                     )
                 )
@@ -785,17 +804,19 @@ class CorridorAnalyzer:
                                 alt_fppa_ac += area_val
 
                             interp_info = alt_interp_map.get(m_str, {})
-                            num_rating = interp_info.get("numeric_rating")
+                            num_rating = _normalize_corridor_rating(
+                                interp_info.get("numeric_rating"),
+                                interp_info.get("is_rated"),
+                            )
                             if num_rating is not None:
                                 try:
-                                    num_rating_flt = float(num_rating)
                                     benchmark = alt_partition_max.get(
                                         str(au.get("areasymbol")).strip(),
                                         max_county_rating_override
                                         or (1.0 if norm_idx == "nccpi" else 100.0),
                                     )
                                     le_score = (
-                                        min(1.0, max(0.0, num_rating_flt / benchmark)) * 100.0
+                                        min(1.0, max(0.0, num_rating / benchmark)) * 100.0
                                     )
                                     alt_seg_le_sum += area_val * le_score
                                     alt_seg_le_weight += area_val

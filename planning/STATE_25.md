@@ -14,7 +14,7 @@
 
 | Wave | Task | Status |
 |---|---|---|
-| 1 | 25.1.1 Hardening corridor rating normalization | pending |
+| 1 | 25.1.1 Hardening corridor rating normalization | done |
 | 2 | 25.2.1 Restoring agent coordinate validation | pending |
 | 2 | 25.2.2 Publishing the complete tool registry | pending |
 | 3 | 25.3.1 Testing corridor review regressions | pending |
@@ -24,3 +24,15 @@
 ## Task reports
 
 <!-- Worker reports are appended below, one section per task, <=15 lines. -->
+
+## 25.1.1
+- Status: done after one bounded retry.
+- Changed `src/fpac_soil_mcp/corridor_analysis.py`: shared sentinel normalization
+  for direct and alternative scoring, explicit CUSTOM rejection, and exact
+  `SDA:NCCPI_V3` fallback provenance.
+- Validation: `uv run python -m compileall -q
+  src\fpac_soil_mcp\corridor_analysis.py` passed.
+- Verification: corridor tests pass 14/15; the only failure is the stale
+  pre-existing CUSTOM propagation expectation, superseded by task 25.3.1.
+- Deviation: one permitted retry for missing `is_rated` compatibility.
+- Gotcha: task 25.3.1 must replace the stale CUSTOM test with rejection coverage.
