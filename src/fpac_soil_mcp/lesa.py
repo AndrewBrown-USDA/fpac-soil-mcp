@@ -407,8 +407,8 @@ def evaluate_land_evaluation(
             else float(candidate_le_int)
         )
     else:
-        aoi_rr = 0.0
-        candidate_le_float = 0.0
+        aoi_rr = None
+        candidate_le_float = None
         notices.append("No rated soil map units found in AOI footprint.")
 
     percentile = None
@@ -772,6 +772,20 @@ def evaluate_lesa(
         )
 
     # 3. Calculate Total LESA Score and Threshold
+    if le_summary.candidate_le_score is None:
+        limitations = list(REGULATORY_LIMITATIONS)
+        limitations.append("Land Evaluation score unavailable; total LESA score is indeterminate.")
+        return PreliminaryLESAResponse(
+            project_name=project_name,
+            project_type=project_type,
+            land_evaluation=le_summary,
+            site_assessment=sa_summary,
+            total_lesa_score=None,
+            mandatory_alternatives_required=None,
+            regulatory_notice=REGULATORY_NOTICE,
+            limitations=limitations,
+        )
+
     total_lesa = round(min(260.0, le_summary.candidate_le_score + sa_summary.total_points), 2)
     mandatory_alt, determination, _actions = evaluate_lesa_threshold(
         total_lesa, project_type=project_type

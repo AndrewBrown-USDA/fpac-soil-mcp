@@ -1018,21 +1018,12 @@ class SDAClient:
                 areasymbol=clean_area,
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             )
-        elif idx in ("csr2", "iacsr2", "iowa csr2"):
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
-        elif idx in ("cpi", "minnesota cpi"):
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
-        elif idx in ("storie", "storie_index", "california storie"):
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_STORIE.format(areasymbol=clean_area)
         else:
-            # Attempt dynamic lookup by pattern if index_type looks like an attribute name
-            matched_attrs = self.lookup_sdv_attribute(index_type)
-            if matched_attrs:
-                query = build_dynamic_sdv_county_max_query(matched_attrs[0], clean_area)
-            else:
-                raise SDAValidationError(
-                    f"Unsupported productivity index type '{index_type}'. Supported: 'nccpi', 'csr2', 'cpi', 'storie' or valid sdvattribute."
-                )
+            raise SDAValidationError(
+                f"Unsupported productivity index type '{index_type}'. "
+                "Supported fixed selector: 'nccpi'; explicit attribute metadata is "
+                "required for custom SDV queries."
+            )
 
         rows = self._execute_query(query)
         if not rows:
@@ -1091,29 +1082,12 @@ class SDAClient:
                 mukeys_csv=mukeys_csv,
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             )
-        elif idx in ("csr2", "iacsr2", "iowa csr2"):
-            norm_idx = "csr2"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
-            query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
-        elif idx in ("cpi", "minnesota cpi"):
-            norm_idx = "cpi"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
-            query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
-        elif idx in ("storie", "storie_index", "california storie"):
-            norm_idx = "storie"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
-            query = SQL_PRODUCTIVITY_STORIE.format(mukeys_csv=mukeys_csv)
         else:
-            matched_attrs = self.lookup_sdv_attribute(index_type)
-            if matched_attrs:
-                selected_attribute = matched_attrs[0]
-                norm_idx = str(selected_attribute.get("attributename", index_type)).lower()
-                productivity_rating_source = PRODUCTIVITY_PROVENANCE["custom"]
-                query = build_dynamic_sdv_query(selected_attribute, mukeys_csv)
-            else:
-                raise SDAValidationError(
-                    f"Unsupported productivity index type '{index_type}'. Supported: 'nccpi', 'csr2', 'cpi', 'storie' or valid sdvattribute."
-                )
+            raise SDAValidationError(
+                f"Unsupported productivity index type '{index_type}'. "
+                "Supported fixed selector: 'nccpi'; explicit attribute metadata is "
+                "required for custom SDV queries."
+            )
 
         raw_rows = self._execute_query(query)
         rows_by_mukey = {str(r.get("mukey")): r for r in raw_rows}

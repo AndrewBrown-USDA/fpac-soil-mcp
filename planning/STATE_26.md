@@ -25,3 +25,16 @@
 ## Task reports
 
 <!-- Worker reports are appended below, one section per task, <=15 lines. -->
+
+## 26.1.1
+
+- **Status**: implemented; targeted tests expose expected stale assertions.
+- **Files**: `models.py`, `sda_client.py`, and `lesa.py`; `integration_models.py` and
+  `corridor_scoring.py` required no changes.
+- **Validation**: `uv run pytest tests\test_sda_client.py tests\test_lesa.py tests\test_corridor_scoring.py -q`
+  — 115 passed, 9 failed.
+- **Failures**: seven tests expect removed CSR2/CPI/Storie retrieval; two expect
+  zero-coverage LE score `0.0` instead of unavailable `None`.
+- **Deviations**: legacy enum members remain for deserialization compatibility;
+  fixed SDA retrieval rejects them.
+- **Gotchas**: dependent tasks must update selector and zero-coverage expectations.

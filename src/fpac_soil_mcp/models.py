@@ -319,6 +319,8 @@ class ProductivityIndexType(str, Enum):
     """Supported Soil Productivity Index types for Land Evaluation (LE)."""
 
     NCCPI = "NCCPI"
+    # Retained for deserialization/backward compatibility; SDA retrieval rejects
+    # these non-deterministic selectors.
     CSR2 = "CSR2"
     CPI = "CPI"
     STORIE = "STORIE"
@@ -366,13 +368,13 @@ class LandEvaluationSummary(BaseModel):
         default=ProductivityIndexType.NCCPI,
         description="Productivity index used for relative scoring",
     )
-    aoi_relative_rating: float = Field(
+    aoi_relative_rating: float | None = Field(
         default=0.0,
-        description="Area-weighted relative rating across AOI (0.0 - 1.0)",
+        description="Area-weighted relative rating across AOI (0.0 - 1.0), or None if unavailable",
     )
-    candidate_le_score: float = Field(
+    candidate_le_score: float | None = Field(
         default=0.0,
-        description="Candidate Land Evaluation score on standard 0-100 point scale",
+        description="Candidate Land Evaluation score on standard 0-100 point scale, or None if unavailable",
     )
     county_farmland_percentile_higher: float | None = Field(
         default=None,
@@ -401,14 +403,18 @@ class LandEvaluationSummary(BaseModel):
 
     @field_validator("aoi_relative_rating")
     @classmethod
-    def validate_aoi_relative_rating(cls, v: float) -> float:
+    def validate_aoi_relative_rating(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
         if v < 0.0 or v > 1.0:
             raise ValueError(f"aoi_relative_rating must be between 0.0 and 1.0, got {v}")
         return v
 
     @field_validator("candidate_le_score")
     @classmethod
-    def validate_candidate_le_score(cls, v: float) -> float:
+    def validate_candidate_le_score(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
         if v < 0.0 or v > 100.0:
             raise ValueError(f"candidate_le_score must be between 0.0 and 100.0, got {v}")
         return v
@@ -512,11 +518,11 @@ class PreliminaryLESAResponse(BaseModel):
     site_assessment: SiteAssessmentSummary = Field(
         description="Site Assessment (SA) criteria breakdown and score (Part V/VI max 160)"
     )
-    total_lesa_score: float = Field(
+    total_lesa_score: float | None = Field(
         default=0.0,
-        description="Total combined LESA score on standard 0-260 point scale (LE + SA)",
+        description="Total combined LESA score on standard 0-260 point scale (LE + SA), or None if LE unavailable",
     )
-    mandatory_alternatives_required: bool = Field(
+    mandatory_alternatives_required: bool | None = Field(
         default=False,
         description="Statutory trigger under 7 CFR 658.4: true if total LESA score >= 160",
     )
@@ -530,13 +536,21 @@ class PreliminaryLESAResponse(BaseModel):
 
     @field_validator("total_lesa_score")
     @classmethod
-    def validate_total_lesa_score(cls, v: float) -> float:
+    def validate_total_lesa_score(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
         if v < 0.0 or v > 260.0:
             raise ValueError(f"total_lesa_score must be between 0.0 and 260.0, got {v}")
         return v
 
     @model_validator(mode="after")
     def validate_mandatory_alternatives_required(self) -> PreliminaryLESAResponse:
+        if self.total_lesa_score is None:
+            if self.mandatory_alternatives_required is not None:
+                raise ValueError(
+                    "mandatory_alternatives_required must be None when total_lesa_score is unavailable"
+                )
+            return self
         expected = self.total_lesa_score >= 160.0
         if self.mandatory_alternatives_required != expected:
             raise ValueError(
