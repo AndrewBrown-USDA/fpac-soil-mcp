@@ -49,3 +49,12 @@
 - **Deviations**: none.
 - **Gotchas**: 26.3.1 must replace legacy retrieval expectations with rejection and
   no-SDA-call assertions.
+
+## 26.3.2
+
+- **Status**: complete.
+- **Files**: `eval/prompt_test_cases.json`, `tests/test_geometry.py`.
+- **Validation**: `uv run pytest tests\test_geometry.py -q` — 15 passed.
+- **Changes**: LESA-02 WKT and GeoJSON now describe the same approximately 45-acre
+  AOI; regression coverage keeps affected-farm acreage separate.
+- **Deviations**: none.

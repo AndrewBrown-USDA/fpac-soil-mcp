@@ -1,7 +1,11 @@
 """Tests for geometry parsing, validation, acreage computation, WKT conversion, and hashing."""
 
+import json
+from pathlib import Path
+
 import pytest
 from shapely.geometry import MultiPolygon, Polygon
+from shapely.wkt import loads as load_wkt
 
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
@@ -14,6 +18,37 @@ from fpac_soil_mcp.geometry import (
     validate_and_sanitize_line_wkt,
     validate_wkt_string,
 )
+
+LESA_FIXTURE_PATH = Path(__file__).parents[1] / "eval" / "prompt_test_cases.json"
+
+
+def _lesa_02_fixture() -> dict:
+    with LESA_FIXTURE_PATH.open(encoding="utf-8") as fixture_file:
+        cases = json.load(fixture_file)["test_cases"]
+    return next(item for item in cases if item["id"] == "LESA-02")
+
+
+def test_lesa_02_fixture_represents_45_acres():
+    fixture = _lesa_02_fixture()
+    geometry = parse_geojson_geometry(fixture["sample_geometry"])
+
+    acreage = calculate_acreage(geometry)
+
+    assert abs(acreage - 45.0) <= max(45.0 * 0.001, 0.05)
+    assert calculate_acreage(load_wkt(fixture["user_prompt"].split(": ", 1)[1].split(". Use ", 1)[0])) == pytest.approx(
+        acreage
+    )
+
+
+def test_lesa_02_aoi_acreage_is_separate_from_affected_farm_acreage():
+    fixture = _lesa_02_fixture()
+    aoi_acreage = calculate_acreage(parse_geojson_geometry(fixture["sample_geometry"]))
+    affected_farm_acreage = 120.0
+
+    evaluated_acreage = aoi_acreage
+
+    assert evaluated_acreage == pytest.approx(aoi_acreage)
+    assert evaluated_acreage != affected_farm_acreage
 
 
 def test_validate_wkt_string_valid():

@@ -322,7 +322,7 @@
       "category": "Phase 4 - Land Evaluation & Site Assessment",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Perform a complete preliminary Form AD-1006 LESA calculation for a proposed 45-acre regional medical clinic in Story County, IA: POLYGON((-93.58 42.01, -93.56 42.01, -93.56 42.03, -93.58 42.03, -93.58 42.01)). Use Iowa Corn Suitability Rating 2 (CSR2) as the productivity index and evaluate whether comprehensive site assessment scoring requires consideration of alternative non-farmland sites.",
+      "user_prompt": "Perform a complete preliminary Form AD-1006 LESA calculation for a proposed 45-acre regional medical clinic in Story County, IA: POLYGON((-93.58 42.01, -93.57555 42.01, -93.57555 42.01445, -93.58 42.01445, -93.58 42.01)). Use Iowa Corn Suitability Rating 2 (CSR2) as the productivity index and evaluate whether comprehensive site assessment scoring requires consideration of alternative non-farmland sites.",
       "expected_tools": ["calculate_preliminary_lesa"],
       "expected_keywords": [
         "AD-1006",
@@ -335,9 +335,9 @@
         "coordinates": [
           [
             [-93.58, 42.01],
-            [-93.56, 42.01],
-            [-93.56, 42.03],
-            [-93.58, 42.03],
+            [-93.57555, 42.01],
+            [-93.57555, 42.01445],
+            [-93.58, 42.01445],
             [-93.58, 42.01]
           ]
         ]
