@@ -19,7 +19,7 @@
 | 2 | 25.2.2 Publishing the complete tool registry | done |
 | 3 | 25.3.1 Testing corridor review regressions | done |
 | 3 | 25.3.2 Testing metadata and agent contracts | done |
-| 4 | 25.4.1 Running complete review verification | pending |
+| 4 | 25.4.1 Running complete review verification | done |
 
 ## Task reports
 
@@ -72,3 +72,18 @@
   structured coordinate contract coverage.
 - Validation: combined targeted suite — 44 passed, 2 deselected.
 - Deviations: none.
+
+## 25.4.1
+- Status: done after one bounded corrective escalation.
+- Targeted command: `uv run pytest tests\test_corridor_analysis.py
+  tests\test_server.py eval\test_agent_eval.py -m "not agent_eval"` — 44
+  passed, 2 deselected (46 collected).
+- Offline command: `uv run pytest -m "not live_network"` — 328 passed,
+  12 deselected; live-network tests were excluded.
+- `uv run ruff check .` passed; `uv run ruff format --check .` passed with
+  307 files already formatted.
+- `pi` was available. POINT-01 agent eval (`uv run pytest
+  eval\test_agent_eval.py -m agent_eval -k point_screening`) — 1 passed,
+  4 deselected.
+- Corrective escalation added direct `args` event extraction and applied
+  formatting/import fixes; no product behavior changed.
