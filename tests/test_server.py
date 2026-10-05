@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import re
 from unittest.mock import MagicMock
+from pathlib import Path
 
 import pytest
 from starlette.requests import Request
@@ -44,6 +46,25 @@ class TestServerInitialization:
         assert "analyze_corridor_fppa" in published_tools
         assert "LESA" in published_tools["calculate_preliminary_lesa"]
         assert "corridor" in published_tools["analyze_corridor_fppa"].lower()
+
+    def test_published_tool_metadata_matches_manifest(self) -> None:
+        metadata = json.loads(Path("server.json").read_text(encoding="utf-8"))
+        manifest = Path("manifest.yaml").read_text(encoding="utf-8")
+        manifest_tools = dict(
+            re.findall(
+                r"^  - name: ([^\r\n]+)\r?\n    description: ([^\r\n]+)$",
+                manifest.split("\nresources:", 1)[0],
+                re.MULTILINE,
+            )
+        )
+        published_tools = {
+            tool["name"]: tool["description"] for tool in metadata["tools"]
+        }
+
+        assert len(manifest_tools) == 10
+        assert len(published_tools) == 10
+        assert set(published_tools) == set(manifest_tools)
+        assert published_tools == manifest_tools
 
     @pytest.mark.asyncio
     async def test_server_initialization_includes_all_tools_and_prompts(self) -> None:

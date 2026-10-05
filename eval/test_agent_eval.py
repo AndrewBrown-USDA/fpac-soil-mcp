@@ -279,6 +279,31 @@ def test_extract_tool_calls_preserves_structured_point_arguments() -> None:
     ]
 
 
+def test_point_01_structured_arguments_match_exact_coordinates() -> None:
+    """Validate POINT-01 coordinates without invoking pi or a network."""
+    events = [
+        {
+            "type": "message_end",
+            "message": {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "get_farmland_classification_by_point",
+                            "arguments": '{"latitude": 41.8781, "longitude": -93.0977}',
+                        }
+                    }
+                ],
+            },
+        }
+    ]
+
+    point_call = extract_tool_calls(events)[0]
+    assert point_call["name"] == "get_farmland_classification_by_point"
+    assert float(point_call["arguments"]["latitude"]) == pytest.approx(41.8781, abs=1e-5)
+    assert float(point_call["arguments"]["longitude"]) == pytest.approx(-93.0977, abs=1e-5)
+
+
 def get_pi_executable() -> str | None:
     """Resolve the pi executable path cross-platform (including Windows .cmd/.bat)."""
     pi_path = shutil.which("pi")
