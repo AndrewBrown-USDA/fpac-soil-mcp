@@ -288,9 +288,7 @@ def extract_advertised_tool_names(events: list[dict[str, Any]]) -> tuple[set[str
             event.get("capabilities", {}).get("tools")
             if isinstance(event.get("capabilities"), dict)
             else None,
-            event.get("result", {}).get("tools")
-            if isinstance(event.get("result"), dict)
-            else None,
+            event.get("result", {}).get("tools") if isinstance(event.get("result"), dict) else None,
         ]
         for candidate in candidates:
             names = _tool_names_from_list(candidate)
@@ -399,8 +397,10 @@ def run_case(
             if missing_tools and advertised_tools is not None:
                 unadvertised = [tool for tool in missing_tools if tool not in advertised_tools]
                 retryable = [tool for tool in missing_tools if tool in advertised_tools]
-                if retryable and not unadvertised and should_retry_missing_tools(
-                    missing_tools, advertised_tools, retry_count
+                if (
+                    retryable
+                    and not unadvertised
+                    and should_retry_missing_tools(missing_tools, advertised_tools, retry_count)
                 ):
                     retry_count += 1
                     cmd[-1] = (
@@ -410,14 +410,14 @@ def run_case(
                     )
                     continue
                 if unadvertised:
-                    diagnostics.append(
-                        f"unadvertised expected tool(s): {', '.join(unadvertised)}"
-                    )
+                    diagnostics.append(f"unadvertised expected tool(s): {', '.join(unadvertised)}")
             elif missing_tools:
                 diagnostics.append("configuration diagnostic: MCP tool list unavailable")
 
             assistant_texts = [
-                extract_assistant_content(event) for event in events if extract_assistant_content(event)
+                extract_assistant_content(event)
+                for event in events
+                if extract_assistant_content(event)
             ]
             combined_assistant_text = " ".join(assistant_texts) if assistant_texts else output
             norm_content = normalize_text(combined_assistant_text).lower()

@@ -91,6 +91,7 @@ that failed to call an advertised tool.
 | 3 | 26.3.3 | Diagnose and retry missing eval tools | `eval/run_evals.py`, `eval/test_agent_eval.py`, `planning/tasks/26.3.3.todo.md` | none |
 | 4 | 26.4.1 | Add opt-in SDA rule catalog coverage | `tests/test_live_sda.py`, `planning/tasks/26.4.1.todo.md` | 26.1.1 |
 | 5 | 26.5.1 | Run complete verification | `planning/STATE_26.md`, `planning/tasks/26.5.1.todo.md` | 26.3.1, 26.3.2, 26.3.3, 26.4.1 |
+| 5 | 26.5.2 | Correct verification formatting failures | `eval/run_evals.py`, `eval/test_agent_eval.py`, `tests/test_geometry.py`, `planning/STATE_26.md`, `planning/tasks/26.5.2.todo.md` | 26.5.1 |
 
 ## Task Specifications
 
@@ -241,3 +242,14 @@ that failed to call an advertised tool.
   run `uv run pytest tests\test_live_sda.py -m live_network -k "rule or productivity"`;
   otherwise record the live gate as skipped. Task 26.4.1 is non-blocking when
   its live gate is unavailable.
+
+### 26.5.2 — Correct verification formatting failures
+- **Repo**: `AndrewBrown-USDA/fpac-soil-mcp`
+- **Files in scope**: `eval/run_evals.py`, `eval/test_agent_eval.py`,
+  `tests/test_geometry.py`, `planning/STATE_26.md`,
+  `planning/tasks/26.5.2.todo.md`
+- **Depends on**: 26.5.1
+- **Spec**: Apply only Ruff-required import ordering and formatting changes
+  identified by task 26.5.1. Preserve behavior and do not refactor.
+- **Acceptance**: `uv run ruff check .`, `uv run ruff format --check .`, and
+  affected deterministic tests pass.

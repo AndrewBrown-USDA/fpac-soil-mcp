@@ -35,9 +35,9 @@ def test_lesa_02_fixture_represents_45_acres():
     acreage = calculate_acreage(geometry)
 
     assert abs(acreage - 45.0) <= max(45.0 * 0.001, 0.05)
-    assert calculate_acreage(load_wkt(fixture["user_prompt"].split(": ", 1)[1].split(". Use ", 1)[0])) == pytest.approx(
-        acreage
-    )
+    assert calculate_acreage(
+        load_wkt(fixture["user_prompt"].split(": ", 1)[1].split(". Use ", 1)[0])
+    ) == pytest.approx(acreage)
 
 
 def test_lesa_02_aoi_acreage_is_separate_from_affected_farm_acreage():

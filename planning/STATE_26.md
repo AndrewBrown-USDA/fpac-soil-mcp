@@ -14,17 +14,30 @@
 
 | Wave | Task | Status |
 |---|---|---|
-| 1 | 26.1.1 Align selectors and unavailable LE semantics | pending |
-| 2 | 26.2.1 Propagate selector validation through tools | pending |
-| 3 | 26.3.1 Add productivity and LESA regression tests | pending |
-| 3 | 26.3.2 Correct the 45-acre evaluation fixture | pending |
-| 3 | 26.3.3 Diagnose and retry missing eval tools | pending |
-| 4 | 26.4.1 Add opt-in SDA rule catalog coverage | pending |
-| 5 | 26.5.1 Run complete verification | pending |
+| 1 | 26.1.1 Align selectors and unavailable LE semantics | done |
+| 2 | 26.2.1 Propagate selector validation through tools | done |
+| 3 | 26.3.1 Add productivity and LESA regression tests | done |
+| 3 | 26.3.2 Correct the 45-acre evaluation fixture | done |
+| 3 | 26.3.3 Diagnose and retry missing eval tools | done |
+| 4 | 26.4.1 Add opt-in SDA rule catalog coverage | done |
+| 5 | 26.5.1 Run complete verification | done |
+| 5 | 26.5.2 Correct verification formatting failures | done |
 
 ## Task reports
 
 <!-- Worker reports are appended below, one section per task, <=15 lines. -->
+
+## 26.5.2
+
+- **Status**: complete; Ruff-only formatting corrections applied.
+- **Diagnostics resolved**: `eval\test_agent_eval.py` had one `I001` import-order error;
+  `eval\run_evals.py` and `tests\test_geometry.py` were the two unformatted files.
+- **Validation**: `uv run ruff check .` — all checks passed.
+- **Validation**: `uv run ruff format --check .` — 318 files already formatted.
+- **Targeted tests**: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+  — 7 passed, 2 deselected; `uv run pytest tests\test_geometry.py -q` — 15 passed.
+- **Scope**: only the three named code/test files and the two planning files changed.
+- **Deviations**: none; no behavior changes or refactors.
 
 ## 26.1.1
 
@@ -47,6 +60,17 @@
   — 49 passed, 33 failed; Ruff and `git diff --check` passed.
 - **Failures**: existing tests expect removed CSR2/CPI/Storie/custom retrieval.
 - **Deviations**: none.
+
+## 26.5.1
+
+- **Status**: complete after 26.5.2 corrective formatting task.
+- **Mandatory offline verification**: `uv run pytest -m "not live_network"` — 325 passed, 12 deselected, 0 failed (337 collected; 325 selected), including final rerun after formatting fixes.
+- **Ruff lint**: `uv run ruff check .` — failed on both initial run and one permitted identical retry; 1 `I001` import-order error in `eval\test_agent_eval.py`. No source/test edits made.
+- **Ruff format**: `uv run ruff format --check .` — failed; 2 files would be reformatted (`eval\run_evals.py`, `tests\test_geometry.py`), 315 already formatted. No source/test edits made.
+- **Agent gate**: `pi` available; `uv run pytest eval\test_agent_eval.py -m agent_eval -k "point_screening or affected_productivity_cases"` — 1 passed, 8 deselected, 0 failed.
+- **Live SDA gate**: network available; `uv run pytest tests\test_live_sda.py -m live_network -k "rule or productivity"` — 1 passed, 6 deselected, 0 failed.
+- **Deviations**: initial Ruff gates failed and were corrected by 26.5.2; final Ruff gates pass. Live and agent gates were run because available.
+- **Scope verification**: `git status --short` showed only `planning/tasks/26.5.1.todo.md` before this report; only the two scoped planning files were changed.
 
 ## 26.4.1
 
