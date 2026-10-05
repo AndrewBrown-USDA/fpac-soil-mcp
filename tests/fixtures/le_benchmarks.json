@@ -1,177 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Verified Land Evaluation (LE) and preliminary LESA benchmark cases for testing state productivity ratings, relative LE calculations, unrated filtering, and statutory threshold triggers.",
+  "description": "Verified national NCCPI Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
   "cases": [
-    {
-      "id": "IA_STORY_CSR2_PARCEL",
-      "name": "Iowa Story County CSR2 Parcel Evaluation",
-      "state_fips": "19",
-      "county_fips": "169",
-      "county_name": "Story County, IA",
-      "project_type": "site",
-      "productivity_index": "CSR2",
-      "county_max_rating": 100.0,
-      "map_units": [
-        {
-          "mukey": "406439",
-          "musym": "138B",
-          "muname": "Clarion loam, 2 to 6 percent slopes",
-          "acres": 45.0,
-          "raw_rating": 89.0,
-          "normalized_relative_rating": 0.89,
-          "is_rated": true,
-          "unrated_reason": null
-        },
-        {
-          "mukey": "406450",
-          "musym": "107",
-          "muname": "Webster clay loam, 0 to 2 percent slopes",
-          "acres": 35.0,
-          "raw_rating": 86.0,
-          "normalized_relative_rating": 0.86,
-          "is_rated": true,
-          "unrated_reason": null
-        },
-        {
-          "mukey": "406412",
-          "musym": "220",
-          "muname": "Clarinda silty clay loam, 9 to 14 percent slopes, moderately eroded",
-          "acres": 20.0,
-          "raw_rating": 32.0,
-          "normalized_relative_rating": 0.32,
-          "is_rated": true,
-          "unrated_reason": null
-        }
-      ],
-      "expected_evaluation": {
-        "rated_acreage": 100.0,
-        "unrated_acreage": 0.0,
-        "total_acreage": 100.0,
-        "coverage_percent": 100.0,
-        "aoi_relative_rating": 0.7655,
-        "candidate_le_score": 76.55,
-        "county_farmland_percentile_higher": 68.4
-      },
-      "site_assessment": {
-        "total_sa_score": 92.0,
-        "criteria_count": 12
-      },
-      "expected_lesa_summary": {
-        "total_lesa_score": 168.55,
-        "mandatory_alternatives_required": true,
-        "threshold_note": "Score >= 160 triggers consideration of alternative project sites or mitigation per FPPA guidelines."
-      }
-    },
-    {
-      "id": "MN_NICOLLET_CPI_PARCEL",
-      "name": "Minnesota Nicollet County CPI Parcel Evaluation",
-      "state_fips": "27",
-      "county_fips": "103",
-      "county_name": "Nicollet County, MN",
-      "project_type": "site",
-      "productivity_index": "CPI",
-      "county_max_rating": 100.0,
-      "map_units": [
-        {
-          "mukey": "415201",
-          "musym": "L83A",
-          "muname": "Webster clay loam, 0 to 2 percent slopes",
-          "acres": 60.0,
-          "raw_rating": 93.0,
-          "normalized_relative_rating": 0.93,
-          "is_rated": true,
-          "unrated_reason": null
-        },
-        {
-          "mukey": "415205",
-          "musym": "L85A",
-          "muname": "Nicollet clay loam, 1 to 3 percent slopes",
-          "acres": 40.0,
-          "raw_rating": 96.0,
-          "normalized_relative_rating": 0.96,
-          "is_rated": true,
-          "unrated_reason": null
-        }
-      ],
-      "expected_evaluation": {
-        "rated_acreage": 100.0,
-        "unrated_acreage": 0.0,
-        "total_acreage": 100.0,
-        "coverage_percent": 100.0,
-        "aoi_relative_rating": 0.942,
-        "candidate_le_score": 94.2,
-        "county_farmland_percentile_higher": 88.2
-      },
-      "site_assessment": {
-        "total_sa_score": 75.0,
-        "criteria_count": 12
-      },
-      "expected_lesa_summary": {
-        "total_lesa_score": 169.2,
-        "mandatory_alternatives_required": true,
-        "threshold_note": "Score >= 160 triggers consideration of alternative project sites per FPPA guidelines."
-      }
-    },
-    {
-      "id": "CA_FRESNO_STORIE_PARCEL",
-      "name": "California Fresno County Storie Index Evaluation",
-      "state_fips": "06",
-      "county_fips": "019",
-      "county_name": "Fresno County, CA",
-      "project_type": "site",
-      "productivity_index": "STORIE",
-      "county_max_rating": 100.0,
-      "map_units": [
-        {
-          "mukey": "462001",
-          "musym": "HdA",
-          "muname": "Hanford sandy loam, 0 to 2 percent slopes",
-          "acres": 50.0,
-          "raw_rating": 95.0,
-          "normalized_relative_rating": 0.95,
-          "is_rated": true,
-          "unrated_reason": null
-        },
-        {
-          "mukey": "462008",
-          "musym": "SjA",
-          "muname": "San Joaquin loam, 0 to 3 percent slopes",
-          "acres": 30.0,
-          "raw_rating": 52.0,
-          "normalized_relative_rating": 0.52,
-          "is_rated": true,
-          "unrated_reason": null
-        },
-        {
-          "mukey": "462015",
-          "musym": "Gr",
-          "muname": "Gravel pits",
-          "acres": 20.0,
-          "raw_rating": 0.0,
-          "normalized_relative_rating": 0.0,
-          "is_rated": false,
-          "unrated_reason": "Non-soil / quarry extraction land unit"
-        }
-      ],
-      "expected_evaluation": {
-        "rated_acreage": 80.0,
-        "unrated_acreage": 20.0,
-        "total_acreage": 100.0,
-        "coverage_percent": 80.0,
-        "aoi_relative_rating": 0.7888,
-        "candidate_le_score": 78.88,
-        "county_farmland_percentile_higher": 71.5
-      },
-      "site_assessment": {
-        "total_sa_score": 60.0,
-        "criteria_count": 12
-      },
-      "expected_lesa_summary": {
-        "total_lesa_score": 138.88,
-        "mandatory_alternatives_required": false,
-        "threshold_note": "Score < 160 indicates lower farmland protection priority; alternatives not mandated."
-      }
-    },
     {
       "id": "US_NCCPI_MIXED_RATED_UNRATED",
       "name": "Standard NCCPI v3 Parcel Evaluation with Mixed Map Units",
@@ -248,7 +78,7 @@
           "muname": "Kenoma silt loam, 1 to 3 percent slopes",
           "acres": 12.5,
           "raw_rating": 0.51,
-          "normalized_relative_rating": 0.60,
+          "normalized_relative_rating": 0.6,
           "is_rated": true,
           "unrated_reason": null
         },
@@ -258,7 +88,7 @@
           "muname": "Sibleyville complex, 5 to 15 percent slopes",
           "acres": 17.5,
           "raw_rating": 0.34,
-          "normalized_relative_rating": 0.40,
+          "normalized_relative_rating": 0.4,
           "is_rated": true,
           "unrated_reason": null
         }
@@ -280,56 +110,6 @@
         "total_lesa_score": 143.33,
         "mandatory_alternatives_required": false,
         "threshold_note": "Corridor total score < 160 does not mandate alternative corridor selection under Form NRCS-CPA-106."
-      }
-    },
-    {
-      "id": "CORRIDOR_PIPELINE_HIGH_IMPACT",
-      "name": "Corridor Pipeline Alternative - High Farmland Impact (>=160)",
-      "state_fips": "19",
-      "county_fips": "169",
-      "county_name": "Story County, IA",
-      "project_type": "corridor",
-      "productivity_index": "CSR2",
-      "county_max_rating": 100.0,
-      "map_units": [
-        {
-          "mukey": "406439",
-          "musym": "138B",
-          "muname": "Clarion loam, 2 to 6 percent slopes",
-          "acres": 25.0,
-          "raw_rating": 89.0,
-          "normalized_relative_rating": 0.89,
-          "is_rated": true,
-          "unrated_reason": null
-        },
-        {
-          "mukey": "406450",
-          "musym": "107",
-          "muname": "Webster clay loam, 0 to 2 percent slopes",
-          "acres": 25.0,
-          "raw_rating": 86.0,
-          "normalized_relative_rating": 0.86,
-          "is_rated": true,
-          "unrated_reason": null
-        }
-      ],
-      "expected_evaluation": {
-        "rated_acreage": 50.0,
-        "unrated_acreage": 0.0,
-        "total_acreage": 50.0,
-        "coverage_percent": 100.0,
-        "aoi_relative_rating": 0.875,
-        "candidate_le_score": 87.5,
-        "county_farmland_percentile_higher": 80.5
-      },
-      "site_assessment": {
-        "total_sa_score": 110.0,
-        "criteria_count": 10
-      },
-      "expected_lesa_summary": {
-        "total_lesa_score": 197.5,
-        "mandatory_alternatives_required": true,
-        "threshold_note": "Corridor total score >= 160 mandates evaluation of alternative alignments per Form NRCS-CPA-106."
       }
     }
   ]

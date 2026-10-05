@@ -73,7 +73,10 @@ def _normalize_productivity_index(
         try:
             return ProductivityIndexType(productivity_index.upper())
         except ValueError:
-            return ProductivityIndexType.CUSTOM
+            raise ValueError(
+                f"Unsupported productivity index type '{productivity_index}'. "
+                "Supported fixed selector: 'nccpi'."
+            ) from None
     return productivity_index
 
 
@@ -350,7 +353,7 @@ def evaluate_land_evaluation(
     Args:
         mapunit_ratings: List of MapUnitProductivityRating instances or rating dicts.
         acreages: Mapping or list of tuples of (mukey, acres).
-        productivity_index: Index type used (NCCPI, CSR2, CPI, STORIE, CUSTOM).
+        productivity_index: Supported soil productivity index (NCCPI).
         county_farmland_distribution: Optional county farmland rating distribution.
 
     Returns:
@@ -712,7 +715,7 @@ def evaluate_lesa(
         project_type: 'site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106.
         project_farm_acres: Affected farm parcel size in acres.
         county_average_farm_acres: County average farm size in acres.
-        productivity_index: Productivity index type used for LE.
+        productivity_index: Supported soil productivity index (NCCPI).
 
     Returns:
         PreliminaryLESAResponse object.

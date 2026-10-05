@@ -58,33 +58,6 @@ class TestRelativeRatingNormalization:
         assert results[1].normalized_relative_rating == pytest.approx(0.7234, abs=1e-4)
         assert results[0].county_max_rating == 0.94
 
-    def test_csr2_normalization(self) -> None:
-        ratings = [
-            {"mukey": "406439", "musym": "138B", "raw_rating": 89.0},
-            {"mukey": "406450", "musym": "107", "raw_rating": 86.0},
-        ]
-        results = calculate_relative_ratings(ratings, county_max=100.0)
-        assert results[0].normalized_relative_rating == 0.89
-        assert results[1].normalized_relative_rating == 0.86
-
-    def test_cpi_normalization(self) -> None:
-        ratings = [
-            {"mukey": "415201", "musym": "L83A", "raw_rating": 93.0},
-            {"mukey": "415205", "musym": "L85A", "raw_rating": 96.0},
-        ]
-        results = calculate_relative_ratings(ratings, county_max=100.0)
-        assert results[0].normalized_relative_rating == 0.93
-        assert results[1].normalized_relative_rating == 0.96
-
-    def test_storie_normalization(self) -> None:
-        ratings = [
-            {"mukey": "462001", "musym": "HdA", "raw_rating": 95.0},
-            {"mukey": "462008", "musym": "SjA", "raw_rating": 52.0},
-        ]
-        results = calculate_relative_ratings(ratings, county_max=100.0)
-        assert results[0].normalized_relative_rating == 0.95
-        assert results[1].normalized_relative_rating == 0.52
-
     def test_rating_clamped_to_one(self) -> None:
         ratings = [{"mukey": "1001", "raw_rating": 105.0}]
         results = calculate_relative_ratings(ratings, county_max=100.0)
@@ -158,18 +131,6 @@ class TestUnratedAndSentinelFiltering:
             assert r.is_rated is False
             assert r.normalized_relative_rating is None
 
-    def test_99_is_unrated_for_zero_to_hundred_indexes(self) -> None:
-        for index in (
-            ProductivityIndexType.CSR2,
-            ProductivityIndexType.CPI,
-            ProductivityIndexType.STORIE,
-        ):
-            results = calculate_relative_ratings(
-                [{"mukey": "101", "raw_rating": 99.0}], county_max=100.0
-            )
-            assert results[0].is_rated is False
-            assert results[0].normalized_relative_rating is None
-
 
 def test_preliminary_lesa_rejects_inconsistent_threshold_flag() -> None:
     with pytest.raises(ValueError, match="mandatory_alternatives_required"):
@@ -182,73 +143,6 @@ def test_preliminary_lesa_rejects_inconsistent_threshold_flag() -> None:
             mandatory_alternatives_required=False,
             regulatory_notice="notice",
         )
-
-
-@pytest.mark.parametrize(
-    ("productivity_index", "expected"),
-    [
-        ("CSR2", ProductivityIndexType.CSR2),
-        ("CPI", ProductivityIndexType.CPI),
-        ("Storie", ProductivityIndexType.STORIE),
-    ],
-)
-def test_evaluate_lesa_normalizes_string_productivity_index(
-    productivity_index: str, expected: ProductivityIndexType
-) -> None:
-    result = evaluate_lesa(
-        project_name=f"{productivity_index} project",
-        land_evaluation=50.0,
-        productivity_index=productivity_index,
-    )
-    assert result.land_evaluation.productivity_index == expected
-    assert result.land_evaluation.productivity_index.value == expected.value
-    assert result.land_evaluation.productivity_index != ProductivityIndexType.NCCPI
-
-
-def test_evaluate_lesa_unsupported_productivity_index_uses_custom() -> None:
-    result = evaluate_lesa(
-        project_name="Custom index project",
-        land_evaluation=50.0,
-        productivity_index="not-an-index",
-    )
-
-    assert result.land_evaluation.productivity_index is ProductivityIndexType.CUSTOM
-    assert result.land_evaluation.productivity_index.value == "CUSTOM"
-    assert result.land_evaluation.candidate_le_score == 50.0
-
-
-@pytest.mark.parametrize(
-    ("land_evaluation", "available", "expected_score"),
-    [(50.0, True, 50.0), (None, False, 0.0)],
-)
-@pytest.mark.parametrize(
-    ("productivity_index", "expected"),
-    [
-        ("CSR2", ProductivityIndexType.CSR2),
-        ("CPI", ProductivityIndexType.CPI),
-        ("Storie", ProductivityIndexType.STORIE),
-        ("not-an-index", ProductivityIndexType.CUSTOM),
-    ],
-)
-def test_evaluate_lesa_fallback_preserves_requested_index(
-    land_evaluation: float | None,
-    available: bool,
-    expected_score: float,
-    productivity_index: str,
-    expected: ProductivityIndexType,
-) -> None:
-    result = evaluate_lesa(
-        project_name=f"{productivity_index} fallback",
-        land_evaluation=land_evaluation,
-        productivity_index=productivity_index,
-    )
-
-    summary = result.land_evaluation
-    assert summary.productivity_index == expected
-    assert summary.productivity_index.value == expected.value
-    assert summary.candidate_le_score == expected_score
-    assert summary.coverage_percent == (100.0 if available else 0.0)
-    assert summary.notices == ([] if available else ["Land Evaluation score unavailable."])
 
 
 def test_calculate_relative_ratings_treats_all_sentinels_as_unrated() -> None:
@@ -279,14 +173,14 @@ def test_sentinel_and_unavailable_units_do_not_contribute_to_land_evaluation() -
     summary = evaluate_land_evaluation(
         ratings,
         acreages={"1": 10.0, "2": 20.0, "3": 30.0, "4": 40.0, "5": 50.0},
-        productivity_index="CSR2",
+        productivity_index="NCCPI",
     )
 
     assert summary.rated_acreage == 0.0
     assert summary.unrated_acreage == 150.0
     assert summary.coverage_percent == 0.0
     assert summary.candidate_le_score is None
-    assert summary.productivity_index is ProductivityIndexType.CSR2
+    assert summary.productivity_index is ProductivityIndexType.NCCPI
 
 
 class TestAreaWeightingAndAggregation:
@@ -512,7 +406,7 @@ class TestUnifiedLESARouter:
 
     def test_evaluate_lesa_with_summaries(self) -> None:
         le_summary = LandEvaluationSummary(
-            productivity_index=ProductivityIndexType.CSR2,
+            productivity_index=ProductivityIndexType.NCCPI,
             aoi_relative_rating=0.7655,
             candidate_le_score=76.55,
             rated_acreage=100.0,
@@ -556,6 +450,8 @@ class TestBenchmarkSuiteValidation:
             case_id = case["id"]
             proj_type = case["project_type"]
             idx_name = case["productivity_index"]
+            if str(idx_name).strip().lower() != "nccpi":
+                continue
             county_max = case["county_max_rating"]
             map_units = case["map_units"]
             expected_le = case["expected_evaluation"]

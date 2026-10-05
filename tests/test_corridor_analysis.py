@@ -505,32 +505,15 @@ def test_corridor_wkt_indirect_geometry_support():
     )
 
 
-@pytest.mark.parametrize("productivity_index", ["CSR2", "CPI", "STORIE", "CUSTOM"])
-def test_corridor_unsupported_selector_rejected_before_sda_lookup(productivity_index):
+def test_corridor_unsupported_selector_rejected_before_sda_lookup():
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
     with pytest.raises(ValueError, match="Unsupported productivity index type"):
         CorridorAnalyzer(sda_client=mock_sda).analyze_corridor(
             centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
             buffer_distance=50.0,
-            productivity_index=productivity_index,
+            productivity_index="unsupported",
         )
-    mock_sda.get_spatial_intersection.assert_not_called()
-    mock_sda.get_productivity_ratings.assert_not_called()
-    mock_sda.get_interpretations.assert_not_called()
-
-
-def test_corridor_custom_productivity_selector_is_rejected_before_sda_lookup():
-    mock_sda = MagicMock(spec=SDAClient)
-    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
-
-    with pytest.raises(ValueError, match="Unsupported productivity index type"):
-        CorridorAnalyzer(sda_client=mock_sda).analyze_corridor(
-            centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
-            buffer_distance=50.0,
-            productivity_index="CUSTOM",
-        )
-
     mock_sda.get_spatial_intersection.assert_not_called()
     mock_sda.get_productivity_ratings.assert_not_called()
     mock_sda.get_interpretations.assert_not_called()

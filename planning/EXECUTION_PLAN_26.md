@@ -92,6 +92,7 @@ that failed to call an advertised tool.
 | 4 | 26.4.1 | Add opt-in SDA rule catalog coverage | `tests/test_live_sda.py`, `planning/tasks/26.4.1.todo.md` | 26.1.1 |
 | 5 | 26.5.1 | Run complete verification | `planning/STATE_26.md`, `planning/tasks/26.5.1.todo.md` | 26.3.1, 26.3.2, 26.3.3, 26.4.1 |
 | 5 | 26.5.2 | Correct verification formatting failures | `eval/run_evals.py`, `eval/test_agent_eval.py`, `tests/test_geometry.py`, `planning/STATE_26.md`, `planning/tasks/26.5.2.todo.md` | 26.5.1 |
+| 6 | 26.6.1 | Remove premature selector surfaces | `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/lesa.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `README.md`, `manifest.yaml`, `server.json`, `eval/prompt_test_cases.json`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_corridor_analysis.py`, `tests/test_tools.py`, `tests/test_live_sda.py`, `planning/STATE_26.md`, `planning/tasks/26.6.1.todo.md` | 26.5.2 |
 
 ## Task Specifications
 
@@ -253,3 +254,21 @@ that failed to call an advertised tool.
   identified by task 26.5.1. Preserve behavior and do not refactor.
 - **Acceptance**: `uv run ruff check .`, `uv run ruff format --check .`, and
   affected deterministic tests pass.
+
+### 26.6.1 — Remove premature selector surfaces
+- **Repo**: `AndrewBrown-USDA/fpac-soil-mcp`
+- **Files in scope**: the files listed in the wave table.
+- **Depends on**: 26.5.2
+- **Spec**: Simplify the public and test contract to the validated national
+  NCCPI selector. Remove speculative CSR2/CPI/Storie/CUSTOM members, caller
+  descriptions, provenance claims, eval prompts, and normal-path tests that
+  treat those selectors as available features. Remove dead fixed-query
+  templates/provenance branches that are no longer reachable, while retaining
+  the explicit metadata-validated dynamic SDV seam for future support. Keep
+  one narrow invalid-selector rejection test using a generic unsupported value,
+  not invented product selectors. Do not change the NCCPI behavior or
+  unrelated eval cases.
+- **Acceptance**: targeted tests for models, SDA, LESA, polygon/corridor tools,
+  and eval fixtures pass; `uv run pytest -m "not live_network"`,
+  `uv run ruff check .`, and `uv run ruff format --check .` pass; public
+  metadata contains no claims that CSR2/CPI/Storie are supported.

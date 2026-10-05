@@ -475,30 +475,25 @@ class TestSDAClientExecution:
         val = client.get_county_max_productivity_rating("IL019", index_type="nccpi")
         assert val == 0.94
 
-    @pytest.mark.parametrize("index_type", ["csr2", "cpi", "storie", "custom"])
     def test_get_county_max_productivity_rating_rejects_unsupported_without_sda_call(
-        self, index_type: str
+        self,
     ) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             raise AssertionError("unsupported selector must not reach SDA")
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
         with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
-            client.get_county_max_productivity_rating("IA169", index_type=index_type)
+            client.get_county_max_productivity_rating("IA169", index_type="unsupported")
 
     def test_get_county_max_productivity_rating_sentinels_and_nulls(self) -> None:
-        client_sentinel = SDAClient()
+        client = SDAClient()
         with pytest.raises(SDAValidationError):
-            client_sentinel.get_county_max_productivity_rating("IA169", "csr2")
-
-        client_zero = SDAClient()
-        with pytest.raises(SDAValidationError):
-            client_zero.get_county_max_productivity_rating("IA169", "csr2")
+            client.get_county_max_productivity_rating("IA169", "unsupported")
 
     def test_get_county_max_productivity_rating_validation_errors(self) -> None:
         client = SDAClient()
         with pytest.raises(SDAValidationError, match="Invalid soil survey area symbol"):
-            client.get_county_max_productivity_rating("INVALID-AREA!", "csr2")
+            client.get_county_max_productivity_rating("INVALID-AREA!", "unsupported")
 
         with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
             client.get_county_max_productivity_rating("IA169", "unknown_index")
@@ -533,16 +528,15 @@ class TestSDAClientExecution:
         assert results[0]["is_rated"] is True
         assert results[0]["index_type"] == "nccpi"
 
-    @pytest.mark.parametrize("index_type", ["csr2", "cpi", "storie", "custom"])
     def test_get_productivity_ratings_rejects_unsupported_without_sda_call(
-        self, index_type: str
+        self,
     ) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             raise AssertionError("unsupported selector must not reach SDA")
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
         with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
-            client.get_productivity_ratings(["406439"], index_type=index_type)
+            client.get_productivity_ratings(["406439"], index_type="unsupported")
 
     def test_get_productivity_ratings_unrated_and_missing(self) -> None:
         mock_resp = {
@@ -639,26 +633,26 @@ class TestSDAClientExecution:
         query = build_dynamic_sdv_query(meta, "'1001'")
         assert "rating NOT IN (99, 999, -99, -999)" in query
 
-    def test_build_dynamic_sdv_query_cpi_does_not_match_nccpi(self) -> None:
+    def test_build_dynamic_sdv_query_uses_exact_rule_name(self) -> None:
         meta = {
             "attributetablename": "cointerp",
             "attributecolumnname": "interphr",
-            "nasisrulename": "CPI - Crop Productivity Index",
+            "nasisrulename": "Future Validated Rule",
         }
         query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "ci.mrulename = 'CPI - Crop Productivity Index'" in query
-        assert "LIKE '%CPI%'" not in query
+        assert "ci.mrulename = 'Future Validated Rule'" in query
+        assert "LIKE '%Future Validated Rule%'" not in query
         assert "NCCPI" not in query
 
-    def test_build_dynamic_sdv_county_max_cpi_does_not_match_nccpi(self) -> None:
+    def test_build_dynamic_sdv_county_max_uses_exact_rule_name(self) -> None:
         meta = {
             "attributetablename": "cointerp",
             "attributecolumnname": "interphr",
-            "nasisrulename": "CPI - Crop Productivity Index",
+            "nasisrulename": "Future Validated Rule",
         }
         query = build_dynamic_sdv_county_max_query(meta, "IA169")
-        assert "ci.mrulename = 'CPI - Crop Productivity Index'" in query
-        assert "LIKE '%CPI%'" not in query
+        assert "ci.mrulename = 'Future Validated Rule'" in query
+        assert "LIKE '%Future Validated Rule%'" not in query
         assert "NCCPI" not in query
 
     def test_build_dynamic_sdv_query_component(self) -> None:

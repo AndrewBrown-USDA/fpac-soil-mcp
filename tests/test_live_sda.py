@@ -86,12 +86,11 @@ class TestLiveSDA:
 
         assert "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)" in rules
 
-    def test_fixed_selector_rejects_csr2(self) -> None:
-        """The public fixed selector must reject CSR2 regardless of catalog contents."""
+    def test_fixed_selector_rejects_unsupported_value(self) -> None:
+        """The public fixed selector rejects unsupported values."""
         client = SDAClient()
-
         with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
-            client.get_productivity_ratings(mukeys=["402001"], index_type="csr2")
+            client.get_productivity_ratings(mukeys=["402001"], index_type="unsupported")
 
     def test_live_geometry_extraction(self) -> None:
         """Query live geometry extraction returning WKT polygon shapes."""

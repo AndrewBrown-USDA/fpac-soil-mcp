@@ -22,10 +22,28 @@
 | 4 | 26.4.1 Add opt-in SDA rule catalog coverage | done |
 | 5 | 26.5.1 Run complete verification | done |
 | 5 | 26.5.2 Correct verification formatting failures | done |
+| 6 | 26.6.1 Remove premature selector surfaces | done |
 
 ## Task reports
 
 <!-- Worker reports are appended below, one section per task, <=15 lines. -->
+
+## 26.6.1
+
+- **Status**: complete; public and test contracts now expose validated national NCCPI only.
+- **Changes**: removed speculative selector enum members, fixed SDA query/provenance
+  branches, caller/metadata claims, unsupported eval cases, product-specific
+  rejection parametrizations, and non-NCCPI benchmark fixtures; retained NCCPI and
+  metadata-validated dynamic SDV queries.
+- **Targeted tests**: `uv run pytest tests\test_models.py tests\test_sda_client.py tests\test_lesa.py tests\test_corridor_analysis.py tests\test_tools.py tests\test_live_sda.py -m "not live_network" -q` — 140 passed, 7 deselected.
+- **Offline suite**: `uv run pytest -m "not live_network"` — 295 passed, 12 deselected.
+- **Ruff**: `uv run ruff check .` passed; `uv run ruff format --check .` passed with 319 files already formatted.
+- **Scope**: changed only task-scoped implementation, metadata, eval/test, and planning files; no live-network tests were run.
+- **Corrective review**: removed the stale corridor README claim and CSR2/CPI/Storie
+  benchmark fixtures; reran all validations successfully.
+- **Deviations**: none.
+- **Corrective review**: removed the remaining unsupported corridor README
+  description and filtered `tests\fixtures\le_benchmarks.json` to NCCPI cases only.
 
 ## 26.5.2
 

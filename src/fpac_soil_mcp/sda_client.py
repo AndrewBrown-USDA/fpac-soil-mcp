@@ -27,13 +27,7 @@ from fpac_soil_mcp.http_client import (
 
 logger = logging.getLogger(__name__)
 
-PRODUCTIVITY_PROVENANCE = {
-    "nccpi": "SDA:NCCPI_V3",
-    "csr2": "SDA:CSR2",
-    "cpi": "SDA:CPI",
-    "storie": "SDA:STORIE",
-    "custom": "SDA:CUSTOM",
-}
+PRODUCTIVITY_PROVENANCE = {"nccpi": "SDA:NCCPI_V3"}
 
 # Fixed SQL query templates - no user SQL passthrough allowed
 SQL_POINT_LOOKUP = """\
@@ -238,100 +232,6 @@ FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
 """
 
-SQL_PRODUCTIVITY_CSR2 = """\
-WITH comp_rating AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        ci.interphr AS rating
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
-        AND ci.ruledepth = 0
-        AND (ci.mrulename LIKE '%CSR2%' OR ci.mrulename LIKE '%csr2%' OR ci.mrulename LIKE '%Corn Suitability Rating%')
-    WHERE m.mukey IN ({mukeys_csv})
-      AND c.compkind != 'miscellaneous area'
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM comp_rating
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
-SQL_PRODUCTIVITY_CPI = """\
-WITH comp_rating AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        ci.interphr AS rating
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
-        AND ci.ruledepth = 0
-        AND (ci.mrulename LIKE '%CPI%' OR ci.mrulename LIKE '%Crop Productivity Index%')
-        AND ci.mrulename NOT LIKE '%NCCPI%'
-    WHERE m.mukey IN ({mukeys_csv})
-      AND c.compkind != 'miscellaneous area'
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM comp_rating
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
-SQL_PRODUCTIVITY_STORIE = """\
-WITH comp_rating AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        ci.interphr AS rating
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
-        AND ci.ruledepth = 0
-        AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
-    WHERE m.mukey IN ({mukeys_csv})
-      AND c.compkind != 'miscellaneous area'
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM comp_rating
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
 SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI = """\
 SELECT
     MAX(ci.interphr) AS max_county_rating
@@ -346,53 +246,6 @@ WHERE l.areasymbol = '{areasymbol}'
   AND ci.interphr NOT IN (99, 999, -99, -999)
   AND c.compkind != 'miscellaneous area'
 """
-
-SQL_PRODUCTIVITY_COUNTY_MAX_CSR2 = """\
-SELECT
-    MAX(ci.interphr) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
-WHERE l.areasymbol = '{areasymbol}'
-  AND ci.ruledepth = 0
-  AND (ci.mrulename LIKE '%CSR2%' OR ci.mrulename LIKE '%csr2%' OR ci.mrulename LIKE '%Corn Suitability Rating%')
-  AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999, -99, -999)
-  AND c.compkind != 'miscellaneous area'
-"""
-
-SQL_PRODUCTIVITY_COUNTY_MAX_CPI = """\
-SELECT
-    MAX(ci.interphr) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
-WHERE l.areasymbol = '{areasymbol}'
-  AND ci.ruledepth = 0
-  AND (ci.mrulename LIKE '%CPI%' OR ci.mrulename LIKE '%Crop Productivity Index%')
-  AND ci.mrulename NOT LIKE '%NCCPI%'
-  AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999, -99, -999)
-  AND c.compkind != 'miscellaneous area'
-"""
-
-SQL_PRODUCTIVITY_COUNTY_MAX_STORIE = """\
-SELECT
-    MAX(ci.interphr) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
-WHERE l.areasymbol = '{areasymbol}'
-  AND ci.ruledepth = 0
-  AND (ci.mrulename LIKE '%Storie%' OR ci.mrulename LIKE '%storie%')
-  AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999, -99, -999)
-  AND c.compkind != 'miscellaneous area'
-"""
-
 
 ALLOWED_SDV_TABLES = {
     "cointerp",
@@ -998,7 +851,7 @@ class SDAClient:
 
         Args:
             areasymbol: 5-character soil survey area symbol (e.g. 'IA169', 'IN097', 'CA001').
-            index_type: Productivity index type ('nccpi', 'csr2', 'cpi', 'storie') or custom attribute.
+            index_type: Fixed productivity selector ('nccpi').
             attribute_meta: Optional sdvattribute record for dynamic query generation.
 
         Returns:
@@ -1051,14 +904,14 @@ class SDAClient:
 
         Args:
             mukeys: List of map unit keys (integers or numeric strings).
-            index_type: 'nccpi', 'csr2', 'cpi', 'storie', or custom attribute name.
+            index_type: Fixed productivity selector ('nccpi').
             areasymbol: Optional county/survey area symbol filter or override.
             attribute_meta: Optional sdvattribute record for dynamic query generation.
 
         Returns:
             List of structured rating dictionaries with component rated percentages,
             caveats, and ``productivity_rating_source`` identifying the selected
-            fixed SDA interpretation or custom SDV attribute.
+            SDA interpretation.
 
         Raises:
             SDAValidationError: If mukeys or index_type are invalid.
@@ -1073,7 +926,7 @@ class SDAClient:
         idx = index_type.strip().lower()
         if attribute_meta:
             norm_idx = str(attribute_meta.get("attributename", index_type)).lower()
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["custom"]
+            productivity_rating_source = "SDA:SDVATTRIBUTE"
             query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
         elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
             norm_idx = "nccpi"

@@ -235,7 +235,7 @@ class TestFPPATools:
         mock_response = MagicMock()
         mock_response.manifest = {
             "land_evaluation": {
-                "productivity_index": "CSR2",
+                "productivity_index": "NCCPI",
                 "candidate_le_score": 72.0,
                 "aoi_relative_rating": 0.72,
                 "total_acreage": 1.0,
@@ -311,16 +311,15 @@ class TestFPPATools:
                 project_type="corridor",
             )
 
-    @pytest.mark.parametrize("productivity_index", ["csr2", "cpi", "storie", "custom"])
     def test_calculate_preliminary_lesa_rejects_unsupported_selector(
-        self, productivity_index: str
+        self,
     ) -> None:
         with pytest.raises(ValueError, match="Unsupported productivity index type"):
             calculate_preliminary_lesa(
-                project_name=f"{productivity_index} corridor",
+                project_name="unsupported corridor",
                 geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
                 project_type="corridor",
-                productivity_index=productivity_index,
+                productivity_index="unsupported",
             )
 
     @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
@@ -339,25 +338,8 @@ class TestFPPATools:
                 project_name="benchmarked corridor",
                 geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
                 project_type="corridor",
-                productivity_index="csr2",
+                productivity_index="unsupported",
                 max_county_rating_override=88.0,
-            )
-
-    @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
-    def test_calculate_preliminary_lesa_normalizes_custom_index(
-        self, mock_corridor: MagicMock
-    ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 42.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 1.0},
-        }
-
-        with pytest.raises(ValueError, match="Unsupported productivity index type"):
-            calculate_preliminary_lesa(
-                project_name="custom corridor",
-                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
-                project_type="corridor",
-                productivity_index="custom",
             )
 
 

@@ -186,14 +186,14 @@ def analyze_farmland_by_polygon(
     """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
 
     Calculates geodesic surface acreage, checks Census 2020 Urban Area boundaries,
-    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches crop
-    productivity ratings (NCCPI, CSR2, CPI, Storie, or custom), computes candidate Land
+    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches NCCPI
+    crop productivity ratings, computes candidate Land
     Evaluation scores, and summarizes acreage across statutory farmland categories.
 
     Args:
         geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
         include_nccpi: Whether to retrieve crop productivity ratings.
-        productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie'). Default is 'nccpi'.
+        productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
 
     Returns:
@@ -389,8 +389,7 @@ def analyze_corridor_fppa(
         indirect_geometry: Optional GeoJSON Polygon/MultiPolygon or WKT for staging/access areas.
         alternatives: Optional list of alternative alignment dicts [{'alternative_id': 'Alt B', 'centerline': ...}].
         include_nccpi: Whether to retrieve component-weighted NCCPI v3 crop productivity ratings.
-        productivity_index: Requested soil productivity index. Supported values include
-            NCCPI, CSR2, CPI, STORIE, and CUSTOM selectors.
+        productivity_index: Requested soil productivity index ('nccpi').
         max_county_rating_override: Optional positive county benchmark override used
             for corridor normalization and Land Evaluation scoring.
         site_assessment_inputs: Optional dictionary of Part VI Site Assessment inputs for CPA-106 scoring:
@@ -416,10 +415,7 @@ def analyze_corridor_fppa(
         "alternatives": alternatives,
         "include_nccpi": include_nccpi,
     }
-    if (
-        normalized_productivity_index is not ProductivityIndexType.NCCPI
-        or max_county_rating_override is not None
-    ):
+    if max_county_rating_override is not None:
         corridor_kwargs["productivity_index"] = productivity_index
         corridor_kwargs["max_county_rating_override"] = max_county_rating_override
     corridor_response = analyzer.analyze_corridor(
@@ -511,7 +507,7 @@ def calculate_preliminary_lesa(
         geometry: GeoJSON geometry dict or string (Polygon or MultiPolygon for site;
             LineString or MultiLineString for corridor).
         project_type: Project geometry type ('site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106).
-        productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie'). Default is 'nccpi'.
+        productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
         site_assessment_inputs: Optional dictionary of Part V/VI Site Assessment parameters:
             - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
@@ -553,10 +549,7 @@ def calculate_preliminary_lesa(
             "buffer_units": corridor_buffer_units,
             "include_nccpi": normalized_productivity_index is ProductivityIndexType.NCCPI,
         }
-        if (
-            normalized_productivity_index is not ProductivityIndexType.NCCPI
-            or max_county_rating_override is not None
-        ):
+        if max_county_rating_override is not None:
             corridor_kwargs["productivity_index"] = productivity_index
             corridor_kwargs["max_county_rating_override"] = max_county_rating_override
         corridor_result = analyze_corridor_fppa(**corridor_kwargs)
@@ -662,7 +655,7 @@ def register_soil_tools(mcp: FastMCP) -> None:
             "Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI. "
             "Calculates total equal-area acreage, checks Census 2020 Urban Area statutory exemption status, "
             "queries intersecting SSURGO map units via SDA with exact spatial clipping, retrieves crop "
-            "productivity ratings (NCCPI, CSR2, CPI, Storie), calculates candidate Land Evaluation (LE) scores, "
+            "NCCPI productivity ratings, calculates candidate Land Evaluation (LE) scores, "
             "and generates acreage breakdowns by farmland classification."
         ),
     )(analyze_farmland_by_polygon)

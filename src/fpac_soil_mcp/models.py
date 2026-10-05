@@ -319,12 +319,6 @@ class ProductivityIndexType(str, Enum):
     """Supported Soil Productivity Index types for Land Evaluation (LE)."""
 
     NCCPI = "NCCPI"
-    # Retained for deserialization/backward compatibility; SDA retrieval rejects
-    # these non-deterministic selectors.
-    CSR2 = "CSR2"
-    CPI = "CPI"
-    STORIE = "STORIE"
-    CUSTOM = "CUSTOM"
 
 
 class MapUnitProductivityRating(BaseModel):

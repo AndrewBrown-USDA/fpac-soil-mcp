@@ -8,7 +8,9 @@
       "target_type": "tool",
       "target_name": "explain_fppa_screening_scope",
       "user_prompt": "Using the FPPA screening explanation tool, explain the difference between preliminary SDA soil screening under 7 CFR Part 657 and a formal FPPA LESA determination or Form AD-1006 / NRCS-CPA-106 under 7 CFR Part 658.",
-      "expected_tools": ["explain_fppa_screening_scope"],
+      "expected_tools": [
+        "explain_fppa_screening_scope"
+      ],
       "expected_keywords": [
         "7 CFR",
         "preliminary",
@@ -22,7 +24,9 @@
       "target_type": "tool",
       "target_name": "list_farmland_classes",
       "user_prompt": "List all official USDA NRCS SSURGO farmland classification categories, their definitions, and their FPPA protection status.",
-      "expected_tools": ["list_farmland_classes"],
+      "expected_tools": [
+        "list_farmland_classes"
+      ],
       "expected_keywords": [
         "Prime Farmland",
         "Statewide Importance",
@@ -35,14 +39,19 @@
       "target_type": "tool",
       "target_name": "get_farmland_classification_by_point",
       "user_prompt": "What is the USDA soil map unit, farmland classification, and FPPA status at latitude 41.8781, longitude -93.0977 (Story County, IA)?",
-      "expected_tools": ["get_farmland_classification_by_point"],
+      "expected_tools": [
+        "get_farmland_classification_by_point"
+      ],
       "expected_keywords": [
         "prime farmland",
         "mukey"
       ],
       "sample_geometry": {
         "type": "Point",
-        "coordinates": [-93.0977, 41.8781]
+        "coordinates": [
+          -93.0977,
+          41.8781
+        ]
       }
     },
     {
@@ -51,14 +60,19 @@
       "target_type": "tool",
       "target_name": "get_farmland_classification_by_point",
       "user_prompt": "Can you check the soil map unit and farmland classification for latitude 39.7684 and longitude -87.1581?",
-      "expected_tools": ["get_farmland_classification_by_point"],
+      "expected_tools": [
+        "get_farmland_classification_by_point"
+      ],
       "expected_keywords": [
         "mukey",
         "farmland"
       ],
       "sample_geometry": {
         "type": "Point",
-        "coordinates": [-87.1581, 39.7684]
+        "coordinates": [
+          -87.1581,
+          39.7684
+        ]
       }
     },
     {
@@ -67,7 +81,9 @@
       "target_type": "tool",
       "target_name": "get_farmland_classification_by_mukey",
       "user_prompt": "Retrieve the official farmland classification and soil map unit details for SSURGO map unit key (mukey) 412850.",
-      "expected_tools": ["get_farmland_classification_by_mukey"],
+      "expected_tools": [
+        "get_farmland_classification_by_mukey"
+      ],
       "expected_keywords": [
         "412850",
         "statewide importance"
@@ -79,7 +95,9 @@
       "target_type": "tool",
       "target_name": "analyze_farmland_by_polygon",
       "user_prompt": "Analyze the farmland classification and acreage breakdown for this proposed solar farm parcel in Story County, IA: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Please include NCCPI crop productivity index ratings and check for Census 2020 urban area overlap.",
-      "expected_tools": ["analyze_farmland_by_polygon"],
+      "expected_tools": [
+        "analyze_farmland_by_polygon"
+      ],
       "expected_keywords": [
         "acres",
         "prime farmland",
@@ -89,11 +107,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [-93.65, 42.02],
-            [-93.63, 42.02],
-            [-93.63, 42.04],
-            [-93.65, 42.04],
-            [-93.65, 42.02]
+            [
+              -93.65,
+              42.02
+            ],
+            [
+              -93.63,
+              42.02
+            ],
+            [
+              -93.63,
+              42.04
+            ],
+            [
+              -93.65,
+              42.04
+            ],
+            [
+              -93.65,
+              42.02
+            ]
           ]
         ]
       }
@@ -104,7 +137,9 @@
       "target_type": "tool",
       "target_name": "get_soil_polygons_by_geometry",
       "user_prompt": "Retrieve the clipped SSURGO soil map unit polygon boundaries and properties as a GeoJSON FeatureCollection for the following project boundary: POLYGON((-93.65 42.02, -93.63 42.02, -93.63 42.04, -93.65 42.04, -93.65 42.02))",
-      "expected_tools": ["get_soil_polygons_by_geometry"],
+      "expected_tools": [
+        "get_soil_polygons_by_geometry"
+      ],
       "expected_keywords": [
         "feature",
         "polygon"
@@ -113,11 +148,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [-93.65, 42.02],
-            [-93.63, 42.02],
-            [-93.63, 42.04],
-            [-93.65, 42.04],
-            [-93.65, 42.02]
+            [
+              -93.65,
+              42.02
+            ],
+            [
+              -93.63,
+              42.02
+            ],
+            [
+              -93.63,
+              42.04
+            ],
+            [
+              -93.65,
+              42.04
+            ],
+            [
+              -93.65,
+              42.02
+            ]
           ]
         ]
       }
@@ -127,8 +177,10 @@
       "category": "Phase 3 - Urban Exemption",
       "target_type": "tool",
       "target_name": "check_urban_area_exemption",
-      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR § 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
-      "expected_tools": ["check_urban_area_exemption"],
+      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR \u00c2\u00a7 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
+      "expected_tools": [
+        "check_urban_area_exemption"
+      ],
       "expected_keywords": [
         "urban",
         "7 CFR"
@@ -137,11 +189,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [-93.62, 41.58],
-            [-93.60, 41.58],
-            [-93.60, 41.60],
-            [-93.62, 41.60],
-            [-93.62, 41.58]
+            [
+              -93.62,
+              41.58
+            ],
+            [
+              -93.6,
+              41.58
+            ],
+            [
+              -93.6,
+              41.6
+            ],
+            [
+              -93.62,
+              41.6
+            ],
+            [
+              -93.62,
+              41.58
+            ]
           ]
         ]
       }
@@ -152,7 +219,9 @@
       "target_type": "tool",
       "target_name": "get_soil_interpretations",
       "user_prompt": "Retrieve the component-weighted National Commodity Crop Productivity Index (NCCPI v3) ratings for SSURGO map unit keys 412850, 412851, and 413100.",
-      "expected_tools": ["get_soil_interpretations"],
+      "expected_tools": [
+        "get_soil_interpretations"
+      ],
       "expected_keywords": [
         "rating",
         "nccpi"
@@ -163,8 +232,10 @@
       "category": "Phase 3 - Corridor Analysis",
       "target_type": "tool",
       "target_name": "analyze_corridor_fppa",
-      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR § 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
-      "expected_tools": ["analyze_corridor_fppa"],
+      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR \u00c2\u00a7 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
+      "expected_tools": [
+        "analyze_corridor_fppa"
+      ],
       "expected_keywords": [
         "corridor",
         "county",
@@ -174,9 +245,18 @@
       "sample_geometry": {
         "type": "LineString",
         "coordinates": [
-          [-93.62, 42.02],
-          [-93.55, 42.08],
-          [-93.45, 42.15]
+          [
+            -93.62,
+            42.02
+          ],
+          [
+            -93.55,
+            42.08
+          ],
+          [
+            -93.45,
+            42.15
+          ]
         ]
       }
     },
@@ -186,7 +266,9 @@
       "target_type": "tool",
       "target_name": "analyze_corridor_fppa",
       "user_prompt": "Compare two highway bypass alignments for FPPA farmland conversion impact: Primary Alignment: LINESTRING(-93.60 42.00, -93.50 42.10) with 100-foot buffer, versus Alternative Alignment B: LINESTRING(-93.62 42.00, -93.58 42.06, -93.50 42.10) with 100-foot buffer. Which route minimizes Prime Farmland conversion?",
-      "expected_tools": ["analyze_corridor_fppa"],
+      "expected_tools": [
+        "analyze_corridor_fppa"
+      ],
       "expected_keywords": [
         "alignment",
         "prime farmland",
@@ -195,8 +277,14 @@
       "sample_geometry": {
         "type": "LineString",
         "coordinates": [
-          [-93.60, 42.00],
-          [-93.50, 42.10]
+          [
+            -93.6,
+            42.0
+          ],
+          [
+            -93.5,
+            42.1
+          ]
         ]
       }
     },
@@ -258,7 +346,7 @@
       "category": "Assistant Prompts",
       "target_type": "prompt",
       "target_name": "fppa_corridor_screening_assistant",
-      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR § 658.5(c).",
+      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR \u00c2\u00a7 658.5(c).",
       "expected_tools": [],
       "expected_keywords": [
         "corridor",
@@ -296,8 +384,10 @@
       "category": "Phase 4 - Land Evaluation & Site Assessment",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Check if the total score triggers the 160-point statutory threshold under 7 CFR § 658.4(c)(2).",
-      "expected_tools": ["calculate_preliminary_lesa"],
+      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Check if the total score triggers the 160-point statutory threshold under 7 CFR \u00c2\u00a7 658.4(c)(2).",
+      "expected_tools": [
+        "calculate_preliminary_lesa"
+      ],
       "expected_keywords": [
         "LESA",
         "land evaluation",
@@ -308,11 +398,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [-93.65, 42.02],
-            [-93.63, 42.02],
-            [-93.63, 42.04],
-            [-93.65, 42.04],
-            [-93.65, 42.02]
+            [
+              -93.65,
+              42.02
+            ],
+            [
+              -93.63,
+              42.02
+            ],
+            [
+              -93.63,
+              42.04
+            ],
+            [
+              -93.65,
+              42.04
+            ],
+            [
+              -93.65,
+              42.02
+            ]
           ]
         ]
       }
@@ -322,11 +427,12 @@
       "category": "Phase 4 - Land Evaluation & Site Assessment",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Perform a complete preliminary Form AD-1006 LESA calculation for a proposed 45-acre regional medical clinic in Story County, IA: POLYGON((-93.58 42.01, -93.57555 42.01, -93.57555 42.01445, -93.58 42.01445, -93.58 42.01)). Use Iowa Corn Suitability Rating 2 (CSR2) as the productivity index and evaluate whether comprehensive site assessment scoring requires consideration of alternative non-farmland sites.",
-      "expected_tools": ["calculate_preliminary_lesa"],
+      "user_prompt": "Perform a complete preliminary Form AD-1006 LESA calculation for a proposed 45-acre regional medical clinic in Story County, IA: POLYGON((-93.58 42.01, -93.57555 42.01, -93.57555 42.01445, -93.58 42.01445, -93.58 42.01)). Use national NCCPI as the productivity index and evaluate whether comprehensive site assessment scoring requires consideration of alternative non-farmland sites.",
+      "expected_tools": [
+        "calculate_preliminary_lesa"
+      ],
       "expected_keywords": [
         "AD-1006",
-        "csr2",
         "land evaluation",
         "threshold"
       ],
@@ -334,56 +440,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [-93.58, 42.01],
-            [-93.57555, 42.01],
-            [-93.57555, 42.01445],
-            [-93.58, 42.01445],
-            [-93.58, 42.01]
-          ]
-        ]
-      }
-    },
-    {
-      "id": "LESA-03",
-      "category": "Phase 4 - Land Evaluation & Site Assessment",
-      "target_type": "tool",
-      "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Evaluate candidate Land Evaluation (LE) score and Form NRCS-CPA-106 corridor LESA metrics for a linear water pipeline right-of-way in Illinois using Crop Productivity Index (CPI): LINESTRING(-89.20 40.10, -89.10 40.20). Assess whether corridor alternative scoring exceeds the statutory protection threshold.",
-      "expected_tools": ["calculate_preliminary_lesa"],
-      "expected_keywords": [
-        "NRCS-CPA-106",
-        "corridor",
-        "score"
-      ],
-      "sample_geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [-89.20, 40.10],
-          [-89.10, 40.20]
-        ]
-      }
-    },
-    {
-      "id": "PROD-01",
-      "category": "Phase 4 - Productivity Ratings",
-      "target_type": "tool",
-      "target_name": "analyze_farmland_by_polygon",
-      "user_prompt": "Analyze the agricultural parcel POLYGON((-93.65 42.02, -93.63 42.02, -93.63 42.04, -93.65 42.04, -93.65 42.02)) in Story County, IA for state-specific soil productivity using CSR2 (Iowa Corn Suitability Rating 2) and return the area-weighted candidate LE score.",
-      "expected_tools": ["analyze_farmland_by_polygon"],
-      "expected_keywords": [
-        "csr2",
-        "Story",
-        "candidate"
-      ],
-      "sample_geometry": {
-        "type": "Polygon",
-        "coordinates": [
-          [
-            [-93.65, 42.02],
-            [-93.63, 42.02],
-            [-93.63, 42.04],
-            [-93.65, 42.04],
-            [-93.65, 42.02]
+            [
+              -93.58,
+              42.01
+            ],
+            [
+              -93.57555,
+              42.01
+            ],
+            [
+              -93.57555,
+              42.01445
+            ],
+            [
+              -93.58,
+              42.01445
+            ],
+            [
+              -93.58,
+              42.01
+            ]
           ]
         ]
       }

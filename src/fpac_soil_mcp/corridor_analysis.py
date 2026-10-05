@@ -58,19 +58,6 @@ logger = logging.getLogger(__name__)
 _NCCPI_RULE = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
 _NCCPI_SOURCE = "SDA:NCCPI_V3"
 _UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
-_INDEX_ALIASES = {
-    "nccpi": "nccpi",
-    "nccpi_v3": "nccpi",
-    "national commodity crop productivity index": "nccpi",
-    "csr2": "csr2",
-    "iacsr2": "csr2",
-    "iowa csr2": "csr2",
-    "cpi": "cpi",
-    "minnesota cpi": "cpi",
-    "storie": "storie",
-    "storie_index": "storie",
-    "california storie": "storie",
-}
 
 
 def _normalize_corridor_rating(value: Any, is_rated: Any) -> float | None:
@@ -93,17 +80,11 @@ def _get_corridor_ratings(
 ) -> dict[str, dict[str, Any]]:
     if not mukeys:
         return {}
-    if productivity_index == "nccpi":
-        rows = sda_client.get_interpretations(
-            mukeys=mukeys,
-            rule_name=_NCCPI_RULE,
-            aggregation_method="Weighted Average",
-        )
-    else:
-        rows = sda_client.get_productivity_ratings(
-            mukeys=mukeys,
-            index_type=productivity_index,
-        )
+    rows = sda_client.get_interpretations(
+        mukeys=mukeys,
+        rule_name=_NCCPI_RULE,
+        aggregation_method="Weighted Average",
+    )
     return {str(row.get("mukey")): dict(row) for row in rows}
 
 
@@ -162,7 +143,7 @@ class CorridorAnalyzer:
             alternatives: Optional list of alternative alignment dicts:
                 [{'alternative_id': 'B', 'centerline': ..., 'buffer_distance': ..., 'buffer_units': ...}]
             include_nccpi: Whether to retrieve component-weighted interpretations.
-            productivity_index: Soil productivity index type or custom fixed selector.
+            productivity_index: Soil productivity index type ('nccpi').
             max_county_rating_override: Optional positive county maximum benchmark.
 
         Returns:
@@ -182,7 +163,7 @@ class CorridorAnalyzer:
             not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
         ):
             raise ValueError("max_county_rating_override must be a positive finite number")
-        ratings_requested = include_nccpi or norm_idx != "nccpi"
+        ratings_requested = include_nccpi
 
         # 1. Resolve direct centerline geometry and compute geometry hash from centerline
         try:
@@ -469,7 +450,7 @@ class CorridorAnalyzer:
                     try:
                         benchmark = partition_max.get(
                             str(u.get("areasymbol")).strip(),
-                            max_county_rating_override or (1.0 if norm_idx == "nccpi" else 100.0),
+                            max_county_rating_override or 1.0,
                         )
                         le_score = min(1.0, max(0.0, numeric_rating / benchmark)) * 100.0
                         segment_le_sum += calc_ac * le_score
@@ -490,7 +471,7 @@ class CorridorAnalyzer:
                         productivity_rating_class=interp_info.get("rating_class"),
                         productivity_rating_source=interp_info.get(
                             "productivity_rating_source",
-                            _NCCPI_SOURCE if norm_idx == "nccpi" else norm_idx,
+                            _NCCPI_SOURCE,
                         ),
                     )
                 )
@@ -813,8 +794,7 @@ class CorridorAnalyzer:
                                 try:
                                     benchmark = alt_partition_max.get(
                                         str(au.get("areasymbol")).strip(),
-                                        max_county_rating_override
-                                        or (1.0 if norm_idx == "nccpi" else 100.0),
+                                        max_county_rating_override or 1.0,
                                     )
                                     le_score = min(1.0, max(0.0, num_rating / benchmark)) * 100.0
                                     alt_seg_le_sum += area_val * le_score
