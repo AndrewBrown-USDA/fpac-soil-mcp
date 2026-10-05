@@ -15,8 +15,8 @@
 | Wave | Task | Status |
 |---|---|---|
 | 1 | 25.1.1 Hardening corridor rating normalization | done |
-| 2 | 25.2.1 Restoring agent coordinate validation | pending |
-| 2 | 25.2.2 Publishing the complete tool registry | pending |
+| 2 | 25.2.1 Restoring agent coordinate validation | done |
+| 2 | 25.2.2 Publishing the complete tool registry | done |
 | 3 | 25.3.1 Testing corridor review regressions | pending |
 | 3 | 25.3.2 Testing metadata and agent contracts | pending |
 | 4 | 25.4.1 Running complete review verification | pending |
@@ -36,3 +36,22 @@
   pre-existing CUSTOM propagation expectation, superseded by task 25.3.1.
 - Deviation: one permitted retry for missing `is_rated` compatibility.
 - Gotcha: task 25.3.1 must replace the stale CUSTOM test with rejection coverage.
+
+## 25.2.1
+- Status: done.
+- Changed `eval/test_agent_eval.py` and its task TODO.
+- Restored structured argument extraction across direct, nested, message, and
+  content-block pi event shapes, including JSON-string arguments.
+- POINT-01 now asserts latitude `41.8781` and longitude `-93.0977` within
+  `1e-5`, without flattened event-text fallback.
+- Validation: `uv run pytest eval\test_agent_eval.py -m "not agent_eval"` —
+  1 passed, 2 deselected.
+- Deviations: none.
+
+## 25.2.2
+- Status: done.
+- Changed `server.json` and its task TODO.
+- Published all 10 manifest tools with exact matching names and descriptions;
+  preserved unrelated server metadata.
+- Validation: JSON parsed; 10 unique tool names matched `manifest.yaml`.
+- Deviations: none.

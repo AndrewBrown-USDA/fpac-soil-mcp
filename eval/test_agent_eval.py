@@ -161,12 +161,122 @@ def extract_assistant_content(event: dict[str, Any]) -> str:
 
 
 def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return events representing MCP/tool invocations from pi's JSON stream."""
+    """Extract structured MCP/tool invocations from pi's JSON stream."""
     calls: list[dict[str, Any]] = []
+
+    def add_call(name: Any, arguments: Any) -> None:
+        if isinstance(name, str) and name:
+            if isinstance(arguments, str):
+                try:
+                    parsed_arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    parsed_arguments = {}
+            else:
+                parsed_arguments = arguments
+            calls.append(
+                {
+                    "name": name,
+                    "arguments": parsed_arguments if isinstance(parsed_arguments, dict) else {},
+                }
+            )
+
     for event in events:
-        if extract_structured_tool_names(event):
-            calls.append(event)
+        event_type = str(event.get("type", "")).lower()
+        if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
+            for key in ("tool_name", "tool", "name", "function_name", "toolName"):
+                if isinstance(event.get(key), str):
+                    add_call(event[key], event.get("arguments") or event.get("args"))
+
+            for key in ("tool_call", "call", "function"):
+                nested = event.get(key)
+                if isinstance(nested, dict):
+                    for name_key in ("name", "tool_name", "tool", "toolName"):
+                        if isinstance(nested.get(name_key), str):
+                            add_call(
+                                nested[name_key],
+                                nested.get("arguments") or nested.get("args"),
+                            )
+                            break
+
+        message = event.get("message")
+        if isinstance(message, dict):
+            tool_calls = message.get("tool_calls") or message.get("toolCalls")
+            if isinstance(tool_calls, list):
+                for tool_call in tool_calls:
+                    if not isinstance(tool_call, dict):
+                        continue
+                    function = tool_call.get("function")
+                    if isinstance(function, dict):
+                        add_call(
+                            function.get("name"),
+                            function.get("arguments") or function.get("args"),
+                        )
+                    else:
+                        add_call(
+                            tool_call.get("name"),
+                            tool_call.get("arguments") or tool_call.get("args"),
+                        )
+
+            content_blocks = message.get("content")
+            if isinstance(content_blocks, list):
+                for block in content_blocks:
+                    if isinstance(block, dict) and block.get("type") in {
+                        "tool_use",
+                        "tool_call",
+                        "toolCall",
+                    }:
+                        add_call(
+                            block.get("name") or block.get("tool") or block.get("toolName"),
+                            block.get("arguments") or block.get("args"),
+                        )
+
+        content = event.get("content")
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") in {
+                    "tool_use",
+                    "tool_call",
+                    "toolCall",
+                }:
+                    add_call(
+                        block.get("name") or block.get("tool") or block.get("toolName"),
+                        block.get("arguments") or block.get("args"),
+                    )
+
     return calls
+
+
+def test_extract_tool_calls_preserves_structured_point_arguments() -> None:
+    """Structured extraction retains coordinates and does not inspect flattened text."""
+    events = [
+        {
+            "type": "message_end",
+            "message": {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "get_farmland_classification_by_point",
+                            "arguments": '{"latitude": 41.8781, "longitude": -93.0977}',
+                        }
+                    }
+                ],
+            },
+        },
+        {
+            "type": "assistant_message",
+            "content": "latitude 0 longitude 0 get_farmland_classification_by_point",
+        },
+    ]
+
+    calls = extract_tool_calls(events)
+
+    assert calls == [
+        {
+            "name": "get_farmland_classification_by_point",
+            "arguments": {"latitude": 41.8781, "longitude": -93.0977},
+        }
+    ]
 
 
 def get_pi_executable() -> str | None:
@@ -334,6 +444,17 @@ def test_pi_point_screening_evaluation(
     assert is_tool_called, (
         f"Expected MCP tool call '{target_tool}' not found in executed tools: {executed_tool_names}"
     )
+
+    target_calls = [
+        call
+        for call in extract_tool_calls(events)
+        if call["name"] == target_tool
+        or call["name"].endswith((f"_{target_tool}", f":{target_tool}"))
+    ]
+    assert target_calls, f"Structured call for '{target_tool}' not found"
+    point_arguments = target_calls[0]["arguments"]
+    assert float(point_arguments["latitude"]) == pytest.approx(41.8781, abs=1e-5)
+    assert float(point_arguments["longitude"]) == pytest.approx(-93.0977, abs=1e-5)
 
     assistant_texts = [
         extract_assistant_content(ev) for ev in events if extract_assistant_content(ev)
