@@ -199,11 +199,17 @@ def analyze_farmland_by_polygon(
     Returns:
         PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
     """
+    normalized_productivity_index = _normalize_productivity_index(productivity_index)
+    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+        raise ValueError(
+            f"Unsupported productivity index type '{productivity_index}'. "
+            "Supported fixed selector: 'nccpi'."
+        )
     analyzer = PolygonAnalyzer()
     return analyzer.analyze_polygon(
         geojson,
         include_nccpi=include_nccpi,
-        productivity_index=productivity_index,
+        productivity_index=normalized_productivity_index,
         max_county_rating_override=max_county_rating_override,
     )
 
@@ -396,6 +402,11 @@ def analyze_corridor_fppa(
         Dictionary containing CorridorFarmlandAnalysisResponse fields, plus optional 'lesa_evaluation' result.
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
+    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+        raise ValueError(
+            f"Unsupported productivity index type '{productivity_index}'. "
+            "Supported fixed selector: 'nccpi'."
+        )
     analyzer = CorridorAnalyzer()
     corridor_kwargs: dict[str, Any] = {
         "centerline_input": centerline,
@@ -516,6 +527,11 @@ def calculate_preliminary_lesa(
     analysis_geometry: dict[str, Any] | str = geometry
     norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
+    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+        raise ValueError(
+            f"Unsupported productivity index type '{productivity_index}'. "
+            "Supported fixed selector: 'nccpi'."
+        )
     if isinstance(geometry, (LineString, MultiLineString)):
         parsed_geometry = geometry
     elif isinstance(geometry, str) and geometry.strip().upper().startswith(

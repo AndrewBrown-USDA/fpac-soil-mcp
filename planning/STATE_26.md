@@ -38,3 +38,14 @@
 - **Deviations**: legacy enum members remain for deserialization compatibility;
   fixed SDA retrieval rejects them.
 - **Gotchas**: dependent tasks must update selector and zero-coverage expectations.
+
+## 26.2.1
+
+- **Status**: implemented; targeted tests expose expected stale selector assertions.
+- **Files**: `polygon_analysis.py`, `corridor_analysis.py`, and `tools/soil_tools.py`.
+- **Validation**: `uv run pytest tests\test_polygon_analysis.py tests\test_corridor_analysis.py tests\test_tools.py -q`
+  — 49 passed, 33 failed; Ruff and `git diff --check` passed.
+- **Failures**: existing tests expect removed CSR2/CPI/Storie/custom retrieval.
+- **Deviations**: none.
+- **Gotchas**: 26.3.1 must replace legacy retrieval expectations with rejection and
+  no-SDA-call assertions.

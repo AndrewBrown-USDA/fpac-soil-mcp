@@ -36,12 +36,14 @@ from fpac_soil_mcp.geometry import (
     validate_and_sanitize_polygon_wkt,
 )
 from fpac_soil_mcp.integration_models import CountyIdentifier, CountyPartitionGeometry
+from fpac_soil_mcp.lesa import _normalize_productivity_index as _normalize_fixed_productivity_index
 from fpac_soil_mcp.models import (
     CorridorAlternativeComparison,
     CorridorCountySegment,
     CorridorFarmlandAnalysisResponse,
     CorridorImpactBreakdown,
     FarmlandCategoryBreakdown,
+    ProductivityIndexType,
     QuerySource,
     SoilMapUnitAcreage,
 )
@@ -69,11 +71,6 @@ _INDEX_ALIASES = {
     "storie_index": "storie",
     "california storie": "storie",
 }
-
-
-def _normalize_productivity_index(value: str | None) -> str:
-    normalized = (value or "nccpi").strip().lower()
-    return _INDEX_ALIASES.get(normalized, normalized)
 
 
 def _normalize_corridor_rating(value: Any, is_rated: Any) -> float | None:
@@ -174,9 +171,13 @@ class CorridorAnalyzer:
         now = datetime.now(UTC)
         timestamp_str = now.isoformat()
         limitations = list(REGULATORY_LIMITATIONS)
-        norm_idx = _normalize_productivity_index(productivity_index)
-        if norm_idx == "custom":
-            raise ValueError("CUSTOM productivity selectors are not supported")
+        normalized_index = _normalize_fixed_productivity_index(productivity_index)
+        if normalized_index is not ProductivityIndexType.NCCPI:
+            raise ValueError(
+                f"Unsupported productivity index type '{productivity_index}'. "
+                "Supported fixed selector: 'nccpi'."
+            )
+        norm_idx = "nccpi"
         if max_county_rating_override is not None and (
             not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
         ):

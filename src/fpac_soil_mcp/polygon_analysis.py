@@ -25,6 +25,7 @@ from fpac_soil_mcp.geometry import (
     geometry_to_wkt,
     parse_geojson_geometry,
 )
+from fpac_soil_mcp.lesa import _normalize_productivity_index
 from fpac_soil_mcp.models import (
     FarmlandCategoryBreakdown,
     LandEvaluationSummary,
@@ -105,23 +106,13 @@ class PolygonAnalyzer:
         now = datetime.now(UTC)
         timestamp_str = now.isoformat()
 
-        # Parse index type
-        idx_lower = (productivity_index or "nccpi").strip().lower()
-        if idx_lower in ("csr2", "iacsr2", "iowa csr2"):
-            idx_enum = ProductivityIndexType.CSR2
-            norm_idx = "csr2"
-        elif idx_lower in ("cpi", "minnesota cpi"):
-            idx_enum = ProductivityIndexType.CPI
-            norm_idx = "cpi"
-        elif idx_lower in ("storie", "storie_index", "california storie"):
-            idx_enum = ProductivityIndexType.STORIE
-            norm_idx = "storie"
-        elif idx_lower in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
-            idx_enum = ProductivityIndexType.NCCPI
-            norm_idx = "nccpi"
-        else:
-            idx_enum = ProductivityIndexType.CUSTOM
-            norm_idx = idx_lower
+        idx_enum = _normalize_productivity_index(productivity_index)
+        if idx_enum is not ProductivityIndexType.NCCPI:
+            raise ValueError(
+                f"Unsupported productivity index type '{productivity_index}'. "
+                "Supported fixed selector: 'nccpi'."
+            )
+        norm_idx = "nccpi"
 
         # 1. Parse and validate geometry
         try:
