@@ -815,9 +815,7 @@ class CorridorAnalyzer:
                                         max_county_rating_override
                                         or (1.0 if norm_idx == "nccpi" else 100.0),
                                     )
-                                    le_score = (
-                                        min(1.0, max(0.0, num_rating / benchmark)) * 100.0
-                                    )
+                                    le_score = min(1.0, max(0.0, num_rating / benchmark)) * 100.0
                                     alt_seg_le_sum += area_val * le_score
                                     alt_seg_le_weight += area_val
                                 except (ValueError, TypeError):

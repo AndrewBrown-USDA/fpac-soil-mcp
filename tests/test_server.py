@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from unittest.mock import MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from starlette.requests import Request
@@ -57,9 +57,7 @@ class TestServerInitialization:
                 re.MULTILINE,
             )
         )
-        published_tools = {
-            tool["name"]: tool["description"] for tool in metadata["tools"]
-        }
+        published_tools = {tool["name"]: tool["description"] for tool in metadata["tools"]}
 
         assert len(manifest_tools) == 10
         assert len(published_tools) == 10

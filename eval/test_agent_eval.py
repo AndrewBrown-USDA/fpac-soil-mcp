@@ -56,7 +56,12 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     event_type = str(event.get("type", "")).lower()
 
     # Direct tool execution or tool call events
-    if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
+    if "tool" in event_type or event_type in {
+        "call",
+        "tool_use",
+        "tool_call",
+        "tool_execution",
+    }:
         for key in ("tool_name", "tool", "name", "function_name", "toolName"):
             val = event.get(key)
             if isinstance(val, str) and val:
@@ -182,7 +187,21 @@ def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     for event in events:
         event_type = str(event.get("type", "")).lower()
-        if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
+        direct_args = event.get("args")
+        if isinstance(direct_args, dict):
+            direct_name = direct_args.get("tool") or direct_args.get("name")
+            if isinstance(direct_name, str):
+                add_call(
+                    direct_name,
+                    direct_args.get("arguments") or direct_args.get("args"),
+                )
+
+        if "tool" in event_type or event_type in {
+            "call",
+            "tool_use",
+            "tool_call",
+            "tool_execution",
+        }:
             for key in ("tool_name", "tool", "name", "function_name", "toolName"):
                 if isinstance(event.get(key), str):
                     add_call(event[key], event.get("arguments") or event.get("args"))
@@ -302,6 +321,33 @@ def test_point_01_structured_arguments_match_exact_coordinates() -> None:
     assert point_call["name"] == "get_farmland_classification_by_point"
     assert float(point_call["arguments"]["latitude"]) == pytest.approx(41.8781, abs=1e-5)
     assert float(point_call["arguments"]["longitude"]) == pytest.approx(-93.0977, abs=1e-5)
+
+
+def test_extract_tool_calls_supports_direct_args_objects() -> None:
+    events = [
+        {
+            "type": "tool_execution",
+            "args": {
+                "tool": "get_farmland_classification_by_point",
+                "arguments": {"latitude": 41.8781, "longitude": -93.0977},
+            },
+        },
+        {
+            "type": "tool_execution",
+            "args": {
+                "name": "get_farmland_classification_by_mukey",
+                "args": {"mukey": "12345"},
+            },
+        },
+    ]
+
+    assert extract_tool_calls(events) == [
+        {
+            "name": "get_farmland_classification_by_point",
+            "arguments": {"latitude": 41.8781, "longitude": -93.0977},
+        },
+        {"name": "get_farmland_classification_by_mukey", "arguments": {"mukey": "12345"}},
+    ]
 
 
 def get_pi_executable() -> str | None:
