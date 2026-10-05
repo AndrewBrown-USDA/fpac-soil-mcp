@@ -9,7 +9,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.sda_client import SDAClient, SDAClientError, SDAValidationError
 
 pytestmark = pytest.mark.live_network
 
@@ -84,9 +84,14 @@ class TestLiveSDA:
         except (SDAClientError, httpx.HTTPError) as exc:
             pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
 
-        assert len(rules) > 50
         assert "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)" in rules
-        assert any("Corn" in r for r in rules)
+
+    def test_fixed_selector_rejects_csr2(self) -> None:
+        """The public fixed selector must reject CSR2 regardless of catalog contents."""
+        client = SDAClient()
+
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_productivity_ratings(mukeys=["402001"], index_type="csr2")
 
     def test_live_geometry_extraction(self) -> None:
         """Query live geometry extraction returning WKT polygon shapes."""
@@ -103,32 +108,6 @@ class TestLiveSDA:
         for row in results:
             assert "geom" in row
             assert row["geom"].startswith(("POLYGON", "MULTIPOLYGON"))
-
-    def test_live_out_of_state_productivity_indices(self) -> None:
-        """Verify state-specific indices return null/unrated when queried on out-of-state mukeys."""
-        client = SDAClient()
-        # 1. Fetch an Iowa mukey (Story County)
-        ia_pts = client.get_by_point(latitude=42.0308, longitude=-93.6319)
-        if not ia_pts or not ia_pts[0].get("mukey"):
-            pytest.skip("Could not fetch Iowa mukey")
-        ia_mukey = str(ia_pts[0]["mukey"])
-
-        # 2. Fetch a California mukey (Fresno County)
-        ca_pts = client.get_by_point(latitude=36.7468, longitude=-119.7726)
-        if not ca_pts or not ca_pts[0].get("mukey"):
-            pytest.skip("Could not fetch California mukey")
-        ca_mukey = str(ca_pts[0]["mukey"])
-
-        # Test 1: Query California Storie on Iowa mukey -> should return None/unrated rating
-        ia_storie_res = client.get_productivity_ratings(mukeys=[ia_mukey], index_type="storie")
-        assert len(ia_storie_res) >= 1
-        assert ia_storie_res[0].get("numeric_rating") is None
-        assert ia_storie_res[0].get("is_rated") is False
-
-        # Test 2: Query California Storie on in-state California mukey -> should return valid rating or None cleanly
-        ca_storie_res = client.get_productivity_ratings(mukeys=[ca_mukey], index_type="storie")
-        assert len(ca_storie_res) >= 1
-        assert "numeric_rating" in ca_storie_res[0]
 
     def test_live_dynamic_sdv_queries_and_unrated_water_urban(self) -> None:
         """Verify dynamic SDV query generation on live SDA with real attribute metadata."""

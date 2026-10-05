@@ -48,6 +48,17 @@
 - **Failures**: existing tests expect removed CSR2/CPI/Storie/custom retrieval.
 - **Deviations**: none.
 
+## 26.4.1
+
+- **Status**: complete; live gate remains opt-in.
+- **Files**: `tests/test_live_sda.py`.
+- **Validation**: live rule/productivity selection — 1 passed, 6 deselected;
+  Ruff and format passed; `git diff --check` passed.
+- **Offline selection**: 7 deselected, exit code 5 because no tests matched;
+  no live tests ran in that command.
+- **Changes**: tolerant national NCCPI discovery and catalog-independent CSR2
+  rejection; stale Storie retrieval coverage removed.
+
 ## 26.3.1
 
 - **Status**: complete.
