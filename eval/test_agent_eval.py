@@ -20,6 +20,12 @@ from typing import Any
 
 import pytest
 
+from run_evals import (
+    _tool_matches,
+    extract_advertised_tool_names,
+    should_retry_missing_tools,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 
@@ -43,6 +49,50 @@ def parse_pi_events(output: str) -> list[dict[str, Any]]:
         if isinstance(event, dict):
             events.append(event)
     return events
+
+
+def test_advertised_tools_prefer_initialization_event() -> None:
+    events = [
+        {"type": "mcp_initialize", "capabilities": {"tools": [{"name": "init_tool"}]}},
+        {"type": "tools_list", "tools": [{"name": "fallback_tool"}]},
+    ]
+    assert extract_advertised_tool_names(events) == ({"init_tool"}, "initialization")
+
+
+def test_tool_list_fallback_and_unknown_configuration_diagnostics() -> None:
+    assert extract_advertised_tool_names(
+        [{"type": "tools_list", "result": {"tools": [{"name": "listed_tool"}]}}]
+    ) == ({"listed_tool"}, "tool-list fallback")
+    assert extract_advertised_tool_names([{"type": "message_end", "message": {}}]) == (
+        None,
+        "unknown",
+    )
+
+
+def test_advertised_and_unadvertised_tools_are_distinguished_exactly() -> None:
+    advertised, source = extract_advertised_tool_names(
+        [{"type": "initialize", "tools": [{"name": "fpac_tool"}]}]
+    )
+    assert source == "initialization"
+    assert advertised == {"fpac_tool"}
+    assert "fpac_tool" in advertised
+    assert "other_tool" not in advertised
+    assert _tool_matches("tool", {"server_tool"})
+    assert not _tool_matches("tool", {"server_tool_extra"})
+
+
+def test_missing_advertised_tool_can_be_retried_once_without_prose_substitution() -> None:
+    events = [
+        {"type": "initialize", "tools": [{"name": "expected_tool"}]},
+        {"type": "message_end", "message": {"role": "assistant", "content": "expected_tool"}},
+    ]
+    advertised, _ = extract_advertised_tool_names(events)
+    executed = set().union(*(extract_structured_tool_names(event) for event in events))
+    assert advertised == {"expected_tool"}
+    assert not _tool_matches("expected_tool", executed)
+    assert should_retry_missing_tools(["expected_tool"], advertised, 0)
+    assert not should_retry_missing_tools(["expected_tool"], advertised, 1)
+    assert "expected_tool" not in executed
 
 
 def event_text(event: dict[str, Any]) -> str:

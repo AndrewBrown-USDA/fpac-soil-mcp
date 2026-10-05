@@ -60,6 +60,16 @@
 - **Deviations**: none.
 - **Gotchas**: sentinel-only polygon compatibility retains a zero candidate score
   in that manifest path; direct LESA summaries use `None`.
+
+## 26.3.3
+
+- **Status**: complete.
+- **Files**: `eval/run_evals.py`, `eval/test_agent_eval.py`.
+- **Validation**: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+  — 7 passed, 2 deselected.
+- **Changes**: initialization-first tool capture, explicit fallback/unknown
+  diagnostics, advertised-vs-unadvertised classification, and one bounded retry.
+- **Deviations**: none.
 - **Gotchas**: 26.3.1 must replace legacy retrieval expectations with rejection and
   no-SDA-call assertions.
 

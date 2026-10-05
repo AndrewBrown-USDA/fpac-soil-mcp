@@ -266,6 +266,68 @@ def extract_assistant_content(event: dict[str, Any]) -> str:
     return ""
 
 
+def _tool_names_from_list(value: Any) -> set[str] | None:
+    if not isinstance(value, list):
+        return None
+    names = {
+        item.get("name")
+        for item in value
+        if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"]
+    }
+    return names
+
+
+def extract_advertised_tool_names(events: list[dict[str, Any]]) -> tuple[set[str] | None, str]:
+    """Read MCP tools from initialization, then use an explicit list-tools result."""
+    for event in events:
+        event_type = str(event.get("type", "")).lower()
+        if "init" not in event_type:
+            continue
+        candidates = [
+            event.get("tools"),
+            event.get("capabilities", {}).get("tools")
+            if isinstance(event.get("capabilities"), dict)
+            else None,
+            event.get("result", {}).get("tools")
+            if isinstance(event.get("result"), dict)
+            else None,
+        ]
+        for candidate in candidates:
+            names = _tool_names_from_list(candidate)
+            if names is not None:
+                return names, "initialization"
+
+    for event in events:
+        event_type = str(event.get("type", "")).lower()
+        if "tool" not in event_type or "list" not in event_type:
+            continue
+        candidates = [event.get("tools"), event.get("result")]
+        for candidate in candidates:
+            if isinstance(candidate, dict):
+                candidate = candidate.get("tools")
+            names = _tool_names_from_list(candidate)
+            if names is not None:
+                return names, "tool-list fallback"
+    return None, "unknown"
+
+
+def _tool_matches(expected: str, executed: set[str]) -> bool:
+    return expected in executed or any(
+        name.endswith((f"_{expected}", f":{expected}")) for name in executed
+    )
+
+
+def should_retry_missing_tools(
+    missing_tools: list[str], advertised_tools: set[str] | None, retry_count: int
+) -> bool:
+    return (
+        retry_count == 0
+        and advertised_tools is not None
+        and bool(missing_tools)
+        and all(tool in advertised_tools for tool in missing_tools)
+    )
+
+
 def run_case(
     case: dict[str, Any],
     sandbox_dir: Path,
@@ -300,48 +362,65 @@ def run_case(
     output = ""
 
     try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(sandbox_dir),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
-        elapsed = time.perf_counter() - start_time
-        output = proc.stdout or ""
-
-        if proc.returncode != 0:
-            status = "FAIL"
-            error_msg = f"Non-zero exit code ({proc.returncode}): {(proc.stderr or '').strip()}"
-        else:
-            executed_tools: set[str] = set()
-            assistant_texts: list[str] = []
-
+        retry_count = 0
+        diagnostics: list[str] = []
+        while True:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(sandbox_dir),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                check=False,
+            )
+            output = proc.stdout or ""
+            events: list[dict[str, Any]] = []
             for line in output.splitlines():
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError:
                     continue
                 if isinstance(event, dict):
-                    executed_tools.update(extract_structured_tool_names(event))
-                    txt = extract_assistant_content(event)
-                    if txt:
-                        assistant_texts.append(txt)
+                    events.append(event)
+            if proc.returncode != 0:
+                status = "FAIL"
+                error_msg = f"Non-zero exit code ({proc.returncode}): {(proc.stderr or '').strip()}"
+                break
 
+            executed_tools = set().union(
+                *(extract_structured_tool_names(event) for event in events)
+            )
+            advertised_tools, advertisement_source = extract_advertised_tool_names(events)
+            missing_tools = [
+                tool for tool in expected_tools if not _tool_matches(tool, executed_tools)
+            ]
+            if missing_tools and advertised_tools is not None:
+                unadvertised = [tool for tool in missing_tools if tool not in advertised_tools]
+                retryable = [tool for tool in missing_tools if tool in advertised_tools]
+                if retryable and not unadvertised and should_retry_missing_tools(
+                    missing_tools, advertised_tools, retry_count
+                ):
+                    retry_count += 1
+                    cmd[-1] = (
+                        f"Call the appropriate fpac-soil MCP tool/resource and {prompt} "
+                        f"Execute the advertised tool(s) {', '.join(retryable)} now; "
+                        "do not substitute prose for a tool call."
+                    )
+                    continue
+                if unadvertised:
+                    diagnostics.append(
+                        f"unadvertised expected tool(s): {', '.join(unadvertised)}"
+                    )
+            elif missing_tools:
+                diagnostics.append("configuration diagnostic: MCP tool list unavailable")
+
+            assistant_texts = [
+                extract_assistant_content(event) for event in events if extract_assistant_content(event)
+            ]
             combined_assistant_text = " ".join(assistant_texts) if assistant_texts else output
             norm_content = normalize_text(combined_assistant_text).lower()
-
-            missing_tools = [
-                tool
-                for tool in expected_tools
-                if tool not in executed_tools
-                and not any(
-                    executed.endswith((f"_{tool}", f":{tool}")) for executed in executed_tools
-                )
-            ]
             missing_keywords = [
                 kw for kw in expected_keywords if normalize_text(kw).lower() not in norm_content
             ]
@@ -350,9 +429,16 @@ def run_case(
                 failures.append(f"Missing tools: {', '.join(missing_tools)}")
             if missing_keywords:
                 failures.append(f"Missing keywords: {', '.join(missing_keywords)}")
+            if diagnostics:
+                failures.append(
+                    f"{'; '.join(diagnostics)}; tool-list source={advertisement_source}; "
+                    f"advertised={sorted(advertised_tools) if advertised_tools is not None else 'unknown'}; "
+                    f"expected={expected_tools}; structured_events={len(events)}"
+                )
             if failures:
                 status = "FAIL"
                 error_msg = "; ".join(failures)
+            break
 
         if verbose:
             print(f"\n[{case_id}] Raw Output:\n{output}\n")
