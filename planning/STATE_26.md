@@ -23,10 +23,25 @@
 | 5 | 26.5.1 Run complete verification | done |
 | 5 | 26.5.2 Correct verification formatting failures | done |
 | 6 | 26.6.1 Remove premature selector surfaces | done |
+| 7 | 26.7.1 Harden eval subprocess failure handling | done |
 
 ## Task reports
 
 <!-- Worker reports are appended below, one section per task, <=15 lines. -->
+
+## 26.7.1
+
+- **Status**: complete; eval subprocess failures now return structured results.
+- **Changes**: initialized elapsed timing and finalized it in `finally`, preserving
+  existing `ERROR` status and exception diagnostics for startup/execution failures.
+- **Regression**: added deterministic coverage for an `OSError` during subprocess
+  startup, asserting `status`, `error`, and nonnegative `elapsed_sec`.
+- **Validation**: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+  — 8 passed, 2 deselected.
+- **Scope**: only `eval/run_evals.py`, `eval/test_agent_eval.py`, this state report,
+  and `planning/tasks/26.7.1.todo.md` were changed by this task; pre-existing
+  `planning/EXECUTION_PLAN_26.md` remains untouched.
+- **Deviations**: none.
 
 ## 26.6.1
 

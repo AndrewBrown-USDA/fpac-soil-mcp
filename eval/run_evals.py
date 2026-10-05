@@ -358,6 +358,7 @@ def run_case(
     status = "PASS"
     error_msg = ""
     output = ""
+    elapsed = 0.0
 
     try:
         retry_count = 0
@@ -450,9 +451,10 @@ def run_case(
         status = "TIMEOUT"
         error_msg = f"Exceeded {timeout}s timeout"
     except (subprocess.SubprocessError, OSError) as e:
-        elapsed = time.perf_counter() - start_time
         status = "ERROR"
         error_msg = f"{type(e).__name__}: {e}"
+    finally:
+        elapsed = time.perf_counter() - start_time
 
     return {
         "id": case_id,

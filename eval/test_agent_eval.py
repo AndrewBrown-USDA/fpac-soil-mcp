@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import run_evals
 from run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
@@ -92,6 +93,32 @@ def test_missing_advertised_tool_can_be_retried_once_without_prose_substitution(
     assert should_retry_missing_tools(["expected_tool"], advertised, 0)
     assert not should_retry_missing_tools(["expected_tool"], advertised, 1)
     assert "expected_tool" not in executed
+
+
+def test_run_case_returns_structured_failure_when_subprocess_startup_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def raise_startup_error(*args: Any, **kwargs: Any) -> Any:
+        raise OSError("unable to start pi")
+
+    monkeypatch.setattr(run_evals.subprocess, "run", raise_startup_error)
+
+    result = run_evals.run_case(
+        {
+            "id": "STARTUP-FAIL",
+            "category": "regression",
+            "target_name": "expected_tool",
+            "user_prompt": "perform the test",
+        },
+        tmp_path,
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+
+    assert result["status"] == "ERROR"
+    assert result["elapsed_sec"] >= 0
+    assert result["error"] == "OSError: unable to start pi"
 
 
 def event_text(event: dict[str, Any]) -> str:

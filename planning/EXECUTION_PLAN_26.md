@@ -93,6 +93,7 @@ that failed to call an advertised tool.
 | 5 | 26.5.1 | Run complete verification | `planning/STATE_26.md`, `planning/tasks/26.5.1.todo.md` | 26.3.1, 26.3.2, 26.3.3, 26.4.1 |
 | 5 | 26.5.2 | Correct verification formatting failures | `eval/run_evals.py`, `eval/test_agent_eval.py`, `tests/test_geometry.py`, `planning/STATE_26.md`, `planning/tasks/26.5.2.todo.md` | 26.5.1 |
 | 6 | 26.6.1 | Remove premature selector surfaces | `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/lesa.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `README.md`, `manifest.yaml`, `server.json`, `eval/prompt_test_cases.json`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_corridor_analysis.py`, `tests/test_tools.py`, `tests/test_live_sda.py`, `planning/STATE_26.md`, `planning/tasks/26.6.1.todo.md` | 26.5.2 |
+| 7 | 26.7.1 | Harden eval subprocess failure handling | `eval/run_evals.py`, `eval/test_agent_eval.py`, `planning/STATE_26.md`, `planning/tasks/26.7.1.todo.md` | 26.6.1 |
 
 ## Task Specifications
 
@@ -272,3 +273,16 @@ that failed to call an advertised tool.
   and eval fixtures pass; `uv run pytest -m "not live_network"`,
   `uv run ruff check .`, and `uv run ruff format --check .` pass; public
   metadata contains no claims that CSR2/CPI/Storie are supported.
+
+### 26.7.1 — Harden eval subprocess failure handling
+- **Repo**: `AndrewBrown-USDA/fpac-soil-mcp`
+- **Files in scope**: `eval/run_evals.py`, `eval/test_agent_eval.py`,
+  `planning/STATE_26.md`, `planning/tasks/26.7.1.todo.md`
+- **Depends on**: 26.6.1
+- **Spec**: Ensure every `run_case` result has an elapsed duration even when
+  subprocess startup or execution raises before normal completion. Preserve the
+  existing failure status and diagnostic message; do not let one failed eval
+  case crash the entire eval run. Add deterministic regression coverage.
+- **Acceptance**: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+  passes, and a direct failure-path check proves `run_case` returns a structured
+  failure with `elapsed_sec` instead of raising `UnboundLocalError`.
