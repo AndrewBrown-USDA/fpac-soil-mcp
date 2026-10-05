@@ -285,7 +285,7 @@ def test_sentinel_and_unavailable_units_do_not_contribute_to_land_evaluation() -
     assert summary.rated_acreage == 0.0
     assert summary.unrated_acreage == 150.0
     assert summary.coverage_percent == 0.0
-    assert summary.candidate_le_score == 0.0
+    assert summary.candidate_le_score is None
     assert summary.productivity_index is ProductivityIndexType.CSR2
 
 
@@ -407,8 +407,8 @@ class TestLandEvaluationEvaluation:
         assert summary.rated_acreage == 0.0
         assert summary.unrated_acreage == 25.0
         assert summary.coverage_percent == 0.0
-        assert summary.aoi_relative_rating == 0.0
-        assert summary.candidate_le_score == 0.0
+        assert summary.aoi_relative_rating is None
+        assert summary.candidate_le_score is None
         assert any("No rated soil map units found" in n for n in summary.notices)
 
 

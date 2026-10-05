@@ -311,32 +311,17 @@ class TestFPPATools:
                 project_type="corridor",
             )
 
-    @pytest.mark.parametrize("productivity_index", ["csr2", "cpi", "storie"])
-    @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
-    def test_calculate_preliminary_lesa_propagates_non_nccpi_index(
-        self, mock_corridor: MagicMock, productivity_index: str
+    @pytest.mark.parametrize("productivity_index", ["csr2", "cpi", "storie", "custom"])
+    def test_calculate_preliminary_lesa_rejects_unsupported_selector(
+        self, productivity_index: str
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 61.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 4.0},
-        }
-
-        response = calculate_preliminary_lesa(
-            project_name=f"{productivity_index} corridor",
-            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
-            project_type="corridor",
-            productivity_index=productivity_index,
-        )
-
-        assert response.land_evaluation.productivity_index.value == productivity_index.upper()
-        mock_corridor.assert_called_once_with(
-            centerline="LINESTRING (-93.5 42.0, -93.4 42.1)",
-            buffer_distance=100.0,
-            buffer_units="feet",
-            include_nccpi=False,
-            productivity_index=productivity_index,
-            max_county_rating_override=None,
-        )
+        with pytest.raises(ValueError, match="Unsupported productivity index type"):
+            calculate_preliminary_lesa(
+                project_name=f"{productivity_index} corridor",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                project_type="corridor",
+                productivity_index=productivity_index,
+            )
 
     @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
     def test_calculate_preliminary_lesa_propagates_benchmark_and_generic_fields(
@@ -349,25 +334,14 @@ class TestFPPATools:
             "productivity_rating_class": "high",
         }
 
-        response = calculate_preliminary_lesa(
-            project_name="benchmarked corridor",
-            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
-            project_type="corridor",
-            productivity_index="csr2",
-            max_county_rating_override=88.0,
-        )
-
-        assert response.land_evaluation.productivity_index.value == "CSR2"
-        assert not hasattr(response.land_evaluation, "nccpi_rating")
-        assert not hasattr(response.land_evaluation, "nccpi_class")
-        mock_corridor.assert_called_once_with(
-            centerline="LINESTRING (-93.5 42.0, -93.4 42.1)",
-            buffer_distance=100.0,
-            buffer_units="feet",
-            include_nccpi=False,
-            productivity_index="csr2",
-            max_county_rating_override=88.0,
-        )
+        with pytest.raises(ValueError, match="Unsupported productivity index type"):
+            calculate_preliminary_lesa(
+                project_name="benchmarked corridor",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                project_type="corridor",
+                productivity_index="csr2",
+                max_county_rating_override=88.0,
+            )
 
     @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
     def test_calculate_preliminary_lesa_normalizes_custom_index(
@@ -378,22 +352,13 @@ class TestFPPATools:
             "reconciliation_summary": {"buffered_footprint_acres": 1.0},
         }
 
-        response = calculate_preliminary_lesa(
-            project_name="custom corridor",
-            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
-            project_type="corridor",
-            productivity_index="custom",
-        )
-
-        assert response.land_evaluation.productivity_index.value == "CUSTOM"
-        mock_corridor.assert_called_once_with(
-            centerline="LINESTRING (-93.5 42.0, -93.4 42.1)",
-            buffer_distance=100.0,
-            buffer_units="feet",
-            include_nccpi=False,
-            productivity_index="custom",
-            max_county_rating_override=None,
-        )
+        with pytest.raises(ValueError, match="Unsupported productivity index type"):
+            calculate_preliminary_lesa(
+                project_name="custom corridor",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                project_type="corridor",
+                productivity_index="custom",
+            )
 
 
 class TestPolygonTools:
@@ -551,8 +516,8 @@ class TestCorridorTools:
             buffer_units="meters",
             indirect_geometry="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
             alternatives=alternatives,
-            include_nccpi=False,
-            productivity_index="csr2",
+            include_nccpi=True,
+            productivity_index="nccpi",
             max_county_rating_override=88.0,
         )
 
@@ -563,8 +528,8 @@ class TestCorridorTools:
             buffer_units="meters",
             indirect_geometry_input="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
             alternatives=alternatives,
-            include_nccpi=False,
-            productivity_index="csr2",
+            include_nccpi=True,
+            productivity_index="nccpi",
             max_county_rating_override=88.0,
         )
 

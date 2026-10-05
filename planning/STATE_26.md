@@ -47,6 +47,19 @@
   — 49 passed, 33 failed; Ruff and `git diff --check` passed.
 - **Failures**: existing tests expect removed CSR2/CPI/Storie/custom retrieval.
 - **Deviations**: none.
+
+## 26.3.1
+
+- **Status**: complete.
+- **Files**: five test modules changed; `tests/test_corridor_scoring.py` required no
+  edits because existing unavailable-threshold coverage was sufficient.
+- **Validation**: targeted six-module command — 197 passed; focused Ruff lint and
+  format checks passed; `git diff --check` passed.
+- **Coverage**: unsupported selectors reject before SDA calls; NCCPI, valid zero
+  ratings, partial coverage, unavailable LE, and indeterminate threshold are tested.
+- **Deviations**: none.
+- **Gotchas**: sentinel-only polygon compatibility retains a zero candidate score
+  in that manifest path; direct LESA summaries use `None`.
 - **Gotchas**: 26.3.1 must replace legacy retrieval expectations with rejection and
   no-SDA-call assertions.
 

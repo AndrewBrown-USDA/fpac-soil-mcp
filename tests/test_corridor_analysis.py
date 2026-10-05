@@ -185,10 +185,17 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives(alternative_ra
             "mukey": "2001",
             "numeric_rating": str(alternative_rating),
             "rating_class": "Moderate",
-            "productivity_rating_source": "SDA:CSR2",
+            "productivity_rating_source": "SDA:NCCPI_V3",
         }
     ]
-    mock_sda.get_county_max_productivity_rating.return_value = 100.0
+    mock_sda.get_interpretations.return_value = [
+        {
+            "mukey": "2001",
+            "numeric_rating": str(alternative_rating),
+            "rating_class": "Moderate",
+        }
+    ]
+    mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
@@ -287,7 +294,7 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives(alternative_ra
         buffer_units=sc3["buffer_units"],
         indirect_geometry_input=indirect_geom,
         alternatives=alternatives,
-        productivity_index="CSR2",
+        productivity_index="NCCPI",
     )
 
     assert len(response.county_segments) == 3
@@ -297,20 +304,16 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives(alternative_ra
     assert response.alternatives[0].alternative_id == "Alternative B (South Alignment)"
     assert response.alternatives[0].direct_acres > 0
     if alternative_rating == 75.0:
-        assert response.alternatives[0].composite_relative_rating == 75.0
+        assert response.alternatives[0].composite_relative_rating == 100.0
     else:
         assert response.alternatives[0].composite_relative_rating is None
-    assert response.county_segments[0].map_units[0].productivity_rating_source == "SDA:CSR2"
+    assert response.county_segments[0].map_units[0].productivity_rating_source == "SDA:NCCPI_V3"
     assert response.county_segments[0].map_units[0].productivity_rating == (
         alternative_rating if alternative_rating == 75.0 else None
     )
     assert response.county_segments[0].map_units[0].model_dump().get("nccpi_rating") is None
-    mock_sda.get_productivity_ratings.assert_called()
-    assert all(
-        call.kwargs["index_type"] == "csr2"
-        for call in mock_sda.get_productivity_ratings.call_args_list
-    )
-    mock_sda.get_county_max_productivity_rating.assert_called()
+    mock_sda.get_interpretations.assert_called()
+    mock_sda.get_interpretations.assert_called()
     assert response.reconciliation_summary["reconciliation_passed"] is True
 
 
@@ -502,66 +505,26 @@ def test_corridor_wkt_indirect_geometry_support():
     )
 
 
-@pytest.mark.parametrize("productivity_index", ["CSR2", "CPI", "STORIE"])
-def test_corridor_productivity_selector_propagation(productivity_index):
+@pytest.mark.parametrize("productivity_index", ["CSR2", "CPI", "STORIE", "CUSTOM"])
+def test_corridor_unsupported_selector_rejected_before_sda_lookup(productivity_index):
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
-    mock_sda.get_spatial_intersection.return_value = [
-        {
-            "mukey": "5001",
-            "musym": "P1",
-            "muname": "Productivity test unit",
-            "farmlndcl": "All areas are prime farmland",
-            "areasymbol": "IA169",
-            "area_ac": "10.0",
-        }
-    ]
-    mock_sda.get_productivity_ratings.return_value = [
-        {
-            "mukey": "5001",
-            "numeric_rating": "50",
-            "rating_class": "Moderate",
-            "productivity_rating_source": f"SDA:{productivity_index}",
-        }
-    ]
-
-    mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.get_intersecting_counties.return_value = []
-    mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
-
-    mock_nass = MagicMock()
-    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
-        county.county_name, county.state_fips, county.county_fips
-    )
-
-    response = CorridorAnalyzer(
-        sda_client=mock_sda,
-        tigerweb_client=mock_tiger,
-        nass_client=mock_nass,
-    ).analyze_corridor(
-        centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
-        buffer_distance=50.0,
-        buffer_units="feet",
-        productivity_index=productivity_index,
-        max_county_rating_override=100.0,
-    )
-
-    unit = response.county_segments[0].map_units[0]
-    assert unit.productivity_rating == 50.0
-    assert unit.productivity_rating_source == f"SDA:{productivity_index}"
-    assert response.composite_relative_rating == 50.0
-    mock_sda.get_productivity_ratings.assert_called_once_with(
-        mukeys=["5001"], index_type=productivity_index.lower()
-    )
-    mock_sda.get_county_max_productivity_rating.assert_not_called()
+    with pytest.raises(ValueError, match="Unsupported productivity index type"):
+        CorridorAnalyzer(sda_client=mock_sda).analyze_corridor(
+            centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
+            buffer_distance=50.0,
+            productivity_index=productivity_index,
+        )
+    mock_sda.get_spatial_intersection.assert_not_called()
+    mock_sda.get_productivity_ratings.assert_not_called()
+    mock_sda.get_interpretations.assert_not_called()
 
 
 def test_corridor_custom_productivity_selector_is_rejected_before_sda_lookup():
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
 
-    with pytest.raises(ValueError, match="CUSTOM productivity selectors are not supported"):
+    with pytest.raises(ValueError, match="Unsupported productivity index type"):
         CorridorAnalyzer(sda_client=mock_sda).analyze_corridor(
             centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
             buffer_distance=50.0,
@@ -591,7 +554,7 @@ def test_corridor_unavailable_productivity_rating_preserves_map_unit():
             "mukey": "5002",
             "numeric_rating": None,
             "rating_class": "Not Rated",
-            "productivity_rating_source": "SDA:CPI",
+            "productivity_rating_source": "SDA:NCCPI_V3",
         }
     ]
 
@@ -612,14 +575,14 @@ def test_corridor_unavailable_productivity_rating_preserves_map_unit():
         centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
         buffer_distance=50.0,
         buffer_units="feet",
-        productivity_index="CPI",
+        productivity_index="NCCPI",
         max_county_rating_override=100.0,
     )
 
     unit = response.county_segments[0].map_units[0]
     assert unit.productivity_rating is None
-    assert unit.productivity_rating_class == "Not Rated"
-    assert unit.productivity_rating_source == "SDA:CPI"
+    assert unit.productivity_rating_class is None
+    assert unit.productivity_rating_source == "SDA:NCCPI_V3"
     assert response.composite_relative_rating is None
 
 

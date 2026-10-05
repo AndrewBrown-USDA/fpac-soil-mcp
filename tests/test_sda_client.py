@@ -475,85 +475,25 @@ class TestSDAClientExecution:
         val = client.get_county_max_productivity_rating("IL019", index_type="nccpi")
         assert val == 0.94
 
-    def test_get_county_max_productivity_rating_csr2(self) -> None:
-        mock_resp = {
-            "Table": [
-                ["max_county_rating"],
-                [100.0],
-            ]
-        }
-
+    @pytest.mark.parametrize("index_type", ["csr2", "cpi", "storie", "custom"])
+    def test_get_county_max_productivity_rating_rejects_unsupported_without_sda_call(
+        self, index_type: str
+    ) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"CSR2" in request.content or b"cointerp" in request.content
-            assert b"areasymbol = 'IA169'" in request.content
-            return httpx.Response(200, json=mock_resp)
+            raise AssertionError("unsupported selector must not reach SDA")
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        val = client.get_county_max_productivity_rating("IA169", index_type="csr2")
-        assert val == 100.0
-
-    def test_get_county_max_productivity_rating_cpi(self) -> None:
-        mock_resp = {
-            "Table": [
-                ["max_county_rating"],
-                [99.0],
-            ]
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            assert b"areasymbol = 'MN103'" in request.content
-            return httpx.Response(200, json=mock_resp)
-
-        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        # Note: CPI uses 99.0 as valid rating if <= 100, but in get_county_max_productivity_rating:
-        # if val_float in (99.0, 999.0): returns None since 99 is often a sentinel in county max queries.
-        # Let's test standard 100.0 or 98.0
-        val = client.get_county_max_productivity_rating("MN103", index_type="cpi")
-        assert val is None  # 99.0 is filtered as sentinel
-
-    def test_get_county_max_productivity_rating_storie(self) -> None:
-        mock_resp = {
-            "Table": [
-                ["max_county_rating"],
-                [100.0],
-            ]
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            assert b"areasymbol = 'CA019'" in request.content
-            return httpx.Response(200, json=mock_resp)
-
-        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        val = client.get_county_max_productivity_rating("CA019", index_type="storie")
-        assert val == 100.0
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_county_max_productivity_rating("IA169", index_type=index_type)
 
     def test_get_county_max_productivity_rating_sentinels_and_nulls(self) -> None:
-        mock_empty_resp = {"Table": []}
-        mock_sentinel_resp = {"Table": [["max_county_rating"], [999.0]]}
-        mock_zero_resp = {"Table": [["max_county_rating"], [0.0]]}
+        client_sentinel = SDAClient()
+        with pytest.raises(SDAValidationError):
+            client_sentinel.get_county_max_productivity_rating("IA169", "csr2")
 
-        client_empty = SDAClient(
-            http_client=httpx.Client(
-                transport=httpx.MockTransport(lambda r: httpx.Response(200, json=mock_empty_resp))
-            )
-        )
-        assert client_empty.get_county_max_productivity_rating("IA169", "csr2") is None
-
-        client_sentinel = SDAClient(
-            http_client=httpx.Client(
-                transport=httpx.MockTransport(
-                    lambda r: httpx.Response(200, json=mock_sentinel_resp)
-                )
-            )
-        )
-        assert client_sentinel.get_county_max_productivity_rating("IA169", "csr2") is None
-
-        client_zero = SDAClient(
-            http_client=httpx.Client(
-                transport=httpx.MockTransport(lambda r: httpx.Response(200, json=mock_zero_resp))
-            )
-        )
-        assert client_zero.get_county_max_productivity_rating("IA169", "csr2") is None
+        client_zero = SDAClient()
+        with pytest.raises(SDAValidationError):
+            client_zero.get_county_max_productivity_rating("IA169", "csr2")
 
     def test_get_county_max_productivity_rating_validation_errors(self) -> None:
         client = SDAClient()
@@ -593,87 +533,16 @@ class TestSDAClientExecution:
         assert results[0]["is_rated"] is True
         assert results[0]["index_type"] == "nccpi"
 
-    def test_get_productivity_ratings_csr2(self) -> None:
-        mock_resp = {
-            "Table": [
-                [
-                    "mukey",
-                    "areasymbol",
-                    "musym",
-                    "muname",
-                    "numeric_rating",
-                    "rated_pct",
-                    "total_pct",
-                    "comp_count",
-                ],
-                ["406439", "IA169", "138B", "Clarion loam", 89.0, 95, 100, 2],
-            ]
-        }
-
+    @pytest.mark.parametrize("index_type", ["csr2", "cpi", "storie", "custom"])
+    def test_get_productivity_ratings_rejects_unsupported_without_sda_call(
+        self, index_type: str
+    ) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"CSR2" in request.content or b"cointerp" in request.content
-            return httpx.Response(200, json=mock_resp)
+            raise AssertionError("unsupported selector must not reach SDA")
 
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        results = client.get_productivity_ratings(["406439"], index_type="csr2")
-        assert len(results) == 1
-        assert results[0]["mukey"] == "406439"
-        assert results[0]["numeric_rating"] == 89.0
-        assert results[0]["is_rated"] is True
-
-    def test_get_productivity_ratings_cpi(self) -> None:
-        mock_resp = {
-            "Table": [
-                [
-                    "mukey",
-                    "areasymbol",
-                    "musym",
-                    "muname",
-                    "numeric_rating",
-                    "rated_pct",
-                    "total_pct",
-                    "comp_count",
-                ],
-                ["415201", "MN103", "L83A", "Webster clay loam", 93.0, 100, 100, 1],
-            ]
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            assert b"CPI" in request.content or b"cointerp" in request.content
-            return httpx.Response(200, json=mock_resp)
-
-        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        results = client.get_productivity_ratings(["415201"], index_type="cpi")
-        assert len(results) == 1
-        assert results[0]["mukey"] == "415201"
-        assert results[0]["numeric_rating"] == 93.0
-
-    def test_get_productivity_ratings_storie(self) -> None:
-        mock_resp = {
-            "Table": [
-                [
-                    "mukey",
-                    "areasymbol",
-                    "musym",
-                    "muname",
-                    "numeric_rating",
-                    "rated_pct",
-                    "total_pct",
-                    "comp_count",
-                ],
-                ["462001", "CA019", "HdA", "Hanford sandy loam", 95.0, 100, 100, 1],
-            ]
-        }
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            assert b"Storie" in request.content or b"storie" in request.content
-            return httpx.Response(200, json=mock_resp)
-
-        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        results = client.get_productivity_ratings(["462001"], index_type="storie")
-        assert len(results) == 1
-        assert results[0]["mukey"] == "462001"
-        assert results[0]["numeric_rating"] == 95.0
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_productivity_ratings(["406439"], index_type=index_type)
 
     def test_get_productivity_ratings_unrated_and_missing(self) -> None:
         mock_resp = {
