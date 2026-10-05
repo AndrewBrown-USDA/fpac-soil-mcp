@@ -163,7 +163,8 @@ def test_corridor_analysis_two_counties():
     assert "Boone" in response.tabular_csv
 
 
-def test_corridor_analysis_with_indirect_staging_and_alternatives():
+@pytest.mark.parametrize("alternative_rating", [75.0, 99.0, 999.0, -99.0, -999.0])
+def test_corridor_analysis_with_indirect_staging_and_alternatives(alternative_rating):
     scenarios = load_corridor_fixtures()
     sc3 = scenarios["corridor_3county_il_pipeline"]
 
@@ -182,7 +183,7 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives():
     mock_sda.get_productivity_ratings.return_value = [
         {
             "mukey": "2001",
-            "numeric_rating": "75",
+            "numeric_rating": str(alternative_rating),
             "rating_class": "Moderate",
             "productivity_rating_source": "SDA:CSR2",
         }
@@ -295,9 +296,14 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives():
     assert len(response.alternatives) == 1
     assert response.alternatives[0].alternative_id == "Alternative B (South Alignment)"
     assert response.alternatives[0].direct_acres > 0
-    assert response.alternatives[0].composite_relative_rating == 75.0
+    if alternative_rating == 75.0:
+        assert response.alternatives[0].composite_relative_rating == 75.0
+    else:
+        assert response.alternatives[0].composite_relative_rating is None
     assert response.county_segments[0].map_units[0].productivity_rating_source == "SDA:CSR2"
-    assert response.county_segments[0].map_units[0].productivity_rating == 75.0
+    assert response.county_segments[0].map_units[0].productivity_rating == (
+        alternative_rating if alternative_rating == 75.0 else None
+    )
     assert response.county_segments[0].map_units[0].model_dump().get("nccpi_rating") is None
     mock_sda.get_productivity_ratings.assert_called()
     assert all(
@@ -496,7 +502,7 @@ def test_corridor_wkt_indirect_geometry_support():
     )
 
 
-@pytest.mark.parametrize("productivity_index", ["CSR2", "CPI", "STORIE", "CUSTOM"])
+@pytest.mark.parametrize("productivity_index", ["CSR2", "CPI", "STORIE"])
 def test_corridor_productivity_selector_propagation(productivity_index):
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
@@ -551,6 +557,22 @@ def test_corridor_productivity_selector_propagation(productivity_index):
     mock_sda.get_county_max_productivity_rating.assert_not_called()
 
 
+def test_corridor_custom_productivity_selector_is_rejected_before_sda_lookup():
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+
+    with pytest.raises(ValueError, match="CUSTOM productivity selectors are not supported"):
+        CorridorAnalyzer(sda_client=mock_sda).analyze_corridor(
+            centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
+            buffer_distance=50.0,
+            productivity_index="CUSTOM",
+        )
+
+    mock_sda.get_spatial_intersection.assert_not_called()
+    mock_sda.get_productivity_ratings.assert_not_called()
+    mock_sda.get_interpretations.assert_not_called()
+
+
 def test_corridor_unavailable_productivity_rating_preserves_map_unit():
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
@@ -601,8 +623,9 @@ def test_corridor_unavailable_productivity_rating_preserves_map_unit():
     assert response.composite_relative_rating is None
 
 
-def test_corridor_zero_le_score_preservation():
-    """Verify that valid 0.0 LE scores are preserved and not dropped."""
+@pytest.mark.parametrize("numeric_rating", [0.0, 99.0, 999.0, -99.0, -999.0])
+def test_corridor_direct_ratings_preserve_zero_and_filter_sentinels(numeric_rating):
+    """Verify that zero is rated while sentinel values are unrated."""
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
     mock_sda.get_spatial_intersection.return_value = [
@@ -615,9 +638,8 @@ def test_corridor_zero_le_score_preservation():
             "area_ac": "10.0",
         }
     ]
-    # Numeric rating is 0.0
     mock_sda.get_interpretations.return_value = [
-        {"mukey": "9999", "numeric_rating": "0.0", "rating_class": "Not Rated"}
+        {"mukey": "9999", "numeric_rating": str(numeric_rating), "rating_class": "Not Rated"}
     ]
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
@@ -646,8 +668,16 @@ def test_corridor_zero_le_score_preservation():
 
     assert len(res.county_segments) == 1
     seg = res.county_segments[0]
-    assert seg.relative_rating_le == 0.0
-    assert res.composite_relative_rating == 0.0
+    if numeric_rating == 0.0:
+        assert seg.relative_rating_le == 0.0
+        assert res.composite_relative_rating == 0.0
+        assert seg.map_units[0].calculated_acres > 0
+        assert seg.map_units[0].productivity_rating == 0.0
+        assert seg.map_units[0].productivity_rating_source == "SDA:NCCPI_V3"
+    else:
+        assert seg.relative_rating_le is None
+        assert res.composite_relative_rating is None
+        assert seg.map_units[0].productivity_rating is None
 
 
 def test_corridor_partially_covered_status():
