@@ -51,8 +51,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default=os.environ.get("AGENT_EVAL_MODEL", "gemini-3.7-flash"),
-        help="Model string/pattern to pass to pi (overrides AGENT_EVAL_MODEL env var, default: gemini-3.7-flash).",
+        default=os.environ.get("AGENT_EVAL_MODEL", "gpt-5.6-luna"),
+        help="Model string/pattern to pass to pi (overrides AGENT_EVAL_MODEL env var, default: gpt-5.6-luna).",
     )
     parser.add_argument(
         "--timeout",

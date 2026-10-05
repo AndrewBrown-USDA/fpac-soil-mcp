@@ -466,7 +466,7 @@ def test_pi_point_screening_evaluation(
     case = next((tc for tc in prompt_dataset if tc["id"] == "POINT-01"), None)
     assert case is not None, "POINT-01 test case not found"
 
-    model_override = os.environ.get("AGENT_EVAL_MODEL", "gemini-3.7-flash")
+    model_override = os.environ.get("AGENT_EVAL_MODEL", "gpt-5.6-luna")
     cmd = [
         pi_exe,
         "--no-session",
