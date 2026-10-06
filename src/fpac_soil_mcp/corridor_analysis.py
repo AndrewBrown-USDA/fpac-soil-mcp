@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import math
 from datetime import UTC, datetime
 from typing import Any
 
@@ -35,12 +36,14 @@ from fpac_soil_mcp.geometry import (
     validate_and_sanitize_polygon_wkt,
 )
 from fpac_soil_mcp.integration_models import CountyIdentifier, CountyPartitionGeometry
+from fpac_soil_mcp.lesa import _normalize_productivity_index as _normalize_fixed_productivity_index
 from fpac_soil_mcp.models import (
     CorridorAlternativeComparison,
     CorridorCountySegment,
     CorridorFarmlandAnalysisResponse,
     CorridorImpactBreakdown,
     FarmlandCategoryBreakdown,
+    ProductivityIndexType,
     QuerySource,
     SoilMapUnitAcreage,
 )
@@ -50,6 +53,39 @@ from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 logger = logging.getLogger(__name__)
+
+
+_NCCPI_RULE = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+_NCCPI_SOURCE = "SDA:NCCPI_V3"
+_UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
+
+
+def _normalize_corridor_rating(value: Any, is_rated: Any) -> float | None:
+    """Return a valid rated productivity value, preserving zero ratings."""
+    if is_rated is False:
+        return None
+    try:
+        rating = float(value) if value is not None else None
+    except (ValueError, TypeError):
+        return None
+    if rating is None or not math.isfinite(rating) or rating < 0 or rating in _UNRATED_SENTINELS:
+        return None
+    return rating
+
+
+def _get_corridor_ratings(
+    sda_client: SDAClient,
+    mukeys: list[str],
+    productivity_index: str,
+) -> dict[str, dict[str, Any]]:
+    if not mukeys:
+        return {}
+    rows = sda_client.get_interpretations(
+        mukeys=mukeys,
+        rule_name=_NCCPI_RULE,
+        aggregation_method="Weighted Average",
+    )
+    return {str(row.get("mukey")): dict(row) for row in rows}
 
 
 def _county_identifier(
@@ -94,6 +130,8 @@ class CorridorAnalyzer:
         indirect_geometry_input: dict[str, Any] | str | Polygon | MultiPolygon | None = None,
         alternatives: list[dict[str, Any]] | None = None,
         include_nccpi: bool = True,
+        productivity_index: str = "nccpi",
+        max_county_rating_override: float | None = None,
     ) -> CorridorFarmlandAnalysisResponse:
         """Execute full multi-county corridor farmland screening and reconciliation.
 
@@ -104,7 +142,9 @@ class CorridorAnalyzer:
             indirect_geometry_input: Optional indirect staging/access areas.
             alternatives: Optional list of alternative alignment dicts:
                 [{'alternative_id': 'B', 'centerline': ..., 'buffer_distance': ..., 'buffer_units': ...}]
-            include_nccpi: Whether to retrieve component-weighted NCCPI v3 interpretations.
+            include_nccpi: Whether to retrieve component-weighted interpretations.
+            productivity_index: Soil productivity index type ('nccpi').
+            max_county_rating_override: Optional positive county maximum benchmark.
 
         Returns:
             CorridorFarmlandAnalysisResponse with partitioned county segments, composite LE, and sum audit.
@@ -112,6 +152,18 @@ class CorridorAnalyzer:
         now = datetime.now(UTC)
         timestamp_str = now.isoformat()
         limitations = list(REGULATORY_LIMITATIONS)
+        normalized_index = _normalize_fixed_productivity_index(productivity_index)
+        if normalized_index is not ProductivityIndexType.NCCPI:
+            raise ValueError(
+                f"Unsupported productivity index type '{productivity_index}'. "
+                "Supported fixed selector: 'nccpi'."
+            )
+        norm_idx = "nccpi"
+        if max_county_rating_override is not None and (
+            not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
+        ):
+            raise ValueError("max_county_rating_override must be a positive finite number")
+        ratings_requested = include_nccpi
 
         # 1. Resolve direct centerline geometry and compute geometry hash from centerline
         try:
@@ -314,20 +366,35 @@ class CorridorAnalyzer:
                 logger.error("SDA spatial query failed for county %s: %s", seg_county_name, exc)
                 limitations.append(f"SDA error for {seg_county_name}: {exc}")
 
-            # NCCPI interpretations
+            # Selected productivity interpretations
             mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
             interp_map: dict[str, dict[str, Any]] = {}
-            if include_nccpi and mukeys:
+            if ratings_requested and mukeys:
                 try:
-                    interp_rows = self.sda_client.get_interpretations(
-                        mukeys=mukeys,
-                        rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-                        aggregation_method="Weighted Average",
-                    )
-                    for irow in interp_rows:
-                        interp_map[str(irow.get("mukey"))] = irow
+                    interp_map = _get_corridor_ratings(self.sda_client, mukeys, norm_idx)
                 except SDAClientError as exc:
-                    logger.warning("NCCPI interpretation error for %s: %s", seg_county_name, exc)
+                    logger.warning(
+                        "Productivity interpretation error (%s) for %s: %s",
+                        norm_idx,
+                        seg_county_name,
+                        exc,
+                    )
+
+            partition_max: dict[str, float] = {}
+            if ratings_requested and max_county_rating_override is None:
+                areasymbol = {
+                    str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
+                }
+                for symbol in areasymbol:
+                    try:
+                        benchmark = self.sda_client.get_county_max_productivity_rating(
+                            areasymbol=symbol,
+                            index_type=norm_idx,
+                        )
+                        if benchmark is not None and benchmark > 0:
+                            partition_max[symbol] = float(benchmark)
+                    except SDAClientError as exc:
+                        logger.warning("County max rating query failed for %s: %s", symbol, exc)
 
             # Map units & farmland categories
             grouped_units: dict[str, dict[str, Any]] = {}
@@ -375,12 +442,17 @@ class CorridorAnalyzer:
                 cat = categorize_farmland_class(farmlndcl_str)
                 category_acres[cat] += calc_ac
 
-                numeric_rating = interp_info.get("numeric_rating")
+                numeric_rating = _normalize_corridor_rating(
+                    interp_info.get("numeric_rating"),
+                    interp_info.get("is_rated"),
+                )
                 if numeric_rating is not None:
                     try:
-                        numeric_rating = float(numeric_rating)
-                        # NCCPI is 0-1 scale; convert to 0-100 scale for Land Evaluation
-                        le_score = numeric_rating * 100.0
+                        benchmark = partition_max.get(
+                            str(u.get("areasymbol")).strip(),
+                            max_county_rating_override or 1.0,
+                        )
+                        le_score = min(1.0, max(0.0, numeric_rating / benchmark)) * 100.0
                         segment_le_sum += calc_ac * le_score
                         segment_le_weight += calc_ac
                     except (ValueError, TypeError):
@@ -395,8 +467,12 @@ class CorridorAnalyzer:
                         areasymbol=u.get("areasymbol"),
                         calculated_acres=calc_ac,
                         percentage_of_aoi=pct,
-                        nccpi_rating=numeric_rating,
-                        nccpi_class=interp_info.get("rating_class"),
+                        productivity_rating=numeric_rating,
+                        productivity_rating_class=interp_info.get("rating_class"),
+                        productivity_rating_source=interp_info.get(
+                            "productivity_rating_source",
+                            _NCCPI_SOURCE,
+                        ),
                     )
                 )
 
@@ -651,19 +727,43 @@ class CorridorAnalyzer:
                             {str(r.get("mukey")) for r in alt_raw_units if r.get("mukey")}
                         )
                         alt_interp_map: dict[str, dict[str, Any]] = {}
-                        if include_nccpi and alt_mukeys:
+                        if ratings_requested and alt_mukeys:
                             try:
-                                alt_interp_rows = self.sda_client.get_interpretations(
-                                    mukeys=alt_mukeys,
-                                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-                                    aggregation_method="Weighted Average",
+                                alt_interp_map = _get_corridor_ratings(
+                                    self.sda_client,
+                                    alt_mukeys,
+                                    norm_idx,
                                 )
-                                for irow in alt_interp_rows:
-                                    alt_interp_map[str(irow.get("mukey"))] = irow
                             except SDAClientError as exc:
                                 logger.warning(
-                                    "Alternative %s NCCPI interpretation error: %s", alt_id, exc
+                                    "Alternative %s productivity interpretation error (%s): %s",
+                                    alt_id,
+                                    norm_idx,
+                                    exc,
                                 )
+
+                        alt_partition_max: dict[str, float] = {}
+                        if ratings_requested and max_county_rating_override is None:
+                            alt_symbols = {
+                                str(unit.get("areasymbol")).strip()
+                                for unit in alt_raw_units
+                                if unit.get("areasymbol")
+                            }
+                            for symbol in alt_symbols:
+                                try:
+                                    benchmark = self.sda_client.get_county_max_productivity_rating(
+                                        areasymbol=symbol,
+                                        index_type=norm_idx,
+                                    )
+                                    if benchmark is not None and benchmark > 0:
+                                        alt_partition_max[symbol] = float(benchmark)
+                                except SDAClientError as exc:
+                                    logger.warning(
+                                        "Alternative %s county max rating query failed for %s: %s",
+                                        alt_id,
+                                        symbol,
+                                        exc,
+                                    )
 
                         alt_seg_le_sum = 0.0
                         alt_seg_le_weight = 0.0
@@ -686,11 +786,17 @@ class CorridorAnalyzer:
                                 alt_fppa_ac += area_val
 
                             interp_info = alt_interp_map.get(m_str, {})
-                            num_rating = interp_info.get("numeric_rating")
+                            num_rating = _normalize_corridor_rating(
+                                interp_info.get("numeric_rating"),
+                                interp_info.get("is_rated"),
+                            )
                             if num_rating is not None:
                                 try:
-                                    num_rating_flt = float(num_rating)
-                                    le_score = num_rating_flt * 100.0
+                                    benchmark = alt_partition_max.get(
+                                        str(au.get("areasymbol")).strip(),
+                                        max_county_rating_override or 1.0,
+                                    )
+                                    le_score = min(1.0, max(0.0, num_rating / benchmark)) * 100.0
                                     alt_seg_le_sum += area_val * le_score
                                     alt_seg_le_weight += area_val
                                 except (ValueError, TypeError):

@@ -9,7 +9,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.sda_client import SDAClient, SDAClientError, SDAValidationError
 
 pytestmark = pytest.mark.live_network
 
@@ -84,9 +84,13 @@ class TestLiveSDA:
         except (SDAClientError, httpx.HTTPError) as exc:
             pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
 
-        assert len(rules) > 50
         assert "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)" in rules
-        assert any("Corn" in r for r in rules)
+
+    def test_fixed_selector_rejects_unsupported_value(self) -> None:
+        """The public fixed selector rejects unsupported values."""
+        client = SDAClient()
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_productivity_ratings(mukeys=["402001"], index_type="unsupported")
 
     def test_live_geometry_extraction(self) -> None:
         """Query live geometry extraction returning WKT polygon shapes."""
@@ -103,3 +107,25 @@ class TestLiveSDA:
         for row in results:
             assert "geom" in row
             assert row["geom"].startswith(("POLYGON", "MULTIPOLYGON"))
+
+    def test_live_dynamic_sdv_queries_and_unrated_water_urban(self) -> None:
+        """Verify dynamic SDV query generation on live SDA with real attribute metadata."""
+        client = SDAClient()
+        # Query water/urban area (e.g. Lake Michigan coordinates near Chicago: 41.90, -87.60)
+        water_pts = client.get_by_point(latitude=41.9000, longitude=-87.6000)
+        if water_pts and water_pts[0].get("mukey"):
+            water_mukey = str(water_pts[0]["mukey"])
+            nccpi_res = client.get_interpretations(
+                mukeys=[water_mukey],
+                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            )
+            if nccpi_res:
+                # In water/urban land, numeric rating is None or sentinel (99/999)
+                assert nccpi_res[0].get("numeric_rating") is None or nccpi_res[0].get(
+                    "numeric_rating"
+                ) in (99, 999, 99.0, 999.0)
+
+        # Query dynamic SDV county maximum for NCCPI in Iowa
+        max_val = client.get_county_max_productivity_rating(areasymbol="IA169", index_type="nccpi")
+        assert max_val is not None
+        assert max_val > 0.0

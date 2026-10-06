@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Verified national NCCPI Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
+  "cases": [
+    {
+      "id": "US_NCCPI_MIXED_RATED_UNRATED",
+      "name": "Standard NCCPI v3 Parcel Evaluation with Mixed Map Units",
+      "state_fips": "17",
+      "county_fips": "019",
+      "county_name": "Champaign County, IL",
+      "project_type": "site",
+      "productivity_index": "NCCPI",
+      "county_max_rating": 0.94,
+      "map_units": [
+        {
+          "mukey": "402001",
+          "musym": "152A",
+          "muname": "Drummer silty clay loam, 0 to 2 percent slopes",
+          "acres": 50.0,
+          "raw_rating": 0.89,
+          "normalized_relative_rating": 0.9468,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "402002",
+          "musym": "154A",
+          "muname": "Flanagan silt loam, 0 to 2 percent slopes",
+          "acres": 30.0,
+          "raw_rating": 0.86,
+          "normalized_relative_rating": 0.9149,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "402099",
+          "musym": "W",
+          "muname": "Water",
+          "acres": 20.0,
+          "raw_rating": null,
+          "normalized_relative_rating": null,
+          "is_rated": false,
+          "unrated_reason": "Open water feature excluded from agricultural rating calculation"
+        }
+      ],
+      "expected_evaluation": {
+        "rated_acreage": 80.0,
+        "unrated_acreage": 20.0,
+        "total_acreage": 100.0,
+        "coverage_percent": 80.0,
+        "aoi_relative_rating": 0.9348,
+        "candidate_le_score": 93.48,
+        "county_farmland_percentile_higher": 85.0
+      },
+      "site_assessment": {
+        "total_sa_score": 80.0,
+        "criteria_count": 12
+      },
+      "expected_lesa_summary": {
+        "total_lesa_score": 173.48,
+        "mandatory_alternatives_required": true,
+        "threshold_note": "Score >= 160 triggers consideration of alternative project sites per FPPA guidelines."
+      }
+    },
+    {
+      "id": "CORRIDOR_TRANSMISSION_LOW_IMPACT",
+      "name": "Corridor Transmission Line Alternative - Low Farmland Impact (<160)",
+      "state_fips": "20",
+      "county_fips": "091",
+      "county_name": "Johnson County, KS",
+      "project_type": "corridor",
+      "productivity_index": "NCCPI",
+      "county_max_rating": 0.85,
+      "map_units": [
+        {
+          "mukey": "301001",
+          "musym": "7050",
+          "muname": "Kenoma silt loam, 1 to 3 percent slopes",
+          "acres": 12.5,
+          "raw_rating": 0.51,
+          "normalized_relative_rating": 0.6,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "301002",
+          "musym": "7601",
+          "muname": "Sibleyville complex, 5 to 15 percent slopes",
+          "acres": 17.5,
+          "raw_rating": 0.34,
+          "normalized_relative_rating": 0.4,
+          "is_rated": true,
+          "unrated_reason": null
+        }
+      ],
+      "expected_evaluation": {
+        "rated_acreage": 30.0,
+        "unrated_acreage": 0.0,
+        "total_acreage": 30.0,
+        "coverage_percent": 100.0,
+        "aoi_relative_rating": 0.4833,
+        "candidate_le_score": 48.33,
+        "county_farmland_percentile_higher": 32.0
+      },
+      "site_assessment": {
+        "total_sa_score": 95.0,
+        "criteria_count": 10
+      },
+      "expected_lesa_summary": {
+        "total_lesa_score": 143.33,
+        "mandatory_alternatives_required": false,
+        "threshold_note": "Corridor total score < 160 does not mandate alternative corridor selection under Form NRCS-CPA-106."
+      }
+    }
+  ]
+}

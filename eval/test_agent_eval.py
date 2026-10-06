@@ -19,6 +19,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import run_evals
+from run_evals import (
+    _tool_matches,
+    extract_advertised_tool_names,
+    should_retry_missing_tools,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
@@ -45,6 +51,76 @@ def parse_pi_events(output: str) -> list[dict[str, Any]]:
     return events
 
 
+def test_advertised_tools_prefer_initialization_event() -> None:
+    events = [
+        {"type": "mcp_initialize", "capabilities": {"tools": [{"name": "init_tool"}]}},
+        {"type": "tools_list", "tools": [{"name": "fallback_tool"}]},
+    ]
+    assert extract_advertised_tool_names(events) == ({"init_tool"}, "initialization")
+
+
+def test_tool_list_fallback_and_unknown_configuration_diagnostics() -> None:
+    assert extract_advertised_tool_names(
+        [{"type": "tools_list", "result": {"tools": [{"name": "listed_tool"}]}}]
+    ) == ({"listed_tool"}, "tool-list fallback")
+    assert extract_advertised_tool_names([{"type": "message_end", "message": {}}]) == (
+        None,
+        "unknown",
+    )
+
+
+def test_advertised_and_unadvertised_tools_are_distinguished_exactly() -> None:
+    advertised, source = extract_advertised_tool_names(
+        [{"type": "initialize", "tools": [{"name": "fpac_tool"}]}]
+    )
+    assert source == "initialization"
+    assert advertised == {"fpac_tool"}
+    assert "fpac_tool" in advertised
+    assert "other_tool" not in advertised
+    assert _tool_matches("tool", {"server_tool"})
+    assert not _tool_matches("tool", {"server_tool_extra"})
+
+
+def test_missing_advertised_tool_can_be_retried_once_without_prose_substitution() -> None:
+    events = [
+        {"type": "initialize", "tools": [{"name": "expected_tool"}]},
+        {"type": "message_end", "message": {"role": "assistant", "content": "expected_tool"}},
+    ]
+    advertised, _ = extract_advertised_tool_names(events)
+    executed = set().union(*(extract_structured_tool_names(event) for event in events))
+    assert advertised == {"expected_tool"}
+    assert not _tool_matches("expected_tool", executed)
+    assert should_retry_missing_tools(["expected_tool"], advertised, 0)
+    assert not should_retry_missing_tools(["expected_tool"], advertised, 1)
+    assert "expected_tool" not in executed
+
+
+def test_run_case_returns_structured_failure_when_subprocess_startup_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def raise_startup_error(*args: Any, **kwargs: Any) -> Any:
+        raise OSError("unable to start pi")
+
+    monkeypatch.setattr(run_evals.subprocess, "run", raise_startup_error)
+
+    result = run_evals.run_case(
+        {
+            "id": "STARTUP-FAIL",
+            "category": "regression",
+            "target_name": "expected_tool",
+            "user_prompt": "perform the test",
+        },
+        tmp_path,
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+
+    assert result["status"] == "ERROR"
+    assert result["elapsed_sec"] >= 0
+    assert result["error"] == "OSError: unable to start pi"
+
+
 def event_text(event: dict[str, Any]) -> str:
     """Flatten an event to searchable text for compatibility across pi event versions."""
     return json.dumps(event, ensure_ascii=False).lower()
@@ -55,22 +131,40 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     names: set[str] = set()
     event_type = str(event.get("type", "")).lower()
 
-    if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
-        for key in ("tool_name", "tool", "name", "function_name"):
+    # Direct tool execution or tool call events
+    if "tool" in event_type or event_type in {
+        "call",
+        "tool_use",
+        "tool_call",
+        "tool_execution",
+    }:
+        for key in ("tool_name", "tool", "name", "function_name", "toolName"):
             val = event.get(key)
             if isinstance(val, str) and val:
                 names.add(val)
 
+        args_obj = event.get("args")
+        if isinstance(args_obj, dict):
+            sub_tool = args_obj.get("tool") or args_obj.get("name")
+            if isinstance(sub_tool, str) and sub_tool:
+                names.add(sub_tool)
+
         tool_call_obj = event.get("tool_call") or event.get("call") or event.get("function")
         if isinstance(tool_call_obj, dict):
-            for key in ("name", "tool_name", "tool"):
+            for key in ("name", "tool_name", "tool", "toolName"):
                 val = tool_call_obj.get(key)
                 if isinstance(val, str) and val:
                     names.add(val)
+            sub_args = tool_call_obj.get("args") or tool_call_obj.get("arguments")
+            if isinstance(sub_args, dict):
+                sub_tool = sub_args.get("tool") or sub_args.get("name")
+                if isinstance(sub_tool, str) and sub_tool:
+                    names.add(sub_tool)
 
+    # Tool calls embedded inside message objects
     message = event.get("message")
     if isinstance(message, dict):
-        tool_calls = message.get("tool_calls")
+        tool_calls = message.get("tool_calls") or message.get("toolCalls")
         if isinstance(tool_calls, list):
             for tc in tool_calls:
                 if isinstance(tc, dict):
@@ -79,14 +173,45 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
                         names.add(fn["name"])
                     elif isinstance(tc.get("name"), str):
                         names.add(tc["name"])
+                    sub_args = tc.get("args") or tc.get("arguments")
+                    if isinstance(sub_args, dict):
+                        sub_tool = sub_args.get("tool") or sub_args.get("name")
+                        if isinstance(sub_tool, str) and sub_tool:
+                            names.add(sub_tool)
 
+        # Content blocks inside message (e.g. toolCall, tool_use)
+        msg_content = message.get("content")
+        if isinstance(msg_content, list):
+            for block in msg_content:
+                if isinstance(block, dict):
+                    btype = block.get("type", "")
+                    if btype in {"tool_use", "tool_call", "toolCall"}:
+                        val = block.get("name") or block.get("tool") or block.get("toolName")
+                        if isinstance(val, str) and val:
+                            names.add(val)
+                        b_args = block.get("arguments") or block.get("args")
+                        if isinstance(b_args, dict):
+                            sub_tool = b_args.get("tool") or b_args.get("name")
+                            if isinstance(sub_tool, str) and sub_tool:
+                                names.add(sub_tool)
+
+    # Nested content blocks (e.g. Claude/Pi tool_use content blocks)
     content = event.get("content")
     if isinstance(content, list):
         for block in content:
-            if isinstance(block, dict) and block.get("type") in {"tool_use", "tool_call"}:
-                val = block.get("name") or block.get("tool")
+            if isinstance(block, dict) and block.get("type") in {
+                "tool_use",
+                "tool_call",
+                "toolCall",
+            }:
+                val = block.get("name") or block.get("tool") or block.get("toolName")
                 if isinstance(val, str) and val:
                     names.add(val)
+                b_args = block.get("arguments") or block.get("args")
+                if isinstance(b_args, dict):
+                    sub_tool = b_args.get("tool") or b_args.get("name")
+                    if isinstance(sub_tool, str) and sub_tool:
+                        names.add(sub_tool)
 
     return names
 
@@ -94,55 +219,211 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
 def extract_assistant_content(event: dict[str, Any]) -> str:
     """Extract assistant response text or tool output from an event."""
     event_type = str(event.get("type", "")).lower()
-    role = str(event.get("role", "")).lower()
     text_parts: list[str] = []
 
-    if role in {"assistant", "model", "tool"} or event_type in {
-        "assistant",
-        "message",
-        "text",
-        "response",
-        "tool_result",
-        "tool_output",
-    }:
-        content = (
-            event.get("content") or event.get("text") or event.get("result") or event.get("output")
-        )
-        if isinstance(content, str):
-            text_parts.append(content)
-        elif isinstance(content, list):
-            for block in content:
-                if isinstance(block, str):
-                    text_parts.append(block)
-                elif (
-                    isinstance(block, dict)
-                    and block.get("type") in {"text", "output", "result"}
-                    and isinstance(block.get("text") or block.get("content"), str)
-                ):
-                    text_parts.append(block.get("text") or block.get("content") or "")
+    # Handle pi structured events (message_end is emitted per assistant message turn)
+    if event_type == "message_end":
+        msg = event.get("message")
+        if isinstance(msg, dict):
+            msg_role = str(msg.get("role", "")).lower()
+            if msg_role in {"assistant", "model"}:
+                content = msg.get("content")
+                if isinstance(content, str):
+                    text_parts.append(content)
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, str):
+                            text_parts.append(block)
+                        elif isinstance(block, dict) and block.get("type") == "text":
+                            text_parts.append(block.get("text") or "")
+                return " ".join(text_parts)
 
-    message = event.get("message")
-    if isinstance(message, dict) and str(message.get("role", "")).lower() in {"assistant", "model"}:
-        msg_content = message.get("content")
-        if isinstance(msg_content, str):
-            text_parts.append(msg_content)
-        elif isinstance(msg_content, list):
-            for block in msg_content:
-                if isinstance(block, str):
-                    text_parts.append(block)
-                elif isinstance(block, dict) and isinstance(block.get("text"), str):
-                    text_parts.append(block["text"])
-
-    return " ".join(text_parts)
+    return ""
 
 
 def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return events representing MCP/tool invocations from pi's JSON stream."""
+    """Extract structured MCP/tool invocations from pi's JSON stream."""
     calls: list[dict[str, Any]] = []
+
+    def add_call(name: Any, arguments: Any) -> None:
+        if isinstance(name, str) and name:
+            if isinstance(arguments, str):
+                try:
+                    parsed_arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    parsed_arguments = {}
+            else:
+                parsed_arguments = arguments
+            calls.append(
+                {
+                    "name": name,
+                    "arguments": parsed_arguments if isinstance(parsed_arguments, dict) else {},
+                }
+            )
+
     for event in events:
-        if extract_structured_tool_names(event):
-            calls.append(event)
+        event_type = str(event.get("type", "")).lower()
+        direct_args = event.get("args")
+        if isinstance(direct_args, dict):
+            direct_name = direct_args.get("tool") or direct_args.get("name")
+            if isinstance(direct_name, str):
+                add_call(
+                    direct_name,
+                    direct_args.get("arguments") or direct_args.get("args"),
+                )
+
+        if "tool" in event_type or event_type in {
+            "call",
+            "tool_use",
+            "tool_call",
+            "tool_execution",
+        }:
+            for key in ("tool_name", "tool", "name", "function_name", "toolName"):
+                if isinstance(event.get(key), str):
+                    add_call(event[key], event.get("arguments") or event.get("args"))
+
+            for key in ("tool_call", "call", "function"):
+                nested = event.get(key)
+                if isinstance(nested, dict):
+                    for name_key in ("name", "tool_name", "tool", "toolName"):
+                        if isinstance(nested.get(name_key), str):
+                            add_call(
+                                nested[name_key],
+                                nested.get("arguments") or nested.get("args"),
+                            )
+                            break
+
+        message = event.get("message")
+        if isinstance(message, dict):
+            tool_calls = message.get("tool_calls") or message.get("toolCalls")
+            if isinstance(tool_calls, list):
+                for tool_call in tool_calls:
+                    if not isinstance(tool_call, dict):
+                        continue
+                    function = tool_call.get("function")
+                    if isinstance(function, dict):
+                        add_call(
+                            function.get("name"),
+                            function.get("arguments") or function.get("args"),
+                        )
+                    else:
+                        add_call(
+                            tool_call.get("name"),
+                            tool_call.get("arguments") or tool_call.get("args"),
+                        )
+
+            content_blocks = message.get("content")
+            if isinstance(content_blocks, list):
+                for block in content_blocks:
+                    if isinstance(block, dict) and block.get("type") in {
+                        "tool_use",
+                        "tool_call",
+                        "toolCall",
+                    }:
+                        add_call(
+                            block.get("name") or block.get("tool") or block.get("toolName"),
+                            block.get("arguments") or block.get("args"),
+                        )
+
+        content = event.get("content")
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") in {
+                    "tool_use",
+                    "tool_call",
+                    "toolCall",
+                }:
+                    add_call(
+                        block.get("name") or block.get("tool") or block.get("toolName"),
+                        block.get("arguments") or block.get("args"),
+                    )
+
     return calls
+
+
+def test_extract_tool_calls_preserves_structured_point_arguments() -> None:
+    """Structured extraction retains coordinates and does not inspect flattened text."""
+    events = [
+        {
+            "type": "message_end",
+            "message": {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "get_farmland_classification_by_point",
+                            "arguments": '{"latitude": 41.8781, "longitude": -93.0977}',
+                        }
+                    }
+                ],
+            },
+        },
+        {
+            "type": "assistant_message",
+            "content": "latitude 0 longitude 0 get_farmland_classification_by_point",
+        },
+    ]
+
+    calls = extract_tool_calls(events)
+
+    assert calls == [
+        {
+            "name": "get_farmland_classification_by_point",
+            "arguments": {"latitude": 41.8781, "longitude": -93.0977},
+        }
+    ]
+
+
+def test_point_01_structured_arguments_match_exact_coordinates() -> None:
+    """Validate POINT-01 coordinates without invoking pi or a network."""
+    events = [
+        {
+            "type": "message_end",
+            "message": {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "get_farmland_classification_by_point",
+                            "arguments": '{"latitude": 41.8781, "longitude": -93.0977}',
+                        }
+                    }
+                ],
+            },
+        }
+    ]
+
+    point_call = extract_tool_calls(events)[0]
+    assert point_call["name"] == "get_farmland_classification_by_point"
+    assert float(point_call["arguments"]["latitude"]) == pytest.approx(41.8781, abs=1e-5)
+    assert float(point_call["arguments"]["longitude"]) == pytest.approx(-93.0977, abs=1e-5)
+
+
+def test_extract_tool_calls_supports_direct_args_objects() -> None:
+    events = [
+        {
+            "type": "tool_execution",
+            "args": {
+                "tool": "get_farmland_classification_by_point",
+                "arguments": {"latitude": 41.8781, "longitude": -93.0977},
+            },
+        },
+        {
+            "type": "tool_execution",
+            "args": {
+                "name": "get_farmland_classification_by_mukey",
+                "args": {"mukey": "12345"},
+            },
+        },
+    ]
+
+    assert extract_tool_calls(events) == [
+        {
+            "name": "get_farmland_classification_by_point",
+            "arguments": {"latitude": 41.8781, "longitude": -93.0977},
+        },
+        {"name": "get_farmland_classification_by_mukey", "arguments": {"mukey": "12345"}},
+    ]
 
 
 def get_pi_executable() -> str | None:
@@ -261,7 +542,7 @@ def test_pi_point_screening_evaluation(
     case = next((tc for tc in prompt_dataset if tc["id"] == "POINT-01"), None)
     assert case is not None, "POINT-01 test case not found"
 
-    model_override = os.environ.get("AGENT_EVAL_MODEL")
+    model_override = os.environ.get("AGENT_EVAL_MODEL", "gpt-5.6-luna")
     cmd = [
         pi_exe,
         "--no-session",
@@ -270,9 +551,9 @@ def test_pi_point_screening_evaluation(
         "--mcp-config",
         str(sandbox_env / "mcp_config.json"),
         "--append-system-prompt",
-        "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. Always inspect and call the available fpac-soil MCP tools, MCP resources, and MCP prompts immediately to answer the user query. Do not ask for confirmation, do not request external files, and do not look for local files when an MCP tool or resource is available.",
+        "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to fulfill the user request before generating the final response. Do not answer purely from memory if an MCP tool or resource is available.",
         "-p",
-        case["user_prompt"],
+        f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}",
     ]
     if model_override:
         cmd.extend(["--model", model_override])
@@ -298,18 +579,29 @@ def test_pi_point_screening_evaluation(
         f"MCP initialization event not found in pi event stream: {result.stdout}"
     )
 
-    tool_calls = extract_tool_calls(events)
+    executed_tool_names: set[str] = set()
+    for event in events:
+        executed_tool_names.update(extract_structured_tool_names(event))
+
     target_tool = case["target_name"]
-    matching_calls = [event for event in tool_calls if target_tool.lower() in event_text(event)]
-    assert matching_calls, (
-        f"Expected MCP tool call '{target_tool}' not found in pi event stream: {result.stdout}"
+    is_tool_called = target_tool in executed_tool_names or any(
+        executed.endswith((f"_{target_tool}", f":{target_tool}"))
+        for executed in executed_tool_names
+    )
+    assert is_tool_called, (
+        f"Expected MCP tool call '{target_tool}' not found in executed tools: {executed_tool_names}"
     )
 
-    for expected_value in ("41.8781", "-93.0977"):
-        assert any(expected_value in event_text(event) for event in matching_calls), (
-            f"Expected parameter '{expected_value}' not found in call to {target_tool}: "
-            f"{result.stdout}"
-        )
+    target_calls = [
+        call
+        for call in extract_tool_calls(events)
+        if call["name"] == target_tool
+        or call["name"].endswith((f"_{target_tool}", f":{target_tool}"))
+    ]
+    assert target_calls, f"Structured call for '{target_tool}' not found"
+    point_arguments = target_calls[0]["arguments"]
+    assert float(point_arguments["latitude"]) == pytest.approx(41.8781, abs=1e-5)
+    assert float(point_arguments["longitude"]) == pytest.approx(-93.0977, abs=1e-5)
 
     assistant_texts = [
         extract_assistant_content(ev) for ev in events if extract_assistant_content(ev)

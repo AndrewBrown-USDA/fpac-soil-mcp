@@ -6,11 +6,14 @@ import httpx
 import pytest
 
 from fpac_soil_mcp.sda_client import (
+    ALLOWED_SDV_TABLES,
     SQL_MUKEY_LOOKUP,
     SQL_POINT_LOOKUP,
     SDAClient,
     SDAQueryError,
     SDAValidationError,
+    build_dynamic_sdv_county_max_query,
+    build_dynamic_sdv_query,
 )
 
 
@@ -88,6 +91,38 @@ class TestSDAValidation:
     def test_validate_wkt_non_polygon_rejected(self) -> None:
         with pytest.raises(SDAValidationError, match="must be a Polygon or MultiPolygon"):
             SDAClient.validate_wkt("POINT(-86.1581 39.7684)")
+
+    def test_dynamic_sdv_query_rejects_invalid_mukeys(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                ["123; DROP TABLE mapunit;--"],
+            )
+
+    def test_dynamic_sdv_query_rejects_direct_mukey_csv_injection(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                "'123', '456' OR 1=1 --",
+            )
+
+    def test_dynamic_sdv_county_max_query_rejects_invalid_areasymbol(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_county_max_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                "IA169'; DROP TABLE mapunit;--",
+            )
+
+    def test_dynamic_sdv_county_max_query_rejects_invalid_direct_areasymbol(self) -> None:
+        with pytest.raises(SDAValidationError):
+            build_dynamic_sdv_county_max_query(
+                {"attributetablename": "mapunit", "attributecolumnname": "nccpi"},
+                "IA 169",
+            )
+
+    def test_dynamic_sdv_table_allowlist_excludes_unsupported_tables(self) -> None:
+        assert "cocropyld" not in ALLOWED_SDV_TABLES
+        assert "corestrictions" not in ALLOWED_SDV_TABLES
 
 
 class TestSDAParsing:
@@ -423,3 +458,267 @@ class TestSDAClientExecution:
         rules = client.get_available_interpretation_rules()
         assert "Farmland Classification" in rules
         assert len(rules) == 2
+
+    def test_get_county_max_productivity_rating_nccpi(self) -> None:
+        mock_resp = {
+            "Table": [
+                ["max_county_rating"],
+                [0.94],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"areasymbol = 'IL019'" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("IL019", index_type="nccpi")
+        assert val == 0.94
+
+    def test_get_county_max_productivity_rating_rejects_unsupported_without_sda_call(
+        self,
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise AssertionError("unsupported selector must not reach SDA")
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_county_max_productivity_rating("IA169", index_type="unsupported")
+
+    def test_get_county_max_productivity_rating_sentinels_and_nulls(self) -> None:
+        client = SDAClient()
+        with pytest.raises(SDAValidationError):
+            client.get_county_max_productivity_rating("IA169", "unsupported")
+
+    def test_get_county_max_productivity_rating_validation_errors(self) -> None:
+        client = SDAClient()
+        with pytest.raises(SDAValidationError, match="Invalid soil survey area symbol"):
+            client.get_county_max_productivity_rating("INVALID-AREA!", "unsupported")
+
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_county_max_productivity_rating("IA169", "unknown_index")
+
+    def test_get_productivity_ratings_nccpi(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rating_class",
+                    "rated_pct",
+                    "total_pct",
+                    "comp_count",
+                ],
+                ["402001", "IL019", "152A", "Drummer silty clay loam", 0.89, "High", 95, 100, 3],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"cointerp" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["402001"], index_type="nccpi")
+        assert len(results) == 1
+        assert results[0]["mukey"] == "402001"
+        assert results[0]["numeric_rating"] == 0.89
+        assert results[0]["is_rated"] is True
+        assert results[0]["index_type"] == "nccpi"
+
+    def test_get_productivity_ratings_rejects_unsupported_without_sda_call(
+        self,
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise AssertionError("unsupported selector must not reach SDA")
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_productivity_ratings(["406439"], index_type="unsupported")
+
+    def test_get_productivity_ratings_unrated_and_missing(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rating_class",
+                    "rated_pct",
+                    "total_pct",
+                    "comp_count",
+                ],
+                ["402099", "IL019", "W", "Water", None, None, 0, 100, 1],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        # Request both 402099 (in table with None) and 999999 (not in table)
+        results = client.get_productivity_ratings(["402099", "999999"], index_type="nccpi")
+        assert len(results) == 2
+        r_water = next(r for r in results if r["mukey"] == "402099")
+        assert r_water["is_rated"] is False
+        assert r_water["numeric_rating"] is None
+
+        r_missing = next(r for r in results if r["mukey"] == "999999")
+        assert r_missing["is_rated"] is False
+        assert "Map unit not found" in r_missing["caveats"][0]
+
+    def test_get_productivity_ratings_empty_input(self) -> None:
+        client = SDAClient()
+        assert client.get_productivity_ratings([]) == []
+
+    def test_get_productivity_ratings_invalid_index(self) -> None:
+        client = SDAClient()
+        with pytest.raises(SDAValidationError, match="Unsupported productivity index type"):
+            client.get_productivity_ratings(["402001"], index_type="invalid_index")
+
+    def test_lookup_sdv_attribute_success(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "attributekey",
+                    "attributename",
+                    "attributetablename",
+                    "attributecolumnname",
+                    "nasisrulename",
+                ],
+                [1, "Farmland Classification", "mapunit", "farmlndcl", None],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"LIKE '%Farmland%'" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.lookup_sdv_attribute("Farmland")
+        assert len(results) == 1
+        assert results[0]["attributename"] == "Farmland Classification"
+
+    def test_lookup_sdv_attribute_injection_check(self) -> None:
+        client = SDAClient()
+        with pytest.raises(
+            SDAValidationError, match="Invalid characters in attribute search pattern"
+        ):
+            client.lookup_sdv_attribute("Farmland; DROP TABLE sdvattribute;--")
+
+    def test_build_dynamic_sdv_query_cointerp(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "National Commodity Crop Productivity Index",
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001', '1002'")
+        assert "cointerp" in query
+        assert "NCCPI - National Commodity Crop Productivity Index" in query
+        assert "WHERE m.mukey IN ('1001', '1002')" in query
+
+    def test_build_dynamic_sdv_query_nccpi_excludes_negative_sentinels(self) -> None:
+        meta = {
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "rating NOT IN (99, 999, -99, -999)" in query
+
+    def test_build_dynamic_sdv_query_uses_exact_rule_name(self) -> None:
+        meta = {
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "Future Validated Rule",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "ci.mrulename = 'Future Validated Rule'" in query
+        assert "LIKE '%Future Validated Rule%'" not in query
+        assert "NCCPI" not in query
+
+    def test_build_dynamic_sdv_county_max_uses_exact_rule_name(self) -> None:
+        meta = {
+            "attributetablename": "cointerp",
+            "attributecolumnname": "interphr",
+            "nasisrulename": "Future Validated Rule",
+        }
+        query = build_dynamic_sdv_county_max_query(meta, "IA169")
+        assert "ci.mrulename = 'Future Validated Rule'" in query
+        assert "LIKE '%Future Validated Rule%'" not in query
+        assert "NCCPI" not in query
+
+    def test_build_dynamic_sdv_query_component(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "Corn Yield",
+            "attributetablename": "component",
+            "attributecolumnname": "cornyld",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "c.cornyld" in query
+        assert "CAST(c.cornyld AS float) AS rating" in query
+        assert (
+            "ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END)"
+            in query
+        )
+
+    def test_build_dynamic_sdv_query_mapunit(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "Map Unit Farmland Class",
+            "attributetablename": "mapunit",
+            "attributecolumnname": "farmlndcl",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "m.farmlndcl" in query
+
+    def test_build_dynamic_sdv_query_invalid_table(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributetablename": "unauthorized_table",
+            "attributecolumnname": "col",
+        }
+        with pytest.raises(SDAValidationError, match="Unsupported or unallowed SDV table"):
+            build_dynamic_sdv_query(meta, "'1001'")
+
+    def test_get_productivity_ratings_with_attribute_meta(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["1001", "IA169", "138B", "Clarion loam", 91.0, 95.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"c.cornyld" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        meta = {
+            "attributename": "Corn Yield",
+            "attributetablename": "component",
+            "attributecolumnname": "cornyld",
+        }
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["1001"], attribute_meta=meta)
+        assert len(results) == 1
+        assert results[0]["numeric_rating"] == 91.0
+        assert results[0]["is_rated"] is True

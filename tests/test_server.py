@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -34,6 +36,33 @@ class TestServerInitialization:
         assert "get_farmland_classification_by_mukey" in tool_names
         assert "check_urban_area_exemption" in tool_names
         assert "get_soil_interpretations" in tool_names
+
+    def test_published_server_metadata_exposes_lesa_capabilities(self) -> None:
+        with open("server.json", encoding="utf-8") as metadata_file:
+            metadata = json.load(metadata_file)
+
+        published_tools = {tool["name"]: tool["description"] for tool in metadata["tools"]}
+        assert "calculate_preliminary_lesa" in published_tools
+        assert "analyze_corridor_fppa" in published_tools
+        assert "LESA" in published_tools["calculate_preliminary_lesa"]
+        assert "corridor" in published_tools["analyze_corridor_fppa"].lower()
+
+    def test_published_tool_metadata_matches_manifest(self) -> None:
+        metadata = json.loads(Path("server.json").read_text(encoding="utf-8"))
+        manifest = Path("manifest.yaml").read_text(encoding="utf-8")
+        manifest_tools = dict(
+            re.findall(
+                r"^  - name: ([^\r\n]+)\r?\n    description: ([^\r\n]+)$",
+                manifest.split("\nresources:", 1)[0],
+                re.MULTILINE,
+            )
+        )
+        published_tools = {tool["name"]: tool["description"] for tool in metadata["tools"]}
+
+        assert len(manifest_tools) == 10
+        assert len(published_tools) == 10
+        assert set(published_tools) == set(manifest_tools)
+        assert published_tools == manifest_tools
 
     @pytest.mark.asyncio
     async def test_server_initialization_includes_all_tools_and_prompts(self) -> None:

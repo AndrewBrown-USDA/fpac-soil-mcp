@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+from shapely.geometry import LineString
+
 from fpac_soil_mcp.constants import (
     FARMLAND_CLASS_DEFINITIONS,
     REGULATORY_LIMITATIONS,
     REGULATORY_NOTICE,
 )
+from fpac_soil_mcp.geometry import GeometryValidationError
 from fpac_soil_mcp.models import (
     FarmlandClassificationResponse,
     FarmlandClassListResponse,
@@ -22,6 +26,7 @@ from fpac_soil_mcp.tools.fppa_tools import (
 from fpac_soil_mcp.tools.soil_tools import (
     analyze_corridor_fppa,
     analyze_farmland_by_polygon,
+    calculate_preliminary_lesa,
     check_urban_area_exemption,
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
@@ -201,6 +206,142 @@ class TestFPPATools:
         )
         assert "Not prime farmland" in response.classes
 
+    def test_calculate_preliminary_lesa_accepts_linestring_corridor(
+        self,
+    ) -> None:
+        with patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa") as mock_corridor:
+            mock_corridor.return_value = {
+                "composite_relative_rating": 55.0,
+                "reconciliation_summary": {"buffered_footprint_acres": 2.0},
+            }
+            geometry = LineString([(0, 0), (1, 1)])
+            response = calculate_preliminary_lesa(
+                project_name="corridor",
+                geometry=geometry,
+                project_type="corridor",
+            )
+            assert response.project_name == "corridor"
+            mock_corridor.assert_called_once_with(
+                centerline=geometry,
+                buffer_distance=100.0,
+                buffer_units="feet",
+                include_nccpi=True,
+            )
+
+    @patch("fpac_soil_mcp.tools.soil_tools.PolygonAnalyzer")
+    def test_calculate_preliminary_lesa_accepts_wkt_polygon(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.manifest = {
+            "land_evaluation": {
+                "productivity_index": "NCCPI",
+                "candidate_le_score": 72.0,
+                "aoi_relative_rating": 0.72,
+                "total_acreage": 1.0,
+            }
+        }
+        mock_response.total_aoi_acres = 1.0
+        mock_response.limitations = []
+        mock_analyzer_cls.return_value.analyze_polygon.return_value = mock_response
+
+        response = calculate_preliminary_lesa(
+            project_name="wkt polygon",
+            geometry="POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
+        )
+
+        assert response.project_name == "wkt polygon"
+        mock_analyzer_cls.return_value.analyze_polygon.assert_called_once()
+        assert (
+            mock_analyzer_cls.return_value.analyze_polygon.call_args.kwargs["geojson_input"]["type"]
+            == "Polygon"
+        )
+
+    @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
+    def test_calculate_preliminary_lesa_routes_wkt_line_with_buffer_options(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 65.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 12.5},
+        }
+
+        response = calculate_preliminary_lesa(
+            project_name="wkt corridor",
+            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            project_type="corridor",
+            corridor_buffer_distance=250.0,
+            corridor_buffer_units="meters",
+        )
+
+        assert response.project_name == "wkt corridor"
+        mock_corridor.assert_called_once_with(
+            centerline="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            buffer_distance=250.0,
+            buffer_units="meters",
+            include_nccpi=True,
+        )
+
+    def test_calculate_preliminary_lesa_rejects_polygon_corridor(self) -> None:
+        geometry = {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+        }
+
+        with pytest.raises(GeometryValidationError, match="polygon geometry cannot be routed"):
+            calculate_preliminary_lesa(
+                project_name="polygon corridor",
+                geometry=geometry,
+                project_type="corridor",
+            )
+
+    def test_calculate_preliminary_lesa_rejects_multipolygon_corridor(self) -> None:
+        geometry = {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+                [[[2, 2], [3, 2], [3, 3], [2, 2]]],
+            ],
+        }
+
+        with pytest.raises(GeometryValidationError, match="polygon geometry cannot be routed"):
+            calculate_preliminary_lesa(
+                project_name="multipolygon corridor",
+                geometry=geometry,
+                project_type="corridor",
+            )
+
+    def test_calculate_preliminary_lesa_rejects_unsupported_selector(
+        self,
+    ) -> None:
+        with pytest.raises(ValueError, match="Unsupported productivity index type"):
+            calculate_preliminary_lesa(
+                project_name="unsupported corridor",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                project_type="corridor",
+                productivity_index="unsupported",
+            )
+
+    @patch("fpac_soil_mcp.tools.soil_tools.analyze_corridor_fppa")
+    def test_calculate_preliminary_lesa_propagates_benchmark_and_generic_fields(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 74.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 9.5},
+            "productivity_rating": 74.0,
+            "productivity_rating_class": "high",
+        }
+
+        with pytest.raises(ValueError, match="Unsupported productivity index type"):
+            calculate_preliminary_lesa(
+                project_name="benchmarked corridor",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                project_type="corridor",
+                productivity_index="unsupported",
+                max_county_rating_override=88.0,
+            )
+
 
 class TestPolygonTools:
     """Tests for analyze_farmland_by_polygon, check_urban_area_exemption, and get_soil_interpretations."""
@@ -295,6 +436,8 @@ class TestCorridorTools:
             "buffer_distance": 50.0,
             "buffer_units": "feet",
             "composite_relative_rating": 82.5,
+            "productivity_rating": 82.5,
+            "productivity_rating_class": "high",
             "county_segments": [],
             "reconciliation_summary": {"status": "reconciled"},
         }
@@ -310,6 +453,10 @@ class TestCorridorTools:
 
         assert res["query_type"] == "corridor"
         assert res["composite_relative_rating"] == 82.5
+        assert res["productivity_rating"] == 82.5
+        assert res["productivity_rating_class"] == "high"
+        assert "nccpi_rating" not in res
+        assert "nccpi_class" not in res
         assert "lesa_evaluation" not in res
         mock_instance.analyze_corridor.assert_called_once_with(
             centerline_input="LINESTRING(-93.5 42.0, -93.4 42.1)",
@@ -318,6 +465,54 @@ class TestCorridorTools:
             indirect_geometry_input=None,
             alternatives=None,
             include_nccpi=True,
+        )
+
+    @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")
+    def test_analyze_corridor_fppa_propagates_generic_options(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_analyzer_cls.return_value = mock_instance
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {
+            "query_type": "corridor",
+            "geometry_hash": "sha256:generic",
+            "composite_relative_rating": 70.0,
+            "county_segments": [],
+        }
+        mock_response.county_segments = []
+        mock_response.composite_relative_rating = 70.0
+        mock_instance.analyze_corridor.return_value = mock_response
+
+        alternatives = [
+            {
+                "alternative_id": "B",
+                "centerline": "LINESTRING(-93.6 42.0, -93.5 42.1)",
+                "buffer_distance": 75.0,
+                "buffer_units": "meters",
+            }
+        ]
+        result = analyze_corridor_fppa(
+            centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=125.0,
+            buffer_units="meters",
+            indirect_geometry="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
+            alternatives=alternatives,
+            include_nccpi=True,
+            productivity_index="nccpi",
+            max_county_rating_override=88.0,
+        )
+
+        assert result["query_type"] == "corridor"
+        mock_instance.analyze_corridor.assert_called_once_with(
+            centerline_input="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=125.0,
+            buffer_units="meters",
+            indirect_geometry_input="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
+            alternatives=alternatives,
+            include_nccpi=True,
+            productivity_index="nccpi",
+            max_county_rating_override=88.0,
         )
 
     @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")

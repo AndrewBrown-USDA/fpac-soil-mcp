@@ -9,6 +9,7 @@ and robust retry logic.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -25,6 +26,8 @@ from fpac_soil_mcp.http_client import (
 )
 
 logger = logging.getLogger(__name__)
+
+PRODUCTIVITY_PROVENANCE = {"nccpi": "SDA:NCCPI_V3"}
 
 # Fixed SQL query templates - no user SQL passthrough allowed
 SQL_POINT_LOOKUP = """\
@@ -182,6 +185,255 @@ SELECT
     rating_class
 FROM ranked_components
 WHERE rnk = 1
+"""
+
+SQL_SDV_ATTRIBUTE_LOOKUP = """\
+SELECT
+    attributekey,
+    attributename,
+    attributetablename,
+    attributecolumnname,
+    attributelogicaldatatype,
+    nasisrulename
+FROM sdvattribute
+WHERE attributename LIKE '{pattern}'
+   OR nasisrulename LIKE '{pattern}'
+ORDER BY attributename
+"""
+
+SQL_PRODUCTIVITY_NCCPI = """\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.interphr AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_name}'
+    WHERE m.mukey IN ({mukeys_csv})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI = """\
+SELECT
+    MAX(ci.interphr) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND ci.ruledepth = 0
+  AND ci.mrulename = '{rule_name}'
+  AND ci.interphr IS NOT NULL
+  AND ci.interphr NOT IN (99, 999, -99, -999)
+  AND c.compkind != 'miscellaneous area'
+"""
+
+ALLOWED_SDV_TABLES = {
+    "cointerp",
+    "component",
+    "mapunit",
+    "sdvattribute",
+}
+
+
+def validate_survey_area_symbol(areasymbol: str) -> str:
+    """Validate and normalize a soil survey area symbol."""
+    clean_area = str(areasymbol).strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{2,10}", clean_area):
+        raise SDAValidationError(f"Invalid soil survey area symbol '{areasymbol}'.")
+    return clean_area
+
+
+def build_dynamic_sdv_query(
+    attribute_meta: dict[str, Any],
+    mukeys_csv: str | list[str | int],
+) -> str:
+    """Dynamically build an SDA query from an sdvattribute metadata record.
+
+    Inspects attributetablename, attributecolumnname, and nasisrulename to construct
+    an injection-safe SQL query for component-weighted or mapunit values.
+    """
+    table = str(attribute_meta.get("attributetablename", "")).strip().lower()
+    if table not in ALLOWED_SDV_TABLES:
+        raise SDAValidationError(
+            f"Unsupported or unallowed SDV table '{table}'. Allowed: {sorted(ALLOWED_SDV_TABLES)}"
+        )
+
+    if isinstance(mukeys_csv, str):
+        mukey_items = mukeys_csv.split(",")
+    else:
+        mukey_items = mukeys_csv
+    try:
+        clean_mukeys = [str(item).strip().strip("'") for item in mukey_items]
+        if not clean_mukeys or any(
+            not re.fullmatch(r"[1-9][0-9]*", mukey) for mukey in clean_mukeys
+        ):
+            raise ValueError
+    except (TypeError, ValueError) as exc:
+        raise SDAValidationError(
+            f"Map unit keys must be positive numeric digits; received '{mukeys_csv}'"
+        ) from exc
+    mukeys_sql = ", ".join(f"'{mukey}'" for mukey in clean_mukeys)
+
+    col = str(attribute_meta.get("attributecolumnname", "")).strip()
+    rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
+
+    if table == "cointerp" or rule_name:
+        rule_clean = rule_name.replace("'", "''")
+        return f"""\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.interphr AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule_clean}'
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+    if not col or not col.isalnum():
+        raise SDAValidationError(f"Invalid column name '{col}' for SDV query generation.")
+
+    if table == "mapunit":
+        return f"""\
+SELECT
+    m.mukey,
+    l.areasymbol,
+    m.musym,
+    m.muname,
+    ROUND(CAST(m.{col} AS float), 2) AS numeric_rating,
+    CASE WHEN m.{col} IS NOT NULL AND m.{col} NOT IN (99, 999) THEN 100.0 ELSE 0.0 END AS rated_pct,
+    100.0 AS total_pct
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+WHERE m.mukey IN ({mukeys_sql})
+"""
+
+    # Default to component-level attribute
+    return f"""\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        CAST(c.{col} AS float) AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+
+def build_dynamic_sdv_county_max_query(
+    attribute_meta: dict[str, Any],
+    areasymbol: str,
+) -> str:
+    """Dynamically build an SDA query for maximum county rating from sdvattribute metadata."""
+    areasymbol = validate_survey_area_symbol(areasymbol)
+    table = str(attribute_meta.get("attributetablename", "")).strip().lower()
+    col = str(attribute_meta.get("attributecolumnname", "")).strip()
+    rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
+
+    if table not in ALLOWED_SDV_TABLES:
+        raise SDAValidationError(
+            f"Unsupported or unallowed SDV table '{table}'. Allowed: {sorted(ALLOWED_SDV_TABLES)}"
+        )
+
+    if table == "cointerp" or rule_name:
+        rule_clean = rule_name.replace("'", "''")
+        return f"""\
+SELECT
+    MAX(ci.interphr) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND ci.ruledepth = 0
+  AND ci.mrulename = '{rule_clean}'
+  AND ci.interphr IS NOT NULL
+  AND ci.interphr NOT IN (99, 999, -99, -999)
+  AND c.compkind != 'miscellaneous area'
+"""
+
+    if not col or not col.isalnum():
+        raise SDAValidationError(f"Invalid column name '{col}' for county max query generation.")
+
+    if table == "mapunit":
+        return f"""\
+SELECT
+    MAX(CAST(m.{col} AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+WHERE l.areasymbol = '{areasymbol}'
+  AND m.{col} IS NOT NULL
+  AND m.{col} NOT IN (99, 999)
+"""
+
+    return f"""\
+SELECT
+    MAX(CAST(c.{col} AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+WHERE l.areasymbol = '{areasymbol}'
+  AND c.{col} IS NOT NULL
+  AND c.{col} NOT IN (99, 999)
+  AND c.compkind != 'miscellaneous area'
 """
 
 
@@ -564,3 +816,205 @@ class SDAClient:
             )
 
         return self._execute_query(query)
+
+    def lookup_sdv_attribute(self, search_pattern: str) -> list[dict[str, Any]]:
+        """Look up Soil Data Viewer (SDV) attribute table and column metadata.
+
+        Args:
+            search_pattern: Substring or SQL LIKE pattern to match against attributename or nasisrulename.
+
+        Returns:
+            List of matching attribute metadata records.
+
+        Raises:
+            SDAValidationError: If search pattern contains invalid characters.
+            SDAQueryError: If SDA query fails.
+        """
+        pattern_clean = str(search_pattern).strip()
+        if any(c in pattern_clean for c in [";", "--", "/*", "*/", "DROP", "EXEC", "'"]):
+            raise SDAValidationError(
+                f"Invalid characters in attribute search pattern: '{search_pattern}'"
+            )
+        if not ("%" in pattern_clean or "_" in pattern_clean):
+            pattern_clean = f"%{pattern_clean}%"
+
+        query = SQL_SDV_ATTRIBUTE_LOOKUP.format(pattern=pattern_clean)
+        return self._execute_query(query)
+
+    def get_county_max_productivity_rating(
+        self,
+        areasymbol: str,
+        index_type: str = "nccpi",
+        attribute_meta: dict[str, Any] | None = None,
+    ) -> float | None:
+        """Query maximum baseline productivity rating for a specific county/soil survey area.
+
+        Args:
+            areasymbol: 5-character soil survey area symbol (e.g. 'IA169', 'IN097', 'CA001').
+            index_type: Fixed productivity selector ('nccpi').
+            attribute_meta: Optional sdvattribute record for dynamic query generation.
+
+        Returns:
+            Maximum rating float if found, else None.
+
+        Raises:
+            SDAValidationError: If areasymbol or index_type is invalid.
+            SDAQueryError: If query execution fails.
+        """
+        clean_area = validate_survey_area_symbol(areasymbol)
+
+        idx = index_type.strip().lower()
+        if attribute_meta:
+            query = build_dynamic_sdv_county_max_query(attribute_meta, clean_area)
+        elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
+                areasymbol=clean_area,
+                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            )
+        else:
+            raise SDAValidationError(
+                f"Unsupported productivity index type '{index_type}'. "
+                "Supported fixed selector: 'nccpi'; explicit attribute metadata is "
+                "required for custom SDV queries."
+            )
+
+        rows = self._execute_query(query)
+        if not rows:
+            return None
+
+        val = rows[0].get("max_county_rating")
+        if val is None or val in ("", "None", 99, 999, "99", "999"):
+            return None
+        try:
+            val_float = float(val)
+            if val_float in (99.0, 999.0) or val_float <= 0:
+                return None
+            return round(val_float, 3 if idx.startswith("nccpi") else 2)
+        except (ValueError, TypeError):
+            return None
+
+    def get_productivity_ratings(
+        self,
+        mukeys: list[str | int],
+        index_type: str = "nccpi",
+        areasymbol: str | None = None,
+        attribute_meta: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query map unit and component-level productivity ratings with unrated screening.
+
+        Args:
+            mukeys: List of map unit keys (integers or numeric strings).
+            index_type: Fixed productivity selector ('nccpi').
+            areasymbol: Optional county/survey area symbol filter or override.
+            attribute_meta: Optional sdvattribute record for dynamic query generation.
+
+        Returns:
+            List of structured rating dictionaries with component rated percentages,
+            caveats, and ``productivity_rating_source`` identifying the selected
+            SDA interpretation.
+
+        Raises:
+            SDAValidationError: If mukeys or index_type are invalid.
+            SDAQueryError: If SDA query fails.
+        """
+        if not mukeys:
+            return []
+
+        clean_mukeys = [self.validate_mukey(k) for k in mukeys]
+        mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
+
+        idx = index_type.strip().lower()
+        if attribute_meta:
+            norm_idx = str(attribute_meta.get("attributename", index_type)).lower()
+            productivity_rating_source = "SDA:SDVATTRIBUTE"
+            query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
+        elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
+            norm_idx = "nccpi"
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["nccpi"]
+            query = SQL_PRODUCTIVITY_NCCPI.format(
+                mukeys_csv=mukeys_csv,
+                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            )
+        else:
+            raise SDAValidationError(
+                f"Unsupported productivity index type '{index_type}'. "
+                "Supported fixed selector: 'nccpi'; explicit attribute metadata is "
+                "required for custom SDV queries."
+            )
+
+        raw_rows = self._execute_query(query)
+        rows_by_mukey = {str(r.get("mukey")): r for r in raw_rows}
+
+        results: list[dict[str, Any]] = []
+        for k in clean_mukeys:
+            row = rows_by_mukey.get(k)
+            if not row:
+                results.append(
+                    {
+                        "mukey": k,
+                        "areasymbol": areasymbol,
+                        "musym": None,
+                        "muname": None,
+                        "index_type": norm_idx,
+                        "productivity_rating_source": productivity_rating_source,
+                        "numeric_rating": None,
+                        "rated_pct": 0.0,
+                        "total_pct": 0.0,
+                        "is_rated": False,
+                        "caveats": ["Map unit not found in SDA query results."],
+                    }
+                )
+                continue
+
+            raw_rating = row.get("numeric_rating")
+            raw_rated_pct = row.get("rated_pct")
+            raw_total_pct = row.get("total_pct")
+
+            rated_pct = float(raw_rated_pct) if raw_rated_pct is not None else 0.0
+            total_pct = float(raw_total_pct) if raw_total_pct is not None else 0.0
+
+            numeric_rating: float | None = None
+            is_rated = False
+            caveats: list[str] = []
+
+            if raw_rating is not None and str(raw_rating).strip() not in ("", "None"):
+                try:
+                    r_val = float(raw_rating)
+                    if r_val in (99.0, 999.0) or r_val < 0:
+                        caveats.append(
+                            f"Map unit contains unrated placeholder/sentinel code ({raw_rating})."
+                        )
+                    elif rated_pct <= 0:
+                        caveats.append("Map unit has 0% rated component coverage.")
+                    else:
+                        numeric_rating = round(r_val, 3 if norm_idx == "nccpi" else 2)
+                        is_rated = True
+                except (ValueError, TypeError):
+                    caveats.append(f"Unparseable rating value '{raw_rating}'.")
+            else:
+                caveats.append("Map unit has no numeric productivity rating.")
+
+            if is_rated and total_pct > 0 and rated_pct < total_pct:
+                caveats.append(
+                    f"Partially rated map unit: {round(rated_pct, 1)}% rated out of {round(total_pct, 1)}% total component coverage."
+                )
+
+            results.append(
+                {
+                    "mukey": str(row.get("mukey", k)),
+                    "areasymbol": str(row.get("areasymbol"))
+                    if row.get("areasymbol")
+                    else areasymbol,
+                    "musym": str(row.get("musym")) if row.get("musym") else None,
+                    "muname": str(row.get("muname")) if row.get("muname") else None,
+                    "index_type": norm_idx,
+                    "productivity_rating_source": productivity_rating_source,
+                    "numeric_rating": numeric_rating,
+                    "rated_pct": round(rated_pct, 2),
+                    "total_pct": round(total_pct, 2),
+                    "is_rated": is_rated,
+                    "caveats": caveats,
+                }
+            )
+
+        return results

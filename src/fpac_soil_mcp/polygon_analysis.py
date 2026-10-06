@@ -25,9 +25,12 @@ from fpac_soil_mcp.geometry import (
     geometry_to_wkt,
     parse_geojson_geometry,
 )
+from fpac_soil_mcp.lesa import _normalize_productivity_index
 from fpac_soil_mcp.models import (
     FarmlandCategoryBreakdown,
+    LandEvaluationSummary,
     PolygonFarmlandAnalysisResponse,
+    ProductivityIndexType,
     QuerySource,
     SoilMapUnitAcreage,
 )
@@ -35,6 +38,19 @@ from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 logger = logging.getLogger(__name__)
+
+_UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
+
+
+def _normalize_numeric_rating(value: Any) -> float | None:
+    """Return a usable productivity rating, excluding SDA sentinel values."""
+    try:
+        rating = float(value) if value is not None else None
+    except (ValueError, TypeError):
+        return None
+    if rating is None or rating in _UNRATED_SENTINELS:
+        return None
+    return rating
 
 
 def categorize_farmland_class(farmlndcl: str | None) -> str:
@@ -73,18 +89,30 @@ class PolygonAnalyzer:
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
         include_nccpi: bool = True,
+        productivity_index: str = "nccpi",
+        max_county_rating_override: float | None = None,
     ) -> PolygonFarmlandAnalysisResponse:
         """Execute full farmland screening on a polygon or multipolygon AOI.
 
         Args:
             geojson_input: GeoJSON dict/string or Shapely geometry.
-            include_nccpi: Whether to retrieve component-weighted NCCPI v3 interpretations.
+            include_nccpi: Whether to retrieve component-weighted interpretations.
+            productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
+            max_county_rating_override: Optional user-supplied maximum county rating benchmark.
 
         Returns:
-            PolygonFarmlandAnalysisResponse with complete acreage breakdowns, urban screening, and provenance.
+            PolygonFarmlandAnalysisResponse with complete acreage breakdowns, urban screening, LE summary, and provenance.
         """
         now = datetime.now(UTC)
         timestamp_str = now.isoformat()
+
+        idx_enum = _normalize_productivity_index(productivity_index)
+        if idx_enum is not ProductivityIndexType.NCCPI:
+            raise ValueError(
+                f"Unsupported productivity index type '{productivity_index}'. "
+                "Supported fixed selector: 'nccpi'."
+            )
+        norm_idx = "nccpi"
 
         # 1. Parse and validate geometry
         try:
@@ -132,45 +160,97 @@ class PolygonAnalyzer:
             logger.error("SDA spatial query failed: %s", exc)
             limitations.append(f"SDA spatial query error: {exc}")
 
-        # 4. Ingest Interpretations (NCCPI v3) if requested
+        # 4. Ingest Productivity Ratings if requested
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
-        interp_map: dict[str, dict[str, Any]] = {}
-        if include_nccpi and mukeys:
-            try:
-                interp_rows = self.sda_client.get_interpretations(
-                    mukeys=mukeys,
-                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-                    aggregation_method="Weighted Average",
-                )
-                for irow in interp_rows:
-                    mukey_val = str(irow.get("mukey"))
-                    interp_map[mukey_val] = irow
-            except SDAClientError as exc:
-                logger.warning("NCCPI interpretation query failed: %s", exc)
-                limitations.append(f"NCCPI interpretation warning: {exc}")
+        rating_map: dict[str, dict[str, Any]] = {}
+        ratings_requested = include_nccpi or norm_idx != "nccpi"
+        if ratings_requested and mukeys:
+            if norm_idx == "nccpi":
+                try:
+                    interp_rows = self.sda_client.get_interpretations(
+                        mukeys=mukeys,
+                        rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+                        aggregation_method="Weighted Average",
+                    )
+                    for irow in interp_rows:
+                        mukey_val = str(irow.get("mukey"))
+                        num_r = irow.get("numeric_rating")
+                        parsed_num_r = _normalize_numeric_rating(num_r)
+                        rating_map[mukey_val] = {
+                            "mukey": mukey_val,
+                            "numeric_rating": parsed_num_r,
+                            "rating_class": irow.get("rating_class"),
+                            "productivity_rating_source": (
+                                "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+                            ),
+                            "rated_pct": irow.get("rated_pct"),
+                            "total_pct": irow.get("total_pct"),
+                            "is_rated": parsed_num_r is not None,
+                            "caveats": [],
+                        }
+                except SDAClientError as exc:
+                    logger.warning("NCCPI interpretation query failed: %s", exc)
+                    limitations.append(f"NCCPI interpretation warning: {exc}")
+            else:
+                try:
+                    prod_ratings = self.sda_client.get_productivity_ratings(
+                        mukeys=mukeys,
+                        index_type=norm_idx,
+                    )
+                    for pr in prod_ratings:
+                        mukey_val = str(pr.get("mukey"))
+                        rating_map[mukey_val] = dict(pr)
+                except SDAClientError as exc:
+                    logger.warning("Productivity rating query failed (%s): %s", norm_idx, exc)
+                    limitations.append(f"Productivity rating warning ({norm_idx}): {exc}")
 
-        # 5. Build Map Unit Acreage models
-        # Group spatial intersection fragments by mukey, summing exact clipped acreage
+        # Determine county max benchmark
+        county_max = max_county_rating_override
+        partition_max: dict[str, float] = {}
+        if ratings_requested and county_max is None and raw_units:
+            areasymbols = {
+                str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
+            }
+            for areasymbol in areasymbols:
+                try:
+                    benchmark = self.sda_client.get_county_max_productivity_rating(
+                        areasymbol=areasymbol,
+                        index_type="nccpi" if norm_idx == "nccpi" else norm_idx,
+                    )
+                    if benchmark is not None and benchmark > 0:
+                        partition_max[areasymbol] = float(benchmark)
+                except SDAClientError as exc:
+                    logger.warning("County max rating query failed for %s: %s", areasymbol, exc)
+                    limitations.append(f"County max rating query warning: {exc}")
+
+        default_county_max = 1.0 if norm_idx == "nccpi" else 100.0
+        if county_max is not None and county_max > 0:
+            default_county_max = float(county_max)
+        county_max = default_county_max
+
+        # 5. Build Map Unit Acreage models & compute LE scores
         unit_models: list[SoilMapUnitAcreage] = []
-        grouped_units: dict[str, dict[str, Any]] = {}
+        grouped_units: dict[tuple[str, str], dict[str, Any]] = {}
         for u in raw_units:
             mukey_str = str(u.get("mukey", ""))
             if not mukey_str:
                 continue
-            if mukey_str not in grouped_units:
-                grouped_units[mukey_str] = {
+            areasymbol = str(u.get("areasymbol") or "").strip()
+            unit_key = (mukey_str, areasymbol)
+            if unit_key not in grouped_units:
+                grouped_units[unit_key] = {
                     "mukey": mukey_str,
                     "musym": u.get("musym"),
                     "muname": u.get("muname"),
                     "farmlndcl": u.get("farmlndcl"),
-                    "areasymbol": u.get("areasymbol"),
+                    "areasymbol": areasymbol or None,
                     "area_ac": 0.0,
                 }
             try:
                 raw_area = float(u.get("area_ac") or 0.0)
             except (ValueError, TypeError):
                 raw_area = 0.0
-            grouped_units[mukey_str]["area_ac"] += raw_area
+            grouped_units[unit_key]["area_ac"] += raw_area
 
         category_acres: dict[str, float] = {
             "prime": 0.0,
@@ -183,22 +263,37 @@ class PolygonAnalyzer:
         }
 
         total_mapped_acres = 0.0
-        for mukey_str, u in grouped_units.items():
+        rated_le_acres = 0.0
+        weighted_rr_sum = 0.0
+        unrated_le_acres = 0.0
+        le_notices: list[str] = []
+
+        for (mukey_str, areasymbol), u in grouped_units.items():
             farmlndcl_str = u.get("farmlndcl")
             calc_ac = round(u["area_ac"], 2)
             total_mapped_acres += calc_ac
             pct = round((calc_ac / total_acres * 100.0) if total_acres > 0 else 0.0, 2)
 
-            interp_info = interp_map.get(mukey_str, {})
+            rating_info = rating_map.get(mukey_str, {})
             cat = categorize_farmland_class(farmlndcl_str)
             category_acres[cat] += calc_ac
 
-            numeric_rating = interp_info.get("numeric_rating")
-            if numeric_rating is not None:
-                try:
-                    numeric_rating = float(numeric_rating)
-                except (ValueError, TypeError):
-                    numeric_rating = None
+            numeric_rating = _normalize_numeric_rating(rating_info.get("numeric_rating"))
+
+            is_rated = rating_info.get(
+                "is_rated", numeric_rating is not None and numeric_rating >= 0
+            )
+            if is_rated and numeric_rating is not None and numeric_rating >= 0:
+                benchmark = partition_max.get(areasymbol, county_max)
+                rel_rating = min(1.0, max(0.0, numeric_rating / benchmark))
+                rated_le_acres += calc_ac
+                weighted_rr_sum += rel_rating * calc_ac
+            else:
+                unrated_le_acres += calc_ac
+
+            for cav in rating_info.get("caveats", []):
+                if cav not in le_notices:
+                    le_notices.append(cav)
 
             unit_models.append(
                 SoilMapUnitAcreage(
@@ -209,14 +304,51 @@ class PolygonAnalyzer:
                     areasymbol=u.get("areasymbol"),
                     calculated_acres=calc_ac,
                     percentage_of_aoi=pct,
-                    nccpi_rating=numeric_rating,
-                    nccpi_class=interp_info.get("rating_class"),
+                    productivity_rating=numeric_rating,
+                    productivity_rating_class=(
+                        None if numeric_rating is None else rating_info.get("rating_class")
+                    ),
+                    productivity_rating_source=rating_info.get("productivity_rating_source"),
                 )
             )
 
         # Handle any unmapped remainder / slivers
         unmapped_remainder = max(0.0, round(total_acres - total_mapped_acres, 2))
         category_acres["unmapped"] += unmapped_remainder
+        unrated_le_acres += unmapped_remainder
+
+        # Compute Land Evaluation summary metrics
+        rated_le_acres = round(rated_le_acres, 2)
+        unrated_le_acres = round(unrated_le_acres, 2)
+        if rated_le_acres > 0:
+            aoi_rr = round(weighted_rr_sum / rated_le_acres, 4)
+            candidate_le = round(aoi_rr * 100.0, 2)
+            cov_pct = round((rated_le_acres / total_acres * 100.0) if total_acres > 0 else 0.0, 2)
+        else:
+            aoi_rr = 0.0
+            candidate_le = 0.0
+            cov_pct = 0.0
+
+        if county_max != (1.0 if norm_idx == "nccpi" else 100.0):
+            le_notices.append(
+                f"Normalized against county max {norm_idx.upper()} benchmark of {county_max}."
+            )
+        if unrated_le_acres > 0:
+            le_notices.append(
+                f"Partial productivity coverage: {rated_le_acres:.2f} rated acres ({cov_pct}%), {unrated_le_acres:.2f} unrated acres excluded from Land Evaluation weighting."
+            )
+
+        le_summary = LandEvaluationSummary(
+            productivity_index=idx_enum,
+            aoi_relative_rating=min(1.0, max(0.0, aoi_rr)),
+            candidate_le_score=min(100.0, max(0.0, candidate_le)),
+            county_farmland_percentile_higher=None,
+            rated_acreage=rated_le_acres,
+            unrated_acreage=unrated_le_acres,
+            total_acreage=round(total_acres, 2),
+            coverage_percent=min(100.0, max(0.0, cov_pct)),
+            notices=le_notices,
+        )
 
         # Compute summary percentages
         def _pct(val: float) -> float:
@@ -268,8 +400,8 @@ class PolygonAnalyzer:
                 "areasymbol",
                 "acres",
                 "pct_of_aoi",
-                "nccpi_rating",
-                "nccpi_class",
+                "productivity_rating",
+                "productivity_rating_class",
             ]
         )
         for um in unit_models:
@@ -282,8 +414,8 @@ class PolygonAnalyzer:
                     um.areasymbol or "",
                     um.calculated_acres,
                     um.percentage_of_aoi,
-                    um.nccpi_rating if um.nccpi_rating is not None else "",
-                    um.nccpi_class or "",
+                    um.productivity_rating if um.productivity_rating is not None else "",
+                    um.productivity_rating_class or "",
                 ]
             )
         csv_str = output_io.getvalue()
@@ -295,9 +427,13 @@ class PolygonAnalyzer:
             "total_aoi_acres": total_acres,
             "mapped_soil_units_count": len(unit_models),
             "spatial_clipping_engine": "USDA NRCS SDA STIntersection / STArea",
-            "interpretation_rule": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "interpretation_rule": f"Productivity Index: {idx_enum.value} ({norm_idx})",
+            "productivity_index": idx_enum.value,
+            "county_max_rating": county_max,
+            "candidate_le_score": le_summary.candidate_le_score,
             "urban_screening_layer": "Census 2020 Urban Areas Layer 0",
             "statutory_authority": "Farmland Protection Policy Act (7 U.S.C. 4201 et seq., 7 CFR Part 658)",
+            "land_evaluation": le_summary.model_dump(mode="json"),
         }
 
         return PolygonFarmlandAnalysisResponse(
@@ -316,4 +452,34 @@ class PolygonAnalyzer:
             ),
             limitations=limitations,
             regulatory_notice=REGULATORY_NOTICE,
+        )
+
+    def analyze_polygon_sync(
+        self,
+        geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
+        include_nccpi: bool = True,
+        productivity_index: str = "nccpi",
+        max_county_rating_override: float | None = None,
+    ) -> PolygonFarmlandAnalysisResponse:
+        """Synchronous wrapper for analyze_polygon."""
+        return self.analyze_polygon(
+            geojson_input=geojson_input,
+            include_nccpi=include_nccpi,
+            productivity_index=productivity_index,
+            max_county_rating_override=max_county_rating_override,
+        )
+
+    async def analyze_polygon_async(
+        self,
+        geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
+        include_nccpi: bool = True,
+        productivity_index: str = "nccpi",
+        max_county_rating_override: float | None = None,
+    ) -> PolygonFarmlandAnalysisResponse:
+        """Asynchronous wrapper for analyze_polygon."""
+        return self.analyze_polygon(
+            geojson_input=geojson_input,
+            include_nccpi=include_nccpi,
+            productivity_index=productivity_index,
+            max_county_rating_override=max_county_rating_override,
         )
