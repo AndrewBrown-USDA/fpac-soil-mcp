@@ -1,0 +1,32 @@
+name: Sync Databricks Prod Instance
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Databricks auto-pull job
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${DATABRICKS_HOST}/api/2.1/jobs/run-now" \
+            -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"job_id": 19440240389669}')
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "$body"
+
+          if [ "$http_code" -ne 200 ]; then
+            echo "::error::Databricks API returned HTTP $http_code"
+            exit 1
+          fi
+
+          echo "Job triggered successfully."
