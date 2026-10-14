@@ -59,3 +59,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 FY-2020-FPPA-webinar.pdf
+
+# Generated interval-study artifacts (reproducible from git history)
+planning/interval-ledger.json
