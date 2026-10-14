@@ -74,7 +74,7 @@ stable after initial creation — tool registration is a thin wiring layer over 
 * **61 commits, 14,097 churn** (peak build-out)
 * Added: `geometry.py` (GeoJSON validation, WKT, projections), `polygon_analysis.py` (AOI multi-point sampling), `tigerweb_client.py` (Census urban screening), `nass_client.py` (USDA NASS QuickStats), `corridor_analysis.py` (multi-county corridor partitioning), `corridor_scoring.py` (7 CFR § 658.5(c) rules)
 * Added: `http_client.py` (resilient base HTTP client with retry), `privacy.py`, `authority.py`, `official_sources.py`
-* Key decisions: `shapely`/`pyproj` for geometry operations, EPSG:6933 equal-area projection for acreage, multi-point sampling strategy for polygon analysis, TIGERweb Layer 0 (2020 Urban Areas), dynamic county partitioning via TIGERweb Counties, NASS QuickStats with graceful unavailable fallback
+* Key decisions: `shapely`/`pyproj` for geometry operations, WGS84 geodesic acreage via `Geod.polygon_area_perimeter()`, SDA server-side polygon clipping via `STIntersection`/`GEOGRAPHY.STArea()`, EPSG:6933 for corridor buffering only, TIGERweb Layer 0 (2020 Urban Areas), dynamic county partitioning via TIGERweb Counties, NASS QuickStats with graceful unavailable fallback
 * Architecture: Clean separation of domain modules (clients → analysis → tools) with tools as thin wiring
 
 ### Era 3: Code Review & Hardening (EP9-16, Sep 21-25)
@@ -134,22 +134,22 @@ The following architectural decisions satisfy the heuristic filter (≥2 of: hig
 * **Context**: Explicitly rejected a "run arbitrary SDA SQL" MCP tool. This constraint held through all 26 plans including the EP17 SDV attribute routing extension.
 
 ### ADR Candidate 3: Preliminary Screening Authority Boundary
-* **Decision**: Every response includes a regulatory notice that the system provides preliminary screening only — not official FPPA determinations, LESA scores, or signed forms.
-* **Heuristic**: Pattern-setting (affects every tool response), cross-cutting (constants, models, tools, resources), high reversibility cost (removing it would change the legal posture of every output)
-* **Evidence**: EXECUTION_PLAN_1 Verbatim Constraints; `constants.py` REGULATORY_NOTICE; propagated through EP4, EP7, EP17 Verbatim Constraints
-* **Context**: Enforced as an invariant in AGENTS.md Operational Rules. Never relaxed across 26 plans.
+* **Decision**: All primary screening responses include a `regulatory_notice` field. Centralized in `constants.py` and enforced as policy via AGENTS.md.
+* **Heuristic**: Pattern-setting (all primary screening responses), cross-cutting (constants, models, tools), high reversibility cost (removing it would change the legal posture of every screening output)
+* **Evidence**: EXECUTION_PLAN_1 Verbatim Constraints; `constants.py` REGULATORY_NOTICE; `regulatory_notice` field on `FarmlandClassificationResponse`, `PolygonFarmlandAnalysisResponse`, `CorridorFarmlandAnalysisResponse`, `PreliminaryLESAResponse`
+* **Context**: Enforced as policy in AGENTS.md Operational Rules. Auxiliary reference responses (e.g., `FarmlandClassListResponse`) omit the field by design. Never relaxed across 26 plans.
 
-### ADR Candidate 4: Equal-Area Projection Strategy (EPSG:6933 / Local CRS)
-* **Decision**: Use EPSG:6933 (Cylindrical Equal Area) as the primary equal-area projection for acreage calculations, with `shapely` and `pyproj` for geometry operations.
-* **Heuristic**: High reversibility cost (changing projection changes all acreage calculations), pattern-setting (0.1% tolerance benchmark established), evaluated trade-offs (EPSG:6933 global applicability vs. local UTM accuracy)
-* **Evidence**: EXECUTION_PLAN_4 Decision Log (2026-09-17); EXECUTION_PLAN_7 corridor buffering decision; `geometry.py`, `polygon_analysis.py`, `corridor_analysis.py`
+### ADR Candidate 4: Geodesic Acreage Calculation & Equal-Area Buffering Strategy
+* **Decision**: WGS84 geodesic area (`Geod.polygon_area_perimeter()`) for client-side acreage, SDA `GEOGRAPHY.STArea()` for server-side clipped acreage, EPSG:6933 projection solely for corridor centerline buffering.
+* **Heuristic**: High reversibility cost (changing acreage method changes all scoring), pattern-setting (0.1% tolerance benchmark established), evaluated trade-offs (geodesic precision vs. projected simplicity)
+* **Evidence**: `geometry.py:calculate_acreage()` uses `_GEOD.polygon_area_perimeter()`; `sda_client.py` uses `GEOGRAPHY.STArea()`; `geometry.py:buffer_centerline()` uses EPSG:6933
 * **Context**: The 0.1% acreage tolerance benchmark was set in EP4 and carried through corridor analysis (EP7) and LESA scoring (EP17).
 
-### ADR Candidate 5: Multi-Point Sampling for Polygon Soil Analysis
-* **Decision**: Use deterministic multi-point sampling within polygons to query SDA map units, rather than server-side polygon intersection.
-* **Heuristic**: Evaluated trade-offs (avoids SDA polygon query size limits but introduces sampling resolution trade-offs), pattern-setting (all polygon and corridor tools use this pattern), cross-cutting (polygon_analysis, corridor_analysis)
-* **Evidence**: `polygon_analysis.py` creation in EP4; adapted for corridor segments in EP7
-* **Context**: SDA has practical limits on complex polygon WKT sizes; multi-point sampling provides reliable results within tolerance while remaining compatible with the fixed SQL template constraint.
+### ADR Candidate 5: SDA Server-Side Polygon Clipping for Spatial Soil Analysis
+* **Decision**: Pass AOI WKT to SDA for server-side polygon clipping via `STIntersection` with exact clipped acreage via `GEOGRAPHY.STArea()`, using fixed SQL template `SQL_SPATIAL_INTERSECTION_CLIPPED`.
+* **Heuristic**: Pattern-setting (all polygon and corridor tools use this pattern), cross-cutting (polygon_analysis, corridor_analysis, sda_client), evaluated trade-offs (server-side precision vs. WKT size limits)
+* **Evidence**: `polygon_analysis.py:153` and `corridor_analysis.py:359` both call `get_spatial_intersection(clip=True, geom_acres=True)`
+* **Context**: Server-side clipping produces exact per-map-unit acreages without approximation. Both polygon and corridor analysis share this spatial query path.
 
 ### ADR Candidate 6: Dynamic TIGERweb County Partitioning for Corridors
 * **Decision**: Dynamically partition corridor geometries into county segments via Census TIGERweb REST API, with independent per-segment SDA and NASS queries and sum reconciliation.
@@ -158,34 +158,34 @@ The following architectural decisions satisfy the heuristic filter (≥2 of: hig
 * **Context**: Overcoming the Colorado NRCS ArcGIS Toolbox single-county limitation was a founding motivation. The decision survived multiple remediation cycles (EP21, EP23, EP24).
 
 ### ADR Candidate 7: Unified LESA Module Architecture
-* **Decision**: Single `lesa.py` module providing shared Land Evaluation and Site Assessment calculations for both site (AD-1006) and corridor (CPA-106) projects, maintaining backwards compatibility with `corridor_scoring.py`.
-* **Heuristic**: High reversibility cost (central scoring engine), pattern-setting (all LE-SA paths route through unified module), cross-cutting (models, tools, corridor_scoring, polygon_analysis)
-* **Evidence**: EXECUTION_PLAN_17 Decision Log (2026-09-28); `lesa.py` creation; EP22 productivity preservation decisions; EP23 productivity ratings remediation
-* **Context**: Required multiple remediation waves (EP22, EP23, EP25) to fully stabilize the interaction between LESA normalization and existing corridor scoring. The backwards-compatibility constraint with `corridor_scoring.py` was non-trivial.
+* **Decision**: Shared LE helpers (`calculate_composite_le`, `calculate_criterion_7_score`) in `lesa.py`, imported by `corridor_scoring.py` which retains corridor-specific SA evaluator classes and `evaluate_corridor_lesa()`.
+* **Heuristic**: High reversibility cost (central LE engine), pattern-setting (all LE paths route through shared helpers), cross-cutting (models, tools, corridor_scoring, polygon_analysis)
+* **Evidence**: EXECUTION_PLAN_17 Decision Log (2026-09-28); `lesa.py` creation; `corridor_scoring.py` imports from lesa; EP22-23-25 remediation
+* **Context**: Required multiple remediation waves (EP22, EP23, EP25) to stabilize the boundary between shared LE helpers and corridor-specific SA logic.
 
-### ADR Candidate 8: State-Specific Productivity Index Routing via SDV
-* **Decision**: Dynamic Soil Data Viewer (SDV) attribute routing to resolve state-specific productivity indexes (NCCPI v3, Iowa CSR2, Minnesota CPI, California Storie Index) rather than hardcoded table schemas.
-* **Heuristic**: Pattern-setting (any future state index follows the same routing), evaluated trade-offs (flexibility of dynamic routing vs. complexity of SDV metadata parsing), cross-cutting (sda_client, lesa, tools)
-* **Evidence**: EXECUTION_PLAN_17 scope and decisions (2026-09-28); EP20 cointerp rules fix; EP22-23 productivity remediation
-* **Context**: The SDV routing decision was validated through three remediation cycles. EP20 specifically corrected cointerp aggregation rules for state productivity queries.
+### ADR Candidate 8: NCCPI as Validated Public Productivity Index with Extensible SDV Routing
+* **Decision**: EP17 implemented dynamic SDV routing for multiple indexes; EP26 narrowed the public contract to `ProductivityIndexType.NCCPI` only, retaining extensible lower-level SDV routing for future validated indexes.
+* **Heuristic**: Pattern-setting (public API contract), evaluated trade-offs (safety of validated-only public API vs. limiting state-specific coverage), cross-cutting (sda_client, lesa, tools, models)
+* **Evidence**: EP17 SDV routing (2026-09-28); EP20 cointerp fix (`9cbcc7ed`); EP26 narrowing (STATE_26 line 48: "public and test contracts now expose validated national NCCPI only")
+* **Context**: Three remediation waves (EP20, EP22, EP23) were needed before EP26 could confidently narrow the public contract to NCCPI.
 
-### ADR Candidate 9: Resilient HTTP Client with Retry Architecture
-* **Decision**: Base `http_client.py` provides resilient retry logic, timeouts, and structured error handling. Domain-specific clients (`sda_client.py`, `tigerweb_client.py`, `nass_client.py`) extend it.
-* **Heuristic**: Pattern-setting (all network communication flows through this base), cross-cutting (every API client), evaluated trade-offs (centralized retry/timeout vs. per-client tuning)
-* **Evidence**: `http_client.py` creation around EP6-7; domain client hierarchy visible in AGENTS.md
-* **Context**: Three separate federal APIs with different reliability profiles all share the same retry/timeout foundation.
+### ADR Candidate 9: Shared HTTP Request Helper with Retry Composition
+* **Decision**: Standalone `execute_http_request_with_retry()` function in `http_client.py`. Domain clients (`SDAClient`, `TigerwebClient`, `NassClient`) call this shared function (composition, not inheritance).
+* **Heuristic**: Pattern-setting (all network communication uses this helper), cross-cutting (every API client), evaluated trade-offs (composition flexibility vs. per-client call signature duplication)
+* **Evidence**: `http_client.py` shared helper extracted in EP10 (commit `d1e88d3`); client adoption in `41debf4`
+* **Context**: Three separate federal APIs with different request shapes all share the same retry/timeout helper via function calls.
 
-### ADR Candidate 10: Section 1619 Privacy & Coordinate Redaction
-* **Decision**: Enforce Section 1619 privacy protections and coordinate redaction via dedicated `privacy.py` module where agricultural producer data or sensitive locations are processed.
-* **Heuristic**: High reversibility cost (removing would change legal compliance posture), pattern-setting (all location-sensitive processing must check privacy guardrails), cross-cutting
-* **Evidence**: `privacy.py` creation; AGENTS.md Operational Rules; EXECUTION_PLAN_4+ constraints
-* **Context**: 7 U.S.C. § 8791 (Section 1619) requires protection of producer information. This module was created early and has remained stable.
+### ADR Candidate 10: Public Payload PII Detection & Sanitization
+* **Decision**: Dedicated `privacy.py` module detects and rejects/sanitizes prohibited personal field names (email, phone, SSN, names, addresses) in request payloads via `validate_public_payload()` and `sanitize_public_payload()`.
+* **Heuristic**: Pattern-setting (establishes PII-detection policy for all request processing), cross-cutting (available to all tool workflows)
+* **Evidence**: `privacy.py` creation; AGENTS.md Operational Rules reference; `PROHIBITED_PERSONAL_KEY_PATTERNS` frozenset
+* **Context**: 7 U.S.C. § 8791 (Section 1619) motivates the module. Coordinate privacy is a policy aspiration in AGENTS.md but is not automated in this module; `privacy.py` enforces the PII-field subset.
 
-### ADR Candidate 11: Test Architecture — Mocked Default, Live Opt-In
-* **Decision**: All tests use mocked HTTP responses by default (`httpx` transport mocks). Live network tests are opt-in via `@pytest.mark.live_network` marker. Marker renamed from `live_sda` to `live_network` in EP13.
+### ADR Candidate 11: Test Architecture — Mocked Default, Live & Agent-Eval Opt-In
+* **Decision**: All tests use mocked HTTP responses by default. `live_network` and `agent_eval` markers are excluded via `pyproject.toml` `addopts`. Bare `uv run pytest` runs entirely offline.
 * **Heuristic**: Pattern-setting (every new test follows this convention), evaluated trade-offs (test reliability vs. integration confidence), cross-cutting (entire test suite)
-* **Evidence**: EXECUTION_PLAN_1 constraints; EP13 marker rename (`ba8a5540`); AGENTS.md validation workflow
-* **Context**: The marker rename from `live_sda` to `live_network` (EP13) reflected the expansion from SDA-only to multi-service testing (SDA + TIGERweb + NASS).
+* **Evidence**: `pyproject.toml` `addopts = "-m 'not live_network and not agent_eval'"`; EP1 constraints; EP13 marker rename (`ba8a5540`)
+* **Context**: The marker rename from `live_sda` to `live_network` (EP13) reflected multi-service expansion. The `agent_eval` marker was added for agentic integration tests.
 
 ---
 

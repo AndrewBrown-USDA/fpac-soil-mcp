@@ -30,14 +30,17 @@ maintenance burden and divergence risk.
 * The 160-point mandatory alternatives threshold (7 CFR § 658.4(c)(2)) applies
   to both project types.
 * `corridor_scoring.py` was already stable with 533 lines of corridor-specific
-  rules; replacing it entirely would break existing tests and callers.
+  SA evaluator classes; replacing it entirely would break existing tests and
+  callers.
 
 ## Considered Options
 
-1. **Unified `lesa.py` module with backwards-compatible `corridor_scoring.py`
-   re-exports** — create a single LESA module providing shared LE calculators,
-   SA structures, and total LESA scoring; maintain `corridor_scoring.py` as a
-   re-export/adapter layer for corridor-specific 658.5(c) rules.
+1. **Shared LE helpers in `lesa.py`, corridor-specific SA retained in
+   `corridor_scoring.py`** — create `lesa.py` to provide shared LE calculators
+   (`calculate_composite_le`, `calculate_criterion_7_score`), unified data
+   models, and total LESA scoring. `corridor_scoring.py` imports these shared
+   helpers but retains its own corridor Site Assessment evaluator classes and
+   `evaluate_corridor_lesa()`.
 2. **Merge everything into `corridor_scoring.py`** — expand the existing module
    to handle site projects too.
 3. **Duplicate LE logic in both modules** — copy the normalization formulas into
@@ -45,23 +48,26 @@ maintenance burden and divergence risk.
 
 ## Decision Outcome
 
-Chosen option: **Unified `lesa.py` with backwards-compatible re-exports**,
-because it centralizes all LE-SA calculation logic while preserving the stable
-corridor-specific interface and its existing test coverage.
+Chosen option: **Shared LE helpers in `lesa.py` with corridor SA retained in
+`corridor_scoring.py`**, because it centralizes the LE calculation logic that
+both project types share while preserving the stable corridor-specific SA
+implementation and its existing test coverage.
 
 ### Consequences
 
 * **Positive**: Single source of truth for relative rating normalization,
-  area-weighted LE scoring, and the 160-point threshold flag.
-* **Positive**: Backwards compatibility preserved — existing `corridor_scoring.py`
-  callers continued to work without modification.
+  area-weighted LE scoring, and the criterion 7 (compatibility with zoning)
+  calculation shared by both project types.
+* **Positive**: `corridor_scoring.py` retains corridor Site Assessment evaluator
+  classes, the statutory threshold calculation, and `evaluate_corridor_lesa()`.
+  This preserves its stable interface and existing test coverage without
+  forced migration.
 * **Positive**: Both `analyze_farmland_by_polygon` and `analyze_corridor_fppa`
-  tools now share the same LE scoring path.
-* **Negative**: The interaction between `lesa.py` and the existing corridor and
-  polygon paths required three remediation waves (EP22: productivity preservation,
-  EP23: productivity ratings, EP25: code review items) to fully stabilize.
-  The backwards-compatibility constraint with `corridor_scoring.py` was
-  non-trivial.
+  tools share the same LE scoring path through `lesa.py`.
+* **Negative**: The boundary between `lesa.py` (shared LE) and
+  `corridor_scoring.py` (corridor SA + LESA orchestration) required three
+  remediation waves (EP22, EP23, EP25) to fully stabilize, particularly around
+  productivity index preservation through the corridor fallback path.
 * **Negative**: `lesa.py` grew to 818 lines by EP22, making it one of the
   largest modules. Workers were instructed to use grep anchors rather than
   whole-file reads.

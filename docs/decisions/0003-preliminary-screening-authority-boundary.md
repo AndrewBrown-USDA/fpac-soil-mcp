@@ -28,35 +28,42 @@ attributes for official regulatory conclusions.
 * User trust: Explicit boundaries prevent over-reliance on preliminary data.
 * Regulatory framework: 7 CFR Parts 657 & 658 define who can issue formal
   FPPA determinations — this system is not among them.
-* Consistency: The notice must appear in every tool response, not just some.
+* Consistency: The notice must appear in all primary screening responses.
 
 ## Considered Options
 
-1. **Mandatory regulatory notice in every response** — centralize `REGULATORY_NOTICE`
-   in `constants.py`, embed it in every Pydantic response model, enforce via
-   AGENTS.md operational rules.
+1. **Mandatory regulatory notice on all primary screening responses** —
+   centralize `REGULATORY_NOTICE` in `constants.py`, embed it in primary
+   Pydantic response models (`FarmlandClassificationResponse`,
+   `PolygonFarmlandAnalysisResponse`, `CorridorFarmlandAnalysisResponse`,
+   `PreliminaryLESAResponse`), enforce as policy via AGENTS.md operational
+   rules.
 2. **Disclaimer in README only** — document the limitation but not enforce it
    programmatically in responses.
 3. **Per-tool opt-in notices** — let each tool decide whether to include a notice.
 
 ## Decision Outcome
 
-Chosen option: **Mandatory regulatory notice in every response**, because it
-makes the authority boundary programmatically enforceable, auditable, and
-impossible to accidentally omit when adding new tools.
+Chosen option: **Mandatory regulatory notice on all primary screening
+responses**, because it makes the authority boundary programmatically present
+in every substantive soil-analysis output and establishes a clear policy for
+new tools to follow.
 
 ### Consequences
 
-* **Positive**: The `REGULATORY_NOTICE` constant and its inclusion in all
-  response envelopes was established in EP1 and propagated unchanged through
-  EP4 (polygon), EP7 (corridor), EP17 (LESA), and all subsequent plans.
+* **Positive**: All primary screening response models carry a `regulatory_notice`
+  field (`FarmlandClassificationResponse`, `PolygonFarmlandAnalysisResponse`,
+  `CorridorFarmlandAnalysisResponse`, `PreliminaryLESAResponse`). This was
+  established in EP1 and propagated through EP4, EP7, and EP17.
 * **Positive**: AGENTS.md codifies this as a non-negotiable operational rule,
   ensuring any future contributor maintains the boundary.
 * **Positive**: The watermarked/preliminary framing enables the system to
   calculate candidate scores (LE, SA, total LESA) without implying they are
   official agency determinations.
-* **Negative**: Response payloads are slightly larger due to the repeated
-  notice. This is negligible compared to the legal risk of omitting it.
+* **Negative**: Auxiliary reference responses (e.g., `FarmlandClassListResponse`,
+  raw interpretation dictionaries) do not carry the notice field. The policy
+  requires it on screening outputs; reference lookups are not screening results.
+  Future tools producing screening-level outputs must include the notice.
 
 ## Validation & Compliance
 

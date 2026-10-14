@@ -15,13 +15,13 @@ and refined through `adr-distillation`.
 | [0001](0001-fastmcp-server-framework-and-package-layout.md) | FastMCP Server Framework & src-Layout Package Structure | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
 | [0002](0002-fixed-sql-templates-over-user-passthrough.md) | Fixed SQL Templates Over User SQL Passthrough | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
 | [0003](0003-preliminary-screening-authority-boundary.md) | Preliminary Screening Authority Boundary | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
-| [0004](0004-equal-area-projection-strategy.md) | Equal-Area Projection Strategy (EPSG:6933 / Local CRS) | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4 |
-| [0005](0005-multi-point-sampling-for-polygon-soil-analysis.md) | Multi-Point Sampling for Polygon Soil Analysis | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4 |
+| [0004](0004-geodesic-acreage-and-equal-area-buffering-strategy.md) | Geodesic Acreage Calculation & Equal-Area Buffering Strategy | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4, 7 |
+| [0005](0005-sda-server-side-polygon-clipping.md) | SDA Server-Side Polygon Clipping for Spatial Soil Analysis | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4, 7 |
 | [0006](0006-dynamic-tigerweb-county-partitioning-for-corridors.md) | Dynamic TIGERweb County Partitioning for Corridors | Accepted | 2026-09-18 | - | - | EXECUTION_PLAN_7 |
 | [0007](0007-unified-lesa-module-architecture.md) | Unified LESA Module Architecture | Accepted | 2026-09-28 | - | - | EXECUTION_PLAN_17 |
-| [0008](0008-state-specific-productivity-index-routing-via-sdv.md) | State-Specific Productivity Index Routing via SDV | Accepted | 2026-09-28 | - | - | EXECUTION_PLAN_17 |
-| [0009](0009-resilient-http-client-with-retry-architecture.md) | Resilient HTTP Client with Retry Architecture | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4, 7 |
-| [0010](0010-section-1619-privacy-and-coordinate-redaction.md) | Section 1619 Privacy & Coordinate Redaction | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4 |
+| [0008](0008-nccpi-validated-public-index-with-extensible-sdv-routing.md) | NCCPI as Validated Public Productivity Index with Extensible SDV Routing | Accepted | 2026-09-28 | - | - | EXECUTION_PLAN_17, 26 |
+| [0009](0009-shared-http-request-helper-with-retry-composition.md) | Shared HTTP Request Helper with Retry Composition | Accepted | 2026-09-21 | - | - | EXECUTION_PLAN_10 |
+| [0010](0010-public-payload-pii-detection-and-sanitization.md) | Public Payload PII Detection & Sanitization | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4 |
 | [0011](0011-mocked-default-live-opt-in-test-architecture.md) | Mocked Default, Live Opt-In Test Architecture | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1, 13 |
 
 ## Architectural Eras
@@ -32,13 +32,13 @@ The decisions cluster into distinct eras of the project lifecycle:
 SQL safety policy, and regulatory authority boundary. These three decisions
 have never been revisited.
 
-**Geospatial Engine (2026-09-17-18)**: ADRs 0004-0006, 0009-0010 defined the
-projection strategy, spatial query approach, corridor partitioning, HTTP
-resilience, and privacy enforcement.
+**Geospatial Engine (2026-09-17-21)**: ADRs 0004-0006, 0009-0010 defined the
+acreage calculation strategy, spatial query approach, corridor partitioning,
+HTTP resilience, and PII detection.
 
 **LESA Scoring (2026-09-28)**: ADRs 0007-0008 unified the Land Evaluation
-and Site Assessment architecture and introduced dynamic productivity index
-routing.
+and Site Assessment architecture and established the NCCPI-validated
+productivity index contract.
 
 **Cross-Cutting (2026-09-16-22)**: ADR 0011 established the test architecture
 that governed all 26 execution plans.
