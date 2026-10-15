@@ -200,10 +200,13 @@ def analyze_farmland_by_polygon(
         PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+    if normalized_productivity_index not in (
+        ProductivityIndexType.NCCPI,
+        ProductivityIndexType.CSR2,
+    ):
         raise ValueError(
             f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selector: 'nccpi'."
+            "Supported fixed selectors: 'nccpi', 'csr2'."
         )
     analyzer = PolygonAnalyzer()
     return analyzer.analyze_polygon(
@@ -401,10 +404,13 @@ def analyze_corridor_fppa(
         Dictionary containing CorridorFarmlandAnalysisResponse fields, plus optional 'lesa_evaluation' result.
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+    if normalized_productivity_index not in (
+        ProductivityIndexType.NCCPI,
+        ProductivityIndexType.CSR2,
+    ):
         raise ValueError(
             f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selector: 'nccpi'."
+            "Supported fixed selectors: 'nccpi', 'csr2'."
         )
     analyzer = CorridorAnalyzer()
     corridor_kwargs: dict[str, Any] = {
@@ -523,10 +529,13 @@ def calculate_preliminary_lesa(
     analysis_geometry: dict[str, Any] | str = geometry
     norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+    if normalized_productivity_index not in (
+        ProductivityIndexType.NCCPI,
+        ProductivityIndexType.CSR2,
+    ):
         raise ValueError(
             f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selector: 'nccpi'."
+            "Supported fixed selectors: 'nccpi', 'csr2'."
         )
     if isinstance(geometry, (LineString, MultiLineString)):
         parsed_geometry = geometry

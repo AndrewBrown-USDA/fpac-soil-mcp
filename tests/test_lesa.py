@@ -547,3 +547,22 @@ class TestBenchmarkSuiteValidation:
                 max_points=10.0,
                 awarded_points=-1.0,
             )
+
+
+def test_normalize_productivity_index_accepts_csr2():
+    """_normalize_productivity_index should accept 'csr2' and return CSR2 enum."""
+    from fpac_soil_mcp.lesa import _normalize_productivity_index
+
+    result = _normalize_productivity_index("csr2")
+    assert result is ProductivityIndexType.CSR2
+
+    result_upper = _normalize_productivity_index("CSR2")
+    assert result_upper is ProductivityIndexType.CSR2
+
+
+def test_normalize_productivity_index_rejects_unknown():
+    """_normalize_productivity_index should still reject unknown indexes."""
+    from fpac_soil_mcp.lesa import _normalize_productivity_index
+
+    with pytest.raises(ValueError, match="Unsupported productivity index type"):
+        _normalize_productivity_index("unknown_index")

@@ -794,3 +794,103 @@ class TestSDAClientExecution:
         assert len(results) == 1
         assert results[0]["numeric_rating"] == 91.0
         assert results[0]["is_rated"] is True
+
+    def test_get_productivity_ratings_csr2(self) -> None:
+        """CSR2 uses mapunit.iacornsr — a direct mapunit column, not cointerp."""
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["406439", "IA169", "138B", "Clarion loam", 92.0, 100.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"iacornsr" in request.content
+            assert b"cointerp" not in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["406439"], index_type="csr2")
+        assert len(results) == 1
+        assert results[0]["mukey"] == "406439"
+        assert results[0]["numeric_rating"] == 92.0
+        assert results[0]["is_rated"] is True
+        assert results[0]["index_type"] == "csr2"
+        assert results[0]["productivity_rating_source"] == "SDA:MAPUNIT_IACORNSR"
+
+    def test_get_productivity_ratings_csr2_alias(self) -> None:
+        """CSR2 accepts the long-form alias."""
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["406439", "IA169", "138B", "Clarion loam", 92.0, 100.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(
+            ["406439"], index_type="Iowa Corn Suitability Rating CSR2"
+        )
+        assert len(results) == 1
+        assert results[0]["index_type"] == "csr2"
+
+    def test_get_county_max_productivity_rating_csr2(self) -> None:
+        """CSR2 county max uses mapunit.iacornsr MAX query."""
+        mock_resp = {
+            "Table": [
+                ["max_county_rating"],
+                [96.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"iacornsr" in request.content
+            assert b"areasymbol = 'IA169'" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("IA169", index_type="csr2")
+        # CSR2 is integer scale, rounded to 0 decimals
+        assert val == 96.0
+
+    def test_get_county_max_productivity_rating_csr2_null(self) -> None:
+        """Non-Iowa counties may have NULL iacornsr everywhere."""
+        mock_resp = {"Table": [["max_county_rating"], [None]]}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("IL019", index_type="csr2")
+        assert val is None
+
+    def test_csr2_sql_template_uses_mapunit_table(self) -> None:
+        """Verify SQL_PRODUCTIVITY_CSR2 queries mapunit.iacornsr directly."""
+        from fpac_soil_mcp.sda_client import SQL_PRODUCTIVITY_CSR2
+
+        sql = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv="'406439'")
+        assert "m.iacornsr" in sql
+        assert "mapunit AS m" in sql
+        assert "legend AS l" in sql
+        # Must NOT join cointerp or component
+        assert "cointerp" not in sql
+        assert "component" not in sql

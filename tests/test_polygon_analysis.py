@@ -226,7 +226,7 @@ def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
     assert result.manifest["candidate_le_score"] == pytest.approx(53.0)
 
 
-@pytest.mark.parametrize("index", ["csr2", "cpi", "storie", "custom"])
+@pytest.mark.parametrize("index", ["cpi", "storie", "custom"])
 def test_unsupported_selector_rejected_before_sda(index):
     sda = MagicMock(spec=SDAClient)
     with pytest.raises(ValueError, match="Unsupported productivity index type"):

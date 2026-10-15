@@ -107,12 +107,12 @@ class PolygonAnalyzer:
         timestamp_str = now.isoformat()
 
         idx_enum = _normalize_productivity_index(productivity_index)
-        if idx_enum is not ProductivityIndexType.NCCPI:
+        if idx_enum not in (ProductivityIndexType.NCCPI, ProductivityIndexType.CSR2):
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selector: 'nccpi'."
+                "Supported fixed selectors: 'nccpi', 'csr2'."
             )
-        norm_idx = "nccpi"
+        norm_idx = idx_enum.value.lower()
 
         # 1. Parse and validate geometry
         try:

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Verified national NCCPI Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
+  "description": "Verified national NCCPI and CSR2 Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
   "cases": [
     {
       "id": "US_NCCPI_MIXED_RATED_UNRATED",
@@ -111,6 +111,59 @@
         "mandatory_alternatives_required": false,
         "threshold_note": "Corridor total score < 160 does not mandate alternative corridor selection under Form NRCS-CPA-106."
       }
+    },
+    {
+      "id": "IA_CSR2_STORY_COUNTY_SITE",
+      "name": "CSR2 Parcel Evaluation in Story County, Iowa",
+      "state_fips": "19",
+      "county_fips": "169",
+      "county_name": "Story County, IA",
+      "project_type": "site",
+      "productivity_index": "CSR2",
+      "county_max_rating": 96.0,
+      "map_units": [
+        {
+          "mukey": "406439",
+          "musym": "138B",
+          "muname": "Clarion loam, 2 to 5 percent slopes",
+          "acres": 60.0,
+          "raw_rating": 92.0,
+          "normalized_relative_rating": 0.9583,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "406449",
+          "musym": "55",
+          "muname": "Webster clay loam",
+          "acres": 30.0,
+          "raw_rating": 88.0,
+          "normalized_relative_rating": 0.9167,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "406500",
+          "musym": "W",
+          "muname": "Water",
+          "acres": 10.0,
+          "raw_rating": null,
+          "normalized_relative_rating": null,
+          "is_rated": false,
+          "unrated_reason": "Open water feature excluded from agricultural rating calculation"
+        }
+      ],
+      "expected_evaluation": {
+        "rated_acreage": 90.0,
+        "unrated_acreage": 10.0,
+        "total_acreage": 100.0,
+        "coverage_percent": 90.0,
+        "aoi_relative_rating": 0.9444,
+        "candidate_le_score": 94.44,
+        "county_farmland_percentile_higher": null
+      },
+      "site_assessment": null,
+      "expected_lesa_summary": null
     }
   ]
 }

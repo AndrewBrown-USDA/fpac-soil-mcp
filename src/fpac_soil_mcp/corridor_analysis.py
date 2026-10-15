@@ -153,12 +153,12 @@ class CorridorAnalyzer:
         timestamp_str = now.isoformat()
         limitations = list(REGULATORY_LIMITATIONS)
         normalized_index = _normalize_fixed_productivity_index(productivity_index)
-        if normalized_index is not ProductivityIndexType.NCCPI:
+        if normalized_index not in (ProductivityIndexType.NCCPI, ProductivityIndexType.CSR2):
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selector: 'nccpi'."
+                "Supported fixed selectors: 'nccpi', 'csr2'."
             )
-        norm_idx = "nccpi"
+        norm_idx = normalized_index.value.lower()
         if max_county_rating_override is not None and (
             not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
         ):

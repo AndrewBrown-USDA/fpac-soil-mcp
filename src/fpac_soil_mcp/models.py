@@ -319,6 +319,7 @@ class ProductivityIndexType(str, Enum):
     """Supported Soil Productivity Index types for Land Evaluation (LE)."""
 
     NCCPI = "NCCPI"
+    CSR2 = "CSR2"
 
 
 class MapUnitProductivityRating(BaseModel):

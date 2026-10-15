@@ -25,7 +25,7 @@
 | --- | --- | --- | --- |
 | 1 | 27.1.1 | done | Research complete. See SDV_STATE_INDEX_RESEARCH.md |
 | 2 | 27.2.1 | done | chorizon + cocropyld table paths, col validation fix |
-| 3 | 27.3.1 | pending | CSR2: live query → fixtures → impl → unit tests → live test → ADR |
+| 3 | 27.3.1 | done | CSR2 validated: enum + routing + SQL templates + tests + ADR 0008 |
 | 4 | 27.4.1 | pending | CPI: live query → fixtures → impl → unit tests → live test |
 | 5 | 27.5.1 | pending | Storie: live query → fixtures → impl → unit tests → live test → final ADR |
 
@@ -66,3 +66,36 @@
 
 **Test results:** 301 passed, 1 skipped, 12 deselected (16.24s). Lint clean.
 **Sanity-check indexes:** AWC (`chorizon.awc_r`), Non-Irrigated Crop Yields (`cocropyld.nonirryield_r`).
+
+### 27.3.1 — CSR2 Implementation (Wave 3)
+**Status:** done
+
+**Changes:**
+- Added `ProductivityIndexType.CSR2` enum value (models.py:322)
+- Added `PRODUCTIVITY_PROVENANCE["csr2"] = "SDA:MAPUNIT_IACORNSR"` (sda_client.py)
+- Added `SQL_PRODUCTIVITY_CSR2` and `SQL_PRODUCTIVITY_COUNTY_MAX_CSR2` fixed SQL templates
+  using `mapunit.iacornsr` directly (no cointerp, no component joins)
+- Added CSR2 routing in `get_productivity_ratings()` and `get_county_max_productivity_rating()`
+  with aliases: "csr2", "iowa corn suitability rating csr2"
+- CSR2 rounding: integer scale → round to 0 decimal places
+- Expanded NCCPI-only guards in:
+  - polygon_analysis.py: guard + dynamic `norm_idx` from enum value
+  - corridor_analysis.py: guard + dynamic `norm_idx` from enum value
+  - tools/soil_tools.py: 3 guards (polygon, corridor, LESA)
+  - lesa.py: error message update (normalize already accepts any valid enum)
+- Updated `test_polygon_analysis.py`: removed csr2 from rejected parametrize list
+- 7 new unit tests in test_sda_client.py:
+  - CSR2 ratings query (verifies iacornsr, no cointerp)
+  - CSR2 alias resolution
+  - CSR2 county max query (IA169)
+  - CSR2 county max null (non-Iowa)
+  - CSR2 SQL template content verification
+- 2 new tests in test_lesa.py: normalize accepts CSR2, rejects unknown
+- 3 new live_network tests in test_live_sda.py:
+  - CSR2 ratings for Iowa mukey
+  - CSR2 county max IA169 (verified 90-100 range, expected 96)
+  - CSR2 county max IL019 returns None (Iowa-only column)
+- CSR2 benchmark fixture added to le_benchmarks.json (IA_CSR2_STORY_COUNTY_SITE)
+- ADR 0008 amended: CSR2 validated as second public index; design extensibility confirmed
+
+**Test results:** 307 passed, 1 skipped, 15 deselected (offline). 15 passed (live). Lint clean.

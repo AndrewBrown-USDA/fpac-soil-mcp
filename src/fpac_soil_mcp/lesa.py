@@ -75,7 +75,7 @@ def _normalize_productivity_index(
         except ValueError:
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selector: 'nccpi'."
+                "Supported fixed selectors: 'nccpi', 'csr2'."
             ) from None
     return productivity_index
 

@@ -129,3 +129,49 @@ class TestLiveSDA:
         max_val = client.get_county_max_productivity_rating(areasymbol="IA169", index_type="nccpi")
         assert max_val is not None
         assert max_val > 0.0
+
+    def test_live_csr2_productivity_ratings_iowa(self) -> None:
+        """Query CSR2 (mapunit.iacornsr) for known Iowa mukeys — Story County, IA."""
+        client = SDAClient()
+        try:
+            pt_res = client.get_by_point(latitude=42.0308, longitude=-93.6319)
+            if not pt_res or not pt_res[0].get("mukey"):
+                pytest.skip("Could not fetch test mukey from point")
+            test_mukey = str(pt_res[0]["mukey"])
+
+            results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="csr2")
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert len(results) == 1
+        res = results[0]
+        assert res["index_type"] == "csr2"
+        assert res["productivity_rating_source"] == "SDA:MAPUNIT_IACORNSR"
+        # Iowa soils should have CSR2 values in range 5-100
+        if res["is_rated"]:
+            assert 5 <= res["numeric_rating"] <= 100
+
+    def test_live_csr2_county_max_iowa(self) -> None:
+        """CSR2 county max for IA169 (Story County) — research found max=96."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="IA169", index_type="csr2"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is not None
+        assert 90 <= max_val <= 100  # known IA169 max is 96
+
+    def test_live_csr2_county_max_non_iowa_is_null(self) -> None:
+        """CSR2 should return None for non-Iowa counties (iacornsr is Iowa-only)."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="IL019", index_type="csr2"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is None
