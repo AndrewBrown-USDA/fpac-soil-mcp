@@ -347,6 +347,71 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
+### Evaluation Capture (Opt-In)
+
+The Pi evaluation runner (`eval\run_evals.py`) does not retain capture artifacts
+by default. The normal offline test command never starts Pi, contacts external
+services, or enables capture. Retention must be explicitly enabled and written
+to a repository-external directory:
+
+```powershell
+uv run python eval\run_evals.py --capture-artifacts --artifact-root C:\path\to\eval-artifacts
+```
+
+Equivalent environment configuration is available for automation:
+
+```powershell
+$env:EVAL_CAPTURE_ARTIFACTS="1"
+$env:EVAL_CAPTURE_ROOT="C:\path\to\eval-artifacts"
+uv run python eval\run_evals.py --case-id POINT-01
+```
+
+The root is required when capture is enabled and must not be inside this
+repository, its source tree, or its fixture directories. Capture remains
+bounded and sanitized; enabling it does not authorize persistence of prompts,
+tool arguments, generated responses, coordinates, geometry, producer data,
+credentials, or other sensitive values.
+
+Each run is organized as:
+
+```text
+<external-root>\<run_id>\<case_id>\attempt-<N>\
+  metadata.json
+  stdout.txt
+  stderr.txt
+  events.jsonl
+  malformed-lines.txt
+```
+
+`run_id`, `case_id`, and attempt names are opaque/safe identifiers. Inspect
+`metadata.json` first, then compare the separate stdout/stderr, parsed JSONL,
+and malformed-line files. Artifact paths in diagnostics identify evidence
+without embedding raw content. Structured event evidence, not prose or a
+malformed line, is the only basis for tool-execution classification.
+
+Retention is caller-controlled. Keep the external root access-restricted,
+remove artifacts explicitly after inspection, and clean only beneath the
+validated root. The runner preserves bounded retry attempts separately and
+records failure/timeout/startup diagnostics where available. Captured artifacts
+are diagnostic evidence only and do not constitute an official FPPA
+determination or production audit record.
+
+Checked-in event-capture fixtures must be minimal, deterministic, sanitized,
+and based on verified captured shapes. Historical raw Pi envelopes for the
+documented failures were unavailable, so envelope-specific historical claims
+remain deferred; transport and parser-boundary fixtures must not be presented
+as those failures.
+
+The default test path remains offline and excludes `live_network` and
+`agent_eval`:
+
+```powershell
+uv run pytest -m "not live_network and not agent_eval"
+```
+
+Live network and Pi agent-evaluation commands are opt-in and should be run
+serially with appropriate external-service, port, and artifact controls.
+
 ---
 
 ## License

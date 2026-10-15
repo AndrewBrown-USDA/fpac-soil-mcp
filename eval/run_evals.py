@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import unicodedata
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,14 @@ if sys.platform == "win32":
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
+MAX_CAPTURE_BYTES = 64 * 1024
+MAX_CAPTURE_LINES = 1000
+MAX_CAPTURE_EVENTS = 500
+SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")
+SENSITIVE = re.compile(
+    r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
+    r"email|phone|address|coordinates?|geometry|geojson|wkt)\s*[:=]\s*[^\s,;]+"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,6 +50,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="all",
         help="Filter test cases by category substring (e.g., 'Point', 'Polygon', 'Corridor', 'all').",
+    )
+    parser.add_argument(
+        "--capture-artifacts", action="store_true", help="Retain sanitized eval artifacts."
+    )
+    parser.add_argument(
+        "--artifact-root", type=Path, default=None, help="External root for retained artifacts."
     )
     parser.add_argument(
         "--case-id",
@@ -74,6 +89,69 @@ def parse_args() -> argparse.Namespace:
         help="Print model response text for each evaluated case (default: True). Use --no-show-output to suppress.",
     )
     return parser.parse_args()
+
+
+def _bounded(text: str | bytes | None) -> tuple[str, bool]:
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", "replace")
+    text = text or ""
+    truncated = len(text.encode("utf-8")) > MAX_CAPTURE_BYTES
+    if truncated:
+        text = text.encode("utf-8")[:MAX_CAPTURE_BYTES].decode("utf-8", "ignore")
+    return text, truncated
+
+
+def _sanitize(text: str) -> str:
+    return SENSITIVE.sub("[REDACTED]", text)
+
+
+def _safe_id(value: str) -> str:
+    return SAFE_ID.sub("_", value)[:80] or "unknown"
+
+
+def _artifact_root(root: Path | None) -> Path | None:
+    if root is None:
+        return None
+    resolved = root.expanduser().resolve()
+    try:
+        resolved.relative_to(REPO_ROOT)
+    except ValueError:
+        return resolved
+    raise ValueError("artifact root must be outside the repository")
+
+
+def _capture_attempt(
+    root: Path | None,
+    run_id: str,
+    case_id: str,
+    attempt: int,
+    metadata: dict[str, Any],
+    stdout: str,
+    stderr: str,
+    events: list[dict[str, Any]],
+    malformed: list[str],
+) -> dict[str, str]:
+    if root is None:
+        return {}
+    directory = root / _safe_id(run_id) / _safe_id(case_id) / f"attempt-{attempt}"
+    directory.mkdir(parents=True, exist_ok=True)
+    files = {
+        "metadata": directory / "metadata.json",
+        "stdout": directory / "stdout.txt",
+        "stderr": directory / "stderr.txt",
+        "events": directory / "events.jsonl",
+        "malformed_lines": directory / "malformed-lines.txt",
+    }
+    files["metadata"].write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
+    files["stdout"].write_text(_sanitize(stdout), encoding="utf-8")
+    files["stderr"].write_text(_sanitize(stderr), encoding="utf-8")
+    files["events"].write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events), encoding="utf-8"
+    )
+    files["malformed_lines"].write_text(
+        "".join(_sanitize(line) + "\n" for line in malformed), encoding="utf-8"
+    )
+    return {key + "_path": str(path.relative_to(root)) for key, path in files.items()}
 
 
 def get_pi_executable() -> str:
@@ -333,11 +411,21 @@ def run_case(
     timeout: int,
     verbose: bool,
     pi_exe: str = "pi",
+    run_id: str | None = None,
+    artifact_root: Path | None = None,
 ) -> dict[str, Any]:
     case_id = case["id"]
     prompt = case["user_prompt"]
     expected_keywords = case.get("expected_keywords", [])
     expected_tools = case.get("expected_tools", [])
+    run_id = run_id or uuid.uuid4().hex
+    try:
+        artifact_root = _artifact_root(artifact_root)
+    except ValueError as exc:
+        artifact_root = None
+        artifact_error = str(exc)
+    else:
+        artifact_error = ""
 
     cmd = [
         pi_exe,
@@ -359,11 +447,19 @@ def run_case(
     error_msg = ""
     output = ""
     elapsed = 0.0
+    attempts: list[dict[str, Any]] = []
+    evidence_classification = "absent"
+    artifact_paths: dict[str, str] = {}
 
     try:
         retry_count = 0
         diagnostics: list[str] = []
         while True:
+            attempt = retry_count + 1
+            started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            proc = None
+            stdout = stderr = ""
+            outcome = "completed"
             proc = subprocess.run(
                 cmd,
                 cwd=str(sandbox_dir),
@@ -374,18 +470,70 @@ def run_case(
                 timeout=timeout,
                 check=False,
             )
-            output = proc.stdout or ""
+            stdout, stdout_truncated = _bounded(proc.stdout)
+            stderr, stderr_truncated = _bounded(proc.stderr)
+            output = stdout
             events: list[dict[str, Any]] = []
-            for line in output.splitlines():
+            malformed: list[str] = []
+            for line in output.splitlines()[:MAX_CAPTURE_LINES]:
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError:
+                    malformed.append(line)
                     continue
-                if isinstance(event, dict):
+                if isinstance(event, dict) and len(events) < MAX_CAPTURE_EVENTS:
                     events.append(event)
+            dedicated_events = [
+                event
+                for event in events
+                if "tool" in str(event.get("type", "")).lower()
+                or str(event.get("type", "")).lower()
+                in {"call", "tool_use", "tool_call", "tool_execution"}
+            ]
+            executed_tools = set().union(
+                *(extract_structured_tool_names(event) for event in events)
+            )
+            evidence_classification = (
+                "recognized"
+                if executed_tools
+                else "present_unrecognized"
+                if dedicated_events
+                else "absent"
+            )
+            attempt_meta = {
+                "run_id": run_id,
+                "case_id": case_id,
+                "attempt": attempt,
+                "started_at_utc": started_at,
+                "ended_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "model": model or "provider-default",
+                "provider": "pi",
+                "transport": "stdio",
+                "return_code": proc.returncode,
+                "stdout_truncated": stdout_truncated,
+                "stderr_truncated": stderr_truncated,
+                "event_count": len(events),
+                "malformed_line_count": len(malformed),
+            }
+            paths = _capture_attempt(
+                artifact_root,
+                run_id,
+                case_id,
+                attempt,
+                attempt_meta,
+                stdout,
+                stderr,
+                events,
+                malformed,
+            )
+            attempts.append({**attempt_meta, **paths})
+            if paths:
+                artifact_paths.update(
+                    {f"attempt_{attempt}_{key}": value for key, value in paths.items()}
+                )
             if proc.returncode != 0:
                 status = "FAIL"
-                error_msg = f"Non-zero exit code ({proc.returncode}): {(proc.stderr or '').strip()}"
+                error_msg = f"Non-zero exit code ({proc.returncode}): {stderr.strip()}"
                 break
 
             executed_tools = set().union(
@@ -446,13 +594,26 @@ def run_case(
             if proc.stderr:
                 print(f"[{case_id}] Stderr:\n{proc.stderr}\n")
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
         elapsed = time.perf_counter() - start_time
         status = "TIMEOUT"
         error_msg = f"Exceeded {timeout}s timeout"
+        stdout, _ = _bounded(exc.stdout)
+        stderr, _ = _bounded(exc.stderr)
+        attempts.append(
+            {"run_id": run_id, "case_id": case_id, "attempt": retry_count + 1, "outcome": "timeout"}
+        )
     except (subprocess.SubprocessError, OSError) as e:
         status = "ERROR"
         error_msg = f"{type(e).__name__}: {e}"
+        attempts.append(
+            {
+                "run_id": run_id,
+                "case_id": case_id,
+                "attempt": retry_count + 1,
+                "outcome": "startup_error",
+            }
+        )
     finally:
         elapsed = time.perf_counter() - start_time
 
@@ -468,6 +629,11 @@ def run_case(
         else output,
         "expected_keywords": expected_keywords,
         "expected_tools": expected_tools,
+        "run_id": run_id,
+        "evidence_classification": evidence_classification,
+        "attempts": attempts,
+        "artifact_paths": artifact_paths,
+        "capture_error": artifact_error,
     }
 
 
@@ -475,6 +641,19 @@ def main() -> None:
     args = parse_args()
     pi_exe = check_prerequisites()
     cases = load_test_cases(args.category, args.case_id)
+    run_id = uuid.uuid4().hex
+    capture_enabled = args.capture_artifacts or os.environ.get("EVAL_CAPTURE_ARTIFACTS") == "1"
+    artifact_root = args.artifact_root or (
+        Path(os.environ["EVAL_CAPTURE_ROOT"]) if os.environ.get("EVAL_CAPTURE_ROOT") else None
+    )
+    if capture_enabled and artifact_root is None:
+        print(
+            "ERROR: --capture-artifacts requires --artifact-root or EVAL_CAPTURE_ROOT.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    if not capture_enabled:
+        artifact_root = None
 
     if not cases:
         print(
@@ -501,7 +680,14 @@ def main() -> None:
                 flush=True,
             )
             res = run_case(
-                case, sandbox_path, args.model, args.timeout, args.verbose, pi_exe=pi_exe
+                case,
+                sandbox_path,
+                args.model,
+                args.timeout,
+                args.verbose,
+                pi_exe=pi_exe,
+                run_id=run_id,
+                artifact_root=artifact_root,
             )
             print(f"{res['status']} ({res['elapsed_sec']}s)")
             if res["error"]:

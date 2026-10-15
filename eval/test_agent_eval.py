@@ -28,6 +28,7 @@ from run_evals import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
+CAPTURE_FIXTURES_PATH = REPO_ROOT / "eval" / "fixtures" / "event_capture"
 
 
 def normalize_text(text: str) -> str:
@@ -119,6 +120,233 @@ def test_run_case_returns_structured_failure_when_subprocess_startup_raises(
     assert result["status"] == "ERROR"
     assert result["elapsed_sec"] >= 0
     assert result["error"] == "OSError: unable to start pi"
+
+
+def _capture_case(**overrides: Any) -> dict[str, Any]:
+    case = {
+        "id": "CAPTURE-01",
+        "category": "capture",
+        "target_name": "get_farmland_classification_by_point",
+        "user_prompt": "perform the test",
+    }
+    case.update(overrides)
+    return case
+
+
+def test_run_case_capture_success_separates_stderr_malformed_lines_and_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stdout = (CAPTURE_FIXTURES_PATH / "recognized.jsonl").read_text(
+        encoding="utf-8"
+    ) + "\nnot-json\n"
+
+    class Completed:
+        returncode = 0
+        stderr = "diagnostic only\n"
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(expected_tools=["get_farmland_classification_by_point"]),
+        tmp_path / "sandbox",
+        model="test-model",
+        timeout=1,
+        verbose=False,
+        run_id="run-safe",
+        artifact_root=tmp_path / "artifacts",
+    )
+
+    assert result["status"] == "PASS"
+    assert result["evidence_classification"] == "recognized"
+    assert result["attempts"][0]["model"] == "test-model"
+    assert result["attempts"][0]["provider"] == "pi"
+    artifact_dir = tmp_path / "artifacts" / "run-safe" / "CAPTURE-01" / "attempt-1"
+    assert (artifact_dir / "stderr.txt").read_text(encoding="utf-8") == "diagnostic only\n"
+    assert (artifact_dir / "malformed-lines.txt").read_text(encoding="utf-8").strip() == "not-json"
+    assert "attempt_1_stdout_path" in result["artifact_paths"]
+    assert "diagnostic only" not in result["error"]
+
+
+def test_run_case_capture_is_non_retaining_when_opt_in_root_is_absent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / "prose_only.jsonl").read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="run-no-retain",
+    )
+    assert result["evidence_classification"] == "absent"
+    assert result["artifact_paths"] == {}
+    assert not (tmp_path / "run-no-retain").exists()
+
+
+@pytest.mark.parametrize(
+    ("fixture", "expected"),
+    [
+        ("prose_only.jsonl", "absent"),
+        ("dedicated_unrecognized.jsonl", "present_unrecognized"),
+        ("recognized.jsonl", "recognized"),
+    ],
+)
+def test_capture_evidence_classification_uses_dedicated_structured_events(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fixture: str, expected: str
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / fixture).read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert result["evidence_classification"] == expected
+
+
+def test_run_case_capture_preserves_retry_attempts_and_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    outputs = [
+        '{"type":"initialize","tools":[{"name":"get_farmland_classification_by_point"}]}\n',
+        (CAPTURE_FIXTURES_PATH / "recognized.jsonl").read_text(encoding="utf-8"),
+    ]
+    calls = iter(outputs)
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(
+        run_evals.subprocess,
+        "run",
+        lambda *args, **kwargs: Completed(next(calls)),
+    )
+    result = run_evals.run_case(
+        _capture_case(expected_tools=["get_farmland_classification_by_point"]),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="retry-run",
+        artifact_root=tmp_path / "artifacts",
+    )
+    assert len(result["attempts"]) == 2
+    assert {attempt["attempt"] for attempt in result["attempts"]} == {1, 2}
+    assert (tmp_path / "artifacts" / "retry-run" / "CAPTURE-01" / "attempt-1").exists()
+    assert (tmp_path / "artifacts" / "retry-run" / "CAPTURE-01" / "attempt-2").exists()
+
+
+def test_run_case_capture_timeout_and_startup_error_are_structured(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        run_evals.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            subprocess.TimeoutExpired("pi", 1, output=b"partial\n", stderr=b"warn\n")
+        ),
+    )
+    timeout_result = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert timeout_result["status"] == "TIMEOUT"
+    assert timeout_result["attempts"][0]["outcome"] == "timeout"
+
+    monkeypatch.setattr(
+        run_evals.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("missing pi")),
+    )
+    startup_result = run_evals.run_case(
+        _capture_case(id="STARTUP-01"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert startup_result["status"] == "ERROR"
+    assert startup_result["attempts"][0]["outcome"] == "startup_error"
+
+
+def test_capture_rejects_repository_root_and_keeps_prompt_out_of_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / "prose_only.jsonl").read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    prompt = "private prompt 41.8781,-93.0977"
+    result = run_evals.run_case(
+        _capture_case(id="CASE/../secret", user_prompt=prompt),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="run/../unsafe",
+        artifact_root=REPO_ROOT,
+    )
+
+    assert result["artifact_paths"] == {}
+    assert "artifact root must be outside the repository" in result["capture_error"]
+    assert prompt not in str(result["artifact_paths"])
+
+
+def test_capture_bounds_and_redacts_persisted_streams(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    sensitive = "api_key=secret-value coordinates=41.8781,-93.0977"
+
+    class Completed:
+        returncode = 0
+        stdout = sensitive + "\n" + ("x" * (run_evals.MAX_CAPTURE_BYTES + 100))
+        stderr = "email=person@example.test"
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    run_evals.run_case(
+        _capture_case(id="SAFE_CASE"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="safe-run",
+        artifact_root=root,
+    )
+
+    artifact_dir = root / "safe-run" / "SAFE_CASE" / "attempt-1"
+    stdout = (artifact_dir / "stdout.txt").read_text(encoding="utf-8")
+    stderr = (artifact_dir / "stderr.txt").read_text(encoding="utf-8")
+    assert len(stdout.encode("utf-8")) <= run_evals.MAX_CAPTURE_BYTES
+    assert "secret-value" not in stdout
+    assert "41.8781,-93.0977" not in stdout
+    assert "person@example.test" not in stderr
+
+    shutil.rmtree(root)
+    assert not root.exists()
 
 
 def event_text(event: dict[str, Any]) -> str:
