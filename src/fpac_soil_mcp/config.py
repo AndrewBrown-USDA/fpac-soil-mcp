@@ -1,6 +1,6 @@
 """Configuration settings for fpac-soil-mcp."""
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -81,15 +81,16 @@ class Settings(BaseSettings):
     # MCP Server Configuration
     mcp_transport: str = Field(
         default="stdio",
-        description="Transport type for FastMCP (stdio or sse)",
+        description="Transport type for FastMCP (stdio, sse, or http)",
     )
     mcp_host: str = Field(
-        default="127.0.0.1",
-        description="Host to bind when using SSE transport",
+        default="0.0.0.0",
+        description="Host to bind when using SSE or HTTP transport",
     )
     mcp_port: int = Field(
         default=8000,
-        description="Port to bind when using SSE transport",
+        description="Port to bind when using SSE or HTTP transport",
+        validation_alias=AliasChoices("mcp_port", "DATABRICKS_APP_PORT"),
     )
 
     @field_validator("sda_tabular_url", "nass_base_url", "tigerweb_rest_url")
