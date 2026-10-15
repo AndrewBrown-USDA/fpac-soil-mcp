@@ -3,11 +3,11 @@
 ## Baseline (recorded before Wave 1)
 
 ### Green baseline check
-- [ ] `uv run pytest -m "not live_network"` — all offline tests pass
-- [ ] `uv run ruff check .` — no lint errors
-- [ ] `uv run ruff format --check .` — no format issues
-- [ ] `git branch feat/phase-4-part-2-sdv-routing` — branch exists from origin/main
-- [ ] `git checkout feat/phase-4-part-2-sdv-routing` — on the working branch
+- [x] `uv run pytest -m "not live_network"` — 295 passed, 1 skipped, 12 deselected (16.55s)
+- [x] `uv run ruff check .` — clean (61 pre-existing EXE002 warnings, no new issues)
+- [x] `uv run ruff format --check .` — clean (336 files formatted)
+- [x] Branch `feat/phase-4-part-2-sdv-routing` exists, rebased onto origin/main (e2a4ea2)
+- [x] Working tree clean
 
 ### Key facts at baseline
 - `ProductivityIndexType` enum contains only `NCCPI` (models.py:318)
@@ -16,18 +16,34 @@
 - NCCPI-only guards at: polygon_analysis.py:110, corridor_analysis.py:156, soil_tools.py:203/404/526, lesa.py:68
 - `test_polygon_analysis.py:229` parametrizes `['csr2', 'cpi', 'storie', 'custom']` expecting rejection
 - ADR 0008 status: Accepted; decision: NCCPI-only validated public contract
+- No module extraction — all SDV infrastructure stays in sda_client.py
+- Shapely 2.2.0 reinstall required on serverless compute (bundled GEOS)
 
 ## Wave Board
 
 | Wave | Task | Status | Notes |
 | --- | --- | --- | --- |
-| 1 | 27.1.1 | pending | Extract sdv_query.py |
-| 1 | 27.1.2 | pending | Research SDA patterns (live) |
-| 2 | 27.2.1 | pending | Expand SDV tables |
+| 1 | 27.1.1 | done | Research complete. See SDV_STATE_INDEX_RESEARCH.md |
+| 2 | 27.2.1 | pending | Expand SDV tables in sda_client.py |
 | 3 | 27.3.1 | pending | CSR2: live query → fixtures → impl → unit tests → live test → ADR |
 | 4 | 27.4.1 | pending | CPI: live query → fixtures → impl → unit tests → live test |
 | 5 | 27.5.1 | pending | Storie: live query → fixtures → impl → unit tests → live test → final ADR |
 
 ## Task Reports
 
-(Worker reports appended below as waves complete.)
+### 27.1.1 — Research SDA Storage Patterns (Wave 1)
+**Status:** done
+**Output:** `planning/SDV_STATE_INDEX_RESEARCH.md`
+
+**Key findings:**
+- CSR2: `mapunit.iacornsr` (Integer, 5-100). Iowa-only. Existing mapunit query path.
+- CPI: `component.cropprodindex` (Integer, 1-100). ND/SD/MN. Existing component query path.
+  - Not populated in all MN counties (missing in metro areas like Hennepin)
+  - Fixture county: MN167 (Wilkin, 202 components, max=100)
+- Storie: `cointerp` via "AGR - California Revised Storie Index (CA)" (Float, 0-1).
+  Identical to NCCPI routing pattern, different rule name. CA-only.
+- All three route through existing `build_dynamic_sdv_query()` table paths.
+- No new tables needed in ALLOWED_SDV_TABLES for these three indexes.
+- Wave 2 may add `chorizon`/`cocropyld` for future extensibility only.
+
+**Decision:** Task 27.1.1 (extraction) eliminated — no module extraction, SDV infra stays in sda_client.py.

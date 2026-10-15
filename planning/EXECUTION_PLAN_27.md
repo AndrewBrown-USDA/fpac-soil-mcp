@@ -5,7 +5,7 @@
 Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2 of the Master Plan. This orchestration extracts the SDV routing infrastructure into a dedicated module, researches actual SDA storage patterns for three state-specific productivity indexes, then implements and validates each index sequentially (CSR2, CPI, Storie) with offline benchmark fixtures and live_network SDA contract tests.
 
 **In scope:**
-1. SDV Discovery & Table Expansion — extract `sdv_query.py` from `sda_client.py`, expand `ALLOWED_SDV_TABLES` to include `chorizon` and `cocropyld`, harden dynamic query builders for non-`cointerp` table paths.
+1. SDV Discovery & Table Expansion — extract `sda_client.py` from `sda_client.py`, expand `ALLOWED_SDV_TABLES` to include `chorizon` and `cocropyld`, harden dynamic query builders for non-`cointerp` table paths.
 2. State Index Validation — implement and validate CSR2 (Iowa), CPI (Minnesota), and Storie Index (California) through the full stack: `ProductivityIndexType` enum, SDV routing, SDA client methods, domain wiring (polygon, corridor, tools, LESA), offline benchmark fixtures, unit tests, and live_network SDA contract tests.
 
 **Out of scope (deferred to a later orchestration):**
@@ -26,7 +26,7 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 | 2026-10-14 | ADR 0008 will be amended in-place to reflect the expanded validated multi-index contract. | User chose amendment over supersession; the ADR's decision drivers remain valid but the outcome expands from NCCPI-only to include CSR2, CPI, Storie as each is validated. |
 | 2026-10-14 | State indexes validated sequentially: CSR2 first, then CPI, then Storie. Each must fully pass (including live_network tests) before the next begins. | Earlier batch attempt (EPs 17-23) failed when all three were implemented together; each index requires its own SDA pattern discovery and per-state benchmark fixtures. |
 | 2026-10-14 | Validation uses both offline benchmark fixtures (unit tests) and live_network tests (SDA contract validation). | Matches the existing NCCPI pattern in `tests/fixtures/le_benchmarks.json` and `tests/test_live_sda.py`. |
-| 2026-10-14 | SDV routing engine extracted to a dedicated `sdv_query.py` module. | The routing logic has grown beyond what `sda_client.py` should hold; a dedicated module clarifies the metadata-driven routing contract. |
+| 2026-10-14 | SDV routing engine extracted to a dedicated `sda_client.py` module. | The routing logic has grown beyond what `sda_client.py` should hold; a dedicated module clarifies the metadata-driven routing contract. |
 | 2026-10-14 | Branch: `feat/phase-4-part-2-sdv-routing` (branched from `origin/main`). | Tracks Phase 4 Part 2 work separately from the merged Part 1. |
 | 2026-10-14 | Research all three SDA storage patterns in one discovery wave before any implementation. | The user wants to understand all three index patterns before touching code, avoiding the trial-and-error that plagued EPs 20-23. |
 
@@ -69,7 +69,7 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 - `corridor_analysis.py:156` — same guard in `CorridorAnalyzer.analyze_corridor`
 - `lesa.py:68` — `_normalize_productivity_index` only accepts NCCPI
 
-### Import sites that must update when extracting to `sdv_query.py`
+### Import sites that must update when extracting to `sda_client.py`
 - `tests/test_sda_client.py:8` — imports `ALLOWED_SDV_TABLES`, `build_dynamic_sdv_query`, `build_dynamic_sdv_county_max_query` from `sda_client`
 - `tests/test_sda_client.py:614,659,675,686` — inline imports of `build_dynamic_sdv_query` from `sda_client`
 - `src/fpac_soil_mcp/sda_client.py` — must re-export extracted symbols for backward compatibility
@@ -85,12 +85,13 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 
 | Wave | Task | Title | Depends on | Key files |
 | --- | --- | --- | --- | --- |
-| 1 | 27.1.1 | Extract sdv_query.py module from sda_client.py | — | `sdv_query.py` (new), `sda_client.py`, `test_sda_client.py` |
-| 1 | 27.1.2 | Research SDA storage patterns for CSR2, CPI, Storie | — | `planning/SDV_STATE_INDEX_RESEARCH.md` (new) |
-| 2 | 27.2.1 | Expand ALLOWED_SDV_TABLES and harden query builders | 27.1.1, 27.1.2 | `sdv_query.py`, `test_sda_client.py` |
-| 3 | 27.3.1 | CSR2: live query, routing, fixtures, unit tests, live test, ADR amendment | 27.2.1 | `models.py`, `sdv_query.py`, `sda_client.py`, `polygon_analysis.py`, `corridor_analysis.py`, `soil_tools.py`, `lesa.py`, `le_benchmarks.json`, `test_sda_client.py`, `test_lesa.py`, `test_polygon_analysis.py`, `test_live_sda.py`, `0008-*.md` |
+| 1 | 27.1.1 | Research SDA storage patterns for CSR2, CPI, Storie | — | `planning/SDV_STATE_INDEX_RESEARCH.md` (new) |
+| 2 | 27.2.1 | Expand ALLOWED_SDV_TABLES and harden query builders | 27.1.1 | `sda_client.py`, `test_sda_client.py` |
+| 3 | 27.3.1 | CSR2: live query, routing, fixtures, unit tests, live test, ADR amendment | 27.2.1 | `models.py`, `sda_client.py`, `polygon_analysis.py`, `corridor_analysis.py`, `soil_tools.py`, `lesa.py`, `le_benchmarks.json`, `test_sda_client.py`, `test_lesa.py`, `test_polygon_analysis.py`, `test_live_sda.py`, `0008-*.md` |
 | 4 | 27.4.1 | CPI: live query, routing, fixtures, unit tests, live test | 27.3.1 | same as 27.3.1 pattern (CPI) |
 | 5 | 27.5.1 | Storie: live query, routing, fixtures, unit tests, live test, final ADR amendment | 27.4.1 | same as 27.3.1 pattern (Storie) |
+
+**Architectural note:** No module extraction — all SDV query infrastructure stays in `sda_client.py`. New per-index routing is added directly to the existing query builders and `SDAClient` methods. `sda_client.py` is not created.
 
 **Rationale for merged live-first structure:** Each index implementation task starts with a live SDA query to retrieve actual rating values and county maxima for known mukeys. The offline benchmark fixtures are then constructed from this real data, ensuring they reflect realistic SDA response patterns. Unit tests run against the fixtures offline; a final live_network test confirms the SDA contract holds end-to-end. The live query informs fixture construction rather than serving as post-hoc validation only.
 
@@ -100,52 +101,13 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 - `test_live_sda.py` live tests require network access; if a worker cannot reach SDA, it should STOP and report.
 - The `test_unsupported_selector_rejected_before_sda` test at `test_polygon_analysis.py:229` will break when CSR2 is added — must be updated in the same task.
 - `sda_client.py` must re-export extracted symbols so existing imports don't break during extraction.
-- Each state index may store data differently (cointerp rule, component column, chorizon column, or cocropyld). Research wave 27.1.2 must confirm actual storage pattern before implementation.
+- Each state index may store data differently (cointerp rule, component column, chorizon column, or cocropyld). Research wave 27.1.1 must confirm actual storage pattern before implementation.
 
 ---
 
 ## Task Specs
 
-### Task 27.1.1 — Extract sdv_query.py module from sda_client.py
-
-**Repo:** fpac-soil-mcp
-**Files in scope:**
-- Must edit: `src/fpac_soil_mcp/sda_client.py`, `tests/test_sda_client.py`
-- Can create: `src/fpac_soil_mcp/sdv_query.py`
-**Depends on:** none
-
-**Spec:** Extract the SDV metadata-driven routing infrastructure from `sda_client.py` into a new `sdv_query.py` module. Move these symbols:
-- `ALLOWED_SDV_TABLES` (sda_client.py:250)
-- `validate_survey_area_symbol` (sda_client.py:258)
-- `build_dynamic_sdv_query` (sda_client.py:266)
-- `build_dynamic_sdv_county_max_query` (sda_client.py:381)
-- `SQL_SDV_ATTRIBUTE_LOOKUP` (sda_client.py:190)
-- `SQL_INTERPRETATION_CATALOG` (sda_client.py:113)
-- `PRODUCTIVITY_PROVENANCE` (sda_client.py:30)
-
-In `sda_client.py`, replace the extracted code with `from fpac_soil_mcp.sdv_query import ...` re-exports so existing import sites continue to work. Update `tests/test_sda_client.py` import block (line 8) to import from `fpac_soil_mcp.sdv_query`. Also update inline imports at lines 614, 659, 675, 686.
-
-**Constraints:** Do NOT change any query logic, SQL templates, or validation behavior. This is a pure extraction/refactor. Do NOT touch any other source files.
-
-**Grep anchors:**
-- `ALLOWED_SDV_TABLES = {` at sda_client.py:250
-- `def build_dynamic_sdv_query(` at sda_client.py:266
-- `def build_dynamic_sdv_county_max_query(` at sda_client.py:381
-- `SQL_SDV_ATTRIBUTE_LOOKUP = ` at sda_client.py:190
-- `PRODUCTIVITY_PROVENANCE = {` at sda_client.py:30
-- `from fpac_soil_mcp.sda_client import (` at test_sda_client.py:8
-
-**Reference implementation:** The extraction pattern of `corridor_scoring.py` importing from `lesa.py` shows how this repo separates modules with re-exports.
-
-**Acceptance:**
-- `uv run pytest -m "not live_network"` — all existing tests pass with no import errors
-- `uv run ruff check .` — no lint errors
-- `uv run ruff format --check .` — no format issues
-- Targeted: `uv run pytest tests/test_sda_client.py -m "not live_network"`
-
----
-
-### Task 27.1.2 — Research SDA storage patterns for CSR2, CPI, Storie
+### Task 27.1.1 — Research SDA storage patterns for CSR2, CPI, Storie
 
 **Repo:** fpac-soil-mcp
 **Files in scope:**
@@ -185,10 +147,10 @@ Document all findings in `planning/SDV_STATE_INDEX_RESEARCH.md` as a structured 
 
 **Repo:** fpac-soil-mcp
 **Files in scope:**
-- Must edit: `src/fpac_soil_mcp/sdv_query.py`, `tests/test_sda_client.py`
-**Depends on:** 27.1.1, 27.1.2
+- Must edit: `src/fpac_soil_mcp/sda_client.py`, `tests/test_sda_client.py`
+**Depends on:** 27.1.1
 
-**Spec:** Expand `ALLOWED_SDV_TABLES` in `sdv_query.py` to include `chorizon` and `cocropyld`. Add query builder branches in `build_dynamic_sdv_query` and `build_dynamic_sdv_county_max_query` for these new table types.
+**Spec:** Expand `ALLOWED_SDV_TABLES` in `sda_client.py` to include `chorizon` and `cocropyld`. Add query builder branches in `build_dynamic_sdv_query` and `build_dynamic_sdv_county_max_query` for these new table types.
 
 For `chorizon`: join through `component` to `mapunit` (same as `component` path but with additional `chorizon` join on `cokey`). Apply sentinel filtering and component-weighted aggregation.
 
@@ -199,9 +161,9 @@ Update `tests/test_sda_client.py` to add unit tests for new table types: verify 
 **Constraints:** Do NOT change existing `cointerp`, `component`, or `mapunit` query paths. Do NOT add `ProductivityIndexType` enum values. Do NOT touch `sda_client.py` SDAClient methods.
 
 **Grep anchors:**
-- `ALLOWED_SDV_TABLES = {` at sdv_query.py
-- `def build_dynamic_sdv_query(` at sdv_query.py
-- `if table == "mapunit":` at sdv_query.py (insert chorizon/cocropyld branches here)
+- `ALLOWED_SDV_TABLES = {` at sda_client.py
+- `def build_dynamic_sdv_query(` at sda_client.py
+- `if table == "mapunit":` at sda_client.py (insert chorizon/cocropyld branches here)
 - `test_dynamic_sdv_table_allowlist_excludes_unsupported_tables` at test_sda_client.py:123
 
 **Reference implementation:** The existing `component` table branch in `build_dynamic_sdv_query` (the default return) shows the component-weighted aggregation pattern. The `chorizon` branch should add `INNER JOIN chorizon AS ch ON ch.cokey = c.cokey` and use `CAST(ch.{col} AS float)`.
@@ -216,15 +178,15 @@ Update `tests/test_sda_client.py` to add unit tests for new table types: verify 
 
 **Repo:** fpac-soil-mcp
 **Files in scope:**
-- Must edit: `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sdv_query.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/lesa.py`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_polygon_analysis.py`, `docs/decisions/0008-nccpi-validated-public-index-with-extensible-sdv-routing.md`
+- Must edit: `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/lesa.py`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_polygon_analysis.py`, `docs/decisions/0008-nccpi-validated-public-index-with-extensible-sdv-routing.md`
 **Depends on:** 27.2.1
 
 **Spec:** Implement Iowa CSR2 (Corn Suitability Rating 2) as a validated public productivity index. Start with a live SDA query to obtain real data, then build offline fixtures from it, then implement the full stack.
 
-1. **Live query first:** Query live SDA for CSR2 ratings using known Iowa mukeys (from research in 27.1.2). Use `SDAClient.lookup_sdv_attribute()` + `build_dynamic_sdv_query()` to retrieve actual component-weighted ratings. Also query county max for an Iowa soil survey area (e.g., IA169). Document the actual values returned.
+1. **Live query first:** Query live SDA for CSR2 ratings using known Iowa mukeys (from research in 27.1.1). Use `SDAClient.lookup_sdv_attribute()` + `build_dynamic_sdv_query()` to retrieve actual component-weighted ratings. Also query county max for an Iowa soil survey area (e.g., IA169). Document the actual values returned.
 2. Add `CSR2 = "CSR2"` to `ProductivityIndexType` enum (`models.py:318`).
-3. Add CSR2 provenance entry to `PRODUCTIVITY_PROVENANCE` in `sdv_query.py`.
-4. Add CSR2 SQL template(s) or metadata-driven routing in `sdv_query.py` — if CSR2 uses a `cointerp` rule, add a fixed SQL template mirroring `SQL_PRODUCTIVITY_NCCPI`. If it uses a `component`/`chorizon` column, wire the dynamic builder.
+3. Add CSR2 provenance entry to `PRODUCTIVITY_PROVENANCE` in `sda_client.py`.
+4. Add CSR2 SQL template(s) or metadata-driven routing in `sda_client.py` — if CSR2 uses a `cointerp` rule, add a fixed SQL template mirroring `SQL_PRODUCTIVITY_NCCPI`. If it uses a `component`/`chorizon` column, wire the dynamic builder.
 5. Update `sda_client.py` `get_productivity_ratings` (line ~896) to accept `index_type="csr2"`.
 6. Update `sda_client.py` `get_county_max_productivity_rating` (line ~844) to accept `index_type="csr2"`.
 7. Update `lesa.py` `_normalize_productivity_index` (line ~68) to accept `csr2`.
@@ -244,7 +206,7 @@ Update `tests/test_sda_client.py` to add unit tests for new table types: verify 
 
 **Grep anchors:**
 - `class ProductivityIndexType` at models.py:318
-- `PRODUCTIVITY_PROVENANCE = {` at sdv_query.py
+- `PRODUCTIVITY_PROVENANCE = {` at sda_client.py
 - `def get_productivity_ratings(` at sda_client.py:896
 - `def get_county_max_productivity_rating(` at sda_client.py:844
 - `def _normalize_productivity_index(` at lesa.py:68
@@ -267,15 +229,15 @@ Update `tests/test_sda_client.py` to add unit tests for new table types: verify 
 
 **Repo:** fpac-soil-mcp
 **Files in scope:**
-- Must edit: `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sdv_query.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/lesa.py`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_polygon_analysis.py`, `tests/test_live_sda.py`
+- Must edit: `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/lesa.py`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_polygon_analysis.py`, `tests/test_live_sda.py`
 **Depends on:** 27.3.1
 
 **Spec:** Implement Minnesota CPI (Crop Productivity Index) following the same live-first pattern as CSR2 (task 27.3.1). Start with a live SDA query to obtain real Minnesota rating data, build offline fixtures from it, implement the full stack, then confirm with a live test.
 
-1. **Live query first:** Query live SDA for CPI ratings using known Minnesota mukeys (from research in 27.1.2). Document actual values and county max.
+1. **Live query first:** Query live SDA for CPI ratings using known Minnesota mukeys (from research in 27.1.1). Document actual values and county max.
 2. Add `CPI = "CPI"` to `ProductivityIndexType` enum.
 3. Add CPI provenance entry to `PRODUCTIVITY_PROVENANCE`.
-4. Add CPI SQL template(s) or metadata-driven routing in `sdv_query.py`.
+4. Add CPI SQL template(s) or metadata-driven routing in `sda_client.py`.
 5. Update `sda_client.py` methods to accept `index_type="cpi"`.
 6. Update `lesa.py` `_normalize_productivity_index` to accept `cpi`.
 7. Expand guards in `polygon_analysis.py`, `corridor_analysis.py`, `tools/soil_tools.py` to accept CPI.
@@ -296,14 +258,14 @@ Update `tests/test_sda_client.py` to add unit tests for new table types: verify 
 
 **Repo:** fpac-soil-mcp
 **Files in scope:**
-- Must edit: `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sdv_query.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/lesa.py`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_polygon_analysis.py`
+- Must edit: `src/fpac_soil_mcp/models.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/sda_client.py`, `src/fpac_soil_mcp/polygon_analysis.py`, `src/fpac_soil_mcp/corridor_analysis.py`, `src/fpac_soil_mcp/tools/soil_tools.py`, `src/fpac_soil_mcp/lesa.py`, `tests/fixtures/le_benchmarks.json`, `tests/test_sda_client.py`, `tests/test_lesa.py`, `tests/test_polygon_analysis.py`
 **Depends on:** 27.4.1
 
-**Spec:** Implement Minnesota CPI (Crop Productivity Index) as a validated public productivity index, following the same pattern as CSR2 (task 27.3.1) but using the CPI SDA storage pattern from research task 27.1.2.
+**Spec:** Implement Minnesota CPI (Crop Productivity Index) as a validated public productivity index, following the same pattern as CSR2 (task 27.3.1) but using the CPI SDA storage pattern from research task 27.1.1.
 
 1. Add `CPI = "CPI"` to `ProductivityIndexType` enum.
 2. Add CPI provenance entry to `PRODUCTIVITY_PROVENANCE`.
-3. Add CPI SQL template(s) or metadata-driven routing in `sdv_query.py`.
+3. Add CPI SQL template(s) or metadata-driven routing in `sda_client.py`.
 4. Update `sda_client.py` methods to accept `index_type="cpi"`.
 5. Update `lesa.py` `_normalize_productivity_index` to accept `cpi`.
 6. Expand guards in `polygon_analysis.py`, `corridor_analysis.py`, `tools/soil_tools.py` to accept CPI.
