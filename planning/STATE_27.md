@@ -24,7 +24,7 @@
 | Wave | Task | Status | Notes |
 | --- | --- | --- | --- |
 | 1 | 27.1.1 | done | Research complete. See SDV_STATE_INDEX_RESEARCH.md |
-| 2 | 27.2.1 | pending | Expand SDV tables in sda_client.py |
+| 2 | 27.2.1 | done | chorizon + cocropyld table paths, col validation fix |
 | 3 | 27.3.1 | pending | CSR2: live query → fixtures → impl → unit tests → live test → ADR |
 | 4 | 27.4.1 | pending | CPI: live query → fixtures → impl → unit tests → live test |
 | 5 | 27.5.1 | pending | Storie: live query → fixtures → impl → unit tests → live test → final ADR |
@@ -47,3 +47,22 @@
 - Wave 2 may add `chorizon`/`cocropyld` for future extensibility only.
 
 **Decision:** Task 27.1.1 (extraction) eliminated — no module extraction, SDV infra stays in sda_client.py.
+
+### 27.2.1 — Expand ALLOWED_SDV_TABLES and Harden Query Builders (Wave 2)
+**Status:** done
+
+**Changes:**
+- Added `chorizon` and `cocropyld` to `ALLOWED_SDV_TABLES` (sda_client.py:250)
+- Added `chorizon` branch to `build_dynamic_sdv_query()`: depth-weighted horizon average,
+  then component-weighted aggregation. Uses `SUM(val * thickness) / SUM(thickness)` per component.
+- Added `cocropyld` branch to `build_dynamic_sdv_query()`: optional `cropname` filter from
+  `attribute_meta`, component-weighted aggregation. Returns `cropname` and `yldunits` in output.
+- Added matching `chorizon` and `cocropyld` branches to `build_dynamic_sdv_county_max_query()`.
+- Fixed column name validation: `col.isalnum()` → `re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]*", col)`
+  to allow underscored SDA column names (e.g., `awc_r`, `nonirryield_r`).
+- 6 new unit tests: chorizon query, cocropyld query, cocropyld-no-cropname query,
+  chorizon county max, cocropyld county max, updated allowlist test.
+- Updated exclusion test: `cocropyld` removed from exclusion assertion.
+
+**Test results:** 301 passed, 1 skipped, 12 deselected (16.24s). Lint clean.
+**Sanity-check indexes:** AWC (`chorizon.awc_r`), Non-Irrigated Crop Yields (`cocropyld.nonirryield_r`).

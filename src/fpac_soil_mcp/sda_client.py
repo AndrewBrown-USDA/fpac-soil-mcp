@@ -248,6 +248,8 @@ WHERE l.areasymbol = '{areasymbol}'
 """
 
 ALLOWED_SDV_TABLES = {
+    "chorizon",
+    "cocropyld",
     "cointerp",
     "component",
     "mapunit",
@@ -330,8 +332,84 @@ FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
 """
 
-    if not col or not col.isalnum():
+    if not col or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]*", col):
         raise SDAValidationError(f"Invalid column name '{col}' for SDV query generation.")
+
+    if table == "chorizon":
+        return f"""\
+WITH hz_weighted AS (
+    SELECT
+        c.cokey,
+        c.comppct_r,
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        SUM(CAST(ch.{col} AS float) * (ch.hzdepb_r - ch.hzdept_r))
+            / NULLIF(SUM(ch.hzdepb_r - ch.hzdept_r), 0) AS hz_avg
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+      AND ch.{col} IS NOT NULL
+    GROUP BY c.cokey, c.comppct_r, m.mukey, l.areasymbol, m.musym, m.muname
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN hz_avg IS NOT NULL THEN hz_avg * comppct_r ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN hz_avg IS NOT NULL THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN hz_avg IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM hz_weighted
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+    if table == "cocropyld":
+        cropname = str(attribute_meta.get("cropname", "")).strip()
+        crop_filter = ""
+        if cropname:
+            crop_clean = cropname.replace("'", "''")
+            crop_filter = f"AND cy.cropname = '{crop_clean}'"
+        return f"""\
+WITH comp_yield AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        CAST(cy.{col} AS float) AS rating,
+        cy.cropname,
+        cy.yldunits
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+      AND cy.{col} IS NOT NULL
+      {crop_filter}
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN rating IS NOT NULL THEN rating * comppct_r ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN rating IS NOT NULL THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN rating IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct,
+    MAX(cropname) AS cropname,
+    MAX(yldunits) AS yldunits
+FROM comp_yield
+GROUP BY mukey, areasymbol, musym, muname
+"""
 
     if table == "mapunit":
         return f"""\
@@ -410,8 +488,46 @@ WHERE l.areasymbol = '{areasymbol}'
   AND c.compkind != 'miscellaneous area'
 """
 
-    if not col or not col.isalnum():
+    if not col or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]*", col):
         raise SDAValidationError(f"Invalid column name '{col}' for county max query generation.")
+
+    if table == "chorizon":
+        return f"""\
+SELECT
+    MAX(hz_avg) AS max_county_rating
+FROM (
+    SELECT
+        SUM(CAST(ch.{col} AS float) * (ch.hzdepb_r - ch.hzdept_r))
+            / NULLIF(SUM(ch.hzdepb_r - ch.hzdept_r), 0) AS hz_avg
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
+    WHERE l.areasymbol = '{areasymbol}'
+      AND c.compkind != 'miscellaneous area'
+      AND ch.{col} IS NOT NULL
+    GROUP BY c.cokey
+) AS hz_agg
+"""
+
+    if table == "cocropyld":
+        cropname = str(attribute_meta.get("cropname", "")).strip()
+        crop_filter = ""
+        if cropname:
+            crop_clean = cropname.replace("'", "''")
+            crop_filter = f"AND cy.cropname = '{crop_clean}'"
+        return f"""\
+SELECT
+    MAX(CAST(cy.{col} AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND c.compkind != 'miscellaneous area'
+  AND cy.{col} IS NOT NULL
+  {crop_filter}
+"""
 
     if table == "mapunit":
         return f"""\

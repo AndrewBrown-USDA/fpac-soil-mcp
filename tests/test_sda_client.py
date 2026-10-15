@@ -121,8 +121,12 @@ class TestSDAValidation:
             )
 
     def test_dynamic_sdv_table_allowlist_excludes_unsupported_tables(self) -> None:
-        assert "cocropyld" not in ALLOWED_SDV_TABLES
         assert "corestrictions" not in ALLOWED_SDV_TABLES
+        assert "muaggatt" not in ALLOWED_SDV_TABLES
+
+    def test_dynamic_sdv_table_allowlist_includes_chorizon_and_cocropyld(self) -> None:
+        assert "chorizon" in ALLOWED_SDV_TABLES
+        assert "cocropyld" in ALLOWED_SDV_TABLES
 
 
 class TestSDAParsing:
@@ -691,6 +695,74 @@ class TestSDAClientExecution:
         }
         with pytest.raises(SDAValidationError, match="Unsupported or unallowed SDV table"):
             build_dynamic_sdv_query(meta, "'1001'")
+
+    def test_build_dynamic_sdv_query_chorizon(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "Available Water Capacity",
+            "attributetablename": "chorizon",
+            "attributecolumnname": "awc_r",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001', '1002'")
+        assert "chorizon AS ch" in query
+        assert "ch.awc_r" in query
+        assert "ch.hzdepb_r - ch.hzdept_r" in query  # depth weighting
+        assert "WHERE m.mukey IN ('1001', '1002')" in query
+        assert "hz_weighted" in query  # CTE name
+
+    def test_build_dynamic_sdv_query_cocropyld(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributename": "Yields of Non-Irrigated Crops",
+            "attributetablename": "cocropyld",
+            "attributecolumnname": "nonirryield_r",
+            "cropname": "Corn",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "cocropyld AS cy" in query
+        assert "cy.nonirryield_r" in query
+        assert "cy.cropname = 'Corn'" in query
+        assert "WHERE m.mukey IN ('1001')" in query
+
+    def test_build_dynamic_sdv_query_cocropyld_no_cropname(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+
+        meta = {
+            "attributetablename": "cocropyld",
+            "attributecolumnname": "nonirryield_r",
+        }
+        query = build_dynamic_sdv_query(meta, "'1001'")
+        assert "cocropyld AS cy" in query
+        assert "cropname =" not in query  # no crop filter when not specified
+
+    def test_build_dynamic_sdv_county_max_chorizon(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_county_max_query
+
+        meta = {
+            "attributetablename": "chorizon",
+            "attributecolumnname": "awc_r",
+        }
+        query = build_dynamic_sdv_county_max_query(meta, "IA169")
+        assert "chorizon AS ch" in query
+        assert "ch.awc_r" in query
+        assert "l.areasymbol = 'IA169'" in query
+        assert "max_county_rating" in query.lower()
+
+    def test_build_dynamic_sdv_county_max_cocropyld(self) -> None:
+        from fpac_soil_mcp.sda_client import build_dynamic_sdv_county_max_query
+
+        meta = {
+            "attributetablename": "cocropyld",
+            "attributecolumnname": "nonirryield_r",
+            "cropname": "Soybeans",
+        }
+        query = build_dynamic_sdv_county_max_query(meta, "IA169")
+        assert "cocropyld AS cy" in query
+        assert "cy.nonirryield_r" in query
+        assert "cy.cropname = 'Soybeans'" in query
+        assert "l.areasymbol = 'IA169'" in query
 
     def test_get_productivity_ratings_with_attribute_meta(self) -> None:
         mock_resp = {
