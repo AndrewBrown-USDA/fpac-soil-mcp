@@ -11,7 +11,7 @@ MCP_HOST    ?= 127.0.0.1
 MCP_PORT    ?= 8000
 IMAGE_NAME  ?= fpac-soil-mcp
 
-.PHONY: help install sync run run-sse test test-unit test-live test-eval eval lint lint-fix format format-check check clean docker-build docker-run all
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval lint lint-fix format format-check check clean docker-build docker-run all
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -21,11 +21,17 @@ install: ## Sync dependencies and locked environment via uv
 
 sync: install ## Alias for install
 
+requirements: ## Regenerate pinned requirements.txt from pyproject.toml
+	$(UV) pip compile pyproject.toml -o requirements.txt
+
 run: ## Run MCP server locally over stdio transport
 	$(UV) run fpac-soil-mcp
 
 run-sse: ## Run MCP server locally over SSE network transport
 	MCP_TRANSPORT=sse MCP_HOST=$(MCP_HOST) MCP_PORT=$(MCP_PORT) $(UV) run fpac-soil-mcp
+
+run-http: ## Run MCP server locally over Streamable HTTP transport
+	MCP_TRANSPORT=http MCP_HOST=$(MCP_HOST) MCP_PORT=$(MCP_PORT) $(UV) run fpac-soil-mcp
 
 test: ## Run unit and mocked test suite (offline)
 	$(UV) run pytest -m "not live_network and not agent_eval"

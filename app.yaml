@@ -1,0 +1,11 @@
+# Databricks Apps configuration for fpac-soil-mcp MCP server.
+# Serves Streamable HTTP on 0.0.0.0:DATABRICKS_APP_PORT (default 8000).
+# MCP endpoint: /mcp (FastMCP default path)
+command:
+  - python
+  - main.py
+env:
+  - name: MCP_TRANSPORT
+    value: "http"
+  - name: MCP_HOST
+    value: "0.0.0.0"
