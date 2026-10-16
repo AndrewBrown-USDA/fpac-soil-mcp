@@ -272,9 +272,7 @@ def test_capture_raw_opt_in_retains_exact_stream_outside_repository(
 
     artifact_dir = root / "raw-run" / "RAW-OPT-IN" / "attempt-1"
     assert (artifact_dir / "raw-stdout.txt").read_text(encoding="utf-8") == stdout
-    raw_event = json.loads(
-        (artifact_dir / "raw-events.jsonl").read_text(encoding="utf-8")
-    )
+    raw_event = json.loads((artifact_dir / "raw-events.jsonl").read_text(encoding="utf-8"))
     assert raw_event == {
         "type": "tool_execution",
         "tool_name": "opaque",
@@ -290,16 +288,22 @@ def test_complete_evidence_is_evaluated_beyond_bounded_artifact_copy(
     target = "get_farmland_classification_by_point"
     filler = '{"type":"delta","content":"noise"}\n'
     stdout = filler * (run_evals.MAX_CAPTURE_EVENTS + 1)
-    stdout += json.dumps(
-        {
-            "type": "tool_execution",
-            "tool_name": target,
-            "arguments": {"latitude": 1, "longitude": 2},
-        }
-    ) + "\n"
-    stdout += json.dumps(
-        {"type": "message_end", "message": {"role": "assistant", "content": "late keyword"}}
-    ) + "\n"
+    stdout += (
+        json.dumps(
+            {
+                "type": "tool_execution",
+                "tool_name": target,
+                "arguments": {"latitude": 1, "longitude": 2},
+            }
+        )
+        + "\n"
+    )
+    stdout += (
+        json.dumps(
+            {"type": "message_end", "message": {"role": "assistant", "content": "late keyword"}}
+        )
+        + "\n"
+    )
 
     class Completed:
         returncode = 0
@@ -327,9 +331,11 @@ def test_complete_evidence_is_evaluated_beyond_bounded_artifact_copy(
     )
     assert result["status"] == "PASS"
     assert metadata["artifact_events_truncated"] is True
-    assert (root / "late-evidence" / "CAPTURE-01" / "attempt-1" / "raw-events.jsonl").read_text(
-        encoding="utf-8"
-    ).endswith("\n")
+    assert (
+        (root / "late-evidence" / "CAPTURE-01" / "attempt-1" / "raw-events.jsonl")
+        .read_text(encoding="utf-8")
+        .endswith("\n")
+    )
 
 
 def test_nested_invocation_containers_distinguish_unrecognized_and_recognized(
@@ -348,9 +354,7 @@ def test_nested_invocation_containers_distinguish_unrecognized_and_recognized(
         def __init__(self, stdout: str) -> None:
             self.stdout = stdout
 
-    monkeypatch.setattr(
-        run_evals.subprocess, "run", lambda *args, **kwargs: Completed(next(calls))
-    )
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed(next(calls)))
     first = run_evals.run_case(
         _capture_case(),
         tmp_path / "sandbox",

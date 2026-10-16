@@ -360,8 +360,7 @@ def _has_dedicated_invocation(event: dict[str, Any]) -> bool:
             return True
         content = message.get("content")
         if isinstance(content, list) and any(
-            isinstance(block, dict)
-            and block.get("type") in {"tool_use", "tool_call", "toolCall"}
+            isinstance(block, dict) and block.get("type") in {"tool_use", "tool_call", "toolCall"}
             for block in content
         ):
             return True
@@ -519,8 +518,16 @@ def run_case(
                 timeout=timeout,
                 check=False,
             )
-            stdout = proc.stdout.decode("utf-8", "replace") if isinstance(proc.stdout, bytes) else (proc.stdout or "")
-            stderr = proc.stderr.decode("utf-8", "replace") if isinstance(proc.stderr, bytes) else (proc.stderr or "")
+            stdout = (
+                proc.stdout.decode("utf-8", "replace")
+                if isinstance(proc.stdout, bytes)
+                else (proc.stdout or "")
+            )
+            stderr = (
+                proc.stderr.decode("utf-8", "replace")
+                if isinstance(proc.stderr, bytes)
+                else (proc.stderr or "")
+            )
             bounded_stdout, stdout_truncated = _bounded(stdout)
             bounded_stderr, stderr_truncated = _bounded(stderr)
             output = stdout
@@ -534,11 +541,7 @@ def run_case(
                     continue
                 if isinstance(event, dict):
                     events.append(event)
-            dedicated_events = [
-                event
-                for event in events
-                if _has_dedicated_invocation(event)
-            ]
+            dedicated_events = [event for event in events if _has_dedicated_invocation(event)]
             executed_tools = set().union(
                 *(extract_structured_tool_names(event) for event in events)
             )
@@ -647,8 +650,16 @@ def run_case(
         elapsed = time.perf_counter() - start_time
         status = "TIMEOUT"
         error_msg = f"Exceeded {timeout}s timeout"
-        stdout = exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-        stderr = exc.stderr.decode("utf-8", "replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+        stdout = (
+            exc.stdout.decode("utf-8", "replace")
+            if isinstance(exc.stdout, bytes)
+            else (exc.stdout or "")
+        )
+        stderr = (
+            exc.stderr.decode("utf-8", "replace")
+            if isinstance(exc.stderr, bytes)
+            else (exc.stderr or "")
+        )
         output = stdout
         timeout_events: list[dict[str, Any]] = []
         timeout_malformed: list[str] = []
@@ -678,8 +689,15 @@ def run_case(
             "malformed_line_count": len(timeout_malformed),
         }
         paths = _capture_attempt(
-            artifact_root, run_id, case_id, attempt, attempt_meta,
-            stdout, stderr, timeout_events, timeout_malformed,
+            artifact_root,
+            run_id,
+            case_id,
+            attempt,
+            attempt_meta,
+            stdout,
+            stderr,
+            timeout_events,
+            timeout_malformed,
         )
         attempts.append({**attempt_meta, **paths})
         artifact_paths.update({f"attempt_{attempt}_{key}": value for key, value in paths.items()})
@@ -704,8 +722,15 @@ def run_case(
             "malformed_line_count": 0,
         }
         paths = _capture_attempt(
-            artifact_root, run_id, case_id, attempt, attempt_meta,
-            "", "", [], [],
+            artifact_root,
+            run_id,
+            case_id,
+            attempt,
+            attempt_meta,
+            "",
+            "",
+            [],
+            [],
         )
         attempts.append({**attempt_meta, **paths})
         artifact_paths.update({f"attempt_{attempt}_{key}": value for key, value in paths.items()})
@@ -791,10 +816,7 @@ def main() -> None:
                 attempt_label = f"attempt {attempt.get('attempt', '?')}"
                 outcome = attempt.get("outcome", "unknown")
                 return_code = attempt.get("return_code")
-                print(
-                    f"     -> {attempt_label}: outcome={outcome}, "
-                    f"return_code={return_code}"
-                )
+                print(f"     -> {attempt_label}: outcome={outcome}, return_code={return_code}")
                 metadata_path = attempt.get("metadata")
                 if metadata_path:
                     print(f"        metadata: {metadata_path}")
