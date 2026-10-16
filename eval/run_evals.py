@@ -34,7 +34,7 @@ FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 MAX_CAPTURE_BYTES = 64 * 1024
 MAX_CAPTURE_LINES = 1000
 MAX_CAPTURE_EVENTS = 500
-SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")
+SAFE_ID = re.compile(r"[^A-Za-z0-9_-]+")
 SENSITIVE = re.compile(
     r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
     r"email|phone|address|coordinates?|geometry|geojson|wkt)\s*[:=]\s*[^\s,;]+"
@@ -106,7 +106,8 @@ def _sanitize(text: str) -> str:
 
 
 def _safe_id(value: str) -> str:
-    return SAFE_ID.sub("_", value)[:80] or "unknown"
+    safe = SAFE_ID.sub("_", str(value)).strip("_")
+    return safe[:80] or "unknown"
 
 
 def _artifact_root(root: Path | None) -> Path | None:
@@ -141,15 +142,39 @@ def _capture_attempt(
         "stderr": directory / "stderr.txt",
         "events": directory / "events.jsonl",
         "malformed_lines": directory / "malformed-lines.txt",
+        "raw_stdout": directory / "raw-stdout.txt",
+        "raw_stderr": directory / "raw-stderr.txt",
+        "raw_events": directory / "raw-events.jsonl",
+        "raw_malformed_lines": directory / "raw-malformed-lines.txt",
+    }
+    bounded_stdout, stdout_truncated = _bounded(_sanitize(stdout))
+    bounded_stderr, stderr_truncated = _bounded(_sanitize(stderr))
+    bounded_events = events[:MAX_CAPTURE_EVENTS]
+    bounded_malformed = malformed[:MAX_CAPTURE_LINES]
+    metadata = {
+        **metadata,
+        "artifact_stdout_truncated": stdout_truncated,
+        "artifact_stderr_truncated": stderr_truncated,
+        "artifact_events_truncated": len(bounded_events) < len(events),
+        "artifact_malformed_lines_truncated": len(bounded_malformed) < len(malformed),
     }
     files["metadata"].write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
-    files["stdout"].write_text(_sanitize(stdout), encoding="utf-8")
-    files["stderr"].write_text(_sanitize(stderr), encoding="utf-8")
+    files["stdout"].write_text(bounded_stdout, encoding="utf-8")
+    files["stderr"].write_text(bounded_stderr, encoding="utf-8")
     files["events"].write_text(
-        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events), encoding="utf-8"
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in bounded_events),
+        encoding="utf-8",
     )
     files["malformed_lines"].write_text(
-        "".join(_sanitize(line) + "\n" for line in malformed), encoding="utf-8"
+        "".join(_sanitize(line) + "\n" for line in bounded_malformed), encoding="utf-8"
+    )
+    files["raw_stdout"].write_text(stdout, encoding="utf-8")
+    files["raw_stderr"].write_text(stderr, encoding="utf-8")
+    files["raw_events"].write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events), encoding="utf-8"
+    )
+    files["raw_malformed_lines"].write_text(
+        "".join(line + "\n" for line in malformed), encoding="utf-8"
     )
     return {key + "_path": str(path.relative_to(root)) for key, path in files.items()}
 
@@ -319,6 +344,30 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     return names
 
 
+def _has_dedicated_invocation(event: dict[str, Any]) -> bool:
+    """Return whether an event contains a structured tool invocation container."""
+    if extract_structured_tool_names(event):
+        return True
+    for container in (event.get("tool_call"), event.get("call"), event.get("function")):
+        if isinstance(container, dict) and any(
+            isinstance(container.get(key), str) and container[key]
+            for key in ("name", "tool_name", "tool", "toolName", "function_name")
+        ):
+            return True
+    message = event.get("message")
+    if isinstance(message, dict):
+        if isinstance(message.get("tool_calls") or message.get("toolCalls"), list):
+            return True
+        content = message.get("content")
+        if isinstance(content, list) and any(
+            isinstance(block, dict)
+            and block.get("type") in {"tool_use", "tool_call", "toolCall"}
+            for block in content
+        ):
+            return True
+    return False
+
+
 def extract_assistant_content(event: dict[str, Any]) -> str:
     """Extract assistant response text or tool output from an event."""
     event_type = str(event.get("type", "")).lower()
@@ -470,25 +519,25 @@ def run_case(
                 timeout=timeout,
                 check=False,
             )
-            stdout, stdout_truncated = _bounded(proc.stdout)
-            stderr, stderr_truncated = _bounded(proc.stderr)
+            stdout = proc.stdout.decode("utf-8", "replace") if isinstance(proc.stdout, bytes) else (proc.stdout or "")
+            stderr = proc.stderr.decode("utf-8", "replace") if isinstance(proc.stderr, bytes) else (proc.stderr or "")
+            bounded_stdout, stdout_truncated = _bounded(stdout)
+            bounded_stderr, stderr_truncated = _bounded(stderr)
             output = stdout
             events: list[dict[str, Any]] = []
             malformed: list[str] = []
-            for line in output.splitlines()[:MAX_CAPTURE_LINES]:
+            for line in output.splitlines():
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError:
                     malformed.append(line)
                     continue
-                if isinstance(event, dict) and len(events) < MAX_CAPTURE_EVENTS:
+                if isinstance(event, dict):
                     events.append(event)
             dedicated_events = [
                 event
                 for event in events
-                if "tool" in str(event.get("type", "")).lower()
-                or str(event.get("type", "")).lower()
-                in {"call", "tool_use", "tool_call", "tool_execution"}
+                if _has_dedicated_invocation(event)
             ]
             executed_tools = set().union(
                 *(extract_structured_tool_names(event) for event in events)
@@ -598,22 +647,68 @@ def run_case(
         elapsed = time.perf_counter() - start_time
         status = "TIMEOUT"
         error_msg = f"Exceeded {timeout}s timeout"
-        stdout, _ = _bounded(exc.stdout)
-        stderr, _ = _bounded(exc.stderr)
-        attempts.append(
-            {"run_id": run_id, "case_id": case_id, "attempt": retry_count + 1, "outcome": "timeout"}
+        stdout = exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+        stderr = exc.stderr.decode("utf-8", "replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+        output = stdout
+        timeout_events: list[dict[str, Any]] = []
+        timeout_malformed: list[str] = []
+        for line in stdout.splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                timeout_malformed.append(line)
+                continue
+            if isinstance(event, dict):
+                timeout_events.append(event)
+        attempt = retry_count + 1
+        attempt_meta = {
+            "run_id": run_id,
+            "case_id": case_id,
+            "attempt": attempt,
+            "outcome": "timeout",
+            "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "ended_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "model": model or "provider-default",
+            "provider": "pi",
+            "transport": "stdio",
+            "return_code": None,
+            "stdout_truncated": _bounded(stdout)[1],
+            "stderr_truncated": _bounded(stderr)[1],
+            "event_count": len(timeout_events),
+            "malformed_line_count": len(timeout_malformed),
+        }
+        paths = _capture_attempt(
+            artifact_root, run_id, case_id, attempt, attempt_meta,
+            stdout, stderr, timeout_events, timeout_malformed,
         )
+        attempts.append({**attempt_meta, **paths})
+        artifact_paths.update({f"attempt_{attempt}_{key}": value for key, value in paths.items()})
     except (subprocess.SubprocessError, OSError) as e:
         status = "ERROR"
         error_msg = f"{type(e).__name__}: {e}"
-        attempts.append(
-            {
-                "run_id": run_id,
-                "case_id": case_id,
-                "attempt": retry_count + 1,
-                "outcome": "startup_error",
-            }
+        attempt = retry_count + 1
+        attempt_meta = {
+            "run_id": run_id,
+            "case_id": case_id,
+            "attempt": attempt,
+            "outcome": "startup_error",
+            "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "ended_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "model": model or "provider-default",
+            "provider": "pi",
+            "transport": "stdio",
+            "return_code": None,
+            "stdout_truncated": False,
+            "stderr_truncated": False,
+            "event_count": 0,
+            "malformed_line_count": 0,
+        }
+        paths = _capture_attempt(
+            artifact_root, run_id, case_id, attempt, attempt_meta,
+            "", "", [], [],
         )
+        attempts.append({**attempt_meta, **paths})
+        artifact_paths.update({f"attempt_{attempt}_{key}": value for key, value in paths.items()})
     finally:
         elapsed = time.perf_counter() - start_time
 

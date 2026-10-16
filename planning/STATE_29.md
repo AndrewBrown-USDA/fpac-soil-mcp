@@ -37,7 +37,7 @@
 | Task | Wave | Status | Worker | Notes |
 |---|---:|---|---|---|
 | 29.1.1 | 1 | done | 29.1.1-retention-contract-execution | Define eval raw-retention exception and update ADR-0010 |
-| 29.2.1 | 2 | pending | — | Fix capture core for path, bounds, classification, and finalization |
+| 29.2.1 | 2 | done | 29.2.1-runner-core | Capture core complete; one existing classification fixture must be updated by 29.3.1 |
 | 29.2.2 | 3 | pending | — | Surface CLI capture diagnostics |
 | 29.3.1 | 4 | pending | — | Add deterministic review-regression tests |
 | 29.4.1 | 5 | pending | — | Document operation and record closure verification |
@@ -63,3 +63,26 @@
 - Dependent-task gotchas: 29.2.x must enforce the documented external-root,
   identifier-safety, opt-in, and complete-evidence/bounded-copy boundaries;
   raw artifacts remain outside the repository.
+
+## 29.2.1
+
+- Status: complete; implementation verified, one stale expectation deferred to 29.3.1.
+- Changed `eval\run_evals.py`: safe identifiers, complete evidence parsing,
+  bounded-copy truncation metadata, structured invocation classification, and
+  terminal artifact finalization for normal, retry, timeout, and startup paths.
+- Raw opt-in artifacts remain repository-external; bounded sanitized copies are
+  retained alongside exact raw streams for local interrogation.
+- Command: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+- Result: 17 passed, 2 deselected.
+- Deviations: none.
+- Gotchas: CLI artifact diagnostics remain deferred to 29.2.2; tests/fixtures
+  were not modified.
+
+### 29.2.1 verification retry
+
+- Removed the bare event-type fallback from `_has_dedicated_invocation()`;
+  explicit direct/nested containers and message tool-call/content blocks remain.
+- Command: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+- Result: 16 passed, 1 failed, 2 deselected.
+- The sole failure is the existing `dedicated_unrecognized.jsonl` regression,
+  which expects bare `tool_execution` types to count; tests remain out of scope.
