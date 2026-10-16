@@ -39,7 +39,7 @@
 | 29.1.1 | 1 | done | 29.1.1-retention-contract-execution | Define eval raw-retention exception and update ADR-0010 |
 | 29.2.1 | 2 | done | 29.2.1-runner-core | Capture core complete; one existing classification fixture must be updated by 29.3.1 |
 | 29.2.2 | 3 | done | 29.2.2-cli-diagnostics | Metadata-only CLI diagnostics; stale classification expectation deferred to 29.3.1 |
-| 29.3.1 | 4 | pending | — | Add deterministic review-regression tests |
+| 29.3.1 | 4 | done | 29.3.1-review-regressions | Six review regressions covered; focused eval suite passes |
 | 29.4.1 | 5 | pending | — | Document operation and record closure verification |
 
 ## Task reports
@@ -100,3 +100,21 @@
 - Failure is the existing `dedicated_unrecognized.jsonl` expectation that bare
   `tool_execution` event types count; capture core and tests were not changed.
 - Deviations: none. Dependent task 29.3.1 should retain the named regression.
+
+## 29.3.1
+
+- Status: complete.
+- Changed `eval\test_agent_eval.py` and this worker TODO/state report only; no
+  production code or raw artifacts were added.
+- Added regressions for special identifiers, external exact raw opt-in
+  retention, late evidence beyond bounded copies, invocation classification,
+  failed-attempt finalization, retry paths, CLI diagnostics, and fixture
+  sanitization.
+- Updated the stale bare `tool_execution` fixture expectation to `absent`;
+  dedicated synthetic nested-container cases cover `present_unrecognized` and
+  `recognized`.
+- Command: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+- Result: 26 passed, 2 deselected.
+- `git diff --check`: passed. Deviations: none.
+- Gotcha: existing checked-in fixtures remain historical/sanitized; synthetic
+  events are used only for explicitly tested structural boundaries.

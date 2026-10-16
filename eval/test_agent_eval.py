@@ -195,7 +195,7 @@ def test_run_case_capture_is_non_retaining_when_opt_in_root_is_absent(
     ("fixture", "expected"),
     [
         ("prose_only.jsonl", "absent"),
-        ("dedicated_unrecognized.jsonl", "present_unrecognized"),
+        ("dedicated_unrecognized.jsonl", "absent"),
         ("recognized.jsonl", "recognized"),
     ],
 )
@@ -216,6 +216,157 @@ def test_capture_evidence_classification_uses_dedicated_structured_events(
         verbose=False,
     )
     assert result["evidence_classification"] == expected
+
+
+@pytest.mark.parametrize("unsafe_id", [".", "..", "nested/../.."])
+def test_capture_special_identifiers_cannot_escape_external_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, unsafe_id: str
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / "prose_only.jsonl").read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(id=unsafe_id),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id=unsafe_id,
+        artifact_root=root,
+    )
+
+    assert result["artifact_paths"]
+    assert all(
+        (root / path).resolve().is_relative_to(root.resolve())
+        for path in result["artifact_paths"].values()
+    )
+
+
+def test_capture_raw_opt_in_retains_exact_stream_outside_repository(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stdout = '{"type":"tool_execution","tool_name":"opaque","arguments":{"value":"exact"}}\n'
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(id="RAW-OPT-IN"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="raw-run",
+        artifact_root=root,
+    )
+
+    artifact_dir = root / "raw-run" / "RAW-OPT-IN" / "attempt-1"
+    assert (artifact_dir / "raw-stdout.txt").read_text(encoding="utf-8") == stdout
+    raw_event = json.loads(
+        (artifact_dir / "raw-events.jsonl").read_text(encoding="utf-8")
+    )
+    assert raw_event == {
+        "type": "tool_execution",
+        "tool_name": "opaque",
+        "arguments": {"value": "exact"},
+    }
+    assert not (REPO_ROOT / "raw-run").exists()
+    assert result["artifact_paths"]["attempt_1_raw_stdout_path"]
+
+
+def test_complete_evidence_is_evaluated_beyond_bounded_artifact_copy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = "get_farmland_classification_by_point"
+    filler = '{"type":"delta","content":"noise"}\n'
+    stdout = filler * (run_evals.MAX_CAPTURE_EVENTS + 1)
+    stdout += json.dumps(
+        {
+            "type": "tool_execution",
+            "tool_name": target,
+            "arguments": {"latitude": 1, "longitude": 2},
+        }
+    ) + "\n"
+    stdout += json.dumps(
+        {"type": "message_end", "message": {"role": "assistant", "content": "late keyword"}}
+    ) + "\n"
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(expected_tools=[target], expected_keywords=["late keyword"]),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="late-evidence",
+        artifact_root=root,
+    )
+
+    metadata = json.loads(
+        (root / "late-evidence" / "CAPTURE-01" / "attempt-1" / "metadata.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result["status"] == "PASS"
+    assert metadata["artifact_events_truncated"] is True
+    assert (root / "late-evidence" / "CAPTURE-01" / "attempt-1" / "raw-events.jsonl").read_text(
+        encoding="utf-8"
+    ).endswith("\n")
+
+
+def test_nested_invocation_containers_distinguish_unrecognized_and_recognized(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    outputs = [
+        '{"type":"message_end","message":{"role":"assistant","tool_calls":[{"function":{}}]}}\n',
+        '{"type":"message_end","message":{"role":"assistant","tool_calls":[{"function":{"name":"expected_tool"}}]}}\n',
+    ]
+    calls = iter(outputs)
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(
+        run_evals.subprocess, "run", lambda *args, **kwargs: Completed(next(calls))
+    )
+    first = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    second = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert first["evidence_classification"] == "present_unrecognized"
+    assert second["evidence_classification"] == "recognized"
 
 
 def test_run_case_capture_preserves_retry_attempts_and_paths(
@@ -290,6 +441,36 @@ def test_run_case_capture_timeout_and_startup_error_are_structured(
     assert startup_result["attempts"][0]["outcome"] == "startup_error"
 
 
+def test_failed_attempts_finalize_metadata_and_partial_artifacts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Failed:
+        returncode = 7
+        stdout = '{"type":"message_end","message":{"role":"assistant","content":"partial"}}\n'
+        stderr = "failed\n"
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Failed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(id="NONZERO-01"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="failed-run",
+        artifact_root=root,
+    )
+
+    attempt_dir = root / "failed-run" / "NONZERO-01" / "attempt-1"
+    metadata = json.loads((attempt_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert result["status"] == "FAIL"
+    assert metadata["return_code"] == 7
+    assert (attempt_dir / "raw-stdout.txt").read_text(encoding="utf-8").startswith("{")
+    assert result["attempts"][0]["metadata_path"] == str(
+        Path("failed-run") / "NONZERO-01" / "attempt-1" / "metadata.json"
+    )
+
+
 def test_capture_rejects_repository_root_and_keeps_prompt_out_of_paths(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -347,6 +528,61 @@ def test_capture_bounds_and_redacts_persisted_streams(
 
     shutil.rmtree(root)
     assert not root.exists()
+
+
+def test_checked_in_capture_fixtures_are_sanitized() -> None:
+    prohibited = re.compile(
+        r"(?i)(api[_ -]?key|token|secret|password|authorization|cookie|"
+        r"email|phone|address|geojson|wkt|41\.8781|-93\.0977)"
+    )
+    for fixture in CAPTURE_FIXTURES_PATH.glob("*.jsonl"):
+        contents = fixture.read_text(encoding="utf-8")
+        assert not prohibited.search(contents), fixture.name
+
+
+def test_cli_diagnostics_print_capture_paths_and_errors_without_raw_content(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    case = _capture_case(id="CLI-01")
+    result = {
+        "id": "CLI-01",
+        "category": "capture",
+        "target": "expected_tool",
+        "status": "ERROR",
+        "elapsed_sec": 0.01,
+        "error": "OSError: unable to start pi",
+        "output": "private raw response",
+        "attempts": [
+            {
+                "attempt": 1,
+                "outcome": "startup_error",
+                "return_code": None,
+                "metadata": "run/CLI-01/attempt-1/metadata.json",
+            }
+        ],
+        "artifact_paths": {"attempt_1_metadata_path": "run/CLI-01/attempt-1/metadata.json"},
+        "capture_error": "capture failed",
+    }
+    monkeypatch.setattr(run_evals, "check_prerequisites", lambda: "pi")
+    monkeypatch.setattr(run_evals, "load_test_cases", lambda category, case_id: [case])
+    monkeypatch.setattr(run_evals, "create_sandbox", lambda path: None)
+    monkeypatch.setattr(run_evals, "run_case", lambda *args, **kwargs: result)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_evals.py", "--no-show-output", "--artifact-root", str(tmp_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        run_evals.main()
+
+    output = capsys.readouterr().out
+    assert exit_info.value.code == 1
+    assert "metadata: run/CLI-01/attempt-1/metadata.json" in output
+    assert "artifact attempt_1_metadata_path: run/CLI-01/attempt-1/metadata.json" in output
+    assert "capture error: capture failed" in output
+    assert "private raw response" not in output
+    assert "Summary:" in output
 
 
 def event_text(event: dict[str, Any]) -> str:
