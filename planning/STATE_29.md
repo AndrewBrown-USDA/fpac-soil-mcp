@@ -2,24 +2,24 @@
 
 ## Baseline checklist
 
-- [ ] `git status --short` recorded before Wave 1
-- [ ] `uv run pytest -m "not live_network and not agent_eval" -q`
-- [ ] `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
-- [ ] `uv run ruff check .`
-- [ ] `uv run ruff format --check .`
-- [ ] Existing PR #22 review findings and ADR-0010 scope recorded
+- [x] `git status --short` recorded before Wave 1: clean after planning commit
+- [x] `uv run pytest -m "not live_network and not agent_eval" -q`: 303 passed, 14 deselected
+- [x] `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`: 17 passed, 2 deselected
+- [x] `uv run ruff check .`: all checks passed
+- [x] `uv run ruff format --check .`: 349 files already formatted
+- [x] Existing PR #22 review findings and ADR-0010 scope recorded in `EXECUTION_PLAN_29.md`
 - [ ] Pi availability and live/agent-eval prerequisites checked
-- [ ] Live/agent-eval shared-port and serial-execution constraints recorded
+- [x] Live/agent-eval shared-port and serial-execution constraints recorded
 
 ### Baseline results
 
 | Check | Date | Result | Notes |
 |---|---|---|---|
-| `git status --short` | pending | pending | Record existing changes and untracked planning artifacts |
-| Offline pytest | pending | pending | `uv run pytest -m "not live_network and not agent_eval" -q` |
-| Eval pytest | pending | pending | `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q` |
-| Ruff check | pending | pending | `uv run ruff check .` |
-| Ruff format | pending | pending | `uv run ruff format --check .` |
+| `git status --short` | 2026-10-15 | clean | Baseline taken after planning commit `a7cec87` |
+| Offline pytest | 2026-10-15 | 303 passed, 14 deselected | `uv run pytest -m "not live_network and not agent_eval" -q` |
+| Eval pytest | 2026-10-15 | 17 passed, 2 deselected | `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q` |
+| Ruff check | 2026-10-15 | passed | `uv run ruff check .` |
+| Ruff format | 2026-10-15 | passed | `uv run ruff format --check .` |
 | Pi/live prerequisites | pending | pending | Record availability, credentials, network, and port conditions |
 
 ## Closure checklist
