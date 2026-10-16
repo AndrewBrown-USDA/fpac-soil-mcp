@@ -351,16 +351,17 @@ uv run ruff format --check .
 
 Capture is opt-in and non-retaining by default. The normal offline test command
 does not start Pi, contact external services, or enable capture. To retain
-sanitized artifacts, explicitly provide a repository-external root:
+artifacts, explicitly enable capture and provide a repository-external root:
 
 ```powershell
 uv run python eval\run_evals.py --capture-artifacts --artifact-root C:\path\to\eval-artifacts
 ```
 
-The root is required, must be outside this repository and its fixture
-directories, and should remain access-restricted. Capture is bounded and
-sanitized; it must not persist prompts, tool arguments, generated responses,
-coordinates, geometry, producer data, credentials, or other sensitive values.
+`EVAL_CAPTURE_ARTIFACTS=1` and `EVAL_CAPTURE_ROOT` may be used instead of the
+command-line flags. When capture is enabled, the root is required and must be
+outside this repository and its fixture directories; the runner rejects a root
+inside the repository. Use an access-restricted location. Captured output is
+local sensitive evaluation data, not a production data-retention mechanism.
 
 Each run is organized as:
 
@@ -371,14 +372,30 @@ Each run is organized as:
   stderr.txt
   events.jsonl
   malformed-lines.txt
+  raw-stdout.txt
+  raw-stderr.txt
+  raw-events.jsonl
+  raw-malformed-lines.txt
 ```
 
-Inspect `metadata.json` first; the remaining files separate streams, parsed
-events, and malformed lines. Retention is caller-controlled: remove artifacts
-after inspection and clean only beneath the validated root. Artifacts are
-diagnostic evidence, not an official FPPA determination or audit record.
-Checked-in fixtures must be minimal, deterministic, sanitized, and based on
-verified shapes; transport/parser fixtures are not historical Pi failures.
+For interrogation, inspect `metadata.json` first, then use the bounded
+`stdout.txt`, `stderr.txt`, `events.jsonl`, and `malformed-lines.txt` files for
+sanitized review. The `raw-*` files preserve complete captured streams and
+events for explicit local debugging; they can contain prompt, tool, provider,
+or other sensitive data. Metadata records whether bounded copies were
+truncated, while evaluation evidence is parsed independently of those copy
+limits. Run and case identifiers are sanitized before paths are constructed.
+
+Retention is caller-controlled: protect the external root, share artifacts
+only as needed, and remove them after inspection. Clean only beneath the
+validated root; never add raw artifacts to the repository. Checked-in fixtures
+must be minimal, deterministic, sanitized, and based on verified shapes;
+transport/parser fixtures are not historical Pi failures.
+
+This exception applies only to the local opt-in evaluation runner. It does not
+weaken production payload sanitization, Section 1619 protections, coordinate
+privacy controls, or the server's preliminary-screening limitations. Artifacts
+are diagnostic evidence, not an official FPPA determination or audit record.
 
 The default test path remains offline and excludes `live_network` and
 `agent_eval`:

@@ -24,12 +24,12 @@
 
 ## Closure checklist
 
-- [ ] Targeted review-regression tests pass
-- [ ] Offline project suite passes
-- [ ] Ruff check passes
-- [ ] Ruff format check passes
-- [ ] `git diff --check` passes
-- [ ] Raw artifacts remain outside the repository and no raw fixture is tracked
+- [x] Targeted review-regression tests pass
+- [x] Offline project suite passes
+- [x] Ruff check passes
+- [x] Ruff format check passes
+- [x] `git diff --check` passes
+- [x] Raw artifacts remain outside the repository and no raw fixture is tracked
 - [ ] Live/agent-eval validation ran serially and passed, or the exact environmental block is recorded
 
 ## Wave board
@@ -40,7 +40,7 @@
 | 29.2.1 | 2 | done | 29.2.1-runner-core | Capture core complete; one existing classification fixture must be updated by 29.3.1 |
 | 29.2.2 | 3 | done | 29.2.2-cli-diagnostics | Metadata-only CLI diagnostics; stale classification expectation deferred to 29.3.1 |
 | 29.3.1 | 4 | done | 29.3.1-review-regressions | Six review regressions covered; focused eval suite passes |
-| 29.4.1 | 5 | pending | — | Document operation and record closure verification |
+| 29.4.1 | 5 | done | 29.4.1-documentation-closure | README operation documented; closure execution remains orchestrator-owned |
 
 ## Task reports
 
@@ -118,3 +118,23 @@
 - `git diff --check`: passed. Deviations: none.
 - Gotcha: existing checked-in fixtures remain historical/sanitized; synthetic
   events are used only for explicitly tested structural boundaries.
+
+## 29.4.1
+
+- Status: complete.
+- Changed only `README.md`, this task TODO, and this state report; no runtime
+  code, tests, ADR-0010, or raw artifacts were changed.
+- Documented opt-in capture flags and `EVAL_CAPTURE_*` equivalents, the required
+  repository-external root, metadata-first interrogation, bounded sanitized
+  copies versus complete `raw-*` evidence, and sanitized path identifiers.
+- Documented local-sensitive handling, access protection, caller-controlled
+  cleanup, checked-in fixture rules, and the boundary from production privacy
+  behavior and FPPA scope.
+- Checks recorded from prior completed work: targeted eval tests 26 passed,
+  2 deselected; offline suite 303 passed, 14 deselected; Ruff check passed;
+  Ruff format check passed.
+- Command run for this task: `git diff --check`; result: passed.
+- Raw-artifact tracking check: passed; no raw artifact was added. Live/agent-eval
+  execution was not run; orchestrator owns and must record that result.
+- Deviations: none. Gotcha: README documents raw files as sensitive local
+  debugging output even though bounded review files remain sanitized.
