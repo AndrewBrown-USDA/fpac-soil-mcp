@@ -68,6 +68,7 @@ Resolve all six open code-review findings on PR `#22` (`feat(eval): retain opt-i
 | 3 | 29.2.2 | 29.2.1 | Fix CLI diagnostics and result plumbing in the same runner file |
 | 4 | 29.3.1 | 29.2.2 | Add regression tests and verify sanitized checked-in fixtures |
 | 5 | 29.4.1 | 29.3.1 | Document operation and run serial closure gates, including live/agent-eval |
+| 6 | 29.6.1 | 29.4.1 | Handle the verified Pi `mcpScript` nested-MCP envelope and rerun live validation |
 
 Tasks in each wave have disjoint file scopes. `eval\run_evals.py` and `eval\test_agent_eval.py` are intentionally sequenced, not parallelized.
 
@@ -136,3 +137,14 @@ Tasks in each wave have disjoint file scopes. `eval\run_evals.py` and `eval\test
 - **Grep anchors/reference:** existing README eval section; `AGENTS.md` quick-start/test commands; `planning\STATE_28.md` closure gates.
 - **Acceptance:** README matches the implemented CLI; `STATE_29.md` records offline suites, Ruff, targeted tests, and explicit live/agent-eval results or a clearly stated environmental block. No raw artifact is added to git, and `git diff --check` passes.
 - **Targeted command:** `rg -n "capture|artifact|raw|external|retention|cleanup|privacy|agent_eval|live_network" README.md planning\STATE_29.md`
+
+### 29.6.1 — Handling the verified Pi mcpScript envelope
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** must edit `eval\run_evals.py` and `eval\test_agent_eval.py`; can create or update only sanitized fixtures under `eval\fixtures\event_capture\`; may create `planning\tasks\29.6.1.todo.md` and append its report to `planning\STATE_29.md`.
+- **Depends on:** 29.4.1.
+- **Spec:** Add explicit support for the verified Pi JSONL shape captured during the failed live gate: `tool_execution_start/end` with `toolName: "mcpScript"`, JavaScript `args.code` containing `tools.call(...)`, and result metadata under `details.calls[].path` plus `structuredContent`. Extract the nested MCP tool name and its object-literal arguments sufficiently to validate POINT-01 coordinates, while preserving direct tool-call support, prose exclusion, discovery-event handling, and existing evidence classifications. Use the real captured shape only through a sanitized checked-in fixture; never commit raw session IDs, encrypted reasoning, provider metadata, or unredacted payloads. Keep runner and test helper behavior aligned.
+- **Do not touch:** `src\`, README, ADRs, dependencies, prompt dataset semantics, live-service code, or raw diagnostic files under `.development\`.
+- **Grep anchors/reference:** `eval\run_evals.py` `extract_structured_tool_names` and `run_case`; `eval\test_agent_eval.py` `extract_structured_tool_names` and `extract_tool_calls`; the sanitized `mcpScript` fixture; the diagnostic evidence summarized in `planning\STATE_29.md`.
+- **Acceptance:** the focused eval suite passes; sanitized fixture tests prove nested tool-name and coordinate extraction; direct and existing classification tests remain green; `uv run pytest -m agent_eval -q` passes POINT-01 or records a new evidence-based blocker with retained external diagnostics; Ruff check/format and `git diff --check` pass.
+- **Targeted command:** `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`

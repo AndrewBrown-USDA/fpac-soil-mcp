@@ -32,6 +32,11 @@
 - [x] Raw artifacts remain outside the repository and no raw fixture is tracked
 - [x] Live/agent-eval validation ran serially; Pi was available, but the external model run failed with the exact result recorded above
 
+## Wave 6 scope
+
+- The prior live diagnostic captured a real Pi `mcpScript` wrapper: nested tool calls are represented in `args.code`, `details.calls[].path`, and result `structuredContent`, not as direct soil-tool call arguments.
+- Raw diagnostic output was deleted after inspection. Wave 6 must add only sanitized fixture evidence and must rerun the live gate with any new raw output kept outside the repository.
+
 ## Wave board
 
 | Task | Wave | Status | Worker | Notes |
@@ -41,6 +46,7 @@
 | 29.2.2 | 3 | done | 29.2.2-cli-diagnostics | Metadata-only CLI diagnostics; stale classification expectation deferred to 29.3.1 |
 | 29.3.1 | 4 | done | 29.3.1-review-regressions | Six review regressions covered; focused eval suite passes |
 | 29.4.1 | 5 | done | 29.4.1-documentation-closure | README operation documented; closure execution remains orchestrator-owned |
+| 29.6.1 | 6 | pending | — | Handle verified Pi `mcpScript` nested-MCP envelope and rerun live validation |
 
 ## Task reports
 
