@@ -30,7 +30,7 @@
 - [x] Ruff format check passes
 - [x] `git diff --check` passes
 - [x] Raw artifacts remain outside the repository and no raw fixture is tracked
-- [x] Live/agent-eval validation ran serially; Pi was available, but the external model run failed with the exact result recorded above
+- [x] Live/agent-eval validation ran serially and passed after Wave 6 added verified `mcpScript` envelope handling
 
 ## Wave 6 scope
 
@@ -46,7 +46,7 @@
 | 29.2.2 | 3 | done | 29.2.2-cli-diagnostics | Metadata-only CLI diagnostics; stale classification expectation deferred to 29.3.1 |
 | 29.3.1 | 4 | done | 29.3.1-review-regressions | Six review regressions covered; focused eval suite passes |
 | 29.4.1 | 5 | done | 29.4.1-documentation-closure | README operation documented; closure execution remains orchestrator-owned |
-| 29.6.1 | 6 | pending | — | Handle verified Pi `mcpScript` nested-MCP envelope and rerun live validation |
+| 29.6.1 | 6 | done | 29.6.1-pi-envelope | Verified `mcpScript` nested-MCP envelope handled; live gate passes |
 
 ## Task reports
 
@@ -144,3 +144,17 @@
   execution was not run; orchestrator owns and must record that result.
 - Deviations: none. Gotcha: README documents raw files as sensitive local
   debugging output even though bounded review files remain sanitized.
+
+## 29.6.1
+
+- Status: complete; added narrow verified Pi `mcpScript` envelope extraction.
+- Changed `eval\run_evals.py`, `eval\test_agent_eval.py`, and sanitized
+  `eval\fixtures\event_capture\mcp_script_sanitized.jsonl`.
+- Nested names come from `args.code` `tools.call(...)` and `details.calls[].path`;
+  numeric object-literal coordinates are extracted for test evidence.
+- Direct calls, prose exclusion, discovery handling, and existing classifications
+  remain covered; no raw diagnostics or `.development\` files were added.
+- Focused eval tests: `28 passed, 2 deselected`.
+- Ruff check/format and `git diff --check`: passed.
+- Serial agent gate: `uv run pytest -m agent_eval -q`: `2 passed, 326 deselected`.
+- Deviations: none; live POINT-01 passed with no repository-retained raw output.

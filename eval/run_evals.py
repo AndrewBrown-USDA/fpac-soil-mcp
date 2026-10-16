@@ -264,6 +264,29 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     names: set[str] = set()
     event_type = str(event.get("type", "")).lower()
 
+    if (
+        event_type in {"tool_execution_start", "tool_execution_end"}
+        and event.get("toolName") == "mcpScript"
+    ):
+        args = event.get("args")
+        code = args.get("code") if isinstance(args, dict) else None
+        if isinstance(code, str):
+            names.update(
+                match.group(1)
+                for match in re.finditer(
+                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,""", code
+                )
+            )
+        details = event.get("details")
+        calls = details.get("calls") if isinstance(details, dict) else None
+        if isinstance(calls, list):
+            for call in calls:
+                path = call.get("path") if isinstance(call, dict) else None
+                if isinstance(path, str):
+                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
+                    if re.fullmatch(r"[A-Za-z0-9_-]+", leaf):
+                        names.add(leaf)
+
     # Direct tool execution or tool call events
     if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
         for key in ("tool_name", "tool", "name", "function_name", "toolName"):

@@ -599,6 +599,29 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     names: set[str] = set()
     event_type = str(event.get("type", "")).lower()
 
+    if (
+        event_type in {"tool_execution_start", "tool_execution_end"}
+        and event.get("toolName") == "mcpScript"
+    ):
+        args = event.get("args")
+        code = args.get("code") if isinstance(args, dict) else None
+        if isinstance(code, str):
+            names.update(
+                match.group(1)
+                for match in re.finditer(
+                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,""", code
+                )
+            )
+        details = event.get("details")
+        calls = details.get("calls") if isinstance(details, dict) else None
+        if isinstance(calls, list):
+            for call in calls:
+                path = call.get("path") if isinstance(call, dict) else None
+                if isinstance(path, str):
+                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
+                    if re.fullmatch(r"[A-Za-z0-9_-]+", leaf):
+                        names.add(leaf)
+
     # Direct tool execution or tool call events
     if "tool" in event_type or event_type in {
         "call",
@@ -731,7 +754,49 @@ def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     for event in events:
         event_type = str(event.get("type", "")).lower()
+        if (
+            event_type in {"tool_execution_start", "tool_execution_end"}
+            and event.get("toolName") == "mcpScript"
+        ):
+            args = event.get("args")
+            code = args.get("code") if isinstance(args, dict) else None
+            if isinstance(code, str):
+                for match in re.finditer(
+                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,\s*\{([^{}]*)\}""",
+                    code,
+                ):
+                    arguments: dict[str, Any] = {}
+                    for key, value in re.findall(
+                        r"""([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(-?\d+(?:\.\d+)?)""",
+                        match.group(2),
+                    ):
+                        arguments[key] = float(value) if "." in value else int(value)
+                    add_call(match.group(1), arguments)
+            details = event.get("details")
+            calls_metadata = details.get("calls") if isinstance(details, dict) else None
+            if isinstance(calls_metadata, list):
+                for call_metadata in calls_metadata:
+                    if not isinstance(call_metadata, dict):
+                        continue
+                    path = call_metadata.get("path")
+                    if not isinstance(path, str):
+                        continue
+                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
+                    structured = call_metadata.get("structuredContent")
+                    if isinstance(structured, dict):
+                        add_call(leaf, structured.get("arguments"))
+            structured_content = event.get("structuredContent")
+            if isinstance(structured_content, dict):
+                path = event.get("path")
+                if isinstance(path, str):
+                    add_call(
+                        re.split(r"[/.:]", path.rstrip("/"))[-1],
+                        structured_content.get("arguments"),
+                    )
+
         direct_args = event.get("args")
+        if event.get("toolName") == "mcpScript":
+            direct_args = None
         if isinstance(direct_args, dict):
             direct_name = direct_args.get("tool") or direct_args.get("name")
             if isinstance(direct_name, str):
@@ -747,7 +812,7 @@ def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "tool_execution",
         }:
             for key in ("tool_name", "tool", "name", "function_name", "toolName"):
-                if isinstance(event.get(key), str):
+                if isinstance(event.get(key), str) and event.get(key) != "mcpScript":
                     add_call(event[key], event.get("arguments") or event.get("args"))
 
             for key in ("tool_call", "call", "function"):
@@ -840,6 +905,37 @@ def test_extract_tool_calls_preserves_structured_point_arguments() -> None:
             "arguments": {"latitude": 41.8781, "longitude": -93.0977},
         }
     ]
+
+
+def test_mcp_script_fixture_extracts_nested_tool_and_point_coordinates() -> None:
+    events = parse_pi_events(
+        (CAPTURE_FIXTURES_PATH / "mcp_script_sanitized.jsonl").read_text(encoding="utf-8")
+    )
+
+    executed = set().union(*(extract_structured_tool_names(event) for event in events))
+    assert "get_farmland_classification_by_point" in executed
+
+    calls = extract_tool_calls(events)
+    point_calls = [call for call in calls if call["name"] == "get_farmland_classification_by_point"]
+    assert point_calls
+    assert point_calls[0]["arguments"] == {"latitude": 40.1234, "longitude": -90.5678}
+
+
+def test_mcp_script_prose_and_discovery_do_not_count_as_invocations() -> None:
+    events = [
+        {
+            "type": "tool_execution_start",
+            "toolName": "mcpScript",
+            "args": {"code": "const text = 'tools.call is mentioned in prose';"},
+        },
+        {
+            "type": "tools_list",
+            "result": {"tools": [{"name": "get_farmland_classification_by_point"}]},
+        },
+    ]
+    executed = set().union(*(extract_structured_tool_names(event) for event in events))
+    assert "get_farmland_classification_by_point" not in executed
+    assert extract_tool_calls(events) == []
 
 
 def test_point_01_structured_arguments_match_exact_coordinates() -> None:
