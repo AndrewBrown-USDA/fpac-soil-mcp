@@ -787,6 +787,22 @@ def main() -> None:
             print(f"{res['status']} ({res['elapsed_sec']}s)")
             if res["error"]:
                 print(f"     -> {res['error']}")
+            for attempt in res.get("attempts", []):
+                attempt_label = f"attempt {attempt.get('attempt', '?')}"
+                outcome = attempt.get("outcome", "unknown")
+                return_code = attempt.get("return_code")
+                print(
+                    f"     -> {attempt_label}: outcome={outcome}, "
+                    f"return_code={return_code}"
+                )
+                metadata_path = attempt.get("metadata")
+                if metadata_path:
+                    print(f"        metadata: {metadata_path}")
+            if res.get("artifact_paths"):
+                for label, path in sorted(res["artifact_paths"].items()):
+                    print(f"     -> artifact {label}: {path}")
+            if res.get("capture_error"):
+                print(f"     -> capture error: {res['capture_error']}")
             if args.show_output and res["output"]:
                 print("\n" + "-" * 40 + f" [OUTPUT: {res['id']}] " + "-" * 40)
                 print(res["output"].strip())

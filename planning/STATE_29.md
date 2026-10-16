@@ -38,7 +38,7 @@
 |---|---:|---|---|---|
 | 29.1.1 | 1 | done | 29.1.1-retention-contract-execution | Define eval raw-retention exception and update ADR-0010 |
 | 29.2.1 | 2 | done | 29.2.1-runner-core | Capture core complete; one existing classification fixture must be updated by 29.3.1 |
-| 29.2.2 | 3 | pending | — | Surface CLI capture diagnostics |
+| 29.2.2 | 3 | done | 29.2.2-cli-diagnostics | Metadata-only CLI diagnostics; stale classification expectation deferred to 29.3.1 |
 | 29.3.1 | 4 | pending | — | Add deterministic review-regression tests |
 | 29.4.1 | 5 | pending | — | Document operation and record closure verification |
 
@@ -86,3 +86,17 @@
 - Result: 16 passed, 1 failed, 2 deselected.
 - The sole failure is the existing `dedicated_unrecognized.jsonl` regression,
   which expects bare `tool_execution` types to count; tests remain out of scope.
+
+## 29.2.2
+
+- Status: implementation complete; focused verification has one pre-existing failure.
+- Changed `eval\run_evals.py` lines 790-805: per-case attempt outcomes,
+  metadata paths, artifact paths, and capture errors are now printed as
+  metadata-only diagnostics.
+- Raw stdout, stderr, and event contents are not added to diagnostics;
+  aggregate summary and exit behavior remain unchanged.
+- Command: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+- Result: 16 passed, 1 failed, 2 deselected.
+- Failure is the existing `dedicated_unrecognized.jsonl` expectation that bare
+  `tool_execution` event types count; capture core and tests were not changed.
+- Deviations: none. Dependent task 29.3.1 should retain the named regression.
