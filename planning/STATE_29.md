@@ -36,11 +36,30 @@
 
 | Task | Wave | Status | Worker | Notes |
 |---|---:|---|---|---|
-| 29.1.1 | 1 | pending | — | Define eval raw-retention exception and update ADR-0010 |
-| 29.2.1 | 2 | pending | — | Fix runner behavior for all six PR #22 findings |
-| 29.3.1 | 3 | pending | — | Add deterministic review-regression tests |
-| 29.4.1 | 4 | pending | — | Document operation and record closure verification |
+| 29.1.1 | 1 | done | 29.1.1-retention-contract-execution | Define eval raw-retention exception and update ADR-0010 |
+| 29.2.1 | 2 | pending | — | Fix capture core for path, bounds, classification, and finalization |
+| 29.2.2 | 3 | pending | — | Surface CLI capture diagnostics |
+| 29.3.1 | 4 | pending | — | Add deterministic review-regression tests |
+| 29.4.1 | 5 | pending | — | Document operation and record closure verification |
 
 ## Task reports
 
 <!-- Worker reports are appended below, one section per task, <=15 lines. -->
+
+### 29.1.1 — Defining the eval retention exception
+
+- Status: complete.
+- Changed only `docs\decisions\0010-public-payload-pii-detection-and-sanitization.md`,
+  `planning\CAPTURE_CONTRACT_29.md`, this TODO, and this state file.
+- Documented explicit opt-in raw retention, external repository-independent
+  roots, safe identifiers, operator warnings/protection/cleanup, sanitized
+  fixtures, and prohibited repository-local raw artifacts.
+- Preserved public/production `privacy.py`, Section 1619, and payload
+  sanitization requirements; bounded-copy truncation is distinct from complete
+  evaluation evidence.
+- Command: `rg -n "eval|raw|opt-in|external|repository|production|fixture|sanitize|retention" docs\decisions\0010-public-payload-pii-detection-and-sanitization.md planning\CAPTURE_CONTRACT_29.md`
+- Result: passed; all required anchors and boundaries were present.
+- Deviations: none. No runtime code or tests changed.
+- Dependent-task gotchas: 29.2.x must enforce the documented external-root,
+  identifier-safety, opt-in, and complete-evidence/bounded-copy boundaries;
+  raw artifacts remain outside the repository.
