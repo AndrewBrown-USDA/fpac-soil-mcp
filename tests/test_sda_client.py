@@ -894,3 +894,101 @@ class TestSDAClientExecution:
         # Must NOT join cointerp or component
         assert "cointerp" not in sql
         assert "component" not in sql
+
+    def test_get_productivity_ratings_cpi(self) -> None:
+        """CPI uses component.cropprodindex — component-weighted average."""
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["660750", "MN167", "L32A", "Barnes loam", 85.0, 90.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"cropprodindex" in request.content
+            assert b"component AS c" in request.content
+            assert b"cointerp" not in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["660750"], index_type="cpi")
+        assert len(results) == 1
+        assert results[0]["mukey"] == "660750"
+        assert results[0]["numeric_rating"] == 85.0
+        assert results[0]["is_rated"] is True
+        assert results[0]["index_type"] == "cpi"
+        assert results[0]["productivity_rating_source"] == "SDA:COMPONENT_CROPPRODINDEX"
+
+    def test_get_productivity_ratings_cpi_alias(self) -> None:
+        """CPI accepts 'crop productivity index' long-form alias."""
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["660750", "MN167", "L32A", "Barnes loam", 85.0, 90.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["660750"], index_type="Crop Productivity Index")
+        assert len(results) == 1
+        assert results[0]["index_type"] == "cpi"
+
+    def test_get_county_max_productivity_rating_cpi(self) -> None:
+        """CPI county max uses component.cropprodindex MAX query."""
+        mock_resp = {
+            "Table": [
+                ["max_county_rating"],
+                [100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"cropprodindex" in request.content
+            assert b"areasymbol = 'MN167'" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("MN167", index_type="cpi")
+        assert val == 100.0
+
+    def test_get_county_max_productivity_rating_cpi_null(self) -> None:
+        """Metro MN counties may have NULL cropprodindex everywhere."""
+        mock_resp = {"Table": [["max_county_rating"], [None]]}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("MN053", index_type="cpi")
+        assert val is None
+
+    def test_cpi_sql_template_uses_component_table(self) -> None:
+        """Verify SQL_PRODUCTIVITY_CPI queries component.cropprodindex."""
+        from fpac_soil_mcp.sda_client import SQL_PRODUCTIVITY_CPI
+
+        sql = SQL_PRODUCTIVITY_CPI.format(mukeys_csv="'660750'")
+        assert "c.cropprodindex" in sql
+        assert "component AS c" in sql
+        assert "comppct_r" in sql
+        # Must NOT use cointerp or mapunit.iacornsr
+        assert "cointerp" not in sql
+        assert "iacornsr" not in sql

@@ -26,7 +26,7 @@
 | 1 | 27.1.1 | done | Research complete. See SDV_STATE_INDEX_RESEARCH.md |
 | 2 | 27.2.1 | done | chorizon + cocropyld table paths, col validation fix |
 | 3 | 27.3.1 | done | CSR2 validated: enum + routing + SQL templates + tests + ADR 0008 |
-| 4 | 27.4.1 | pending | CPI: live query → fixtures → impl → unit tests → live test |
+| 4 | 27.4.1 | done | CPI validated: enum + routing + SQL templates + tests + ADR 0008 |
 | 5 | 27.5.1 | pending | Storie: live query → fixtures → impl → unit tests → live test → final ADR |
 
 ## Task Reports
@@ -99,3 +99,33 @@
 - ADR 0008 amended: CSR2 validated as second public index; design extensibility confirmed
 
 **Test results:** 307 passed, 1 skipped, 15 deselected (offline). 15 passed (live). Lint clean.
+
+### 27.4.1 — CPI Implementation (Wave 4)
+**Status:** done
+
+**Changes:**
+- Added `ProductivityIndexType.CPI` enum value (models.py:323)
+- Added `PRODUCTIVITY_PROVENANCE["cpi"] = "SDA:COMPONENT_CROPPRODINDEX"` (sda_client.py)
+- Added `SQL_PRODUCTIVITY_CPI` and `SQL_PRODUCTIVITY_COUNTY_MAX_CPI` fixed SQL templates
+  using component-weighted `component.cropprodindex` (integer scale 1-100)
+- Added CPI routing in `get_productivity_ratings()` and `get_county_max_productivity_rating()`
+  with aliases: "cpi", "crop productivity index"
+- CPI rounding: integer scale → round to 0 decimal places (same as CSR2)
+- Expanded guards to accept CPI in:
+  - polygon_analysis.py, corridor_analysis.py, tools/soil_tools.py (3 guards), lesa.py
+- Updated `test_polygon_analysis.py`: removed cpi from rejected parametrize list
+- 6 new unit tests in test_sda_client.py:
+  - CPI ratings query (verifies cropprodindex, component-weighted)
+  - CPI alias resolution ("crop productivity index")
+  - CPI county max query (MN167)
+  - CPI county max null (non-populated county)
+  - CPI SQL template content verification
+- 1 new test in test_lesa.py: normalize accepts CPI
+- 3 new live_network tests in test_live_sda.py:
+  - CPI county max MN167 (verified 90-100 range, expected 100)
+  - CPI county max MN053 Hennepin (may be null in metro)
+  - CPI county max CA077 returns None (not a CPI state)
+- CPI benchmark fixture added to le_benchmarks.json (MN_CPI_WILKIN_COUNTY_SITE)
+- ADR 0008 amended: CPI validated as third public index
+
+**Test results:** 312 passed, 1 skipped, 18 deselected (offline). 18 passed (live). Lint clean.

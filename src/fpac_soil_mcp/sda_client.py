@@ -27,7 +27,11 @@ from fpac_soil_mcp.http_client import (
 
 logger = logging.getLogger(__name__)
 
-PRODUCTIVITY_PROVENANCE = {"nccpi": "SDA:NCCPI_V3", "csr2": "SDA:MAPUNIT_IACORNSR"}
+PRODUCTIVITY_PROVENANCE = {
+    "nccpi": "SDA:NCCPI_V3",
+    "csr2": "SDA:MAPUNIT_IACORNSR",
+    "cpi": "SDA:COMPONENT_CROPPRODINDEX",
+}
 
 # Fixed SQL query templates - no user SQL passthrough allowed
 SQL_POINT_LOOKUP = """\
@@ -268,6 +272,35 @@ FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 WHERE l.areasymbol = '{areasymbol}'
   AND m.iacornsr IS NOT NULL
+"""
+
+SQL_PRODUCTIVITY_CPI = """\
+SELECT
+    m.mukey,
+    l.areasymbol,
+    m.musym,
+    m.muname,
+    SUM(CASE WHEN c.cropprodindex IS NOT NULL
+        THEN CAST(c.cropprodindex AS float) * c.comppct_r ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN c.cropprodindex IS NOT NULL
+            THEN c.comppct_r ELSE 0 END), 0) AS numeric_rating,
+    SUM(CASE WHEN c.cropprodindex IS NOT NULL THEN c.comppct_r ELSE 0 END) AS rated_pct,
+    SUM(c.comppct_r) AS total_pct
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+WHERE m.mukey IN ({mukeys_csv})
+GROUP BY m.mukey, l.areasymbol, m.musym, m.muname
+"""
+
+SQL_PRODUCTIVITY_COUNTY_MAX_CPI = """\
+SELECT
+    MAX(CAST(c.cropprodindex AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+WHERE l.areasymbol = '{areasymbol}'
+  AND c.cropprodindex IS NOT NULL
 """
 
 ALLOWED_SDV_TABLES = {
@@ -1012,10 +1045,12 @@ class SDAClient:
             )
         elif idx in ("csr2", "iowa corn suitability rating csr2"):
             query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
+        elif idx in ("cpi", "crop productivity index"):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
         else:
             raise SDAValidationError(
                 f"Unsupported productivity index type '{index_type}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2'; explicit attribute metadata is "
+                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'; explicit attribute metadata is "
                 "required for custom SDV queries."
             )
 
@@ -1032,7 +1067,7 @@ class SDAClient:
                 return None
             if idx.startswith("nccpi"):
                 return round(val_float, 3)
-            elif idx in ("csr2",):
+            elif idx in ("csr2", "cpi"):
                 return round(val_float, 0)
             else:
                 return round(val_float, 2)
@@ -1085,10 +1120,14 @@ class SDAClient:
             norm_idx = "csr2"
             productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
             query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
+        elif idx in ("cpi", "crop productivity index"):
+            norm_idx = "cpi"
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
+            query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
         else:
             raise SDAValidationError(
                 f"Unsupported productivity index type '{index_type}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2'; explicit attribute metadata is "
+                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'; explicit attribute metadata is "
                 "required for custom SDV queries."
             )
 

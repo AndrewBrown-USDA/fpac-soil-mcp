@@ -175,3 +175,45 @@ class TestLiveSDA:
             pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
 
         assert max_val is None
+
+    def test_live_cpi_productivity_ratings_minnesota(self) -> None:
+        """Query CPI (component.cropprodindex) for known MN mukeys — Wilkin County."""
+        client = SDAClient()
+        try:
+            # Use a known Wilkin County mukey area
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="MN167", index_type="cpi"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is not None
+        # Research found MN167 max=100
+        assert 90 <= max_val <= 100
+
+    def test_live_cpi_county_max_non_populated_county(self) -> None:
+        """CPI may be NULL in metro MN counties (e.g. Hennepin MN053)."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="MN053", index_type="cpi"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        # MN053 (Hennepin) may have no CPI data
+        # If it returns something, it should be in valid range
+        if max_val is not None:
+            assert 0 < max_val <= 100
+
+    def test_live_cpi_county_max_non_mn_is_null(self) -> None:
+        """CPI should return None for non-MN/ND/SD counties."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="CA077", index_type="cpi"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is None

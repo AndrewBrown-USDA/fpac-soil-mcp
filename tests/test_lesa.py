@@ -566,3 +566,11 @@ def test_normalize_productivity_index_rejects_unknown():
 
     with pytest.raises(ValueError, match="Unsupported productivity index type"):
         _normalize_productivity_index("unknown_index")
+
+
+def test_normalize_productivity_index_accepts_cpi():
+    """_normalize_productivity_index should accept 'cpi' and return CPI enum."""
+    from fpac_soil_mcp.lesa import _normalize_productivity_index
+
+    result = _normalize_productivity_index("cpi")
+    assert result is ProductivityIndexType.CPI

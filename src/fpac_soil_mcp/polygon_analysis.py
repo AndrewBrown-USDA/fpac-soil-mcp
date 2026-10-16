@@ -107,10 +107,14 @@ class PolygonAnalyzer:
         timestamp_str = now.isoformat()
 
         idx_enum = _normalize_productivity_index(productivity_index)
-        if idx_enum not in (ProductivityIndexType.NCCPI, ProductivityIndexType.CSR2):
+        if idx_enum not in (
+            ProductivityIndexType.NCCPI,
+            ProductivityIndexType.CSR2,
+            ProductivityIndexType.CPI,
+        ):
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2'."
+                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'."
             )
         norm_idx = idx_enum.value.lower()
 

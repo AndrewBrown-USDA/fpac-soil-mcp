@@ -1,16 +1,16 @@
 ---
 id: "0008"
-title: "NCCPI and CSR2 as Validated Public Productivity Indexes with Extensible SDV Routing"
+title: "NCCPI, CSR2, and CPI as Validated Public Productivity Indexes with Extensible SDV Routing"
 status: "Accepted"
 date: 2026-09-28
 authors:
   - "Andrew G. Brown"
 supersedes: null
 superseded_by: null
-source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27"
+source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27 (waves 3-4)"
 ---
 
-# 8. NCCPI and CSR2 as Validated Public Productivity Indexes with Extensible SDV Routing
+# 8. NCCPI, CSR2, and CPI as Validated Public Productivity Indexes with Extensible SDV Routing
 
 ## Context and Problem Statement
 
@@ -62,7 +62,7 @@ No architectural changes were needed, confirming the extensible design.
 
 ### Consequences
 
-* **Positive**: `ProductivityIndexType` enum contains `NCCPI` and `CSR2`.
+* **Positive**: `ProductivityIndexType` enum contains `NCCPI`, `CSR2`, and `CPI`.
   Unsupported index requests are rejected at the tool level before reaching
   SDA, preventing unvalidated scores from reaching users.
 * **Positive**: The lower-level `sda_client.py` methods still support dynamic
@@ -74,8 +74,11 @@ No architectural changes were needed, confirming the extensible design.
 * **Positive**: CSR2 is now available for Iowa-based Land Evaluation, using
   the direct `mapunit.iacornsr` column (integer scale 5-100). Non-Iowa counties
   correctly return None for CSR2.
-* **Negative**: CPI and Storie are not yet available through the public tool
-  API until individually validated with state-specific benchmark fixtures.
+* **Positive**: CPI is now available for ND/SD/MN-based Land Evaluation, using
+  component-weighted `component.cropprodindex` (integer scale 1-100). Non-populated
+  counties correctly return None.
+* **Negative**: Storie is not yet available through the public tool
+  API until validated with California-specific benchmark fixtures.
 * **Negative**: Three remediation waves (EP20 cointerp rules, EP22 productivity
   preservation, EP23 productivity ratings) were needed before EP26 could
   confidently narrow the public contract.
@@ -92,4 +95,10 @@ EP27 (2026-10-15) validated and added CSR2 as the second public index:
 * Fixed SQL templates: `SQL_PRODUCTIVITY_CSR2`, `SQL_PRODUCTIVITY_COUNTY_MAX_CSR2`
 * Live verification: IA169 county max = 96.0 (Story County, Iowa)
 * Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `IA_CSR2_STORY_COUNTY_SITE`
+EP27 wave 4 (2026-10-15) validated and added CPI as the third public index:
+* `ProductivityIndexType` enum: `models.py:318-323` (NCCPI, CSR2, CPI)
+* CPI provenance: `PRODUCTIVITY_PROVENANCE["cpi"] = "SDA:COMPONENT_CROPPRODINDEX"`
+* Fixed SQL templates: `SQL_PRODUCTIVITY_CPI`, `SQL_PRODUCTIVITY_COUNTY_MAX_CPI`
+* Live verification: MN167 county max = 100.0 (Wilkin County, Minnesota)
+* Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `MN_CPI_WILKIN_COUNTY_SITE`
 

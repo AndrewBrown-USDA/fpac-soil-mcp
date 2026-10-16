@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Verified national NCCPI and CSR2 Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
+  "description": "Verified national NCCPI, CSR2, and CPI Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
   "cases": [
     {
       "id": "US_NCCPI_MIXED_RATED_UNRATED",
@@ -160,6 +160,59 @@
         "coverage_percent": 90.0,
         "aoi_relative_rating": 0.9444,
         "candidate_le_score": 94.44,
+        "county_farmland_percentile_higher": null
+      },
+      "site_assessment": null,
+      "expected_lesa_summary": null
+    },
+    {
+      "id": "MN_CPI_WILKIN_COUNTY_SITE",
+      "name": "CPI Parcel Evaluation in Wilkin County, Minnesota",
+      "state_fips": "27",
+      "county_fips": "167",
+      "county_name": "Wilkin County, MN",
+      "project_type": "site",
+      "productivity_index": "CPI",
+      "county_max_rating": 100.0,
+      "map_units": [
+        {
+          "mukey": "660750",
+          "musym": "L32A",
+          "muname": "Barnes loam, 1 to 3 percent slopes",
+          "acres": 50.0,
+          "raw_rating": 85.0,
+          "normalized_relative_rating": 0.85,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "660755",
+          "musym": "L35B",
+          "muname": "Aastad clay loam, 2 to 6 percent slopes",
+          "acres": 40.0,
+          "raw_rating": 92.0,
+          "normalized_relative_rating": 0.92,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "660800",
+          "musym": "W",
+          "muname": "Water",
+          "acres": 10.0,
+          "raw_rating": null,
+          "normalized_relative_rating": null,
+          "is_rated": false,
+          "unrated_reason": "Open water feature excluded from agricultural rating calculation"
+        }
+      ],
+      "expected_evaluation": {
+        "rated_acreage": 90.0,
+        "unrated_acreage": 10.0,
+        "total_acreage": 100.0,
+        "coverage_percent": 90.0,
+        "aoi_relative_rating": 0.8811,
+        "candidate_le_score": 88.11,
         "county_farmland_percentile_higher": null
       },
       "site_assessment": null,

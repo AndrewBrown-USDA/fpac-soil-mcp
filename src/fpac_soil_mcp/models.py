@@ -320,6 +320,7 @@ class ProductivityIndexType(str, Enum):
 
     NCCPI = "NCCPI"
     CSR2 = "CSR2"
+    CPI = "CPI"
 
 
 class MapUnitProductivityRating(BaseModel):
