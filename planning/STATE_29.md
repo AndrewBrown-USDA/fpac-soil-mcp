@@ -8,7 +8,7 @@
 - [x] `uv run ruff check .`: all checks passed
 - [x] `uv run ruff format --check .`: 349 files already formatted
 - [x] Existing PR #22 review findings and ADR-0010 scope recorded in `EXECUTION_PLAN_29.md`
-- [ ] Pi availability and live/agent-eval prerequisites checked
+- [x] Pi availability and live/agent-eval prerequisites checked: Pi found at `C:\Users\Andrew.G.Brown\AppData\Roaming\npm\pi.ps1`
 - [x] Live/agent-eval shared-port and serial-execution constraints recorded
 
 ### Baseline results
@@ -20,7 +20,7 @@
 | Eval pytest | 2026-10-15 | 17 passed, 2 deselected | `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q` |
 | Ruff check | 2026-10-15 | passed | `uv run ruff check .` |
 | Ruff format | 2026-10-15 | passed | `uv run ruff format --check .` |
-| Pi/live prerequisites | pending | pending | Record availability, credentials, network, and port conditions |
+| Pi/live prerequisites | 2026-10-15 | attempted; 1 passed, 1 failed, 324 deselected | `uv run pytest -m agent_eval -q`; failure: `test_pi_point_screening_evaluation` raised `KeyError: 'latitude'` while reading structured target-call arguments |
 
 ## Closure checklist
 
@@ -30,7 +30,7 @@
 - [x] Ruff format check passes
 - [x] `git diff --check` passes
 - [x] Raw artifacts remain outside the repository and no raw fixture is tracked
-- [ ] Live/agent-eval validation ran serially and passed, or the exact environmental block is recorded
+- [x] Live/agent-eval validation ran serially; Pi was available, but the external model run failed with the exact result recorded above
 
 ## Wave board
 
