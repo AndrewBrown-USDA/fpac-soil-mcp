@@ -27,7 +27,7 @@
 | 2 | 27.2.1 | done | chorizon + cocropyld table paths, col validation fix |
 | 3 | 27.3.1 | done | CSR2 validated: enum + routing + SQL templates + tests + ADR 0008 |
 | 4 | 27.4.1 | done | CPI validated: enum + routing + SQL templates + tests + ADR 0008 |
-| 5 | 27.5.1 | pending | Storie: live query → fixtures → impl → unit tests → live test → final ADR |
+| 5 | 27.5.1 | done | Storie validated: enum + routing (reuses NCCPI template) + tests + ADR 0008 finalized |
 
 ## Task Reports
 
@@ -129,3 +129,38 @@
 - ADR 0008 amended: CPI validated as third public index
 
 **Test results:** 312 passed, 1 skipped, 18 deselected (offline). 18 passed (live). Lint clean.
+
+### 27.5.1 — Storie Implementation (Wave 5)
+**Status:** done
+
+**Changes:**
+- Added `ProductivityIndexType.STORIE` enum value (models.py:324)
+- Added `PRODUCTIVITY_PROVENANCE["storie"] = "SDA:COINTERP_STORIE_CA"` (sda_client.py)
+- Storie reuses `SQL_PRODUCTIVITY_NCCPI` and `SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI` templates
+  with rule name `"AGR - California Revised Storie Index (CA)"` — no new SQL templates needed
+- Added Storie routing in `get_productivity_ratings()` and `get_county_max_productivity_rating()`
+  with aliases: "storie", "california revised storie index",
+  "agr - california revised storie index (ca)"
+- Storie rounding: 0-1 float scale → round to 3 decimal places (same as NCCPI)
+- Expanded guards to accept STORIE in:
+  - polygon_analysis.py, corridor_analysis.py, tools/soil_tools.py (3 guards), lesa.py
+- Updated `test_polygon_analysis.py`: removed storie from rejected parametrize list
+- 5 new unit tests in test_sda_client.py:
+  - Storie ratings query (verifies cointerp, Storie rule name)
+  - Storie alias resolution ("california revised storie index")
+  - Storie county max query (CA077)
+  - Storie county max null (non-California county)
+  - Storie SQL template reuse verification
+- 1 new test in test_lesa.py: normalize accepts Storie
+- 3 new live_network tests in test_live_sda.py:
+  - Storie county max CA077 San Joaquin (verified max=0.995)
+  - Storie county max IA169 returns None (not a Storie state)
+  - Storie ratings for California mukey
+- Storie benchmark fixture added to le_benchmarks.json (CA_STORIE_SAN_JOAQUIN_SITE, 5 total)
+- ADR 0008 finalized: all 4 indexes (NCCPI, CSR2, CPI, Storie) validated as public contract
+
+**Bug fix:** `PRODUCTIVITY_PROVENANCE` dict was missing `"storie"` key after wave 4 formatting
+shifted the closing brace to its own line, causing a silent `sed` replacement failure.
+Fixed by inserting the key directly.
+
+**Test results:** 317 passed, 1 skipped, 21 deselected (offline). 21 passed (live). Lint clean.

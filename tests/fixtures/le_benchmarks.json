@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Verified national NCCPI, CSR2, and CPI Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
+  "description": "Verified national NCCPI, CSR2, CPI, and Storie Land Evaluation (LE) and preliminary LESA benchmark cases for testing relative LE calculations, unrated filtering, and statutory threshold triggers.",
   "cases": [
     {
       "id": "US_NCCPI_MIXED_RATED_UNRATED",
@@ -213,6 +213,59 @@
         "coverage_percent": 90.0,
         "aoi_relative_rating": 0.8811,
         "candidate_le_score": 88.11,
+        "county_farmland_percentile_higher": null
+      },
+      "site_assessment": null,
+      "expected_lesa_summary": null
+    },
+    {
+      "id": "CA_STORIE_SAN_JOAQUIN_SITE",
+      "name": "Storie Parcel Evaluation in San Joaquin County, California",
+      "state_fips": "06",
+      "county_fips": "077",
+      "county_name": "San Joaquin County, CA",
+      "project_type": "site",
+      "productivity_index": "STORIE",
+      "county_max_rating": 0.995,
+      "map_units": [
+        {
+          "mukey": "461792",
+          "musym": "154",
+          "muname": "San Joaquin sandy loam, 0 to 3 percent slopes",
+          "acres": 55.0,
+          "raw_rating": 0.82,
+          "normalized_relative_rating": 0.8241,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "461800",
+          "musym": "168",
+          "muname": "Stockton clay",
+          "acres": 35.0,
+          "raw_rating": 0.45,
+          "normalized_relative_rating": 0.4523,
+          "is_rated": true,
+          "unrated_reason": null
+        },
+        {
+          "mukey": "461900",
+          "musym": "W",
+          "muname": "Water",
+          "acres": 10.0,
+          "raw_rating": null,
+          "normalized_relative_rating": null,
+          "is_rated": false,
+          "unrated_reason": "Open water feature excluded from agricultural rating calculation"
+        }
+      ],
+      "expected_evaluation": {
+        "rated_acreage": 90.0,
+        "unrated_acreage": 10.0,
+        "total_acreage": 100.0,
+        "coverage_percent": 90.0,
+        "aoi_relative_rating": 0.6802,
+        "candidate_le_score": 68.02,
         "county_farmland_percentile_higher": null
       },
       "site_assessment": null,

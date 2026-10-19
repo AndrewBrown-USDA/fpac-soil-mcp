@@ -1,16 +1,16 @@
 ---
 id: "0008"
-title: "NCCPI, CSR2, and CPI as Validated Public Productivity Indexes with Extensible SDV Routing"
+title: "NCCPI, CSR2, CPI, and Storie as Validated Public Productivity Indexes"
 status: "Accepted"
 date: 2026-09-28
 authors:
   - "Andrew G. Brown"
 supersedes: null
 superseded_by: null
-source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27 (waves 3-4)"
+source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27"
 ---
 
-# 8. NCCPI, CSR2, and CPI as Validated Public Productivity Indexes with Extensible SDV Routing
+# 8. NCCPI, CSR2, CPI, and Storie as Validated Public Productivity Indexes
 
 ## Context and Problem Statement
 
@@ -62,7 +62,7 @@ No architectural changes were needed, confirming the extensible design.
 
 ### Consequences
 
-* **Positive**: `ProductivityIndexType` enum contains `NCCPI`, `CSR2`, and `CPI`.
+* **Positive**: `ProductivityIndexType` enum contains `NCCPI`, `CSR2`, `CPI`, and `STORIE`.
   Unsupported index requests are rejected at the tool level before reaching
   SDA, preventing unvalidated scores from reaching users.
 * **Positive**: The lower-level `sda_client.py` methods still support dynamic
@@ -77,8 +77,10 @@ No architectural changes were needed, confirming the extensible design.
 * **Positive**: CPI is now available for ND/SD/MN-based Land Evaluation, using
   component-weighted `component.cropprodindex` (integer scale 1-100). Non-populated
   counties correctly return None.
-* **Negative**: Storie is not yet available through the public tool
-  API until validated with California-specific benchmark fixtures.
+* **Positive**: Storie is now available for California-based Land Evaluation,
+  reusing the NCCPI cointerp SQL templates with rule name
+  "AGR - California Revised Storie Index (CA)" (float scale 0-1).
+  Non-California counties correctly return None.
 * **Negative**: Three remediation waves (EP20 cointerp rules, EP22 productivity
   preservation, EP23 productivity ratings) were needed before EP26 could
   confidently narrow the public contract.
@@ -101,4 +103,11 @@ EP27 wave 4 (2026-10-15) validated and added CPI as the third public index:
 * Fixed SQL templates: `SQL_PRODUCTIVITY_CPI`, `SQL_PRODUCTIVITY_COUNTY_MAX_CPI`
 * Live verification: MN167 county max = 100.0 (Wilkin County, Minnesota)
 * Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `MN_CPI_WILKIN_COUNTY_SITE`
+EP27 wave 5 (2026-10-15) validated and added Storie as the fourth and final public index:
+* `ProductivityIndexType` enum: `models.py:318-324` (NCCPI, CSR2, CPI, STORIE)
+* Storie provenance: `PRODUCTIVITY_PROVENANCE["storie"] = "SDA:COINTERP_STORIE_CA"`
+* Reuses NCCPI cointerp SQL templates with rule "AGR - California Revised Storie Index (CA)"
+* Live verification: CA077 county max = 0.995 (San Joaquin County, California)
+* Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `CA_STORIE_SAN_JOAQUIN_SITE`
+* All four state-specific indexes identified in EP17 are now validated and public.
 

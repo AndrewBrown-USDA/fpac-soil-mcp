@@ -31,6 +31,7 @@ PRODUCTIVITY_PROVENANCE = {
     "nccpi": "SDA:NCCPI_V3",
     "csr2": "SDA:MAPUNIT_IACORNSR",
     "cpi": "SDA:COMPONENT_CROPPRODINDEX",
+    "storie": "SDA:COINTERP_STORIE_CA",
 }
 
 # Fixed SQL query templates - no user SQL passthrough allowed
@@ -1047,11 +1048,20 @@ class SDAClient:
             query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
         elif idx in ("cpi", "crop productivity index"):
             query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
+        elif idx in (
+            "storie",
+            "california revised storie index",
+            "agr - california revised storie index (ca)",
+        ):
+            query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
+                areasymbol=clean_area,
+                rule_name="AGR - California Revised Storie Index (CA)",
+            )
         else:
             raise SDAValidationError(
                 f"Unsupported productivity index type '{index_type}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'; explicit attribute metadata is "
-                "required for custom SDV queries."
+                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'; "
+                "explicit attribute metadata is required for custom SDV queries."
             )
 
         rows = self._execute_query(query)
@@ -1065,7 +1075,7 @@ class SDAClient:
             val_float = float(val)
             if val_float in (99.0, 999.0) or val_float <= 0:
                 return None
-            if idx.startswith("nccpi"):
+            if idx.startswith("nccpi") or idx in ("storie",):
                 return round(val_float, 3)
             elif idx in ("csr2", "cpi"):
                 return round(val_float, 0)
@@ -1124,11 +1134,22 @@ class SDAClient:
             norm_idx = "cpi"
             productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
             query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
+        elif idx in (
+            "storie",
+            "california revised storie index",
+            "agr - california revised storie index (ca)",
+        ):
+            norm_idx = "storie"
+            productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
+            query = SQL_PRODUCTIVITY_NCCPI.format(
+                mukeys_csv=mukeys_csv,
+                rule_name="AGR - California Revised Storie Index (CA)",
+            )
         else:
             raise SDAValidationError(
                 f"Unsupported productivity index type '{index_type}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'; explicit attribute metadata is "
-                "required for custom SDV queries."
+                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'; "
+                "explicit attribute metadata is required for custom SDV queries."
             )
 
         raw_rows = self._execute_query(query)

@@ -992,3 +992,102 @@ class TestSDAClientExecution:
         # Must NOT use cointerp or mapunit.iacornsr
         assert "cointerp" not in sql
         assert "iacornsr" not in sql
+
+    def test_get_productivity_ratings_storie(self) -> None:
+        """Storie reuses NCCPI cointerp SQL with a different rule name."""
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["461792", "CA077", "154", "San Joaquin sandy loam", 0.82, 95.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"cointerp" in request.content
+            assert b"AGR - California Revised Storie Index (CA)" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["461792"], index_type="storie")
+        assert len(results) == 1
+        assert results[0]["mukey"] == "461792"
+        assert results[0]["numeric_rating"] == 0.82
+        assert results[0]["is_rated"] is True
+        assert results[0]["index_type"] == "storie"
+        assert results[0]["productivity_rating_source"] == "SDA:COINTERP_STORIE_CA"
+
+    def test_get_productivity_ratings_storie_alias(self) -> None:
+        """Storie accepts long-form alias."""
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["461792", "CA077", "154", "San Joaquin sandy loam", 0.82, 95.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(
+            ["461792"], index_type="California Revised Storie Index"
+        )
+        assert len(results) == 1
+        assert results[0]["index_type"] == "storie"
+
+    def test_get_county_max_productivity_rating_storie(self) -> None:
+        """Storie county max reuses NCCPI cointerp MAX template."""
+        mock_resp = {
+            "Table": [
+                ["max_county_rating"],
+                [0.995],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"AGR - California Revised Storie Index (CA)" in request.content
+            assert b"areasymbol = 'CA077'" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("CA077", index_type="storie")
+        assert val == 0.995
+
+    def test_get_county_max_productivity_rating_storie_null(self) -> None:
+        """Non-CA counties should have no Storie data."""
+        mock_resp = {"Table": [["max_county_rating"]]}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("IA169", index_type="storie")
+        assert val is None
+
+    def test_storie_uses_nccpi_cointerp_template(self) -> None:
+        """Verify Storie routing reuses SQL_PRODUCTIVITY_NCCPI with Storie rule name."""
+        from fpac_soil_mcp.sda_client import SQL_PRODUCTIVITY_NCCPI
+
+        sql = SQL_PRODUCTIVITY_NCCPI.format(
+            mukeys_csv="'461792'",
+            rule_name="AGR - California Revised Storie Index (CA)",
+        )
+        assert "cointerp" in sql
+        assert "AGR - California Revised Storie Index (CA)" in sql
+        assert "461792" in sql

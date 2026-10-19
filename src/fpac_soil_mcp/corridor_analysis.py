@@ -160,7 +160,7 @@ class CorridorAnalyzer:
         ):
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'."
+                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'."
             )
         norm_idx = normalized_index.value.lower()
         if max_county_rating_override is not None and (

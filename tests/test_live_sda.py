@@ -217,3 +217,49 @@ class TestLiveSDA:
             pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
 
         assert max_val is None
+
+    def test_live_storie_county_max_california(self) -> None:
+        """Storie county max for CA077 (San Joaquin) — research found max ~0.995."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="CA077", index_type="storie"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is not None
+        assert 0.9 <= max_val <= 1.0  # known CA077 max ~0.995
+
+    def test_live_storie_county_max_non_ca_is_null(self) -> None:
+        """Storie should return None for non-California counties."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="IA169", index_type="storie"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is None
+
+    def test_live_storie_ratings_california(self) -> None:
+        """Query Storie ratings for a known CA077 mukey."""
+        client = SDAClient()
+        try:
+            # Use a known San Joaquin County point to get a CA mukey
+            pt_res = client.get_by_point(latitude=37.95, longitude=-121.29)
+            if not pt_res or not pt_res[0].get("mukey"):
+                pytest.skip("Could not fetch test mukey from CA point")
+            test_mukey = str(pt_res[0]["mukey"])
+
+            results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="storie")
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert len(results) == 1
+        res = results[0]
+        assert res["index_type"] == "storie"
+        assert res["productivity_rating_source"] == "SDA:COINTERP_STORIE_CA"
+        if res["is_rated"]:
+            assert 0 < res["numeric_rating"] <= 1.0

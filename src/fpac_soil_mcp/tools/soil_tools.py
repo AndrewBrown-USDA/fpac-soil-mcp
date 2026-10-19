@@ -204,10 +204,11 @@ def analyze_farmland_by_polygon(
         ProductivityIndexType.NCCPI,
         ProductivityIndexType.CSR2,
         ProductivityIndexType.CPI,
+        ProductivityIndexType.STORIE,
     ):
         raise ValueError(
             f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'."
+            "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'."
         )
     analyzer = PolygonAnalyzer()
     return analyzer.analyze_polygon(
@@ -409,10 +410,11 @@ def analyze_corridor_fppa(
         ProductivityIndexType.NCCPI,
         ProductivityIndexType.CSR2,
         ProductivityIndexType.CPI,
+        ProductivityIndexType.STORIE,
     ):
         raise ValueError(
             f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'."
+            "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'."
         )
     analyzer = CorridorAnalyzer()
     corridor_kwargs: dict[str, Any] = {
@@ -535,10 +537,11 @@ def calculate_preliminary_lesa(
         ProductivityIndexType.NCCPI,
         ProductivityIndexType.CSR2,
         ProductivityIndexType.CPI,
+        ProductivityIndexType.STORIE,
     ):
         raise ValueError(
             f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selectors: 'nccpi', 'csr2', 'cpi'."
+            "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'."
         )
     if isinstance(geometry, (LineString, MultiLineString)):
         parsed_geometry = geometry

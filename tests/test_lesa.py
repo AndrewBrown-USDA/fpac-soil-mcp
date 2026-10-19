@@ -574,3 +574,11 @@ def test_normalize_productivity_index_accepts_cpi():
 
     result = _normalize_productivity_index("cpi")
     assert result is ProductivityIndexType.CPI
+
+
+def test_normalize_productivity_index_accepts_storie():
+    """_normalize_productivity_index should accept 'storie' and return STORIE enum."""
+    from fpac_soil_mcp.lesa import _normalize_productivity_index
+
+    result = _normalize_productivity_index("storie")
+    assert result is ProductivityIndexType.STORIE
