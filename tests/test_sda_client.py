@@ -1091,3 +1091,66 @@ class TestSDAClientExecution:
         assert "cointerp" in sql
         assert "AGR - California Revised Storie Index (CA)" in sql
         assert "461792" in sql
+
+    @pytest.mark.parametrize(
+        "index_type,raw_value,expected",
+        [
+            ("nccpi", 0.82567, 0.826),
+            ("csr2", 92.456, 92.0),
+            ("cpi", 87.654, 88.0),
+            ("storie", 0.95678, 0.957),
+        ],
+        ids=["nccpi", "csr2", "cpi", "storie"],
+    )
+    def test_get_productivity_ratings_rounding_precision(
+        self, index_type: str, raw_value: float, expected: float
+    ) -> None:
+        """Each index type rounds to its appropriate precision."""
+        cols = ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rated_pct", "total_pct"]
+        mock_resp = {"Table": [cols, ["100001", "XX001", "1A", "Test Soil", raw_value, 100.0, 100.0]]}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["100001"], index_type=index_type)
+        assert len(results) == 1
+        assert results[0]["numeric_rating"] == expected
+        assert results[0]["is_rated"] is True
+
+    @pytest.mark.parametrize(
+        "index_type,raw_value,expected",
+        [
+            ("nccpi", 0.99567, 0.996),
+            ("csr2", 96.456, 96.0),
+            ("cpi", 100.789, 101.0),
+            ("storie", 0.99512, 0.995),
+        ],
+        ids=["nccpi", "csr2", "cpi", "storie"],
+    )
+    def test_get_county_max_rounding_precision(
+        self, index_type: str, raw_value: float, expected: float
+    ) -> None:
+        """County max rounding respects each index type's precision."""
+        mock_resp = {"Table": [["max_county_rating"], [raw_value]]}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        val = client.get_county_max_productivity_rating("XX001", index_type=index_type)
+        assert val == expected
+
+    def test_get_productivity_ratings_zero_rating_is_unrated(self) -> None:
+        """A raw rating of 0.0 should yield is_rated=False (B4 sentinel fix)."""
+        cols = ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rated_pct", "total_pct"]
+        mock_resp = {"Table": [cols, ["100001", "XX001", "1A", "Test Soil", 0.0, 100.0, 100.0]]}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["100001"], index_type="nccpi")
+        assert len(results) == 1
+        assert results[0]["is_rated"] is False
+        assert results[0]["numeric_rating"] is None
