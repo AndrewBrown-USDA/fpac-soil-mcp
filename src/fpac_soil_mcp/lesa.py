@@ -33,6 +33,7 @@ from fpac_soil_mcp.constants import (
     STATUTORY_DETERMINATIONS,
 )
 from fpac_soil_mcp.models import (
+    SUPPORTED_INDEX_MSG,
     LandEvaluationSummary,
     MapUnitProductivityRating,
     PreliminaryLESAResponse,
@@ -75,7 +76,7 @@ def _normalize_productivity_index(
         except ValueError:
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'."
+                f"{SUPPORTED_INDEX_MSG}"
             ) from None
     return productivity_index
 

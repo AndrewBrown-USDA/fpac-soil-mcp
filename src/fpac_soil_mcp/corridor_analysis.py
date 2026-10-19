@@ -38,12 +38,13 @@ from fpac_soil_mcp.geometry import (
 from fpac_soil_mcp.integration_models import CountyIdentifier, CountyPartitionGeometry
 from fpac_soil_mcp.lesa import _normalize_productivity_index as _normalize_fixed_productivity_index
 from fpac_soil_mcp.models import (
+    SUPPORTED_INDEX_MSG,
+    VALIDATED_PRODUCTIVITY_INDEXES,
     CorridorAlternativeComparison,
     CorridorCountySegment,
     CorridorFarmlandAnalysisResponse,
     CorridorImpactBreakdown,
     FarmlandCategoryBreakdown,
-    ProductivityIndexType,
     QuerySource,
     SoilMapUnitAcreage,
 )
@@ -153,14 +154,10 @@ class CorridorAnalyzer:
         timestamp_str = now.isoformat()
         limitations = list(REGULATORY_LIMITATIONS)
         normalized_index = _normalize_fixed_productivity_index(productivity_index)
-        if normalized_index not in (
-            ProductivityIndexType.NCCPI,
-            ProductivityIndexType.CSR2,
-            ProductivityIndexType.CPI,
-        ):
+        if normalized_index not in VALIDATED_PRODUCTIVITY_INDEXES:
             raise ValueError(
                 f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'."
+                f"{SUPPORTED_INDEX_MSG}"
             )
         norm_idx = normalized_index.value.lower()
         if max_county_rating_override is not None and (
