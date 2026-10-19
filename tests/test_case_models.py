@@ -132,7 +132,7 @@ def test_fppa_request_validation(sample_agency, valid_utc_now):
             case_id="CASE-1",
             project_name="Bridge Replacement",
             agency_profile=sample_agency,
-            submitted_at_utc=datetime.now().replace(tzinfo=None),  # noqa: DTZ005
+            submitted_at_utc=datetime.now().replace(tzinfo=None),
         )
 
 

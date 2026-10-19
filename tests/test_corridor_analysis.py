@@ -774,5 +774,5 @@ def test_corridor_all_validated_selectors_accepted(index):
         assert result.query_type == "corridor"
     except ValueError:
         raise  # re-raise so test fails if it IS a ValueError
-    except Exception:
-        pass  # other errors (e.g. empty county list) are acceptable
+    except (AttributeError, TypeError, KeyError, IndexError, ZeroDivisionError):
+        pass  # downstream mock errors (e.g. empty county list) are acceptable

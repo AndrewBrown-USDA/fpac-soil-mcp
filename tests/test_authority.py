@@ -68,7 +68,7 @@ def test_provenance_validation(valid_utc_now):
         Provenance(
             source_name="Census TIGERweb",
             source_reference="layer:Urban Areas 2020",
-            timestamp_utc=datetime.now().replace(tzinfo=None),  # naive  # noqa: DTZ005
+            timestamp_utc=datetime.now().replace(tzinfo=None),  # naive
             method_version="urban_screening_v1",
             configuration_version="tigerweb_2020",
         )
