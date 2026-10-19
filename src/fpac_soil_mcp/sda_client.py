@@ -24,6 +24,7 @@ from fpac_soil_mcp.http_client import (
     HttpStatusError,
     execute_http_request_with_retry,
 )
+from fpac_soil_mcp.models import SUPPORTED_INDEX_MSG
 
 logger = logging.getLogger(__name__)
 
@@ -252,6 +253,7 @@ WHERE l.areasymbol = '{areasymbol}'
   AND c.compkind != 'miscellaneous area'
 """
 
+# CSR2 is a mapunit-level attribute (not component-aggregated); rated_pct is synthetic.
 SQL_PRODUCTIVITY_CSR2 = """\
 SELECT
     m.mukey,
@@ -291,6 +293,7 @@ FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
 WHERE m.mukey IN ({mukeys_csv})
+  AND c.compkind != 'miscellaneous area'
 GROUP BY m.mukey, l.areasymbol, m.musym, m.muname
 """
 
@@ -302,6 +305,7 @@ INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
 WHERE l.areasymbol = '{areasymbol}'
   AND c.cropprodindex IS NOT NULL
+  AND c.compkind != 'miscellaneous area'
 """
 
 ALLOWED_SDV_TABLES = {
@@ -312,6 +316,23 @@ ALLOWED_SDV_TABLES = {
     "mapunit",
     "sdvattribute",
 }
+
+_NCCPI_ALIASES = frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"})
+_CSR2_ALIASES = frozenset({"csr2", "iowa corn suitability rating csr2"})
+_CPI_ALIASES = frozenset({"cpi", "crop productivity index"})
+_STORIE_ALIASES = frozenset({
+    "storie", "california revised storie index",
+    "agr - california revised storie index (ca)",
+})
+
+
+def _round_for_index(value: float, norm_idx: str) -> float:
+    """Round a productivity rating to the precision appropriate for its index type."""
+    if norm_idx in ("nccpi", "storie"):
+        return round(value, 3)
+    elif norm_idx in ("csr2", "cpi"):
+        return round(value, 0)
+    return round(value, 2)
 
 
 def validate_survey_area_symbol(areasymbol: str) -> str:
@@ -1039,20 +1060,16 @@ class SDAClient:
         idx = index_type.strip().lower()
         if attribute_meta:
             query = build_dynamic_sdv_county_max_query(attribute_meta, clean_area)
-        elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
+        elif idx in _NCCPI_ALIASES:
             query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
                 areasymbol=clean_area,
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             )
-        elif idx in ("csr2", "iowa corn suitability rating csr2"):
+        elif idx in _CSR2_ALIASES:
             query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
-        elif idx in ("cpi", "crop productivity index"):
+        elif idx in _CPI_ALIASES:
             query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
-        elif idx in (
-            "storie",
-            "california revised storie index",
-            "agr - california revised storie index (ca)",
-        ):
+        elif idx in _STORIE_ALIASES:
             query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
                 areasymbol=clean_area,
                 rule_name="AGR - California Revised Storie Index (CA)",
@@ -1060,8 +1077,8 @@ class SDAClient:
         else:
             raise SDAValidationError(
                 f"Unsupported productivity index type '{index_type}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'; "
-                "explicit attribute metadata is required for custom SDV queries."
+                f"{SUPPORTED_INDEX_MSG} "
+                "Explicit attribute metadata is required for custom SDV queries."
             )
 
         rows = self._execute_query(query)
@@ -1075,12 +1092,7 @@ class SDAClient:
             val_float = float(val)
             if val_float in (99.0, 999.0) or val_float <= 0:
                 return None
-            if idx.startswith("nccpi") or idx in ("storie",):
-                return round(val_float, 3)
-            elif idx in ("csr2", "cpi"):
-                return round(val_float, 0)
-            else:
-                return round(val_float, 2)
+            return _round_for_index(val_float, idx)
         except (ValueError, TypeError):
             return None
 
@@ -1119,26 +1131,22 @@ class SDAClient:
             norm_idx = str(attribute_meta.get("attributename", index_type)).lower()
             productivity_rating_source = "SDA:SDVATTRIBUTE"
             query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
-        elif idx in ("nccpi", "nccpi_v3", "national commodity crop productivity index"):
+        elif idx in _NCCPI_ALIASES:
             norm_idx = "nccpi"
             productivity_rating_source = PRODUCTIVITY_PROVENANCE["nccpi"]
             query = SQL_PRODUCTIVITY_NCCPI.format(
                 mukeys_csv=mukeys_csv,
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
             )
-        elif idx in ("csr2", "iowa corn suitability rating csr2"):
+        elif idx in _CSR2_ALIASES:
             norm_idx = "csr2"
             productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
             query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
-        elif idx in ("cpi", "crop productivity index"):
+        elif idx in _CPI_ALIASES:
             norm_idx = "cpi"
             productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
             query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
-        elif idx in (
-            "storie",
-            "california revised storie index",
-            "agr - california revised storie index (ca)",
-        ):
+        elif idx in _STORIE_ALIASES:
             norm_idx = "storie"
             productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
             query = SQL_PRODUCTIVITY_NCCPI.format(
@@ -1148,8 +1156,8 @@ class SDAClient:
         else:
             raise SDAValidationError(
                 f"Unsupported productivity index type '{index_type}'. "
-                "Supported fixed selectors: 'nccpi', 'csr2', 'cpi', 'storie'; "
-                "explicit attribute metadata is required for custom SDV queries."
+                f"{SUPPORTED_INDEX_MSG} "
+                "Explicit attribute metadata is required for custom SDV queries."
             )
 
         raw_rows = self._execute_query(query)
@@ -1190,14 +1198,14 @@ class SDAClient:
             if raw_rating is not None and str(raw_rating).strip() not in ("", "None"):
                 try:
                     r_val = float(raw_rating)
-                    if r_val in (99.0, 999.0) or r_val < 0:
+                    if r_val in (99.0, 999.0) or r_val <= 0:
                         caveats.append(
                             f"Map unit contains unrated placeholder/sentinel code ({raw_rating})."
                         )
                     elif rated_pct <= 0:
                         caveats.append("Map unit has 0% rated component coverage.")
                     else:
-                        numeric_rating = round(r_val, 3 if norm_idx == "nccpi" else 2)
+                        numeric_rating = _round_for_index(r_val, norm_idx)
                         is_rated = True
                 except (ValueError, TypeError):
                     caveats.append(f"Unparseable rating value '{raw_rating}'.")
