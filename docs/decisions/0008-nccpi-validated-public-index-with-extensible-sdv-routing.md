@@ -91,23 +91,20 @@ EP17 (2026-09-28) established dynamic SDV routing. EP20 (commit `9cbcc7ed`)
 fixed cointerp aggregation rules. EP22-23 remediated productivity preservation.
 EP26 (commit `cc822eaa`) narrowed the public contract: STATE_26 line 48
 records "public and test contracts now expose validated national NCCPI only."
-EP27 (2026-10-15) validated and added CSR2 as the second public index:
-* `ProductivityIndexType` enum: `models.py:318-322` (NCCPI, CSR2)
-* CSR2 provenance: `PRODUCTIVITY_PROVENANCE["csr2"] = "SDA:MAPUNIT_IACORNSR"`
-* Fixed SQL templates: `SQL_PRODUCTIVITY_CSR2`, `SQL_PRODUCTIVITY_COUNTY_MAX_CSR2`
-* Live verification: IA169 county max = 96.0 (Story County, Iowa)
-* Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `IA_CSR2_STORY_COUNTY_SITE`
-EP27 wave 4 (2026-10-15) validated and added CPI as the third public index:
-* `ProductivityIndexType` enum: `models.py:318-323` (NCCPI, CSR2, CPI)
-* CPI provenance: `PRODUCTIVITY_PROVENANCE["cpi"] = "SDA:COMPONENT_CROPPRODINDEX"`
-* Fixed SQL templates: `SQL_PRODUCTIVITY_CPI`, `SQL_PRODUCTIVITY_COUNTY_MAX_CPI`
-* Live verification: MN167 county max = 100.0 (Wilkin County, Minnesota)
-* Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `MN_CPI_WILKIN_COUNTY_SITE`
-EP27 wave 5 (2026-10-15) validated and added Storie as the fourth and final public index:
-* `ProductivityIndexType` enum: `models.py:318-324` (NCCPI, CSR2, CPI, STORIE)
-* Storie provenance: `PRODUCTIVITY_PROVENANCE["storie"] = "SDA:COINTERP_STORIE_CA"`
-* Reuses NCCPI cointerp SQL templates with rule "AGR - California Revised Storie Index (CA)"
-* Live verification: CA077 county max = 0.995 (San Joaquin County, California)
-* Benchmark fixture: `tests/fixtures/le_benchmarks.json` case `CA_STORIE_SAN_JOAQUIN_SITE`
-* All four state-specific indexes identified in EP17 are now validated and public.
+EP27 (2026-10-15 → 2026-10-19) validated and added all four state-specific productivity
+indexes as public contract members:
+* `ProductivityIndexType` enum: NCCPI, CSR2, CPI, STORIE
+* CSR2: `SDA:MAPUNIT_IACORNSR` — fixed SQL, IA169 max = 96.0
+* CPI: `SDA:COMPONENT_CROPPRODINDEX` — component-level, MN167 max = 100.0
+* Storie: `SDA:COINTERP_STORIE_CA` — reuses NCCPI cointerp template,
+  CA077 max ≈ 0.995
+* Benchmark fixtures in `tests/fixtures/le_benchmarks.json`
+
+EP28 (2026-10-19) code-review remediation of EP27:
+* Extracted `VALIDATED_PRODUCTIVITY_INDEXES` (auto-all frozenset) and
+  `SUPPORTED_INDEX_MSG` (dynamically generated) constants in `models.py`
+* Consolidated inline guard tuples across 5 source files to use the frozenset
+* Added `_round_for_index()` rounding helper and alias frozensets in `sda_client.py`
+* Fixed CPI `compkind != 'miscellaneous area'` filter (B5) and zero-sentinel (B4)
+* Added rounding-precision and guard-acceptance tests
 
