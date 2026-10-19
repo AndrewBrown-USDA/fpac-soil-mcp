@@ -320,10 +320,13 @@ ALLOWED_SDV_TABLES = {
 _NCCPI_ALIASES = frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"})
 _CSR2_ALIASES = frozenset({"csr2", "iowa corn suitability rating csr2"})
 _CPI_ALIASES = frozenset({"cpi", "crop productivity index"})
-_STORIE_ALIASES = frozenset({
-    "storie", "california revised storie index",
-    "agr - california revised storie index (ca)",
-})
+_STORIE_ALIASES = frozenset(
+    {
+        "storie",
+        "california revised storie index",
+        "agr - california revised storie index (ca)",
+    }
+)
 
 
 def _round_for_index(value: float, norm_idx: str) -> float:

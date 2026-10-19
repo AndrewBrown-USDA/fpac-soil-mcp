@@ -165,10 +165,13 @@ tools/soil_tools.py, lesa.py, any test file
    _NCCPI_ALIASES = frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"})
    _CSR2_ALIASES = frozenset({"csr2", "iowa corn suitability rating csr2"})
    _CPI_ALIASES = frozenset({"cpi", "crop productivity index"})
-   _STORIE_ALIASES = frozenset({
-       "storie", "california revised storie index",
-       "agr - california revised storie index (ca)",
-   })
+   _STORIE_ALIASES = frozenset(
+       {
+           "storie",
+           "california revised storie index",
+           "agr - california revised storie index (ca)",
+       }
+   )
    ```
 2. Update `get_county_max_productivity_rating` dispatch chain
    (lines 1042-1059): replace inline string tuples with the alias

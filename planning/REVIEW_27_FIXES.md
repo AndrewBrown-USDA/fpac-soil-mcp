@@ -104,7 +104,9 @@ is added to one but not the other, they'll silently diverge.
 _NCCPI_ALIASES = frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"})
 _CSR2_ALIASES = frozenset({"csr2", "iowa corn suitability rating csr2"})
 _CPI_ALIASES = frozenset({"cpi", "crop productivity index"})
-_STORIE_ALIASES = frozenset({"storie", "california revised storie index", "agr - california revised storie index (ca)"})
+_STORIE_ALIASES = frozenset(
+    {"storie", "california revised storie index", "agr - california revised storie index (ca)"}
+)
 ```
 Then use `idx in _CSR2_ALIASES` in both methods.
 
@@ -130,7 +132,9 @@ hardcoded in 8 places.
 **Fix:** Define it once (e.g. in `models.py` or `constants.py`) and import it.
 Or dynamically build it from the enum/frozenset:
 ```python
-SUPPORTED_INDEX_MSG = f"Supported fixed selectors: {', '.join(repr(m.value.lower()) for m in ProductivityIndexType)}."
+SUPPORTED_INDEX_MSG = (
+    f"Supported fixed selectors: {', '.join(repr(m.value.lower()) for m in ProductivityIndexType)}."
+)
 ```
 
 ### D4. `idx in ("storie",)` — single-element tuple is awkward

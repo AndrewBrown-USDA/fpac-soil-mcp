@@ -199,9 +199,7 @@ class TestLiveSDA:
                 pytest.skip("Could not fetch test mukey from point")
             test_mukey = str(pt_res[0]["mukey"])
 
-            results = client.get_productivity_ratings(
-                mukeys=[test_mukey], index_type="cpi"
-            )
+            results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="cpi")
         except (SDAClientError, httpx.HTTPError) as exc:
             pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
 

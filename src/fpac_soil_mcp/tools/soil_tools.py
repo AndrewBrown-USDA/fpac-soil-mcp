@@ -204,8 +204,7 @@ def analyze_farmland_by_polygon(
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
     if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. "
-            f"{SUPPORTED_INDEX_MSG}"
+            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
         )
     analyzer = PolygonAnalyzer()
     return analyzer.analyze_polygon(
@@ -405,8 +404,7 @@ def analyze_corridor_fppa(
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
     if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. "
-            f"{SUPPORTED_INDEX_MSG}"
+            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
         )
     analyzer = CorridorAnalyzer()
     corridor_kwargs: dict[str, Any] = {
@@ -527,8 +525,7 @@ def calculate_preliminary_lesa(
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
     if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. "
-            f"{SUPPORTED_INDEX_MSG}"
+            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
         )
     if isinstance(geometry, (LineString, MultiLineString)):
         parsed_geometry = geometry

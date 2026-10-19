@@ -156,8 +156,7 @@ class CorridorAnalyzer:
         normalized_index = _normalize_fixed_productivity_index(productivity_index)
         if normalized_index not in VALIDATED_PRODUCTIVITY_INDEXES:
             raise ValueError(
-                f"Unsupported productivity index type '{productivity_index}'. "
-                f"{SUPPORTED_INDEX_MSG}"
+                f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
             )
         norm_idx = normalized_index.value.lower()
         if max_county_rating_override is not None and (

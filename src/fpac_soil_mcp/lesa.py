@@ -75,8 +75,7 @@ def _normalize_productivity_index(
             return ProductivityIndexType(productivity_index.upper())
         except ValueError:
             raise ValueError(
-                f"Unsupported productivity index type '{productivity_index}'. "
-                f"{SUPPORTED_INDEX_MSG}"
+                f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
             ) from None
     return productivity_index
 

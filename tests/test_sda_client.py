@@ -1106,8 +1106,18 @@ class TestSDAClientExecution:
         self, index_type: str, raw_value: float, expected: float
     ) -> None:
         """Each index type rounds to its appropriate precision."""
-        cols = ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rated_pct", "total_pct"]
-        mock_resp = {"Table": [cols, ["100001", "XX001", "1A", "Test Soil", raw_value, 100.0, 100.0]]}
+        cols = [
+            "mukey",
+            "areasymbol",
+            "musym",
+            "muname",
+            "numeric_rating",
+            "rated_pct",
+            "total_pct",
+        ]
+        mock_resp = {
+            "Table": [cols, ["100001", "XX001", "1A", "Test Soil", raw_value, 100.0, 100.0]]
+        }
 
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json=mock_resp)
@@ -1143,7 +1153,15 @@ class TestSDAClientExecution:
 
     def test_get_productivity_ratings_zero_rating_is_unrated(self) -> None:
         """A raw rating of 0.0 should yield is_rated=False (B4 sentinel fix)."""
-        cols = ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rated_pct", "total_pct"]
+        cols = [
+            "mukey",
+            "areasymbol",
+            "musym",
+            "muname",
+            "numeric_rating",
+            "rated_pct",
+            "total_pct",
+        ]
         mock_resp = {"Table": [cols, ["100001", "XX001", "1A", "Test Soil", 0.0, 100.0, 100.0]]}
 
         def handler(request: httpx.Request) -> httpx.Response:
