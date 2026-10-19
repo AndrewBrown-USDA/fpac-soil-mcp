@@ -226,7 +226,7 @@ def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
     assert result.manifest["candidate_le_score"] == pytest.approx(53.0)
 
 
-@pytest.mark.parametrize("index", ["custom"])
+@pytest.mark.parametrize("index", ["custom", "unsupported", ""])
 def test_unsupported_selector_rejected_before_sda(index):
     sda = MagicMock(spec=SDAClient)
     with pytest.raises(ValueError, match="Unsupported productivity index type"):
@@ -396,3 +396,18 @@ def test_analyze_polygon_fully_covered():
 
     assert res.coverage_status == "covered"
     assert res.farmland_summary.unmapped_acres == 0.0
+
+
+@pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
+def test_all_validated_selectors_accepted(index):
+    """All validated productivity index selectors pass the guard without ValueError."""
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = []
+    mock_sda.get_productivity_ratings.return_value = []
+    mock_sda.get_county_max_productivity_rating.return_value = None
+    mock_sda.get_interpretations.return_value = []
+    analyzer = _analyzer(mock_sda)
+    # Should NOT raise ValueError — downstream calls can return empty/mock data
+    result = analyzer.analyze_polygon(GEOJSON, productivity_index=index)
+    assert result.query_type == "polygon"

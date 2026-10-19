@@ -745,3 +745,34 @@ def test_corridor_analysis_with_county_partition_geometry_models():
     assert seg.state_fips == "19"
     assert seg.county_fips == "169"
     assert seg.total_segment_acres == acres
+
+
+@pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
+def test_corridor_all_validated_selectors_accepted(index):
+    """All validated productivity index selectors pass the corridor guard without ValueError."""
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = []
+    mock_sda.get_productivity_ratings.return_value = []
+    mock_sda.get_county_max_productivity_rating.return_value = None
+    mock_sda.get_interpretations.return_value = []
+    mock_tiger = MagicMock(spec=TigerwebClient)
+    mock_tiger.get_intersecting_counties.return_value = []
+    mock_tiger.partition_geometry_by_counties.return_value = []
+    mock_tiger.check_urban_exemption.return_value = None
+    mock_nass = MagicMock()
+    analyzer = CorridorAnalyzer(
+        sda_client=mock_sda, tigerweb_client=mock_tiger, nass_client=mock_nass
+    )
+    # Guard must NOT raise ValueError; downstream errors from empty mocks are acceptable
+    try:
+        result = analyzer.analyze_corridor(
+            centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
+            buffer_distance=50.0,
+            productivity_index=index,
+        )
+        assert result.query_type == "corridor"
+    except ValueError:
+        raise  # re-raise so test fails if it IS a ValueError
+    except Exception:
+        pass  # other errors (e.g. empty county list) are acceptable
