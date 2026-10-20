@@ -23,11 +23,14 @@ import run_evals
 from run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
+    extract_structured_prompt_names,
+    prompt_case_instruction,
     should_retry_missing_tools,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
+CAPTURE_FIXTURES_PATH = REPO_ROOT / "eval" / "fixtures" / "event_capture"
 
 
 def normalize_text(text: str) -> str:
@@ -57,6 +60,97 @@ def test_advertised_tools_prefer_initialization_event() -> None:
         {"type": "tools_list", "tools": [{"name": "fallback_tool"}]},
     ]
     assert extract_advertised_tool_names(events) == ({"init_tool"}, "initialization")
+
+
+@pytest.mark.parametrize(
+    ("case_id", "prompt_name", "user_prompt", "expected_tools", "required_text"),
+    [
+        (
+            "PROMPT-01",
+            "fppa_screening_assistant",
+            "Use fppa_screening_assistant to evaluate a point.",
+            ["get_farmland_classification_by_point"],
+            "fppa_screening_assistant",
+        ),
+        (
+            "PROMPT-02",
+            "fppa_corridor_screening_assistant",
+            "Use fppa_corridor_screening_assistant under 7 CFR \u00a7 658.5(c).",
+            [],
+            "7 CFR \u00a7 658.5(c)",
+        ),
+    ],
+)
+def test_prompt_cases_require_named_render_and_preserve_case_constraints(
+    case_id: str,
+    prompt_name: str,
+    user_prompt: str,
+    expected_tools: list[str],
+    required_text: str,
+) -> None:
+    instruction = prompt_case_instruction(
+        {
+            "id": case_id,
+            "target_type": "prompt",
+            "target_name": prompt_name,
+            "user_prompt": user_prompt,
+        }
+    )
+    assert f"invoke or render the MCP prompt named {prompt_name}" in instruction
+    assert prompt_name in instruction
+    assert required_text in instruction
+    if case_id == "PROMPT-01":
+        assert expected_tools == ["get_farmland_classification_by_point"]
+    else:
+        assert "7 CFR § 658.5(c)" in instruction
+        assert "CPA-106 guidance" in instruction
+        assert "preliminary limitation" in instruction
+
+
+def test_prompt_structured_invocation_does_not_accept_prose() -> None:
+    assert (
+        extract_structured_prompt_names(
+            {
+                "type": "message_end",
+                "message": {
+                    "role": "assistant",
+                    "content": "I rendered fppa_screening_assistant conceptually.",
+                },
+            }
+        )
+        == set()
+    )
+    assert extract_structured_prompt_names(
+        {"type": "prompt_render", "promptName": "fppa_screening_assistant"}
+    ) == {"fppa_screening_assistant"}
+
+
+def test_res01_requires_exact_citation_keywords() -> None:
+    case = {
+        "id": "RES-01",
+        "target_type": "resource",
+        "target_name": "fppa://regulatory-notice",
+        "user_prompt": "Summarize the notice.",
+    }
+    instruction = prompt_case_instruction(case)
+    assert "7 CFR Part 657" in instruction
+    assert "7 CFR Part 658" in instruction
+    assert "preliminary" in instruction
+    assert "7 CFR § 657" not in instruction
+
+
+def test_gateway_envelopes_and_prose_have_distinct_diagnostics() -> None:
+    initialization = [
+        {"type": "mcp_initialize", "capabilities": {"tools": [{"name": "expected_tool"}]}}
+    ]
+    fallback = [{"type": "tools_list", "result": {"tools": [{"name": "expected_tool"}]}}]
+    prose = [{"type": "message_end", "message": {"role": "assistant", "content": "expected_tool"}}]
+    assert extract_advertised_tool_names(initialization) == ({"expected_tool"}, "initialization")
+    assert extract_advertised_tool_names(fallback) == ({"expected_tool"}, "tool-list fallback")
+    assert extract_advertised_tool_names(prose) == (None, "unknown")
+    assert not _tool_matches("expected_tool", set())
+    assert should_retry_missing_tools(["expected_tool"], {"expected_tool"}, 0)
+    assert not should_retry_missing_tools(["expected_tool"], None, 0)
 
 
 def test_tool_list_fallback_and_unknown_configuration_diagnostics() -> None:
@@ -121,6 +215,473 @@ def test_run_case_returns_structured_failure_when_subprocess_startup_raises(
     assert result["error"] == "OSError: unable to start pi"
 
 
+def _capture_case(**overrides: Any) -> dict[str, Any]:
+    case = {
+        "id": "CAPTURE-01",
+        "category": "capture",
+        "target_name": "get_farmland_classification_by_point",
+        "user_prompt": "perform the test",
+    }
+    case.update(overrides)
+    return case
+
+
+def test_run_case_capture_success_separates_stderr_malformed_lines_and_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stdout = (CAPTURE_FIXTURES_PATH / "recognized.jsonl").read_text(
+        encoding="utf-8"
+    ) + "\nnot-json\n"
+
+    class Completed:
+        returncode = 0
+        stderr = "diagnostic only\n"
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(expected_tools=["get_farmland_classification_by_point"]),
+        tmp_path / "sandbox",
+        model="test-model",
+        timeout=1,
+        verbose=False,
+        run_id="run-safe",
+        artifact_root=tmp_path / "artifacts",
+    )
+
+    assert result["status"] == "PASS"
+    assert result["evidence_classification"] == "recognized"
+    assert result["attempts"][0]["model"] == "test-model"
+    assert result["attempts"][0]["provider"] == "pi"
+    artifact_dir = tmp_path / "artifacts" / "run-safe" / "CAPTURE-01" / "attempt-1"
+    assert (artifact_dir / "stderr.txt").read_text(encoding="utf-8") == "diagnostic only\n"
+    assert (artifact_dir / "malformed-lines.txt").read_text(encoding="utf-8").strip() == "not-json"
+    assert "attempt_1_stdout_path" in result["artifact_paths"]
+    assert "diagnostic only" not in result["error"]
+
+
+def test_run_case_capture_is_non_retaining_when_opt_in_root_is_absent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / "prose_only.jsonl").read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="run-no-retain",
+    )
+    assert result["evidence_classification"] == "absent"
+    assert result["artifact_paths"] == {}
+    assert not (tmp_path / "run-no-retain").exists()
+
+
+@pytest.mark.parametrize(
+    ("fixture", "expected"),
+    [
+        ("prose_only.jsonl", "absent"),
+        ("dedicated_unrecognized.jsonl", "absent"),
+        ("recognized.jsonl", "recognized"),
+    ],
+)
+def test_capture_evidence_classification_uses_dedicated_structured_events(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fixture: str, expected: str
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / fixture).read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert result["evidence_classification"] == expected
+
+
+@pytest.mark.parametrize("unsafe_id", [".", "..", "nested/../.."])
+def test_capture_special_identifiers_cannot_escape_external_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, unsafe_id: str
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / "prose_only.jsonl").read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(id=unsafe_id),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id=unsafe_id,
+        artifact_root=root,
+    )
+
+    assert result["artifact_paths"]
+    assert all(
+        (root / path).resolve().is_relative_to(root.resolve())
+        for path in result["artifact_paths"].values()
+    )
+
+
+def test_capture_raw_opt_in_retains_exact_stream_outside_repository(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stdout = '{"type":"tool_execution","tool_name":"opaque","arguments":{"value":"exact"}}\n'
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(id="RAW-OPT-IN"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="raw-run",
+        artifact_root=root,
+    )
+
+    artifact_dir = root / "raw-run" / "RAW-OPT-IN" / "attempt-1"
+    assert (artifact_dir / "raw-stdout.txt").read_text(encoding="utf-8") == stdout
+    raw_event = json.loads((artifact_dir / "raw-events.jsonl").read_text(encoding="utf-8"))
+    assert raw_event == {
+        "type": "tool_execution",
+        "tool_name": "opaque",
+        "arguments": {"value": "exact"},
+    }
+    assert not (REPO_ROOT / "raw-run").exists()
+    assert result["artifact_paths"]["attempt_1_raw_stdout_path"]
+
+
+def test_complete_evidence_is_evaluated_beyond_bounded_artifact_copy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = "get_farmland_classification_by_point"
+    filler = '{"type":"delta","content":"noise"}\n'
+    stdout = filler * (run_evals.MAX_CAPTURE_EVENTS + 1)
+    stdout += (
+        json.dumps(
+            {
+                "type": "tool_execution",
+                "tool_name": target,
+                "arguments": {"latitude": 1, "longitude": 2},
+            }
+        )
+        + "\n"
+    )
+    stdout += (
+        json.dumps(
+            {"type": "message_end", "message": {"role": "assistant", "content": "late keyword"}}
+        )
+        + "\n"
+    )
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(expected_tools=[target], expected_keywords=["late keyword"]),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="late-evidence",
+        artifact_root=root,
+    )
+
+    metadata = json.loads(
+        (root / "late-evidence" / "CAPTURE-01" / "attempt-1" / "metadata.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result["status"] == "PASS"
+    assert metadata["artifact_events_truncated"] is True
+    assert (
+        (root / "late-evidence" / "CAPTURE-01" / "attempt-1" / "raw-events.jsonl")
+        .read_text(encoding="utf-8")
+        .endswith("\n")
+    )
+
+
+def test_nested_invocation_containers_distinguish_unrecognized_and_recognized(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    outputs = [
+        '{"type":"message_end","message":{"role":"assistant","tool_calls":[{"function":{}}]}}\n',
+        '{"type":"message_end","message":{"role":"assistant","tool_calls":[{"function":{"name":"expected_tool"}}]}}\n',
+    ]
+    calls = iter(outputs)
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed(next(calls)))
+    first = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    second = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert first["evidence_classification"] == "present_unrecognized"
+    assert second["evidence_classification"] == "recognized"
+
+
+def test_run_case_capture_preserves_retry_attempts_and_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    outputs = [
+        '{"type":"initialize","tools":[{"name":"get_farmland_classification_by_point"}]}\n',
+        (CAPTURE_FIXTURES_PATH / "recognized.jsonl").read_text(encoding="utf-8"),
+    ]
+    calls = iter(outputs)
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(
+        run_evals.subprocess,
+        "run",
+        lambda *args, **kwargs: Completed(next(calls)),
+    )
+    result = run_evals.run_case(
+        _capture_case(expected_tools=["get_farmland_classification_by_point"]),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="retry-run",
+        artifact_root=tmp_path / "artifacts",
+    )
+    assert len(result["attempts"]) == 2
+    assert {attempt["attempt"] for attempt in result["attempts"]} == {1, 2}
+    assert (tmp_path / "artifacts" / "retry-run" / "CAPTURE-01" / "attempt-1").exists()
+    assert (tmp_path / "artifacts" / "retry-run" / "CAPTURE-01" / "attempt-2").exists()
+
+
+def test_run_case_capture_timeout_and_startup_error_are_structured(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(
+        run_evals.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            subprocess.TimeoutExpired("pi", 1, output=b"partial\n", stderr=b"warn\n")
+        ),
+    )
+    timeout_result = run_evals.run_case(
+        _capture_case(),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert timeout_result["status"] == "TIMEOUT"
+    assert timeout_result["attempts"][0]["outcome"] == "timeout"
+
+    monkeypatch.setattr(
+        run_evals.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("missing pi")),
+    )
+    startup_result = run_evals.run_case(
+        _capture_case(id="STARTUP-01"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+    )
+    assert startup_result["status"] == "ERROR"
+    assert startup_result["attempts"][0]["outcome"] == "startup_error"
+
+
+def test_failed_attempts_finalize_metadata_and_partial_artifacts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Failed:
+        returncode = 7
+        stdout = '{"type":"message_end","message":{"role":"assistant","content":"partial"}}\n'
+        stderr = "failed\n"
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Failed())
+    root = tmp_path / "external-artifacts"
+    result = run_evals.run_case(
+        _capture_case(id="NONZERO-01"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="failed-run",
+        artifact_root=root,
+    )
+
+    attempt_dir = root / "failed-run" / "NONZERO-01" / "attempt-1"
+    metadata = json.loads((attempt_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert result["status"] == "FAIL"
+    assert metadata["return_code"] == 7
+    assert (attempt_dir / "raw-stdout.txt").read_text(encoding="utf-8").startswith("{")
+    assert result["attempts"][0]["metadata_path"] == str(
+        Path("failed-run") / "NONZERO-01" / "attempt-1" / "metadata.json"
+    )
+
+
+def test_capture_rejects_repository_root_and_keeps_prompt_out_of_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Completed:
+        returncode = 0
+        stdout = (CAPTURE_FIXTURES_PATH / "prose_only.jsonl").read_text(encoding="utf-8")
+        stderr = ""
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    prompt = "private prompt 41.8781,-93.0977"
+    result = run_evals.run_case(
+        _capture_case(id="CASE/../secret", user_prompt=prompt),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="run/../unsafe",
+        artifact_root=REPO_ROOT,
+    )
+
+    assert result["artifact_paths"] == {}
+    assert "artifact root must be outside the repository" in result["capture_error"]
+    assert prompt not in str(result["artifact_paths"])
+
+
+def test_capture_bounds_and_redacts_persisted_streams(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    sensitive = "api_key=secret-value coordinates=41.8781,-93.0977"
+
+    class Completed:
+        returncode = 0
+        stdout = sensitive + "\n" + ("x" * (run_evals.MAX_CAPTURE_BYTES + 100))
+        stderr = "email=person@example.test"
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    root = tmp_path / "external-artifacts"
+    run_evals.run_case(
+        _capture_case(id="SAFE_CASE"),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        run_id="safe-run",
+        artifact_root=root,
+    )
+
+    artifact_dir = root / "safe-run" / "SAFE_CASE" / "attempt-1"
+    stdout = (artifact_dir / "stdout.txt").read_text(encoding="utf-8")
+    stderr = (artifact_dir / "stderr.txt").read_text(encoding="utf-8")
+    assert len(stdout.encode("utf-8")) <= run_evals.MAX_CAPTURE_BYTES
+    assert "secret-value" not in stdout
+    assert "41.8781,-93.0977" not in stdout
+    assert "person@example.test" not in stderr
+
+    shutil.rmtree(root)
+    assert not root.exists()
+
+
+def test_checked_in_capture_fixtures_are_sanitized() -> None:
+    prohibited = re.compile(
+        r"(?i)(api[_ -]?key|token|secret|password|authorization|cookie|"
+        r"email|phone|address|geojson|wkt|41\.8781|-93\.0977)"
+    )
+    for fixture in CAPTURE_FIXTURES_PATH.glob("*.jsonl"):
+        contents = fixture.read_text(encoding="utf-8")
+        assert not prohibited.search(contents), fixture.name
+
+
+def test_cli_diagnostics_print_capture_paths_and_errors_without_raw_content(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    case = _capture_case(id="CLI-01")
+    result = {
+        "id": "CLI-01",
+        "category": "capture",
+        "target": "expected_tool",
+        "status": "ERROR",
+        "elapsed_sec": 0.01,
+        "error": "OSError: unable to start pi",
+        "output": "private raw response",
+        "attempts": [
+            {
+                "attempt": 1,
+                "outcome": "startup_error",
+                "return_code": None,
+                "metadata": "run/CLI-01/attempt-1/metadata.json",
+            }
+        ],
+        "artifact_paths": {"attempt_1_metadata_path": "run/CLI-01/attempt-1/metadata.json"},
+        "capture_error": "capture failed",
+    }
+    monkeypatch.setattr(run_evals, "check_prerequisites", lambda: "pi")
+    monkeypatch.setattr(run_evals, "load_test_cases", lambda category, case_id: [case])
+    monkeypatch.setattr(run_evals, "create_sandbox", lambda path: None)
+    monkeypatch.setattr(run_evals, "run_case", lambda *args, **kwargs: result)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_evals.py", "--no-show-output", "--artifact-root", str(tmp_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        run_evals.main()
+
+    output = capsys.readouterr().out
+    assert exit_info.value.code == 1
+    assert "metadata: run/CLI-01/attempt-1/metadata.json" in output
+    assert "artifact attempt_1_metadata_path: run/CLI-01/attempt-1/metadata.json" in output
+    assert "capture error: capture failed" in output
+    assert "private raw response" not in output
+    assert "Summary:" in output
+
+
 def event_text(event: dict[str, Any]) -> str:
     """Flatten an event to searchable text for compatibility across pi event versions."""
     return json.dumps(event, ensure_ascii=False).lower()
@@ -130,6 +691,29 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     """Extract tool names specifically from dedicated name/function fields in an event."""
     names: set[str] = set()
     event_type = str(event.get("type", "")).lower()
+
+    if (
+        event_type in {"tool_execution_start", "tool_execution_end"}
+        and event.get("toolName") == "mcpScript"
+    ):
+        args = event.get("args")
+        code = args.get("code") if isinstance(args, dict) else None
+        if isinstance(code, str):
+            names.update(
+                match.group(1)
+                for match in re.finditer(
+                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,""", code
+                )
+            )
+        details = event.get("details")
+        calls = details.get("calls") if isinstance(details, dict) else None
+        if isinstance(calls, list):
+            for call in calls:
+                path = call.get("path") if isinstance(call, dict) else None
+                if isinstance(path, str):
+                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
+                    if re.fullmatch(r"[A-Za-z0-9_-]+", leaf):
+                        names.add(leaf)
 
     # Direct tool execution or tool call events
     if "tool" in event_type or event_type in {
@@ -263,7 +847,49 @@ def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     for event in events:
         event_type = str(event.get("type", "")).lower()
+        if (
+            event_type in {"tool_execution_start", "tool_execution_end"}
+            and event.get("toolName") == "mcpScript"
+        ):
+            args = event.get("args")
+            code = args.get("code") if isinstance(args, dict) else None
+            if isinstance(code, str):
+                for match in re.finditer(
+                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,\s*\{([^{}]*)\}""",
+                    code,
+                ):
+                    arguments: dict[str, Any] = {}
+                    for key, value in re.findall(
+                        r"""([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(-?\d+(?:\.\d+)?)""",
+                        match.group(2),
+                    ):
+                        arguments[key] = float(value) if "." in value else int(value)
+                    add_call(match.group(1), arguments)
+            details = event.get("details")
+            calls_metadata = details.get("calls") if isinstance(details, dict) else None
+            if isinstance(calls_metadata, list):
+                for call_metadata in calls_metadata:
+                    if not isinstance(call_metadata, dict):
+                        continue
+                    path = call_metadata.get("path")
+                    if not isinstance(path, str):
+                        continue
+                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
+                    structured = call_metadata.get("structuredContent")
+                    if isinstance(structured, dict):
+                        add_call(leaf, structured.get("arguments"))
+            structured_content = event.get("structuredContent")
+            if isinstance(structured_content, dict):
+                path = event.get("path")
+                if isinstance(path, str):
+                    add_call(
+                        re.split(r"[/.:]", path.rstrip("/"))[-1],
+                        structured_content.get("arguments"),
+                    )
+
         direct_args = event.get("args")
+        if event.get("toolName") == "mcpScript":
+            direct_args = None
         if isinstance(direct_args, dict):
             direct_name = direct_args.get("tool") or direct_args.get("name")
             if isinstance(direct_name, str):
@@ -279,7 +905,7 @@ def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "tool_execution",
         }:
             for key in ("tool_name", "tool", "name", "function_name", "toolName"):
-                if isinstance(event.get(key), str):
+                if isinstance(event.get(key), str) and event.get(key) != "mcpScript":
                     add_call(event[key], event.get("arguments") or event.get("args"))
 
             for key in ("tool_call", "call", "function"):
@@ -372,6 +998,37 @@ def test_extract_tool_calls_preserves_structured_point_arguments() -> None:
             "arguments": {"latitude": 41.8781, "longitude": -93.0977},
         }
     ]
+
+
+def test_mcp_script_fixture_extracts_nested_tool_and_point_coordinates() -> None:
+    events = parse_pi_events(
+        (CAPTURE_FIXTURES_PATH / "mcp_script_sanitized.jsonl").read_text(encoding="utf-8")
+    )
+
+    executed = set().union(*(extract_structured_tool_names(event) for event in events))
+    assert "get_farmland_classification_by_point" in executed
+
+    calls = extract_tool_calls(events)
+    point_calls = [call for call in calls if call["name"] == "get_farmland_classification_by_point"]
+    assert point_calls
+    assert point_calls[0]["arguments"] == {"latitude": 40.1234, "longitude": -90.5678}
+
+
+def test_mcp_script_prose_and_discovery_do_not_count_as_invocations() -> None:
+    events = [
+        {
+            "type": "tool_execution_start",
+            "toolName": "mcpScript",
+            "args": {"code": "const text = 'tools.call is mentioned in prose';"},
+        },
+        {
+            "type": "tools_list",
+            "result": {"tools": [{"name": "get_farmland_classification_by_point"}]},
+        },
+    ]
+    executed = set().union(*(extract_structured_tool_names(event) for event in events))
+    assert "get_farmland_classification_by_point" not in executed
+    assert extract_tool_calls(events) == []
 
 
 def test_point_01_structured_arguments_match_exact_coordinates() -> None:

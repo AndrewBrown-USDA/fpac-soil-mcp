@@ -1,0 +1,2 @@
+{"type":"tool_execution_start","toolName":"mcpScript","args":{"code":"await tools.call('get_farmland_classification_by_point', { latitude: 40.1234, longitude: -90.5678 });"}}
+{"type":"tool_execution_end","toolName":"mcpScript","details":{"calls":[{"path":"fpac-soil/get_farmland_classification_by_point","structuredContent":{"latitude":40.1234,"longitude":-90.5678}}]},"structuredContent":{"latitude":40.1234,"longitude":-90.5678}}

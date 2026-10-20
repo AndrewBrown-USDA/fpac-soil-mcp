@@ -274,6 +274,16 @@ The server exposes **10 core MCP tools** for spatial soil query, farmland classi
 - `fppa_urban_exemption_assistant`: Guided prompt template for evaluating statutory 7 CFR § 658.2(a) urban area exemptions using Census 2020 Urban Areas Layer 0 screening and density documentation. Supports `project_name` and `jurisdiction` arguments.
 - `fppa_site_assessment_assistant`: Guided prompt template for Part VI Site Assessment (7 CFR § 658.5) scoring, 160/220 point statutory decision thresholds, Land Evaluation (LE) score handling, and Form AD-1006 vs NRCS-CPA-106 selection. Supports `project_name` and `evaluation_type` arguments.
 
+Prompt evaluation cases must render or invoke the named MCP prompt before the
+assistant answers. Direct FastMCP tests and Pi downstream tests serve different
+purposes: direct tests verify prompt registration and rendered content, while
+Pi tests verify gateway-mediated discovery, structured invocation evidence, and
+downstream behavior. Exact regulatory citations are intentional evaluation
+requirements; RES-01 preserves `7 CFR Part 657`, `7 CFR Part 658`, and
+`preliminary`. Gateway diagnostics distinguish bounded structured evidence from
+assistant prose, so names appearing only in prose do not count as prompt
+rendering, tool-list advertisement, or tool execution.
+
 ### Multi-Turn Workflow Example (Flow A: Linear Transmission Corridor & CPA-106 LESA)
 
 ```text
@@ -346,6 +356,83 @@ uv run ruff check .
 # Check formatting
 uv run ruff format --check .
 ```
+
+### Evaluation Capture (Opt-In)
+
+Capture is opt-in and non-retaining by default. The normal offline test command
+does not start Pi, contact external services, or enable capture. To retain
+artifacts, explicitly enable capture and provide a repository-external root:
+
+```powershell
+uv run python eval\run_evals.py --capture-artifacts --artifact-root C:\path\to\eval-artifacts
+```
+
+`EVAL_CAPTURE_ARTIFACTS=1` and `EVAL_CAPTURE_ROOT` may be used instead of the
+command-line flags. When capture is enabled, the root is required and must be
+outside this repository and its fixture directories; the runner rejects a root
+inside the repository. Use an access-restricted location. Captured output is
+local sensitive evaluation data, not a production data-retention mechanism.
+
+Each run is organized as:
+
+```text
+<external-root>\<run_id>\<case_id>\attempt-<N>\
+  metadata.json
+  stdout.txt
+  stderr.txt
+  events.jsonl
+  malformed-lines.txt
+  raw-stdout.txt
+  raw-stderr.txt
+  raw-events.jsonl
+  raw-malformed-lines.txt
+```
+
+For interrogation, inspect `metadata.json` first, then use the bounded
+`stdout.txt`, `stderr.txt`, `events.jsonl`, and `malformed-lines.txt` files for
+sanitized review. The `raw-*` files preserve complete captured streams and
+events for explicit local debugging; they can contain prompt, tool, provider,
+or other sensitive data. Metadata records whether bounded copies were
+truncated, while evaluation evidence is parsed independently of those copy
+limits. Run and case identifiers are sanitized before paths are constructed.
+
+Retention is caller-controlled: protect the external root, share artifacts
+only as needed, and remove them after inspection. Clean only beneath the
+validated root; never add raw artifacts to the repository. Checked-in fixtures
+must be minimal, deterministic, sanitized, and based on verified shapes;
+transport/parser fixtures are not historical Pi failures.
+
+This exception applies only to the local opt-in evaluation runner. It does not
+weaken production payload sanitization, Section 1619 protections, coordinate
+privacy controls, or the server's preliminary-screening limitations. Artifacts
+are diagnostic evidence, not an official FPPA determination or audit record.
+
+The default test path remains offline and excludes `live_network` and
+`agent_eval`:
+
+```powershell
+uv run pytest -m "not live_network and not agent_eval"
+```
+
+Live-network and Pi agent-evaluation commands are opt-in; run them serially with
+appropriate service, port, and artifact controls.
+
+For closure, the orchestrator runs the following six gates serially after
+worker changes are merged and records their exact results in
+`planning\STATE_30.md`:
+
+```powershell
+uv run pytest -m "not live_network and not agent_eval" -q
+uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q
+uv run ruff check .
+uv run ruff format --check .
+git diff --check
+uv run pytest -m agent_eval -q
+```
+
+The final Pi agent-evaluation gate may be recorded as an environmental block
+when its provider or network prerequisites are unavailable. Workers do not run
+or record these global serial closure gates.
 
 ---
 

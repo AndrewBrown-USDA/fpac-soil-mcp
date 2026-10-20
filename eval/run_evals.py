@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import unicodedata
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,14 @@ if sys.platform == "win32":
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
+MAX_CAPTURE_BYTES = 64 * 1024
+MAX_CAPTURE_LINES = 1000
+MAX_CAPTURE_EVENTS = 500
+SAFE_ID = re.compile(r"[^A-Za-z0-9_-]+")
+SENSITIVE = re.compile(
+    r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
+    r"email|phone|address|coordinates?|geometry|geojson|wkt)\s*[:=]\s*[^\s,;]+"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,6 +50,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="all",
         help="Filter test cases by category substring (e.g., 'Point', 'Polygon', 'Corridor', 'all').",
+    )
+    parser.add_argument(
+        "--capture-artifacts", action="store_true", help="Retain sanitized eval artifacts."
+    )
+    parser.add_argument(
+        "--artifact-root", type=Path, default=None, help="External root for retained artifacts."
     )
     parser.add_argument(
         "--case-id",
@@ -74,6 +89,94 @@ def parse_args() -> argparse.Namespace:
         help="Print model response text for each evaluated case (default: True). Use --no-show-output to suppress.",
     )
     return parser.parse_args()
+
+
+def _bounded(text: str | bytes | None) -> tuple[str, bool]:
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", "replace")
+    text = text or ""
+    truncated = len(text.encode("utf-8")) > MAX_CAPTURE_BYTES
+    if truncated:
+        text = text.encode("utf-8")[:MAX_CAPTURE_BYTES].decode("utf-8", "ignore")
+    return text, truncated
+
+
+def _sanitize(text: str) -> str:
+    return SENSITIVE.sub("[REDACTED]", text)
+
+
+def _safe_id(value: str) -> str:
+    safe = SAFE_ID.sub("_", str(value)).strip("_")
+    return safe[:80] or "unknown"
+
+
+def _artifact_root(root: Path | None) -> Path | None:
+    if root is None:
+        return None
+    resolved = root.expanduser().resolve()
+    try:
+        resolved.relative_to(REPO_ROOT)
+    except ValueError:
+        return resolved
+    raise ValueError("artifact root must be outside the repository")
+
+
+def _capture_attempt(
+    root: Path | None,
+    run_id: str,
+    case_id: str,
+    attempt: int,
+    metadata: dict[str, Any],
+    stdout: str,
+    stderr: str,
+    events: list[dict[str, Any]],
+    malformed: list[str],
+) -> dict[str, str]:
+    if root is None:
+        return {}
+    directory = root / _safe_id(run_id) / _safe_id(case_id) / f"attempt-{attempt}"
+    directory.mkdir(parents=True, exist_ok=True)
+    files = {
+        "metadata": directory / "metadata.json",
+        "stdout": directory / "stdout.txt",
+        "stderr": directory / "stderr.txt",
+        "events": directory / "events.jsonl",
+        "malformed_lines": directory / "malformed-lines.txt",
+        "raw_stdout": directory / "raw-stdout.txt",
+        "raw_stderr": directory / "raw-stderr.txt",
+        "raw_events": directory / "raw-events.jsonl",
+        "raw_malformed_lines": directory / "raw-malformed-lines.txt",
+    }
+    bounded_stdout, stdout_truncated = _bounded(_sanitize(stdout))
+    bounded_stderr, stderr_truncated = _bounded(_sanitize(stderr))
+    bounded_events = events[:MAX_CAPTURE_EVENTS]
+    bounded_malformed = malformed[:MAX_CAPTURE_LINES]
+    metadata = {
+        **metadata,
+        "artifact_stdout_truncated": stdout_truncated,
+        "artifact_stderr_truncated": stderr_truncated,
+        "artifact_events_truncated": len(bounded_events) < len(events),
+        "artifact_malformed_lines_truncated": len(bounded_malformed) < len(malformed),
+    }
+    files["metadata"].write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
+    files["stdout"].write_text(bounded_stdout, encoding="utf-8")
+    files["stderr"].write_text(bounded_stderr, encoding="utf-8")
+    files["events"].write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in bounded_events),
+        encoding="utf-8",
+    )
+    files["malformed_lines"].write_text(
+        "".join(_sanitize(line) + "\n" for line in bounded_malformed), encoding="utf-8"
+    )
+    files["raw_stdout"].write_text(stdout, encoding="utf-8")
+    files["raw_stderr"].write_text(stderr, encoding="utf-8")
+    files["raw_events"].write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events), encoding="utf-8"
+    )
+    files["raw_malformed_lines"].write_text(
+        "".join(line + "\n" for line in malformed), encoding="utf-8"
+    )
+    return {key + "_path": str(path.relative_to(root)) for key, path in files.items()}
 
 
 def get_pi_executable() -> str:
@@ -161,6 +264,29 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     names: set[str] = set()
     event_type = str(event.get("type", "")).lower()
 
+    if (
+        event_type in {"tool_execution_start", "tool_execution_end"}
+        and event.get("toolName") == "mcpScript"
+    ):
+        args = event.get("args")
+        code = args.get("code") if isinstance(args, dict) else None
+        if isinstance(code, str):
+            names.update(
+                match.group(1)
+                for match in re.finditer(
+                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,""", code
+                )
+            )
+        details = event.get("details")
+        calls = details.get("calls") if isinstance(details, dict) else None
+        if isinstance(calls, list):
+            for call in calls:
+                path = call.get("path") if isinstance(call, dict) else None
+                if isinstance(path, str):
+                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
+                    if re.fullmatch(r"[A-Za-z0-9_-]+", leaf):
+                        names.add(leaf)
+
     # Direct tool execution or tool call events
     if "tool" in event_type or event_type in {"call", "tool_use", "tool_call", "tool_execution"}:
         for key in ("tool_name", "tool", "name", "function_name", "toolName"):
@@ -241,6 +367,29 @@ def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
     return names
 
 
+def _has_dedicated_invocation(event: dict[str, Any]) -> bool:
+    """Return whether an event contains a structured tool invocation container."""
+    if extract_structured_tool_names(event):
+        return True
+    for container in (event.get("tool_call"), event.get("call"), event.get("function")):
+        if isinstance(container, dict) and any(
+            isinstance(container.get(key), str) and container[key]
+            for key in ("name", "tool_name", "tool", "toolName", "function_name")
+        ):
+            return True
+    message = event.get("message")
+    if isinstance(message, dict):
+        if isinstance(message.get("tool_calls") or message.get("toolCalls"), list):
+            return True
+        content = message.get("content")
+        if isinstance(content, list) and any(
+            isinstance(block, dict) and block.get("type") in {"tool_use", "tool_call", "toolCall"}
+            for block in content
+        ):
+            return True
+    return False
+
+
 def extract_assistant_content(event: dict[str, Any]) -> str:
     """Extract assistant response text or tool output from an event."""
     event_type = str(event.get("type", "")).lower()
@@ -309,6 +458,51 @@ def extract_advertised_tool_names(events: list[dict[str, Any]]) -> tuple[set[str
     return None, "unknown"
 
 
+def extract_structured_prompt_names(event: dict[str, Any]) -> set[str]:
+    """Extract prompt names only from dedicated structured prompt fields."""
+    names: set[str] = set()
+    event_type = str(event.get("type", "")).lower()
+    if "prompt" not in event_type:
+        return names
+    for key in ("prompt_name", "promptName", "name"):
+        value = event.get(key)
+        if isinstance(value, str) and value:
+            names.add(value)
+    for key in ("prompt", "prompt_call", "promptCall"):
+        container = event.get(key)
+        if isinstance(container, dict):
+            for name_key in ("name", "prompt_name", "promptName"):
+                value = container.get(name_key)
+                if isinstance(value, str) and value:
+                    names.add(value)
+    return names
+
+
+def prompt_case_instruction(case: dict[str, Any]) -> str:
+    """Build an explicit, bounded instruction for rendering a named MCP prompt."""
+    prompt_name = case.get("target_name", "")
+    citation_note = ""
+    if case.get("id") == "RES-01":
+        citation_note = (
+            " Retain the exact keywords 7 CFR Part 657, 7 CFR Part 658, and preliminary "
+            "in the final answer."
+        )
+    elif case.get("id") == "PROMPT-02":
+        citation_note = (
+            " Retain 7 CFR § 658.5(c), CPA-106 guidance, and the preliminary limitation "
+            "in the final answer."
+        )
+    if case.get("target_type") == "prompt":
+        return (
+            f"First invoke or render the MCP prompt named {prompt_name}; use its rendered "
+            f"instructions before answering. Then complete this request: {case['user_prompt']}."
+            f"{citation_note}"
+        )
+    return (
+        f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}{citation_note}"
+    )
+
+
 def _tool_matches(expected: str, executed: set[str]) -> bool:
     return expected in executed or any(
         name.endswith((f"_{expected}", f":{expected}")) for name in executed
@@ -333,11 +527,21 @@ def run_case(
     timeout: int,
     verbose: bool,
     pi_exe: str = "pi",
+    run_id: str | None = None,
+    artifact_root: Path | None = None,
 ) -> dict[str, Any]:
     case_id = case["id"]
     prompt = case["user_prompt"]
     expected_keywords = case.get("expected_keywords", [])
     expected_tools = case.get("expected_tools", [])
+    run_id = run_id or uuid.uuid4().hex
+    try:
+        artifact_root = _artifact_root(artifact_root)
+    except ValueError as exc:
+        artifact_root = None
+        artifact_error = str(exc)
+    else:
+        artifact_error = ""
 
     cmd = [
         pi_exe,
@@ -349,7 +553,7 @@ def run_case(
         "--append-system-prompt",
         "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to fulfill the user request before generating the final response. Do not answer purely from memory if an MCP tool or resource is available.",
         "-p",
-        f"Call the appropriate fpac-soil MCP tool/resource and {prompt}",
+        prompt_case_instruction(case),
     ]
     if model:
         cmd.extend(["--model", model])
@@ -359,11 +563,19 @@ def run_case(
     error_msg = ""
     output = ""
     elapsed = 0.0
+    attempts: list[dict[str, Any]] = []
+    evidence_classification = "absent"
+    artifact_paths: dict[str, str] = {}
 
     try:
         retry_count = 0
         diagnostics: list[str] = []
         while True:
+            attempt = retry_count + 1
+            started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            proc = None
+            stdout = stderr = ""
+            outcome = "completed"
             proc = subprocess.run(
                 cmd,
                 cwd=str(sandbox_dir),
@@ -374,22 +586,81 @@ def run_case(
                 timeout=timeout,
                 check=False,
             )
-            output = proc.stdout or ""
+            stdout = (
+                proc.stdout.decode("utf-8", "replace")
+                if isinstance(proc.stdout, bytes)
+                else (proc.stdout or "")
+            )
+            stderr = (
+                proc.stderr.decode("utf-8", "replace")
+                if isinstance(proc.stderr, bytes)
+                else (proc.stderr or "")
+            )
+            bounded_stdout, stdout_truncated = _bounded(stdout)
+            bounded_stderr, stderr_truncated = _bounded(stderr)
+            output = stdout
             events: list[dict[str, Any]] = []
+            malformed: list[str] = []
             for line in output.splitlines():
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError:
+                    malformed.append(line)
                     continue
                 if isinstance(event, dict):
                     events.append(event)
+            dedicated_events = [event for event in events if _has_dedicated_invocation(event)]
+            executed_tools = set().union(
+                *(extract_structured_tool_names(event) for event in events)
+            )
+            evidence_classification = (
+                "recognized"
+                if executed_tools
+                else "present_unrecognized"
+                if dedicated_events
+                else "absent"
+            )
+            attempt_meta = {
+                "run_id": run_id,
+                "case_id": case_id,
+                "attempt": attempt,
+                "started_at_utc": started_at,
+                "ended_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "model": model or "provider-default",
+                "provider": "pi",
+                "transport": "stdio",
+                "return_code": proc.returncode,
+                "stdout_truncated": stdout_truncated,
+                "stderr_truncated": stderr_truncated,
+                "event_count": len(events),
+                "malformed_line_count": len(malformed),
+            }
+            paths = _capture_attempt(
+                artifact_root,
+                run_id,
+                case_id,
+                attempt,
+                attempt_meta,
+                stdout,
+                stderr,
+                events,
+                malformed,
+            )
+            attempts.append({**attempt_meta, **paths})
+            if paths:
+                artifact_paths.update(
+                    {f"attempt_{attempt}_{key}": value for key, value in paths.items()}
+                )
             if proc.returncode != 0:
                 status = "FAIL"
-                error_msg = f"Non-zero exit code ({proc.returncode}): {(proc.stderr or '').strip()}"
+                error_msg = f"Non-zero exit code ({proc.returncode}): {stderr.strip()}"
                 break
 
             executed_tools = set().union(
                 *(extract_structured_tool_names(event) for event in events)
+            )
+            executed_prompts = set().union(
+                *(extract_structured_prompt_names(event) for event in events)
             )
             advertised_tools, advertisement_source = extract_advertised_tool_names(events)
             missing_tools = [
@@ -412,8 +683,29 @@ def run_case(
                     continue
                 if unadvertised:
                     diagnostics.append(f"unadvertised expected tool(s): {', '.join(unadvertised)}")
+                elif retryable:
+                    diagnostics.append(
+                        f"advertised-but-not-executed tool(s): {', '.join(retryable)}"
+                    )
             elif missing_tools:
-                diagnostics.append("configuration diagnostic: MCP tool list unavailable")
+                diagnostics.append("tool-list discovery unavailable; cannot classify advertisement")
+
+            if (
+                case.get("target_type") == "prompt"
+                and any("prompt" in str(event.get("type", "")).lower() for event in events)
+                and case["target_name"] not in executed_prompts
+            ):
+                diagnostics.append(f"prompt discovery mismatch: expected {case['target_name']}")
+            if expected_tools and advertised_tools is not None and not missing_tools:
+                unexecuted_advertised = [
+                    tool
+                    for tool in expected_tools
+                    if tool in advertised_tools and not _tool_matches(tool, executed_tools)
+                ]
+                if unexecuted_advertised:
+                    diagnostics.append(
+                        f"advertised-but-not-executed tool(s): {', '.join(unexecuted_advertised)}"
+                    )
 
             assistant_texts = [
                 extract_assistant_content(event)
@@ -446,13 +738,94 @@ def run_case(
             if proc.stderr:
                 print(f"[{case_id}] Stderr:\n{proc.stderr}\n")
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
         elapsed = time.perf_counter() - start_time
         status = "TIMEOUT"
         error_msg = f"Exceeded {timeout}s timeout"
+        stdout = (
+            exc.stdout.decode("utf-8", "replace")
+            if isinstance(exc.stdout, bytes)
+            else (exc.stdout or "")
+        )
+        stderr = (
+            exc.stderr.decode("utf-8", "replace")
+            if isinstance(exc.stderr, bytes)
+            else (exc.stderr or "")
+        )
+        output = stdout
+        timeout_events: list[dict[str, Any]] = []
+        timeout_malformed: list[str] = []
+        for line in stdout.splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                timeout_malformed.append(line)
+                continue
+            if isinstance(event, dict):
+                timeout_events.append(event)
+        attempt = retry_count + 1
+        attempt_meta = {
+            "run_id": run_id,
+            "case_id": case_id,
+            "attempt": attempt,
+            "outcome": "timeout",
+            "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "ended_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "model": model or "provider-default",
+            "provider": "pi",
+            "transport": "stdio",
+            "return_code": None,
+            "stdout_truncated": _bounded(stdout)[1],
+            "stderr_truncated": _bounded(stderr)[1],
+            "event_count": len(timeout_events),
+            "malformed_line_count": len(timeout_malformed),
+        }
+        paths = _capture_attempt(
+            artifact_root,
+            run_id,
+            case_id,
+            attempt,
+            attempt_meta,
+            stdout,
+            stderr,
+            timeout_events,
+            timeout_malformed,
+        )
+        attempts.append({**attempt_meta, **paths})
+        artifact_paths.update({f"attempt_{attempt}_{key}": value for key, value in paths.items()})
     except (subprocess.SubprocessError, OSError) as e:
         status = "ERROR"
         error_msg = f"{type(e).__name__}: {e}"
+        attempt = retry_count + 1
+        attempt_meta = {
+            "run_id": run_id,
+            "case_id": case_id,
+            "attempt": attempt,
+            "outcome": "startup_error",
+            "started_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "ended_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "model": model or "provider-default",
+            "provider": "pi",
+            "transport": "stdio",
+            "return_code": None,
+            "stdout_truncated": False,
+            "stderr_truncated": False,
+            "event_count": 0,
+            "malformed_line_count": 0,
+        }
+        paths = _capture_attempt(
+            artifact_root,
+            run_id,
+            case_id,
+            attempt,
+            attempt_meta,
+            "",
+            "",
+            [],
+            [],
+        )
+        attempts.append({**attempt_meta, **paths})
+        artifact_paths.update({f"attempt_{attempt}_{key}": value for key, value in paths.items()})
     finally:
         elapsed = time.perf_counter() - start_time
 
@@ -468,6 +841,11 @@ def run_case(
         else output,
         "expected_keywords": expected_keywords,
         "expected_tools": expected_tools,
+        "run_id": run_id,
+        "evidence_classification": evidence_classification,
+        "attempts": attempts,
+        "artifact_paths": artifact_paths,
+        "capture_error": artifact_error,
     }
 
 
@@ -475,6 +853,19 @@ def main() -> None:
     args = parse_args()
     pi_exe = check_prerequisites()
     cases = load_test_cases(args.category, args.case_id)
+    run_id = uuid.uuid4().hex
+    capture_enabled = args.capture_artifacts or os.environ.get("EVAL_CAPTURE_ARTIFACTS") == "1"
+    artifact_root = args.artifact_root or (
+        Path(os.environ["EVAL_CAPTURE_ROOT"]) if os.environ.get("EVAL_CAPTURE_ROOT") else None
+    )
+    if capture_enabled and artifact_root is None:
+        print(
+            "ERROR: --capture-artifacts requires --artifact-root or EVAL_CAPTURE_ROOT.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    if not capture_enabled:
+        artifact_root = None
 
     if not cases:
         print(
@@ -501,11 +892,31 @@ def main() -> None:
                 flush=True,
             )
             res = run_case(
-                case, sandbox_path, args.model, args.timeout, args.verbose, pi_exe=pi_exe
+                case,
+                sandbox_path,
+                args.model,
+                args.timeout,
+                args.verbose,
+                pi_exe=pi_exe,
+                run_id=run_id,
+                artifact_root=artifact_root,
             )
             print(f"{res['status']} ({res['elapsed_sec']}s)")
             if res["error"]:
                 print(f"     -> {res['error']}")
+            for attempt in res.get("attempts", []):
+                attempt_label = f"attempt {attempt.get('attempt', '?')}"
+                outcome = attempt.get("outcome", "unknown")
+                return_code = attempt.get("return_code")
+                print(f"     -> {attempt_label}: outcome={outcome}, return_code={return_code}")
+                metadata_path = attempt.get("metadata")
+                if metadata_path:
+                    print(f"        metadata: {metadata_path}")
+            if res.get("artifact_paths"):
+                for label, path in sorted(res["artifact_paths"].items()):
+                    print(f"     -> artifact {label}: {path}")
+            if res.get("capture_error"):
+                print(f"     -> capture error: {res['capture_error']}")
             if args.show_output and res["output"]:
                 print("\n" + "-" * 40 + f" [OUTPUT: {res['id']}] " + "-" * 40)
                 print(res["output"].strip())
