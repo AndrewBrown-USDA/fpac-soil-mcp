@@ -27,10 +27,11 @@ from fpac_soil_mcp.geometry import (
 )
 from fpac_soil_mcp.lesa import _normalize_productivity_index
 from fpac_soil_mcp.models import (
+    SUPPORTED_INDEX_MSG,
+    VALIDATED_PRODUCTIVITY_INDEXES,
     FarmlandCategoryBreakdown,
     LandEvaluationSummary,
     PolygonFarmlandAnalysisResponse,
-    ProductivityIndexType,
     QuerySource,
     SoilMapUnitAcreage,
 )
@@ -107,12 +108,11 @@ class PolygonAnalyzer:
         timestamp_str = now.isoformat()
 
         idx_enum = _normalize_productivity_index(productivity_index)
-        if idx_enum is not ProductivityIndexType.NCCPI:
+        if idx_enum not in VALIDATED_PRODUCTIVITY_INDEXES:
             raise ValueError(
-                f"Unsupported productivity index type '{productivity_index}'. "
-                "Supported fixed selector: 'nccpi'."
+                f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
             )
-        norm_idx = "nccpi"
+        norm_idx = idx_enum.value.lower()
 
         # 1. Parse and validate geometry
         try:

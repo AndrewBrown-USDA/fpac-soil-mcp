@@ -1,16 +1,16 @@
 ---
 id: "0008"
-title: "NCCPI as Validated Public Productivity Index with Extensible SDV Routing"
+title: "NCCPI, CSR2, CPI, and Storie as Validated Public Productivity Indexes"
 status: "Accepted"
 date: 2026-09-28
 authors:
   - "Andrew G. Brown"
 supersedes: null
 superseded_by: null
-source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26"
+source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27"
 ---
 
-# 8. NCCPI as Validated Public Productivity Index with Extensible SDV Routing
+# 8. NCCPI, CSR2, CPI, and Storie as Validated Public Productivity Indexes
 
 ## Context and Problem Statement
 
@@ -18,9 +18,9 @@ FPPA Land Evaluation scores require soil productivity ratings. The appropriate
 productivity index varies by state: Iowa uses CSR2, Minnesota uses CPI,
 California uses the Revised Storie Index, and most states default to NCCPI v3.
 EP17 implemented dynamic Soil Data Viewer (SDV) attribute routing to support
-multiple indexes. However, after implementation and remediation (EP20, EP22,
-EP23), EP26 explicitly narrowed the validated public contract to NCCPI only,
-retaining lower-level custom query paths for future extensibility.
+multiple indexes. After implementation and remediation (EP20, EP22, EP23),
+EP26 temporarily narrowed the validated public contract to NCCPI only while
+lower-level custom query paths were retained for future extensibility.
 
 ## Decision Drivers
 
@@ -48,26 +48,41 @@ retaining lower-level custom query paths for future extensibility.
 
 ## Decision Outcome
 
-Chosen option: **NCCPI as the validated public contract with extensible SDV
-routing retained**, because it protects users from unvalidated index results
-while preserving the infrastructure to add validated state indexes in the future
-without architectural changes.
+Chosen option: **Validated public indexes with extensible SDV routing
+retained**. The current public contract is the four-selector set NCCPI, CSR2
+(Iowa Corn Suitability Rating), CPI (Crop Productivity Index), and STORIE
+(California Revised Storie Index). EP27 and EP31 validated the extensibility
+claim of the original design. Adding the state indexes required only:
+1. A new `ProductivityIndexType.CSR2` enum value
+2. Fixed SQL templates for `mapunit.iacornsr`
+3. Routing branches in `get_productivity_ratings` / `get_county_max_productivity_rating`
+4. Expanded NCCPI-only guards in polygon, corridor, and tool layers
+5. Live-verified benchmark fixture (IA169 county max = 96)
+
+No architectural changes were needed, confirming the extensible design.
 
 ### Consequences
 
-* **Positive**: `ProductivityIndexType` enum contains only `NCCPI`. Unsupported
-  index requests are rejected at the tool level before reaching SDA, preventing
-  unvalidated scores from reaching users.
+* **Positive**: `ProductivityIndexType` enum contains the four validated public
+  selectors `NCCPI`, `CSR2`, `CPI`, and `STORIE`.
+  Unsupported index requests are rejected at the tool level before reaching
+  SDA, preventing unvalidated scores from reaching users.
 * **Positive**: The lower-level `sda_client.py` methods still support dynamic
   SDV attribute routing with explicit validated metadata, so adding a future
   state index requires adding the enum value and test fixtures, not architectural
   changes.
 * **Positive**: Null/unrated screening with explicit notices prevents mathematical
   distortion and provides transparency in LE scoring.
-* **Negative**: State-specific indexes (CSR2, CPI, Storie) are not available
-  through the public tool API until individually validated with state-specific
-  benchmark fixtures. This limits Land Evaluation accuracy in states where NCCPI
-  is not the locally preferred index.
+* **Positive**: CSR2 is now available for Iowa-based Land Evaluation, using
+  the direct `mapunit.iacornsr` column (integer scale 5-100). Non-Iowa counties
+  correctly return None for CSR2.
+* **Positive**: CPI is now available for ND/SD/MN-based Land Evaluation, using
+  component-weighted `component.cropprodindex` (integer scale 1-100). Non-populated
+  counties correctly return None.
+* **Positive**: Storie is now available for California-based Land Evaluation,
+  reusing the NCCPI cointerp SQL templates with rule name
+  "AGR - California Revised Storie Index (CA)" (float scale 0-1).
+  Non-California counties correctly return None.
 * **Negative**: Three remediation waves (EP20 cointerp rules, EP22 productivity
   preservation, EP23 productivity ratings) were needed before EP26 could
   confidently narrow the public contract.
@@ -76,6 +91,37 @@ without architectural changes.
 
 EP17 (2026-09-28) established dynamic SDV routing. EP20 (commit `9cbcc7ed`)
 fixed cointerp aggregation rules. EP22-23 remediated productivity preservation.
-EP26 (commit `cc822eaa`) narrowed the public contract: STATE_26 line 48
-records "public and test contracts now expose validated national NCCPI only."
-`ProductivityIndexType` enum: `models.py:318-321`.
+EP26 (commit `cc822eaa`) temporarily narrowed the public contract:
+STATE_26 line 48 records "public and test contracts now expose validated
+national NCCPI only." EP27 (2026-10-15 → 2026-10-19) validated and added the
+state-specific productivity indexes, making all four members of the current
+public contract:
+* `ProductivityIndexType` enum: NCCPI, CSR2, CPI, STORIE
+* CSR2: `SDA:MAPUNIT_IACORNSR` — fixed SQL, IA169 max = 96.0
+* CPI: `SDA:COMPONENT_CROPPRODINDEX` — component-level, MN167 max = 100.0
+* Storie: `SDA:COINTERP_STORIE_CA` — reuses NCCPI cointerp template,
+  CA077 max ≈ 0.995
+* Benchmark fixtures in `tests/fixtures/le_benchmarks.json`
+
+EP31 (2026-10-19) code-review remediation of EP27:
+* Extracted `VALIDATED_PRODUCTIVITY_INDEXES` (auto-all frozenset) and
+  `SUPPORTED_INDEX_MSG` (dynamically generated) constants in `models.py`
+* Consolidated inline guard tuples across 5 source files to use the frozenset
+* Added `_round_for_index()` rounding helper and alias frozensets in `sda_client.py`
+* Fixed CPI `compkind != 'miscellaneous area'` filter (B5) and zero-sentinel (B4)
+* Added rounding-precision and guard-acceptance tests
+
+The public response fields are generic (`productivity_rating`,
+`productivity_rating_class`, and `productivity_rating_source`). Selector
+aliases normalize before routing, filtering, sentinel handling, and rounding.
+NCCPI and STORIE use a 0–1 scale with three-decimal output; CSR2 uses 5–100
+and CPI uses 1–100 with integer output. Provenance is selector-specific:
+`SDA:NCCPI_V3`, `SDA:MAPUNIT_IACORNSR`, `SDA:COMPONENT_CROPPRODINDEX`, and
+`SDA:COINTERP_STORIE_CA`. Index-aware sentinels are excluded before
+aggregation; valid CSR2/CPI `99.0` remains rated. County normalization uses a
+validated override when supplied, otherwise the selected index's per-area-symbol
+county maximum. The former `nccpi_rating` and `nccpi_class` aliases remain
+removed from the public schema.
+
+The retained architectural boundary is `sda_client.py`: dynamic SDV routing
+remains there, and no dedicated routing module is extracted.

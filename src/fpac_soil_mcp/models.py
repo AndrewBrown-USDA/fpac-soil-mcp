@@ -319,6 +319,20 @@ class ProductivityIndexType(str, Enum):
     """Supported Soil Productivity Index types for Land Evaluation (LE)."""
 
     NCCPI = "NCCPI"
+    CSR2 = "CSR2"
+    CPI = "CPI"
+    STORIE = "STORIE"
+
+
+VALIDATED_PRODUCTIVITY_INDEXES: frozenset[ProductivityIndexType] = frozenset(ProductivityIndexType)
+"""All currently validated productivity index types for FPPA guard checks."""
+
+SUPPORTED_INDEX_MSG: str = (
+    "Supported fixed selectors: "
+    + ", ".join(f"'{v.value.lower()}'" for v in ProductivityIndexType)
+    + "."
+)
+"""Human-readable error message listing all valid productivity index selectors."""
 
 
 class MapUnitProductivityRating(BaseModel):

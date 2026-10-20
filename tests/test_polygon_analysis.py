@@ -226,7 +226,7 @@ def test_analyze_polygon_partitions_county_benchmarks_and_weights_by_acreage():
     assert result.manifest["candidate_le_score"] == pytest.approx(53.0)
 
 
-@pytest.mark.parametrize("index", ["csr2", "cpi", "storie", "custom"])
+@pytest.mark.parametrize("index", ["custom", "unsupported", ""])
 def test_unsupported_selector_rejected_before_sda(index):
     sda = MagicMock(spec=SDAClient)
     with pytest.raises(ValueError, match="Unsupported productivity index type"):
@@ -396,3 +396,45 @@ def test_analyze_polygon_fully_covered():
 
     assert res.coverage_status == "covered"
     assert res.farmland_summary.unmapped_acres == 0.0
+
+
+@pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
+def test_all_validated_selectors_accepted(index):
+    """All validated productivity index selectors pass the guard without ValueError."""
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = []
+    mock_sda.get_productivity_ratings.return_value = []
+    mock_sda.get_county_max_productivity_rating.return_value = None
+    mock_sda.get_interpretations.return_value = []
+    analyzer = _analyzer(mock_sda)
+    # Should NOT raise ValueError — downstream calls can return empty/mock data
+    result = analyzer.analyze_polygon(GEOJSON, productivity_index=index)
+    assert result.query_type == "polygon"
+
+
+@pytest.mark.parametrize("index", ["csr2", "cpi", "storie"])
+def test_polygon_forwards_selected_productivity_index(index):
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = [
+        {
+            "mukey": "1",
+            "musym": "A",
+            "muname": "Test soil",
+            "farmlndcl": "Prime farmland",
+            "areasymbol": "IA169",
+            "area_ac": 10.0,
+        }
+    ]
+    mock_sda.get_productivity_ratings.return_value = [
+        {"mukey": "1", "numeric_rating": 0.8, "is_rated": True}
+    ]
+    mock_sda.get_county_max_productivity_rating.return_value = 1.0
+
+    _analyzer(mock_sda).analyze_polygon(GEOJSON, productivity_index=index)
+
+    mock_sda.get_productivity_ratings.assert_called_once_with(mukeys=["1"], index_type=index)
+    mock_sda.get_county_max_productivity_rating.assert_called_once_with(
+        areasymbol="IA169", index_type=index
+    )

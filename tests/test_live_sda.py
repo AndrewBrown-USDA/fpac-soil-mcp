@@ -129,3 +129,156 @@ class TestLiveSDA:
         max_val = client.get_county_max_productivity_rating(areasymbol="IA169", index_type="nccpi")
         assert max_val is not None
         assert max_val > 0.0
+
+    def test_live_csr2_productivity_ratings_iowa(self) -> None:
+        """Query CSR2 (mapunit.iacornsr) for known Iowa mukeys — Story County, IA."""
+        client = SDAClient()
+        try:
+            pt_res = client.get_by_point(latitude=42.0308, longitude=-93.6319)
+            if not pt_res or not pt_res[0].get("mukey"):
+                pytest.skip("Could not fetch test mukey from point")
+            test_mukey = str(pt_res[0]["mukey"])
+
+            results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="csr2")
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert len(results) == 1
+        res = results[0]
+        assert res["index_type"] == "csr2"
+        assert res["productivity_rating_source"] == "SDA:MAPUNIT_IACORNSR"
+        # Iowa soils should have CSR2 values in range 5-100
+        if res["is_rated"]:
+            assert 5 <= res["numeric_rating"] <= 100
+
+    def test_live_csr2_county_max_iowa(self) -> None:
+        """CSR2 county max for IA169 (Story County) — research found max=96."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="IA169", index_type="csr2"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is not None
+        assert 90 <= max_val <= 100  # known IA169 max is 96
+
+    def test_live_csr2_county_max_non_iowa_is_null(self) -> None:
+        """CSR2 should return None for non-Iowa counties (iacornsr is Iowa-only)."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="IL019", index_type="csr2"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is None
+
+    def test_live_cpi_county_max_minnesota(self) -> None:
+        """CPI county max for MN167 (Wilkin County) — research found max=100."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="MN167", index_type="cpi"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is not None
+        # Research found MN167 max=100
+        assert 90 <= max_val <= 100
+
+    def test_live_cpi_productivity_ratings_minnesota(self) -> None:
+        """Query CPI (component.cropprodindex) for a real Wilkin County mukey."""
+        client = SDAClient()
+        try:
+            pt_res = client.get_by_point(latitude=46.28, longitude=-96.58)
+            if not pt_res or not pt_res[0].get("mukey"):
+                pytest.skip("Could not fetch test mukey from point")
+            test_mukey = str(pt_res[0]["mukey"])
+
+            results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="cpi")
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert len(results) == 1
+        res = results[0]
+        assert res["index_type"] == "cpi"
+        assert res["productivity_rating_source"] == "SDA:COMPONENT_CROPPRODINDEX"
+        if res["is_rated"]:
+            assert 0 < res["numeric_rating"] <= 100
+
+    def test_live_cpi_county_max_non_populated_county(self) -> None:
+        """CPI may be NULL in metro MN counties (e.g. Hennepin MN053)."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="MN053", index_type="cpi"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        # MN053 (Hennepin) may have no CPI data
+        # If it returns something, it should be in valid range
+        if max_val is not None:
+            assert 0 < max_val <= 100
+
+    def test_live_cpi_county_max_non_mn_is_null(self) -> None:
+        """CPI should return None for non-MN/ND/SD counties."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="CA077", index_type="cpi"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is None
+
+    def test_live_storie_county_max_california(self) -> None:
+        """Storie county max for CA077 (San Joaquin) — research found max ~0.995."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="CA077", index_type="storie"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is not None
+        assert 0.9 <= max_val <= 1.0  # known CA077 max ~0.995
+
+    def test_live_storie_county_max_non_ca_is_null(self) -> None:
+        """Storie should return None for non-California counties."""
+        client = SDAClient()
+        try:
+            max_val = client.get_county_max_productivity_rating(
+                areasymbol="IA169", index_type="storie"
+            )
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert max_val is None
+
+    def test_live_storie_ratings_california(self) -> None:
+        """Query Storie ratings for a known CA077 mukey."""
+        client = SDAClient()
+        try:
+            # Use a known San Joaquin County point to get a CA mukey
+            pt_res = client.get_by_point(latitude=37.95, longitude=-121.29)
+            if not pt_res or not pt_res[0].get("mukey"):
+                pytest.skip("Could not fetch test mukey from CA point")
+            test_mukey = str(pt_res[0]["mukey"])
+
+            results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="storie")
+        except (SDAClientError, httpx.HTTPError) as exc:
+            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+        assert len(results) == 1
+        res = results[0]
+        assert res["index_type"] == "storie"
+        assert res["productivity_rating_source"] == "SDA:COINTERP_STORIE_CA"
+        if res["is_rated"]:
+            assert 0 < res["numeric_rating"] <= 1.0

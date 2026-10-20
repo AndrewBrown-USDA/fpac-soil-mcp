@@ -226,6 +226,7 @@ class TestFPPATools:
                 buffer_distance=100.0,
                 buffer_units="feet",
                 include_nccpi=True,
+                productivity_index="NCCPI",
             )
 
     @patch("fpac_soil_mcp.tools.soil_tools.PolygonAnalyzer")
@@ -280,6 +281,7 @@ class TestFPPATools:
             buffer_distance=250.0,
             buffer_units="meters",
             include_nccpi=True,
+            productivity_index="NCCPI",
         )
 
     def test_calculate_preliminary_lesa_rejects_polygon_corridor(self) -> None:
@@ -465,6 +467,7 @@ class TestCorridorTools:
             indirect_geometry_input=None,
             alternatives=None,
             include_nccpi=True,
+            productivity_index="NCCPI",
         )
 
     @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")
@@ -499,7 +502,7 @@ class TestCorridorTools:
             indirect_geometry="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
             alternatives=alternatives,
             include_nccpi=True,
-            productivity_index="nccpi",
+            productivity_index="NCCPI",
             max_county_rating_override=88.0,
         )
 
@@ -511,8 +514,36 @@ class TestCorridorTools:
             indirect_geometry_input="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
             alternatives=alternatives,
             include_nccpi=True,
-            productivity_index="nccpi",
+            productivity_index="NCCPI",
             max_county_rating_override=88.0,
+        )
+
+    @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")
+    def test_analyze_corridor_fppa_forwards_non_nccpi_without_override(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_instance = mock_analyzer_cls.return_value
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {"query_type": "corridor"}
+        mock_response.county_segments = []
+        mock_response.composite_relative_rating = None
+        mock_instance.analyze_corridor.return_value = mock_response
+
+        analyze_corridor_fppa(
+            centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=50.0,
+            productivity_index="csr2",
+            include_nccpi=False,
+        )
+
+        mock_instance.analyze_corridor.assert_called_once_with(
+            centerline_input="LINESTRING(-93.5 42.0, -93.4 42.1)",
+            buffer_distance=50.0,
+            buffer_units="feet",
+            indirect_geometry_input=None,
+            alternatives=None,
+            include_nccpi=False,
+            productivity_index="CSR2",
         )
 
     @patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer")

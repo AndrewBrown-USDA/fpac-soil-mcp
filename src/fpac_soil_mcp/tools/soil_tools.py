@@ -31,6 +31,8 @@ from fpac_soil_mcp.geometry import (
 from fpac_soil_mcp.integration_models import UrbanExemptionRecord
 from fpac_soil_mcp.lesa import _normalize_productivity_index, evaluate_lesa
 from fpac_soil_mcp.models import (
+    SUPPORTED_INDEX_MSG,
+    VALIDATED_PRODUCTIVITY_INDEXES,
     FarmlandClassificationResponse,
     LandEvaluationSummary,
     PolygonFarmlandAnalysisResponse,
@@ -200,10 +202,9 @@ def analyze_farmland_by_polygon(
         PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+    if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selector: 'nccpi'."
+            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
         )
     analyzer = PolygonAnalyzer()
     return analyzer.analyze_polygon(
@@ -401,10 +402,9 @@ def analyze_corridor_fppa(
         Dictionary containing CorridorFarmlandAnalysisResponse fields, plus optional 'lesa_evaluation' result.
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+    if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selector: 'nccpi'."
+            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
         )
     analyzer = CorridorAnalyzer()
     corridor_kwargs: dict[str, Any] = {
@@ -414,9 +414,9 @@ def analyze_corridor_fppa(
         "indirect_geometry_input": indirect_geometry,
         "alternatives": alternatives,
         "include_nccpi": include_nccpi,
+        "productivity_index": normalized_productivity_index,
     }
     if max_county_rating_override is not None:
-        corridor_kwargs["productivity_index"] = productivity_index
         corridor_kwargs["max_county_rating_override"] = max_county_rating_override
     corridor_response = analyzer.analyze_corridor(
         **corridor_kwargs,
@@ -523,10 +523,9 @@ def calculate_preliminary_lesa(
     analysis_geometry: dict[str, Any] | str = geometry
     norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index is not ProductivityIndexType.NCCPI:
+    if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. "
-            "Supported fixed selector: 'nccpi'."
+            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
         )
     if isinstance(geometry, (LineString, MultiLineString)):
         parsed_geometry = geometry
@@ -548,9 +547,9 @@ def calculate_preliminary_lesa(
             "buffer_distance": corridor_buffer_distance,
             "buffer_units": corridor_buffer_units,
             "include_nccpi": normalized_productivity_index is ProductivityIndexType.NCCPI,
+            "productivity_index": normalized_productivity_index,
         }
         if max_county_rating_override is not None:
-            corridor_kwargs["productivity_index"] = productivity_index
             corridor_kwargs["max_county_rating_override"] = max_county_rating_override
         corridor_result = analyze_corridor_fppa(**corridor_kwargs)
         le_score = float(corridor_result.get("composite_relative_rating") or 0.0)
