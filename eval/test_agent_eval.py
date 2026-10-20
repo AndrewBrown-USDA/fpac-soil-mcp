@@ -24,8 +24,8 @@ from run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
     extract_structured_prompt_names,
-    should_retry_missing_tools,
     prompt_case_instruction,
+    should_retry_missing_tools,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -104,15 +104,18 @@ def test_prompt_cases_require_named_render_and_preserve_case_constraints(
 
 
 def test_prompt_structured_invocation_does_not_accept_prose() -> None:
-    assert extract_structured_prompt_names(
-        {
-            "type": "message_end",
-            "message": {
-                "role": "assistant",
-                "content": "I rendered fppa_screening_assistant conceptually.",
-            },
-        }
-    ) == set()
+    assert (
+        extract_structured_prompt_names(
+            {
+                "type": "message_end",
+                "message": {
+                    "role": "assistant",
+                    "content": "I rendered fppa_screening_assistant conceptually.",
+                },
+            }
+        )
+        == set()
+    )
     assert extract_structured_prompt_names(
         {"type": "prompt_render", "promptName": "fppa_screening_assistant"}
     ) == {"fppa_screening_assistant"}
@@ -133,7 +136,9 @@ def test_res01_requires_exact_citation_keywords() -> None:
 
 
 def test_gateway_envelopes_and_prose_have_distinct_diagnostics() -> None:
-    initialization = [{"type": "mcp_initialize", "capabilities": {"tools": [{"name": "expected_tool"}]}}]
+    initialization = [
+        {"type": "mcp_initialize", "capabilities": {"tools": [{"name": "expected_tool"}]}}
+    ]
     fallback = [{"type": "tools_list", "result": {"tools": [{"name": "expected_tool"}]}}]
     prose = [{"type": "message_end", "message": {"role": "assistant", "content": "expected_tool"}}]
     assert extract_advertised_tool_names(initialization) == ({"expected_tool"}, "initialization")

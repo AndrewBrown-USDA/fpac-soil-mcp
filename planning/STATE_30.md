@@ -72,3 +72,13 @@
 - Validation: README diff reviewed; global closure gates pending.
 - Deviations: none.
 - Agent-eval and closure results will be appended by the orchestrator after serial execution.
+
+## Closure results
+
+- Offline suite: `uv run pytest -m "not live_network and not agent_eval" -q` — **319 passed, 14 deselected**.
+- Focused eval suite: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q` — **33 passed, 2 deselected**.
+- Ruff lint: `uv run ruff check .` — **passed** after removing one unused local and correcting import order.
+- Ruff format: `uv run ruff format --check .` — **364 files already formatted** after standard reflow.
+- Diff whitespace: `git diff --check` — **passed**.
+- Serial agent-eval: `uv run pytest -m agent_eval -q` — **2 passed, 331 deselected**.
+- Final status: all six closure gates passed; no environmental block; unrelated `Makefile` change preserved.

@@ -481,7 +481,6 @@ def extract_structured_prompt_names(event: dict[str, Any]) -> set[str]:
 def prompt_case_instruction(case: dict[str, Any]) -> str:
     """Build an explicit, bounded instruction for rendering a named MCP prompt."""
     prompt_name = case.get("target_name", "")
-    expected_keywords = case.get("expected_keywords", [])
     citation_note = ""
     if case.get("id") == "RES-01":
         citation_note = (
@@ -494,7 +493,9 @@ def prompt_case_instruction(case: dict[str, Any]) -> str:
             f"instructions before answering. Then complete this request: {case['user_prompt']}."
             f"{citation_note}"
         )
-    return f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}{citation_note}"
+    return (
+        f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}{citation_note}"
+    )
 
 
 def _tool_matches(expected: str, executed: set[str]) -> bool:
@@ -684,17 +685,17 @@ def run_case(
             elif missing_tools:
                 diagnostics.append("tool-list discovery unavailable; cannot classify advertisement")
 
-            if case.get("target_type") == "prompt" and any(
-                "prompt" in str(event.get("type", "")).lower() for event in events
-            ) and case["target_name"] not in executed_prompts:
-                diagnostics.append(f"prompt discovery mismatch: expected {case['target_name']}")
             if (
-                expected_tools
-                and advertised_tools is not None
-                and not missing_tools
+                case.get("target_type") == "prompt"
+                and any("prompt" in str(event.get("type", "")).lower() for event in events)
+                and case["target_name"] not in executed_prompts
             ):
+                diagnostics.append(f"prompt discovery mismatch: expected {case['target_name']}")
+            if expected_tools and advertised_tools is not None and not missing_tools:
                 unexecuted_advertised = [
-                    tool for tool in expected_tools if tool in advertised_tools and not _tool_matches(tool, executed_tools)
+                    tool
+                    for tool in expected_tools
+                    if tool in advertised_tools and not _tool_matches(tool, executed_tools)
                 ]
                 if unexecuted_advertised:
                     diagnostics.append(
