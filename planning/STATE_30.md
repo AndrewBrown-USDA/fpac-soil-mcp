@@ -19,7 +19,7 @@
 |---|---:|---|---|---|
 | 30.1.1 | 1 | done | worker-30.1.1-execution | Direct FastMCP prompt rendering tests verified |
 | 30.2.1 | 2 | done | worker-30.2.1-plan | Explicit prompt instructions and gateway diagnostics verified |
-| 30.3.1 | 3 | pending | — | Eval regressions for all three failures |
+| 30.3.1 | 3 | done | worker-30.3.1-plan | Eval regressions for all three failures verified |
 | 30.4.1 | 4 | pending | — | Documentation and serial closure gates |
 
 ## Task reports
@@ -50,3 +50,15 @@
 - Result: **28 passed, 2 deselected**.
 - Deviations: none.
 - Wave 3 handoff: add regressions for prompt instruction text, bounded envelopes/prose exclusion, diagnostic distinctions, and exact RES-01 matching.
+
+## Task 30.3.1 — Adding eval regressions for the three failures
+
+- Status: complete.
+- Changed `eval\test_agent_eval.py` and `planning\tasks\30.3.1.todo.md`; reused existing sanitized fixtures.
+- Added PROMPT-01/PROMPT-02 instruction and structured prompt evidence regressions.
+- Added exact RES-01 citation matching and near-match rejection coverage.
+- Added verified initialization/tool-list envelope, prose exclusion, and diagnostic distinction coverage.
+- Validation: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+- Result: **33 passed, 2 deselected**.
+- Deviations: no new fixture files were needed; existing sanitized envelopes covered the cases.
+- Wave 4 gotchas: preserve prompt rendering semantics, exact RES-01 keywords, and structured-evidence-only diagnostics.

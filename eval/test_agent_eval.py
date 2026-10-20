@@ -23,7 +23,9 @@ import run_evals
 from run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
+    extract_structured_prompt_names,
     should_retry_missing_tools,
+    prompt_case_instruction,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -58,6 +60,88 @@ def test_advertised_tools_prefer_initialization_event() -> None:
         {"type": "tools_list", "tools": [{"name": "fallback_tool"}]},
     ]
     assert extract_advertised_tool_names(events) == ({"init_tool"}, "initialization")
+
+
+@pytest.mark.parametrize(
+    ("case_id", "prompt_name", "user_prompt", "expected_tools", "required_text"),
+    [
+        (
+            "PROMPT-01",
+            "fppa_screening_assistant",
+            "Use fppa_screening_assistant to evaluate a point.",
+            ["get_farmland_classification_by_point"],
+            "fppa_screening_assistant",
+        ),
+        (
+            "PROMPT-02",
+            "fppa_corridor_screening_assistant",
+            "Use fppa_corridor_screening_assistant under 7 CFR \u00a7 658.5(c).",
+            [],
+            "7 CFR \u00a7 658.5(c)",
+        ),
+    ],
+)
+def test_prompt_cases_require_named_render_and_preserve_case_constraints(
+    case_id: str,
+    prompt_name: str,
+    user_prompt: str,
+    expected_tools: list[str],
+    required_text: str,
+) -> None:
+    instruction = prompt_case_instruction(
+        {
+            "id": case_id,
+            "target_type": "prompt",
+            "target_name": prompt_name,
+            "user_prompt": user_prompt,
+        }
+    )
+    assert f"invoke or render the MCP prompt named {prompt_name}" in instruction
+    assert prompt_name in instruction
+    assert required_text in instruction
+    if case_id == "PROMPT-01":
+        assert expected_tools == ["get_farmland_classification_by_point"]
+
+
+def test_prompt_structured_invocation_does_not_accept_prose() -> None:
+    assert extract_structured_prompt_names(
+        {
+            "type": "message_end",
+            "message": {
+                "role": "assistant",
+                "content": "I rendered fppa_screening_assistant conceptually.",
+            },
+        }
+    ) == set()
+    assert extract_structured_prompt_names(
+        {"type": "prompt_render", "promptName": "fppa_screening_assistant"}
+    ) == {"fppa_screening_assistant"}
+
+
+def test_res01_requires_exact_citation_keywords() -> None:
+    case = {
+        "id": "RES-01",
+        "target_type": "resource",
+        "target_name": "fppa://regulatory-notice",
+        "user_prompt": "Summarize the notice.",
+    }
+    instruction = prompt_case_instruction(case)
+    assert "7 CFR Part 657" in instruction
+    assert "7 CFR Part 658" in instruction
+    assert "preliminary" in instruction
+    assert "7 CFR § 657" not in instruction
+
+
+def test_gateway_envelopes_and_prose_have_distinct_diagnostics() -> None:
+    initialization = [{"type": "mcp_initialize", "capabilities": {"tools": [{"name": "expected_tool"}]}}]
+    fallback = [{"type": "tools_list", "result": {"tools": [{"name": "expected_tool"}]}}]
+    prose = [{"type": "message_end", "message": {"role": "assistant", "content": "expected_tool"}}]
+    assert extract_advertised_tool_names(initialization) == ({"expected_tool"}, "initialization")
+    assert extract_advertised_tool_names(fallback) == ({"expected_tool"}, "tool-list fallback")
+    assert extract_advertised_tool_names(prose) == (None, "unknown")
+    assert not _tool_matches("expected_tool", set())
+    assert should_retry_missing_tools(["expected_tool"], {"expected_tool"}, 0)
+    assert not should_retry_missing_tools(["expected_tool"], None, 0)
 
 
 def test_tool_list_fallback_and_unknown_configuration_diagnostics() -> None:
