@@ -35,6 +35,43 @@ PRODUCTIVITY_PROVENANCE = {
     "storie": "SDA:COINTERP_STORIE_CA",
 }
 
+PRODUCTIVITY_SEMANTICS = {
+    "nccpi": {
+        "aliases": frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"}),
+        "scale": "0-1",
+        "precision": 3,
+        "sentinels": frozenset({99.0, 999.0, -99.0, -999.0}),
+        "provenance": PRODUCTIVITY_PROVENANCE["nccpi"],
+    },
+    "csr2": {
+        "aliases": frozenset({"csr2", "iowa corn suitability rating csr2"}),
+        "scale": "5-100",
+        "precision": 0,
+        "sentinels": frozenset({999.0, -99.0, -999.0}),
+        "provenance": PRODUCTIVITY_PROVENANCE["csr2"],
+    },
+    "cpi": {
+        "aliases": frozenset({"cpi", "crop productivity index"}),
+        "scale": "1-100",
+        "precision": 0,
+        "sentinels": frozenset({999.0, -99.0, -999.0}),
+        "provenance": PRODUCTIVITY_PROVENANCE["cpi"],
+    },
+    "storie": {
+        "aliases": frozenset(
+            {
+                "storie",
+                "california revised storie index",
+                "agr - california revised storie index (ca)",
+            }
+        ),
+        "scale": "0-1",
+        "precision": 3,
+        "sentinels": frozenset({99.0, 999.0, -99.0, -999.0}),
+        "provenance": PRODUCTIVITY_PROVENANCE["storie"],
+    },
+}
+
 # Fixed SQL query templates - no user SQL passthrough allowed
 SQL_POINT_LOOKUP = """\
 SELECT
@@ -317,25 +354,63 @@ ALLOWED_SDV_TABLES = {
     "sdvattribute",
 }
 
-_NCCPI_ALIASES = frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"})
-_CSR2_ALIASES = frozenset({"csr2", "iowa corn suitability rating csr2"})
-_CPI_ALIASES = frozenset({"cpi", "crop productivity index"})
-_STORIE_ALIASES = frozenset(
-    {
-        "storie",
-        "california revised storie index",
-        "agr - california revised storie index (ca)",
-    }
-)
+_NCCPI_ALIASES = PRODUCTIVITY_SEMANTICS["nccpi"]["aliases"]
+_CSR2_ALIASES = PRODUCTIVITY_SEMANTICS["csr2"]["aliases"]
+_CPI_ALIASES = PRODUCTIVITY_SEMANTICS["cpi"]["aliases"]
+_STORIE_ALIASES = PRODUCTIVITY_SEMANTICS["storie"]["aliases"]
+
+
+def _normalize_productivity_index(index_type: str) -> str:
+    """Normalize a fixed productivity selector and reject unsupported aliases."""
+    selector = str(index_type).strip().lower()
+    for normalized, semantics in PRODUCTIVITY_SEMANTICS.items():
+        if selector in semantics["aliases"]:
+            return normalized
+    raise SDAValidationError(
+        f"Unsupported productivity index type '{index_type}'. "
+        f"{SUPPORTED_INDEX_MSG} "
+        "Explicit attribute metadata is required for custom SDV queries."
+    )
+
+
+def _is_productivity_sentinel(value: float, norm_idx: str) -> bool:
+    """Return whether a raw rating is an unrated sentinel for its index."""
+    return value in _sentinels_for_index(norm_idx)
+
+
+def _sentinels_for_index(norm_idx: str) -> frozenset[float]:
+    """Return sentinels for a known index, or the complete SDA fallback set."""
+    return PRODUCTIVITY_SEMANTICS.get(norm_idx, {}).get(
+        "sentinels", frozenset({99.0, 999.0, -99.0, -999.0})
+    )
+
+
+def _dynamic_index_name(attribute_meta: dict[str, Any]) -> str:
+    """Resolve a known productivity selector from SDV metadata when possible."""
+    candidates = (
+        str(attribute_meta.get("attributename", "")).strip().lower(),
+        str(attribute_meta.get("nasisrulename", "")).strip().lower(),
+    )
+    for candidate in candidates:
+        for normalized, semantics in PRODUCTIVITY_SEMANTICS.items():
+            if candidate in semantics["aliases"] or normalized in candidate:
+                return normalized
+    return "custom"
+
+
+def _sentinel_sql_predicate(expression: str, norm_idx: str) -> str:
+    """Build an SQL predicate that excludes index-specific unrated sentinels."""
+    sentinels = ", ".join(
+        str(int(value)) if value.is_integer() else str(value)
+        for value in sorted(_sentinels_for_index(norm_idx))
+    )
+    return f"{expression} IS NOT NULL AND {expression} NOT IN ({sentinels})"
 
 
 def _round_for_index(value: float, norm_idx: str) -> float:
     """Round a productivity rating to the precision appropriate for its index type."""
-    if norm_idx in ("nccpi", "storie"):
-        return round(value, 3)
-    elif norm_idx in ("csr2", "cpi"):
-        return round(value, 0)
-    return round(value, 2)
+    precision = PRODUCTIVITY_SEMANTICS.get(norm_idx, {}).get("precision", 2)
+    return round(value, precision)
 
 
 def validate_survey_area_symbol(areasymbol: str) -> str:
@@ -379,9 +454,11 @@ def build_dynamic_sdv_query(
 
     col = str(attribute_meta.get("attributecolumnname", "")).strip()
     rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
+    norm_idx = _dynamic_index_name(attribute_meta)
 
     if table == "cointerp" or rule_name:
         rule_clean = rule_name.replace("'", "''")
+        rating_predicate = _sentinel_sql_predicate("rating", norm_idx)
         return f"""\
 WITH comp_rating AS (
     SELECT
@@ -406,8 +483,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN {rating_predicate} THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
+    SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -417,6 +494,7 @@ GROUP BY mukey, areasymbol, musym, muname
         raise SDAValidationError(f"Invalid column name '{col}' for SDV query generation.")
 
     if table == "chorizon":
+        rating_predicate = _sentinel_sql_predicate(f"ch.{col}", norm_idx)
         return f"""\
 WITH hz_weighted AS (
     SELECT
@@ -434,7 +512,7 @@ WITH hz_weighted AS (
     INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
     WHERE m.mukey IN ({mukeys_sql})
       AND c.compkind != 'miscellaneous area'
-      AND ch.{col} IS NOT NULL
+      AND {rating_predicate}
     GROUP BY c.cokey, c.comppct_r, m.mukey, l.areasymbol, m.musym, m.muname
 )
 SELECT
@@ -451,6 +529,7 @@ GROUP BY mukey, areasymbol, musym, muname
 """
 
     if table == "cocropyld":
+        rating_predicate = _sentinel_sql_predicate(f"cy.{col}", norm_idx)
         cropname = str(attribute_meta.get("cropname", "")).strip()
         crop_filter = ""
         if cropname:
@@ -474,7 +553,7 @@ WITH comp_yield AS (
     INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
     WHERE m.mukey IN ({mukeys_sql})
       AND c.compkind != 'miscellaneous area'
-      AND cy.{col} IS NOT NULL
+      AND {rating_predicate}
       {crop_filter}
 )
 SELECT
@@ -493,6 +572,7 @@ GROUP BY mukey, areasymbol, musym, muname
 """
 
     if table == "mapunit":
+        rating_predicate = _sentinel_sql_predicate(f"m.{col}", norm_idx)
         return f"""\
 SELECT
     m.mukey,
@@ -500,7 +580,7 @@ SELECT
     m.musym,
     m.muname,
     ROUND(CAST(m.{col} AS float), 2) AS numeric_rating,
-    CASE WHEN m.{col} IS NOT NULL AND m.{col} NOT IN (99, 999) THEN 100.0 ELSE 0.0 END AS rated_pct,
+    CASE WHEN {rating_predicate} THEN 100.0 ELSE 0.0 END AS rated_pct,
     100.0 AS total_pct
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
@@ -508,6 +588,7 @@ WHERE m.mukey IN ({mukeys_sql})
 """
 
     # Default to component-level attribute
+    rating_predicate = _sentinel_sql_predicate("rating", norm_idx)
     return f"""\
 WITH comp_rating AS (
     SELECT
@@ -529,8 +610,8 @@ SELECT
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN comppct_r ELSE 0 END) AS rated_pct,
+    ROUND(SUM(CASE WHEN {rating_predicate} THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
+    SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
 FROM comp_rating
 GROUP BY mukey, areasymbol, musym, muname
@@ -546,6 +627,7 @@ def build_dynamic_sdv_county_max_query(
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
     col = str(attribute_meta.get("attributecolumnname", "")).strip()
     rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
+    norm_idx = _dynamic_index_name(attribute_meta)
 
     if table not in ALLOWED_SDV_TABLES:
         raise SDAValidationError(
@@ -554,6 +636,7 @@ def build_dynamic_sdv_county_max_query(
 
     if table == "cointerp" or rule_name:
         rule_clean = rule_name.replace("'", "''")
+        rating_predicate = _sentinel_sql_predicate("ci.interphr", norm_idx)
         return f"""\
 SELECT
     MAX(ci.interphr) AS max_county_rating
@@ -564,8 +647,7 @@ INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
 WHERE l.areasymbol = '{areasymbol}'
   AND ci.ruledepth = 0
   AND ci.mrulename = '{rule_clean}'
-  AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999, -99, -999)
+  AND {rating_predicate}
   AND c.compkind != 'miscellaneous area'
 """
 
@@ -573,6 +655,7 @@ WHERE l.areasymbol = '{areasymbol}'
         raise SDAValidationError(f"Invalid column name '{col}' for county max query generation.")
 
     if table == "chorizon":
+        rating_predicate = _sentinel_sql_predicate(f"ch.{col}", norm_idx)
         return f"""\
 SELECT
     MAX(hz_avg) AS max_county_rating
@@ -586,12 +669,13 @@ FROM (
     INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
     WHERE l.areasymbol = '{areasymbol}'
       AND c.compkind != 'miscellaneous area'
-      AND ch.{col} IS NOT NULL
+      AND {rating_predicate}
     GROUP BY c.cokey
 ) AS hz_agg
 """
 
     if table == "cocropyld":
+        rating_predicate = _sentinel_sql_predicate(f"cy.{col}", norm_idx)
         cropname = str(attribute_meta.get("cropname", "")).strip()
         crop_filter = ""
         if cropname:
@@ -606,21 +690,22 @@ INNER JOIN component AS c ON c.mukey = m.mukey
 INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
 WHERE l.areasymbol = '{areasymbol}'
   AND c.compkind != 'miscellaneous area'
-  AND cy.{col} IS NOT NULL
+  AND {rating_predicate}
   {crop_filter}
 """
 
     if table == "mapunit":
+        rating_predicate = _sentinel_sql_predicate(f"m.{col}", norm_idx)
         return f"""\
 SELECT
     MAX(CAST(m.{col} AS float)) AS max_county_rating
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 WHERE l.areasymbol = '{areasymbol}'
-  AND m.{col} IS NOT NULL
-  AND m.{col} NOT IN (99, 999)
+  AND {rating_predicate}
 """
 
+    rating_predicate = _sentinel_sql_predicate(f"c.{col}", norm_idx)
     return f"""\
 SELECT
     MAX(CAST(c.{col} AS float)) AS max_county_rating
@@ -628,8 +713,7 @@ FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
 WHERE l.areasymbol = '{areasymbol}'
-  AND c.{col} IS NOT NULL
-  AND c.{col} NOT IN (99, 999)
+  AND {rating_predicate}
   AND c.compkind != 'miscellaneous area'
 """
 
@@ -1060,42 +1144,42 @@ class SDAClient:
         """
         clean_area = validate_survey_area_symbol(areasymbol)
 
-        idx = index_type.strip().lower()
         if attribute_meta:
             query = build_dynamic_sdv_county_max_query(attribute_meta, clean_area)
-        elif idx in _NCCPI_ALIASES:
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
-                areasymbol=clean_area,
-                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-            )
-        elif idx in _CSR2_ALIASES:
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
-        elif idx in _CPI_ALIASES:
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
-        elif idx in _STORIE_ALIASES:
-            query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
-                areasymbol=clean_area,
-                rule_name="AGR - California Revised Storie Index (CA)",
-            )
+            norm_idx = _dynamic_index_name(attribute_meta)
         else:
-            raise SDAValidationError(
-                f"Unsupported productivity index type '{index_type}'. "
-                f"{SUPPORTED_INDEX_MSG} "
-                "Explicit attribute metadata is required for custom SDV queries."
-            )
+            norm_idx = _normalize_productivity_index(index_type)
+            if norm_idx == "nccpi":
+                query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
+                    areasymbol=clean_area,
+                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+                )
+            elif norm_idx == "csr2":
+                query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
+            elif norm_idx == "cpi":
+                query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
+            elif norm_idx == "storie":
+                query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
+                    areasymbol=clean_area,
+                    rule_name="AGR - California Revised Storie Index (CA)",
+                )
 
         rows = self._execute_query(query)
         if not rows:
             return None
 
         val = rows[0].get("max_county_rating")
-        if val is None or val in ("", "None", 99, 999, "99", "999"):
+        if val is None or val in ("", "None"):
             return None
         try:
             val_float = float(val)
-            if val_float in (99.0, 999.0) or val_float <= 0:
+            if _is_productivity_sentinel(val_float, norm_idx) or val_float <= 0:
                 return None
-            return _round_for_index(val_float, idx)
+            return (
+                _round_for_index(val_float, norm_idx)
+                if norm_idx in PRODUCTIVITY_SEMANTICS
+                else round(val_float, 2)
+            )
         except (ValueError, TypeError):
             return None
 
@@ -1129,39 +1213,30 @@ class SDAClient:
         clean_mukeys = [self.validate_mukey(k) for k in mukeys]
         mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
 
-        idx = index_type.strip().lower()
         if attribute_meta:
-            norm_idx = str(attribute_meta.get("attributename", index_type)).lower()
+            norm_idx = _dynamic_index_name(attribute_meta)
             productivity_rating_source = "SDA:SDVATTRIBUTE"
             query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
-        elif idx in _NCCPI_ALIASES:
-            norm_idx = "nccpi"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["nccpi"]
-            query = SQL_PRODUCTIVITY_NCCPI.format(
-                mukeys_csv=mukeys_csv,
-                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-            )
-        elif idx in _CSR2_ALIASES:
-            norm_idx = "csr2"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
-            query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
-        elif idx in _CPI_ALIASES:
-            norm_idx = "cpi"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
-            query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
-        elif idx in _STORIE_ALIASES:
-            norm_idx = "storie"
-            productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
-            query = SQL_PRODUCTIVITY_NCCPI.format(
-                mukeys_csv=mukeys_csv,
-                rule_name="AGR - California Revised Storie Index (CA)",
-            )
         else:
-            raise SDAValidationError(
-                f"Unsupported productivity index type '{index_type}'. "
-                f"{SUPPORTED_INDEX_MSG} "
-                "Explicit attribute metadata is required for custom SDV queries."
-            )
+            norm_idx = _normalize_productivity_index(index_type)
+            if norm_idx == "nccpi":
+                productivity_rating_source = PRODUCTIVITY_PROVENANCE["nccpi"]
+                query = SQL_PRODUCTIVITY_NCCPI.format(
+                    mukeys_csv=mukeys_csv,
+                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+                )
+            elif norm_idx == "csr2":
+                productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
+                query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
+            elif norm_idx == "cpi":
+                productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
+                query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
+            elif norm_idx == "storie":
+                productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
+                query = SQL_PRODUCTIVITY_NCCPI.format(
+                    mukeys_csv=mukeys_csv,
+                    rule_name="AGR - California Revised Storie Index (CA)",
+                )
 
         raw_rows = self._execute_query(query)
         rows_by_mukey = {str(r.get("mukey")): r for r in raw_rows}
@@ -1201,7 +1276,7 @@ class SDAClient:
             if raw_rating is not None and str(raw_rating).strip() not in ("", "None"):
                 try:
                     r_val = float(raw_rating)
-                    if r_val in (99.0, 999.0) or r_val <= 0:
+                    if _is_productivity_sentinel(r_val, norm_idx) or r_val <= 0:
                         caveats.append(
                             f"Map unit contains unrated placeholder/sentinel code ({raw_rating})."
                         )

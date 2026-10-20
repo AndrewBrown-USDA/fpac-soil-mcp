@@ -414,9 +414,9 @@ def analyze_corridor_fppa(
         "indirect_geometry_input": indirect_geometry,
         "alternatives": alternatives,
         "include_nccpi": include_nccpi,
+        "productivity_index": normalized_productivity_index,
     }
     if max_county_rating_override is not None:
-        corridor_kwargs["productivity_index"] = productivity_index
         corridor_kwargs["max_county_rating_override"] = max_county_rating_override
     corridor_response = analyzer.analyze_corridor(
         **corridor_kwargs,
@@ -547,9 +547,9 @@ def calculate_preliminary_lesa(
             "buffer_distance": corridor_buffer_distance,
             "buffer_units": corridor_buffer_units,
             "include_nccpi": normalized_productivity_index is ProductivityIndexType.NCCPI,
+            "productivity_index": normalized_productivity_index,
         }
         if max_county_rating_override is not None:
-            corridor_kwargs["productivity_index"] = productivity_index
             corridor_kwargs["max_county_rating_override"] = max_county_rating_override
         corridor_result = analyze_corridor_fppa(**corridor_kwargs)
         le_score = float(corridor_result.get("composite_relative_rating") or 0.0)

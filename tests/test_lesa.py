@@ -450,13 +450,14 @@ class TestBenchmarkSuiteValidation:
             case_id = case["id"]
             proj_type = case["project_type"]
             idx_name = case["productivity_index"]
-            if str(idx_name).strip().lower() != "nccpi":
-                continue
             county_max = case["county_max_rating"]
             map_units = case["map_units"]
             expected_le = case["expected_evaluation"]
             expected_lesa = case["expected_lesa_summary"]
             sa_data = case.get("site_assessment", {})
+            index_precision = {"NCCPI": 4, "CSR2": 4, "CPI": 4, "STORIE": 4}[
+                str(idx_name).strip().upper()
+            ]
 
             # 1. Test Map Unit Relative Rating Calculation
             rated_objects = calculate_relative_ratings(map_units, county_max=county_max)
@@ -467,7 +468,7 @@ class TestBenchmarkSuiteValidation:
                 )
                 if mu["is_rated"]:
                     assert res_obj.normalized_relative_rating == pytest.approx(
-                        mu["normalized_relative_rating"], abs=1e-4
+                        mu["normalized_relative_rating"], abs=10**-index_precision
                     ), f"Failed relative rating in {case_id} mukey {mu['mukey']}"
 
             # 2. Test LE Summary Evaluation
@@ -492,20 +493,21 @@ class TestBenchmarkSuiteValidation:
             )
 
             # 3. Test Full LESA Evaluation & Threshold Evaluation
-            resp = evaluate_lesa(
-                project_name=case["name"],
-                land_evaluation=le_sum,
-                site_assessment=sa_data.get("total_sa_score", 0.0),
-                project_type=proj_type,
-            )
+            if expected_lesa is not None:
+                resp = evaluate_lesa(
+                    project_name=case["name"],
+                    land_evaluation=le_sum,
+                    site_assessment=sa_data.get("total_sa_score", 0.0),
+                    project_type=proj_type,
+                )
 
-            assert resp.total_lesa_score == pytest.approx(
-                expected_lesa["total_lesa_score"], abs=1e-2
-            )
-            assert (
-                resp.mandatory_alternatives_required
-                == expected_lesa["mandatory_alternatives_required"]
-            )
+                assert resp.total_lesa_score == pytest.approx(
+                    expected_lesa["total_lesa_score"], abs=1e-2
+                )
+                assert (
+                    resp.mandatory_alternatives_required
+                    == expected_lesa["mandatory_alternatives_required"]
+                )
 
     def test_site_assessment_criterion_validation_bounds(self) -> None:
         from pydantic import ValidationError

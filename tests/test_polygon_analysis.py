@@ -411,3 +411,30 @@ def test_all_validated_selectors_accepted(index):
     # Should NOT raise ValueError — downstream calls can return empty/mock data
     result = analyzer.analyze_polygon(GEOJSON, productivity_index=index)
     assert result.query_type == "polygon"
+
+
+@pytest.mark.parametrize("index", ["csr2", "cpi", "storie"])
+def test_polygon_forwards_selected_productivity_index(index):
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = [
+        {
+            "mukey": "1",
+            "musym": "A",
+            "muname": "Test soil",
+            "farmlndcl": "Prime farmland",
+            "areasymbol": "IA169",
+            "area_ac": 10.0,
+        }
+    ]
+    mock_sda.get_productivity_ratings.return_value = [
+        {"mukey": "1", "numeric_rating": 0.8, "is_rated": True}
+    ]
+    mock_sda.get_county_max_productivity_rating.return_value = 1.0
+
+    _analyzer(mock_sda).analyze_polygon(GEOJSON, productivity_index=index)
+
+    mock_sda.get_productivity_ratings.assert_called_once_with(mukeys=["1"], index_type=index)
+    mock_sda.get_county_max_productivity_rating.assert_called_once_with(
+        areasymbol="IA169", index_type=index
+    )

@@ -635,7 +635,7 @@ class TestSDAClientExecution:
             "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
         }
         query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "rating NOT IN (99, 999, -99, -999)" in query
+        assert "rating IS NOT NULL AND rating NOT IN (-999, -99, 99, 999)" in query
 
     def test_build_dynamic_sdv_query_uses_exact_rule_name(self) -> None:
         meta = {
@@ -671,9 +671,43 @@ class TestSDAClientExecution:
         assert "c.cornyld" in query
         assert "CAST(c.cornyld AS float) AS rating" in query
         assert (
-            "ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999) THEN rating * comppct_r ELSE 0 END)"
+            "ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (-999, -99, 99, 999) THEN rating * comppct_r ELSE 0 END)"
             in query
         )
+
+    def test_dynamic_sdv_query_chorizon_filters_sentinels_before_weighting(self) -> None:
+        query = build_dynamic_sdv_query(
+            {
+                "attributename": "NCCPI",
+                "attributetablename": "chorizon",
+                "attributecolumnname": "awc_r",
+            },
+            "'1001'",
+        )
+        assert "ch.awc_r IS NOT NULL AND ch.awc_r NOT IN (-999, -99, 99, 999)" in query
+
+    def test_dynamic_sdv_query_cocropyld_filters_sentinels_before_weighting(self) -> None:
+        query = build_dynamic_sdv_query(
+            {
+                "attributename": "CPI",
+                "attributetablename": "cocropyld",
+                "attributecolumnname": "nonirryield_r",
+            },
+            "'1001'",
+        )
+        assert "cy.nonirryield_r IS NOT NULL AND cy.nonirryield_r NOT IN (-999, -99, 999)" in query
+
+    def test_dynamic_sdv_query_preserves_valid_state_index_99(self) -> None:
+        query = build_dynamic_sdv_query(
+            {
+                "attributename": "CSR2",
+                "attributetablename": "mapunit",
+                "attributecolumnname": "iacornsr",
+            },
+            "'1001'",
+        )
+        assert "m.iacornsr IS NOT NULL AND m.iacornsr NOT IN (-999, -99, 999)" in query
+        assert "m.iacornsr NOT IN (-999, -99, 99, 999)" not in query
 
     def test_build_dynamic_sdv_query_mapunit(self) -> None:
         from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
@@ -749,6 +783,7 @@ class TestSDAClientExecution:
         assert "ch.awc_r" in query
         assert "l.areasymbol = 'IA169'" in query
         assert "max_county_rating" in query.lower()
+        assert "ch.awc_r IS NOT NULL AND ch.awc_r NOT IN (-999, -99, 99, 999)" in query
 
     def test_build_dynamic_sdv_county_max_cocropyld(self) -> None:
         from fpac_soil_mcp.sda_client import build_dynamic_sdv_county_max_query
@@ -763,6 +798,9 @@ class TestSDAClientExecution:
         assert "cy.nonirryield_r" in query
         assert "cy.cropname = 'Soybeans'" in query
         assert "l.areasymbol = 'IA169'" in query
+        assert (
+            "cy.nonirryield_r IS NOT NULL AND cy.nonirryield_r NOT IN (-999, -99, 99, 999)" in query
+        )
 
     def test_get_productivity_ratings_with_attribute_meta(self) -> None:
         mock_resp = {
@@ -794,6 +832,64 @@ class TestSDAClientExecution:
         assert len(results) == 1
         assert results[0]["numeric_rating"] == 91.0
         assert results[0]["is_rated"] is True
+
+    @pytest.mark.parametrize(
+        ("meta", "raw_rating", "expected_rating", "expected_rated"),
+        [
+            (
+                {
+                    "attributename": "CPI",
+                    "attributetablename": "component",
+                    "attributecolumnname": "cropprodindex",
+                },
+                99.0,
+                99.0,
+                True,
+            ),
+            (
+                {
+                    "attributename": "NCCPI",
+                    "attributetablename": "component",
+                    "attributecolumnname": "nccpi",
+                },
+                99.0,
+                None,
+                False,
+            ),
+            (
+                {
+                    "attributename": "Corn Yield",
+                    "attributetablename": "component",
+                    "attributecolumnname": "cornyld",
+                },
+                -999.0,
+                None,
+                False,
+            ),
+        ],
+        ids=["cpi-valid-99", "nccpi-sentinel-99", "custom-sentinel-negative"],
+    )
+    def test_get_productivity_ratings_dynamic_sentinel_classification(
+        self,
+        meta: dict[str, str],
+        raw_rating: float,
+        expected_rating: float | None,
+        expected_rated: bool,
+    ) -> None:
+        mock_resp = {
+            "Table": [
+                ["mukey", "areasymbol", "numeric_rating", "rated_pct", "total_pct"],
+                ["100001", "XX001", raw_rating, 100.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        result = client.get_productivity_ratings(["100001"], attribute_meta=meta)[0]
+        assert result["numeric_rating"] == expected_rating
+        assert result["is_rated"] is expected_rated
 
     def test_get_productivity_ratings_csr2(self) -> None:
         """CSR2 uses mapunit.iacornsr — a direct mapunit column, not cointerp."""
@@ -1172,3 +1268,22 @@ class TestSDAClientExecution:
         assert len(results) == 1
         assert results[0]["is_rated"] is False
         assert results[0]["numeric_rating"] is None
+
+    @pytest.mark.parametrize("index_type", ["csr2", "cpi"])
+    def test_get_productivity_ratings_accepts_valid_99_for_state_indexes(
+        self, index_type: str
+    ) -> None:
+        mock_resp = {
+            "Table": [
+                ["mukey", "areasymbol", "numeric_rating", "rated_pct", "total_pct"],
+                ["100001", "XX001", 99.0, 100.0, 100.0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        result = client.get_productivity_ratings(["100001"], index_type=index_type)[0]
+        assert result["numeric_rating"] == 99.0
+        assert result["is_rated"] is True

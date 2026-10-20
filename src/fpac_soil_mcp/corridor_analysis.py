@@ -56,12 +56,23 @@ from fpac_soil_mcp.tigerweb_client import TigerwebClient
 logger = logging.getLogger(__name__)
 
 
-_NCCPI_RULE = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
-_NCCPI_SOURCE = "SDA:NCCPI_V3"
 _UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
+_INDEX_SENTINELS = {
+    "nccpi": _UNRATED_SENTINELS,
+    "storie": _UNRATED_SENTINELS,
+    "csr2": {999.0, -99.0, -999.0},
+    "cpi": {999.0, -99.0, -999.0},
+}
+_INDEX_SOURCES = {
+    "nccpi": "SDA:NCCPI_V3",
+    "csr2": "SDA:CSR2",
+    "cpi": "SDA:CPI",
+    "storie": "SDA:STORIE_CA",
+}
+_NCCPI_RULE = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
 
 
-def _normalize_corridor_rating(value: Any, is_rated: Any) -> float | None:
+def _normalize_corridor_rating(value: Any, is_rated: Any, productivity_index: str) -> float | None:
     """Return a valid rated productivity value, preserving zero ratings."""
     if is_rated is False:
         return None
@@ -69,7 +80,8 @@ def _normalize_corridor_rating(value: Any, is_rated: Any) -> float | None:
         rating = float(value) if value is not None else None
     except (ValueError, TypeError):
         return None
-    if rating is None or not math.isfinite(rating) or rating < 0 or rating in _UNRATED_SENTINELS:
+    sentinels = _INDEX_SENTINELS.get(productivity_index, _UNRATED_SENTINELS)
+    if rating is None or not math.isfinite(rating) or rating < 0 or rating in sentinels:
         return None
     return rating
 
@@ -81,11 +93,13 @@ def _get_corridor_ratings(
 ) -> dict[str, dict[str, Any]]:
     if not mukeys:
         return {}
-    rows = sda_client.get_interpretations(
-        mukeys=mukeys,
-        rule_name=_NCCPI_RULE,
-        aggregation_method="Weighted Average",
-    )
+    rows = list(sda_client.get_productivity_ratings(mukeys=mukeys, index_type=productivity_index))
+    if not rows and productivity_index == "nccpi":
+        rows = sda_client.get_interpretations(
+            mukeys=mukeys,
+            rule_name=_NCCPI_RULE,
+            aggregation_method="Weighted Average",
+        )
     return {str(row.get("mukey")): dict(row) for row in rows}
 
 
@@ -163,7 +177,7 @@ class CorridorAnalyzer:
             not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
         ):
             raise ValueError("max_county_rating_override must be a positive finite number")
-        ratings_requested = include_nccpi
+        ratings_requested = include_nccpi or norm_idx != "nccpi"
 
         # 1. Resolve direct centerline geometry and compute geometry hash from centerline
         try:
@@ -445,6 +459,7 @@ class CorridorAnalyzer:
                 numeric_rating = _normalize_corridor_rating(
                     interp_info.get("numeric_rating"),
                     interp_info.get("is_rated"),
+                    norm_idx,
                 )
                 if numeric_rating is not None:
                     try:
@@ -468,10 +483,12 @@ class CorridorAnalyzer:
                         calculated_acres=calc_ac,
                         percentage_of_aoi=pct,
                         productivity_rating=numeric_rating,
-                        productivity_rating_class=interp_info.get("rating_class"),
+                        productivity_rating_class=(
+                            interp_info.get("rating_class") if numeric_rating is not None else None
+                        ),
                         productivity_rating_source=interp_info.get(
                             "productivity_rating_source",
-                            _NCCPI_SOURCE,
+                            _INDEX_SOURCES.get(norm_idx, f"SDA:{norm_idx.upper()}"),
                         ),
                     )
                 )
@@ -789,6 +806,7 @@ class CorridorAnalyzer:
                             num_rating = _normalize_corridor_rating(
                                 interp_info.get("numeric_rating"),
                                 interp_info.get("is_rated"),
+                                norm_idx,
                             )
                             if num_rating is not None:
                                 try:

@@ -31,7 +31,7 @@
     },
     {
       "name": "get_soil_interpretations",
-      "description": "Retrieve component-weighted soil interpretations from USDA NRCS SDA; supports the validated national NCCPI productivity index with generic productivity_rating, productivity_rating_class, and productivity_rating_source outputs. The source provenance identifier is SDA:NCCPI_V3. The removed nccpi_rating and nccpi_class aliases are not part of the public schema."
+      "description": "Retrieve component-weighted soil interpretations from USDA NRCS SDA; supports the validated public productivity selectors NCCPI, CSR2, CPI, and STORIE with generic productivity_rating, productivity_rating_class, and productivity_rating_source outputs. Provenance is selector-specific (SDA:NCCPI_V3, SDA:MAPUNIT_IACORNSR, SDA:COMPONENT_CROPPRODINDEX, or SDA:COINTERP_STORIE_CA); index-aware sentinels are excluded before aggregation, valid CSR2/CPI 99.0 remains rated, and removed nccpi_rating/nccpi_class aliases are not part of the public schema."
     },
     {
       "name": "calculate_preliminary_lesa",
@@ -39,7 +39,7 @@
     },
     {
       "name": "analyze_corridor_fppa",
-      "description": "Execute multi-county corridor screening using a line geometry whose centerline represents the corridor; polygon or MultiPolygon corridor geometry is not representable. Supports buffer_distance, buffer_units (feet, meters, or miles), optional indirect_geometry and alternatives, requested productivity_index (`NCCPI`), and optional max_county_rating_override. A validated override is used for normalization; otherwise the per-area-symbol county benchmark is used. Results use generic productivity_rating, productivity_rating_class, and productivity_rating_source fields with the SDA:NCCPI_V3 provenance identifier; nccpi_rating and nccpi_class aliases are intentionally removed."
+      "description": "Execute multi-county corridor screening using a line geometry whose centerline represents the corridor; polygon or MultiPolygon corridor geometry is not representable. Supports buffer_distance, buffer_units (feet, meters, or miles), optional indirect_geometry and alternatives, requested productivity_index (NCCPI, CSR2, CPI, or STORIE, including documented aliases), and optional max_county_rating_override. A validated override is used for normalization; otherwise the selected index's per-area-symbol county benchmark is used. Results use generic productivity fields with selector-specific SDA provenance; index-aware sentinels are excluded while valid CSR2/CPI 99.0 remains rated, and nccpi_rating/nccpi_class aliases are intentionally removed."
     },
     {
       "name": "explain_fppa_screening_scope",

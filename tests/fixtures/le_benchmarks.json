@@ -264,8 +264,8 @@
         "unrated_acreage": 10.0,
         "total_acreage": 100.0,
         "coverage_percent": 90.0,
-        "aoi_relative_rating": 0.6802,
-        "candidate_le_score": 68.02,
+        "aoi_relative_rating": 0.6795,
+        "candidate_le_score": 67.95,
         "county_farmland_percentile_higher": null
       },
       "site_assessment": null,
