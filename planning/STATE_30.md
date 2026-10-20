@@ -20,7 +20,7 @@
 | 30.1.1 | 1 | done | worker-30.1.1-execution | Direct FastMCP prompt rendering tests verified |
 | 30.2.1 | 2 | done | worker-30.2.1-plan | Explicit prompt instructions and gateway diagnostics verified |
 | 30.3.1 | 3 | done | worker-30.3.1-plan | Eval regressions for all three failures verified |
-| 30.4.1 | 4 | pending | — | Documentation and serial closure gates |
+| 30.4.1 | 4 | done | worker-30.4.1-plan | README documentation verified; closure gates pending |
 
 ## Task reports
 
@@ -62,3 +62,13 @@
 - Result: **33 passed, 2 deselected**.
 - Deviations: no new fixture files were needed; existing sanitized envelopes covered the cases.
 - Wave 4 gotchas: preserve prompt rendering semantics, exact RES-01 keywords, and structured-evidence-only diagnostics.
+
+## Task 30.4.1 — Documenting operation and running closure gates
+
+- Status: complete; documentation only.
+- Changed `README.md` and `planning\tasks\30.4.1.todo.md`; no runtime or test files changed.
+- Documented prompt rendering requirements, direct-vs-Pi test roles, exact citations, and structured-only diagnostics.
+- Documented the six serial closure commands and orchestrator ownership of results.
+- Validation: README diff reviewed; global closure gates pending.
+- Deviations: none.
+- Agent-eval and closure results will be appended by the orchestrator after serial execution.
