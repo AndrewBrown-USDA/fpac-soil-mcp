@@ -458,6 +458,45 @@ def extract_advertised_tool_names(events: list[dict[str, Any]]) -> tuple[set[str
     return None, "unknown"
 
 
+def extract_structured_prompt_names(event: dict[str, Any]) -> set[str]:
+    """Extract prompt names only from dedicated structured prompt fields."""
+    names: set[str] = set()
+    event_type = str(event.get("type", "")).lower()
+    if "prompt" not in event_type:
+        return names
+    for key in ("prompt_name", "promptName", "name"):
+        value = event.get(key)
+        if isinstance(value, str) and value:
+            names.add(value)
+    for key in ("prompt", "prompt_call", "promptCall"):
+        container = event.get(key)
+        if isinstance(container, dict):
+            for name_key in ("name", "prompt_name", "promptName"):
+                value = container.get(name_key)
+                if isinstance(value, str) and value:
+                    names.add(value)
+    return names
+
+
+def prompt_case_instruction(case: dict[str, Any]) -> str:
+    """Build an explicit, bounded instruction for rendering a named MCP prompt."""
+    prompt_name = case.get("target_name", "")
+    expected_keywords = case.get("expected_keywords", [])
+    citation_note = ""
+    if case.get("id") == "RES-01":
+        citation_note = (
+            " Retain the exact keywords 7 CFR Part 657, 7 CFR Part 658, and preliminary "
+            "in the final answer."
+        )
+    if case.get("target_type") == "prompt":
+        return (
+            f"First invoke or render the MCP prompt named {prompt_name}; use its rendered "
+            f"instructions before answering. Then complete this request: {case['user_prompt']}."
+            f"{citation_note}"
+        )
+    return f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}{citation_note}"
+
+
 def _tool_matches(expected: str, executed: set[str]) -> bool:
     return expected in executed or any(
         name.endswith((f"_{expected}", f":{expected}")) for name in executed
@@ -508,7 +547,7 @@ def run_case(
         "--append-system-prompt",
         "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to fulfill the user request before generating the final response. Do not answer purely from memory if an MCP tool or resource is available.",
         "-p",
-        f"Call the appropriate fpac-soil MCP tool/resource and {prompt}",
+        prompt_case_instruction(case),
     ]
     if model:
         cmd.extend(["--model", model])
@@ -614,6 +653,9 @@ def run_case(
             executed_tools = set().union(
                 *(extract_structured_tool_names(event) for event in events)
             )
+            executed_prompts = set().union(
+                *(extract_structured_prompt_names(event) for event in events)
+            )
             advertised_tools, advertisement_source = extract_advertised_tool_names(events)
             missing_tools = [
                 tool for tool in expected_tools if not _tool_matches(tool, executed_tools)
@@ -635,8 +677,29 @@ def run_case(
                     continue
                 if unadvertised:
                     diagnostics.append(f"unadvertised expected tool(s): {', '.join(unadvertised)}")
+                elif retryable:
+                    diagnostics.append(
+                        f"advertised-but-not-executed tool(s): {', '.join(retryable)}"
+                    )
             elif missing_tools:
-                diagnostics.append("configuration diagnostic: MCP tool list unavailable")
+                diagnostics.append("tool-list discovery unavailable; cannot classify advertisement")
+
+            if case.get("target_type") == "prompt" and any(
+                "prompt" in str(event.get("type", "")).lower() for event in events
+            ) and case["target_name"] not in executed_prompts:
+                diagnostics.append(f"prompt discovery mismatch: expected {case['target_name']}")
+            if (
+                expected_tools
+                and advertised_tools is not None
+                and not missing_tools
+            ):
+                unexecuted_advertised = [
+                    tool for tool in expected_tools if tool in advertised_tools and not _tool_matches(tool, executed_tools)
+                ]
+                if unexecuted_advertised:
+                    diagnostics.append(
+                        f"advertised-but-not-executed tool(s): {', '.join(unexecuted_advertised)}"
+                    )
 
             assistant_texts = [
                 extract_assistant_content(event)

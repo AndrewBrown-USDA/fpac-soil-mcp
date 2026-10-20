@@ -18,7 +18,7 @@
 | Task | Wave | Status | Worker | Notes |
 |---|---:|---|---|---|
 | 30.1.1 | 1 | done | worker-30.1.1-execution | Direct FastMCP prompt rendering tests verified |
-| 30.2.1 | 2 | pending | — | Explicit prompt instructions and gateway diagnostics |
+| 30.2.1 | 2 | done | worker-30.2.1-plan | Explicit prompt instructions and gateway diagnostics verified |
 | 30.3.1 | 3 | pending | — | Eval regressions for all three failures |
 | 30.4.1 | 4 | pending | — | Documentation and serial closure gates |
 
@@ -37,3 +37,16 @@
 - Deviations: one initial assertion capitalization mismatch was corrected; no production code changed.
 - Unrelated pre-existing files remain untouched: `Makefile` and orchestration planning artifacts.
 - Dependent-task gotchas: none identified; prompt names and direct FastMCP rendering remain stable.
+
+## Task 30.2.1 — Making prompt execution and gateway diagnostics explicit
+
+- Status: complete.
+- Changed `eval\run_evals.py` only for implementation; appended this report to state.
+- Prompt cases now explicitly instruct Pi to invoke/render the named MCP prompt first.
+- Structured diagnostics retain bounded direct-call and nested `mcpScript` extraction.
+- Diagnostics distinguish prompt mismatches, unavailable tool-list evidence, unadvertised tools, and advertised-but-not-executed tools.
+- RES-01 retains exact `7 CFR Part 657`, `7 CFR Part 658`, and `preliminary` requirements.
+- Validation: `uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q`
+- Result: **28 passed, 2 deselected**.
+- Deviations: none.
+- Wave 3 handoff: add regressions for prompt instruction text, bounded envelopes/prose exclusion, diagnostic distinctions, and exact RES-01 matching.
