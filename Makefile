@@ -10,6 +10,7 @@ PYTHON      ?= python
 MCP_HOST    ?= 127.0.0.1
 MCP_PORT    ?= 8000
 IMAGE_NAME  ?= fpac-soil-mcp
+EVAL_ARTIFACT_ROOT ?= ../fpac-soil-mcp-eval-artifacts
 
 .PHONY: help install sync run run-sse test test-unit test-live test-eval eval lint lint-fix format format-check check clean docker-build docker-run all
 
@@ -36,7 +37,7 @@ test-live: ## Run live network integration tests (requires network)
 	$(UV) run pytest -m live_network
 
 test-eval: ## Run Pi agent evaluation benchmark suite
-	$(PYTHON) eval/run_evals.py
+	$(PYTHON) eval/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
 
 eval: test-eval ## Alias for test-eval
 
