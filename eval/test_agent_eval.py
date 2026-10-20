@@ -101,6 +101,10 @@ def test_prompt_cases_require_named_render_and_preserve_case_constraints(
     assert required_text in instruction
     if case_id == "PROMPT-01":
         assert expected_tools == ["get_farmland_classification_by_point"]
+    else:
+        assert "7 CFR § 658.5(c)" in instruction
+        assert "CPA-106 guidance" in instruction
+        assert "preliminary limitation" in instruction
 
 
 def test_prompt_structured_invocation_does_not_accept_prose() -> None:

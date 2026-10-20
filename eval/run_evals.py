@@ -487,6 +487,11 @@ def prompt_case_instruction(case: dict[str, Any]) -> str:
             " Retain the exact keywords 7 CFR Part 657, 7 CFR Part 658, and preliminary "
             "in the final answer."
         )
+    elif case.get("id") == "PROMPT-02":
+        citation_note = (
+            " Retain 7 CFR § 658.5(c), CPA-106 guidance, and the preliminary limitation "
+            "in the final answer."
+        )
     if case.get("target_type") == "prompt":
         return (
             f"First invoke or render the MCP prompt named {prompt_name}; use its rendered "
