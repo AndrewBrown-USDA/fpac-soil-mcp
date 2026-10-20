@@ -1,4 +1,4 @@
-# Execution Plan 28 — REVIEW_27_FIXES Code-Review Remediation
+# Execution Plan 31 — REVIEW_27_FIXES Code-Review Remediation
 
 ## Goal & Scope
 
@@ -46,15 +46,15 @@ branch.
 
 | Wave | Task ID | Title | Depends On | Files In Scope |
 |------|---------|-------|------------|----------------|
-| 1 | 28.1.1 | Guards + DRY constants (D2, D3, B1, B2) | — | models.py, polygon_analysis.py, corridor_analysis.py, tools/soil_tools.py, lesa.py |
-| 1 | 28.1.2 | SDA client internal fixes (D1, B3, B4, B5, D4, D5) | — | sda_client.py |
-| 2 | 28.2.1 | Rounding precision unit tests (T1) | 28.1.2 | tests/test_sda_client.py |
-| 2 | 28.2.2 | Guard acceptance tests (T2) | 28.1.1 | tests/test_polygon_analysis.py, tests/test_corridor_analysis.py |
-| 2 | 28.2.3 | Live test fixes (B6, T3) | — | tests/test_live_sda.py |
-| 2 | 28.2.4 | ADR 0008 doc cleanup (DOC1, DOC2) | — | docs/decisions/0008-*.md |
+| 1 | 31.1.1 | Guards + DRY constants (D2, D3, B1, B2) | — | models.py, polygon_analysis.py, corridor_analysis.py, tools/soil_tools.py, lesa.py |
+| 1 | 31.1.2 | SDA client internal fixes (D1, B3, B4, B5, D4, D5) | — | sda_client.py |
+| 2 | 31.2.1 | Rounding precision unit tests (T1) | 31.1.2 | tests/test_sda_client.py |
+| 2 | 31.2.2 | Guard acceptance tests (T2) | 31.1.1 | tests/test_polygon_analysis.py, tests/test_corridor_analysis.py |
+| 2 | 31.2.3 | Live test fixes (B6, T3) | — | tests/test_live_sda.py |
+| 2 | 31.2.4 | ADR 0008 doc cleanup (DOC1, DOC2) | — | docs/decisions/0008-*.md |
 
-File-disjointness: Wave 1 tasks share no files (28.1.1 touches 5 src files;
-28.1.2 touches sda_client.py only). Wave 2 tasks each touch distinct test/doc
+File-disjointness: Wave 1 tasks share no files (31.1.1 touches 5 src files;
+31.1.2 touches sda_client.py only). Wave 2 tasks each touch distinct test/doc
 files.
 
 ---
@@ -81,7 +81,7 @@ files.
 
 ## Task Specs
 
-### 28.1.1 — Guards + DRY Constants (D2, D3, B1, B2)
+### 31.1.1 — Guards + DRY Constants (D2, D3, B1, B2)
 
 **Repo:** fpac-soil-mcp  
 **Branch:** feat/phase-4-part-2-sdv-routing  
@@ -147,7 +147,7 @@ tests (polygon line 229, corridor line 508) still reject `"custom"`.
 
 ---
 
-### 28.1.2 — SDA Client Internal Fixes (D1, B3, B4, B5, D4, D5)
+### 31.1.2 — SDA Client Internal Fixes (D1, B3, B4, B5, D4, D5)
 
 **Repo:** fpac-soil-mcp  
 **Branch:** feat/phase-4-part-2-sdv-routing  
@@ -212,7 +212,7 @@ tools/soil_tools.py, lesa.py, any test file
    `get_productivity_ratings` (line 1150-1152) to use
    `f"{SUPPORTED_INDEX_MSG}; explicit attribute metadata is required for custom SDV queries."`
    (these have a different suffix from the other 6 sites, which task
-   28.1.1 handles).
+   31.1.1 handles).
 10. **D5 — CSR2 comment.** Add a one-line comment above
    `SQL_PRODUCTIVITY_CSR2` (line 255) explaining:
    `# CSR2 is a mapunit-level attribute (not component-aggregated); rated_pct is synthetic.`
@@ -256,11 +256,11 @@ Expect 317 passed, 1 skipped, 21 deselected (no regressions).
 
 ---
 
-### 28.2.1 — Rounding Precision Unit Tests (T1)
+### 31.2.1 — Rounding Precision Unit Tests (T1)
 
 **Repo:** fpac-soil-mcp  
 **Branch:** feat/phase-4-part-2-sdv-routing  
-**Depends on:** 28.1.2  
+**Depends on:** 31.1.2  
 **Files must edit:**
 - `tests/test_sda_client.py`
 
@@ -304,11 +304,11 @@ pytest tests/test_sda_client.py -x -q -k "rounding or zero_rating"
 
 ---
 
-### 28.2.2 — Guard Acceptance Tests (T2)
+### 31.2.2 — Guard Acceptance Tests (T2)
 
 **Repo:** fpac-soil-mcp  
 **Branch:** feat/phase-4-part-2-sdv-routing  
-**Depends on:** 28.1.1  
+**Depends on:** 31.1.1  
 **Files must edit:**
 - `tests/test_polygon_analysis.py`
 - `tests/test_corridor_analysis.py`
@@ -349,7 +349,7 @@ pytest tests/test_polygon_analysis.py tests/test_corridor_analysis.py -x -q -k "
 
 ---
 
-### 28.2.3 — Live Test Fixes (B6, T3)
+### 31.2.3 — Live Test Fixes (B6, T3)
 
 **Repo:** fpac-soil-mcp  
 **Branch:** feat/phase-4-part-2-sdv-routing  
@@ -393,7 +393,7 @@ pytest tests/test_live_sda.py -x -q -k "cpi" --live
 
 ---
 
-### 28.2.4 — ADR 0008 Documentation Cleanup (DOC1, DOC2)
+### 31.2.4 — ADR 0008 Documentation Cleanup (DOC1, DOC2)
 
 **Repo:** fpac-soil-mcp  
 **Branch:** feat/phase-4-part-2-sdv-routing  
@@ -421,7 +421,7 @@ pytest tests/test_live_sda.py -x -q -k "cpi" --live
 2. **DOC2 — Update references.** Update the enum line references
    (e.g. `models.py:318-322`) to reflect the post-refactor state:
    mention `VALIDATED_PRODUCTIVITY_INDEXES` and the consolidated enum.
-   Add a note about EP28 review-remediation fixes (guard constants,
+   Add a note about EP31 review-remediation fixes (guard constants,
    rounding precision, CPI compkind filter).
 
 **Grep anchors:**
@@ -432,4 +432,4 @@ pytest tests/test_live_sda.py -x -q -k "cpi" --live
 **Acceptance:** Visual review — no automated test. Verify markdown
 renders correctly and line references are accurate.
 
-**Commit:** `docs(adr-0008): consolidate EP27 entries, add EP28 review fixes`
+**Commit:** `docs(adr-0008): consolidate EP27 entries, add EP31 review fixes`

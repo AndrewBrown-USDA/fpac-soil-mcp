@@ -100,7 +100,7 @@ indexes as public contract members:
   CA077 max ≈ 0.995
 * Benchmark fixtures in `tests/fixtures/le_benchmarks.json`
 
-EP28 (2026-10-19) code-review remediation of EP27:
+EP31 (2026-10-19) code-review remediation of EP27:
 * Extracted `VALIDATED_PRODUCTIVITY_INDEXES` (auto-all frozenset) and
   `SUPPORTED_INDEX_MSG` (dynamically generated) constants in `models.py`
 * Consolidated inline guard tuples across 5 source files to use the frozenset

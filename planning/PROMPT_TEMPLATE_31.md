@@ -1,10 +1,10 @@
-# Prompt Template — Orchestration 28
+# Prompt Template — Orchestration 31
 
 You are implementing exactly one scoped task, supervised by an orchestrator
 that reviews your plan before you may write code.
 
 ## Task {{id}}: {{title}}
-{{task spec verbatim from EXECUTION_PLAN_28.md}}
+{{task spec verbatim from EXECUTION_PLAN_31.md}}
 
 ## Ground rules (non-negotiable)
 - NEVER write code or run state-changing commands before your plan is approved.
@@ -33,8 +33,8 @@ that reviews your plan before you may write code.
 ## [Worker] Analysis
 Read:
 1. `AGENTS.md` at repo root
-2. The task spec section from `planning/EXECUTION_PLAN_28.md`
-3. `planning/STATE_28.md` — reports of dependency tasks (if any)
+2. The task spec section from `planning/EXECUTION_PLAN_31.md`
+3. `planning/STATE_31.md` — reports of dependency tasks (if any)
 4. The grep anchors listed in the task spec
 5. The named reference implementation(s)
 
@@ -54,7 +54,7 @@ Work the TODO strictly in order, flipping `- [ ]` to `- [x]`. Match
 surrounding code style. Run only the targeted tests named in the spec.
 
 ## [Worker] Reporting
-Append to `planning/STATE_28.md` under `## {{id}}` (≤15 lines):
+Append to `planning/STATE_31.md` under `## {{id}}` (≤15 lines):
 - Status (done / blocked / failed)
 - Files changed with line ranges
 - Exact test commands + pass/fail counts
