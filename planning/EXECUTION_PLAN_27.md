@@ -2,10 +2,10 @@
 
 ## Goal & Scope
 
-Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2 of the Master Plan. This orchestration extracts the SDV routing infrastructure into a dedicated module, researches actual SDA storage patterns for three state-specific productivity indexes, then implements and validates each index sequentially (CSR2, CPI, Storie) with offline benchmark fixtures and live_network SDA contract tests.
+Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2 of the Master Plan. This orchestration researches actual SDA storage patterns for three state-specific productivity indexes, then implements and validates each index sequentially (CSR2, CPI, Storie) with offline benchmark fixtures and live_network SDA contract tests. The earlier extraction proposal is superseded: the retained routing boundary is `sda_client.py`.
 
 **In scope:**
-1. SDV Discovery & Table Expansion — extract `sda_client.py` from `sda_client.py`, expand `ALLOWED_SDV_TABLES` to include `chorizon` and `cocropyld`, harden dynamic query builders for non-`cointerp` table paths.
+1. SDV Discovery & Table Expansion — expand `ALLOWED_SDV_TABLES` to include `chorizon` and `cocropyld`, harden dynamic query builders for non-`cointerp` table paths, and retain the implementation in `sda_client.py`.
 2. State Index Validation — implement and validate CSR2 (Iowa), CPI (Minnesota), and Storie Index (California) through the full stack: `ProductivityIndexType` enum, SDV routing, SDA client methods, domain wiring (polygon, corridor, tools, LESA), offline benchmark fixtures, unit tests, and live_network SDA contract tests.
 
 **Out of scope (deferred to a later orchestration):**
@@ -26,7 +26,7 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 | 2026-10-14 | ADR 0008 will be amended in-place to reflect the expanded validated multi-index contract. | User chose amendment over supersession; the ADR's decision drivers remain valid but the outcome expands from NCCPI-only to include CSR2, CPI, Storie as each is validated. |
 | 2026-10-14 | State indexes validated sequentially: CSR2 first, then CPI, then Storie. Each must fully pass (including live_network tests) before the next begins. | Earlier batch attempt (EPs 17-23) failed when all three were implemented together; each index requires its own SDA pattern discovery and per-state benchmark fixtures. |
 | 2026-10-14 | Validation uses both offline benchmark fixtures (unit tests) and live_network tests (SDA contract validation). | Matches the existing NCCPI pattern in `tests/fixtures/le_benchmarks.json` and `tests/test_live_sda.py`. |
-| 2026-10-14 | SDV routing engine extracted to a dedicated `sda_client.py` module. | The routing logic has grown beyond what `sda_client.py` should hold; a dedicated module clarifies the metadata-driven routing contract. |
+| 2026-10-20 | The earlier dedicated-module extraction proposal is superseded. | The current architecture retains all SDV routing in `sda_client.py`; this preserves the established boundary while supporting the validated four-selector public contract. |
 | 2026-10-14 | Branch: `feat/phase-4-part-2-sdv-routing` (branched from `origin/main`). | Tracks Phase 4 Part 2 work separately from the merged Part 1. |
 | 2026-10-14 | Research all three SDA storage patterns in one discovery wave before any implementation. | The user wants to understand all three index patterns before touching code, avoiding the trial-and-error that plagued EPs 20-23. |
 
@@ -35,7 +35,7 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 ### Key files and sizes
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/fpac_soil_mcp/sda_client.py` | 1020 | SDA HTTP client + SDV routing (to be extracted) |
+| `src/fpac_soil_mcp/sda_client.py` | 1020 | SDA HTTP client + retained SDV routing boundary |
 | `src/fpac_soil_mcp/lesa.py` | 809 | LE/SA scoring engine |
 | `src/fpac_soil_mcp/models.py` | 554 | Pydantic models, `ProductivityIndexType` enum (line 318) |
 | `src/fpac_soil_mcp/polygon_analysis.py` | 485 | Polygon AOI analysis, NCCPI-only guard at line 110 |
@@ -52,7 +52,7 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 - **ADR 0003**: Preliminary screening authority boundary — all outputs remain estimates, not official determinations.
 - **ADR 0009** (HTTP resilience): SDA queries use retry logic from `http_client.py`; new query paths must inherit this.
 
-### Existing SDV routing infrastructure (to be extracted)
+### Existing SDV routing infrastructure (retained in `sda_client.py`)
 - `ALLOWED_SDV_TABLES` — `sda_client.py:250` — currently `{cointerp, component, mapunit, sdvattribute}`. Missing: `chorizon`, `cocropyld`.
 - `build_dynamic_sdv_query()` — `sda_client.py:266` — builds SQL from `sdvattribute` metadata. Handles `cointerp` (with `nasisrulename`) and `mapunit`/`component` (with `attributecolumnname`). Does NOT handle `chorizon` or `cocropyld`.
 - `build_dynamic_sdv_county_max_query()` — `sda_client.py:381` — dynamic county max query. Same table coverage gap.
@@ -69,10 +69,10 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 - `corridor_analysis.py:156` — same guard in `CorridorAnalyzer.analyze_corridor`
 - `lesa.py:68` — `_normalize_productivity_index` only accepts NCCPI
 
-### Import sites that must update when extracting to `sda_client.py`
+### Import sites using the retained `sda_client.py` routing boundary
 - `tests/test_sda_client.py:8` — imports `ALLOWED_SDV_TABLES`, `build_dynamic_sdv_query`, `build_dynamic_sdv_county_max_query` from `sda_client`
 - `tests/test_sda_client.py:614,659,675,686` — inline imports of `build_dynamic_sdv_query` from `sda_client`
-- `src/fpac_soil_mcp/sda_client.py` — must re-export extracted symbols for backward compatibility
+- `src/fpac_soil_mcp/sda_client.py` — continues to provide the routing helpers and client methods
 
 ### Test conventions
 - Offline tests: `uv run pytest -m "not live_network"`
@@ -100,7 +100,7 @@ Implement the Metadata-Driven Rating & Property Query Engine from Phase 4 item 2
 - `test_sda_client.py` is 724 lines — same rule.
 - `test_live_sda.py` live tests require network access; if a worker cannot reach SDA, it should STOP and report.
 - The `test_unsupported_selector_rejected_before_sda` test at `test_polygon_analysis.py:229` will break when CSR2 is added — must be updated in the same task.
-- `sda_client.py` must re-export extracted symbols so existing imports don't break during extraction.
+- Existing imports remain supported because the routing helpers stay in `sda_client.py`; no extraction or re-export transition is required.
 - Each state index may store data differently (cointerp rule, component column, chorizon column, or cocropyld). Research wave 27.1.1 must confirm actual storage pattern before implementation.
 
 ---
