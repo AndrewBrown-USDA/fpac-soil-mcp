@@ -2,12 +2,13 @@
 
 Loads the shared dataset, builds the in-process agent and scorers, and calls
 ``mlflow.genai.evaluate``.  ``mlflow`` is imported lazily so the module imports
-without the ``eval-databricks`` dependency group (``--dry-run`` still works).
+without the ``eval-databricks`` dependency group. ``--dry-run`` builds records and
+lists scorer names without constructing any MLflow object, so it needs no group.
 
 Usage::
 
     uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --ground-truth
-    uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --dry-run
+    uv run python eval/databricks/run_mlflow_eval.py --dry-run
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ for _path in (_HERE.parent, _HERE):  # eval/ (common) and eval/databricks/ (agen
 
 from agent import DEFAULT_PROMPT_VERSION, available_prompt_versions, build_agent
 from common.dataset import dataset_version, load_cases, to_mlflow_records
-from scorers import build_scorers
+from scorers import build_scorers, scorer_names
 
 DEFAULT_MODEL = "databricks-gpt-5-6-luna"
 DEFAULT_JUDGE = "databricks-claude-sonnet-4-5"
@@ -93,7 +94,9 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         choices=available_prompt_versions(),
         help=f"System prompt version (default {DEFAULT_PROMPT_VERSION})",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Build records and scorers only")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Build records and list scorer names only"
+    )
     return parser.parse_args(argv)
 
 
@@ -146,14 +149,16 @@ def run(argv: Sequence[str] | None = None) -> dict[str, Any]:
     args = _parse_args(argv)
     cases = _select_cases(args)
     records = to_mlflow_records(cases)
-    scorers = build_scorers(args.judge_model)
-    scorer_names = [s.name for s in scorers]
 
     if args.dry_run:
-        print(f"Dry run: {len(records)} records, scorers: {scorer_names}")
-        return {"records": records, "scorer_names": scorer_names}
+        names = scorer_names(args.judge_model)
+        print(f"Dry run: {len(records)} records, scorers: {names}")
+        return {"records": records, "scorer_names": names}
 
     import mlflow
+
+    scorers = build_scorers(args.judge_model)
+    names = [s.name for s in scorers]
 
     os.environ["MLFLOW_GENAI_EVAL_MAX_WORKERS"] = str(args.max_workers)
 
@@ -181,7 +186,7 @@ def run(argv: Sequence[str] | None = None) -> dict[str, Any]:
         run_id = active_run.info.run_id
 
     traces = mlflow.search_traces(run_id=run_id, return_type="list")
-    summary = summarize_traces(traces, scorer_names)
+    summary = summarize_traces(traces, names)
 
     print(f"Run ID: {run_id}")
     print(f"Experiment: {experiment}")
