@@ -23,8 +23,8 @@ Plan: `planning/EXECUTION_PLAN_33.md` · Template: `planning/PROMPT_TEMPLATE_33.
 | 4 | 33.4.1 | Ground truth for five rows (LIVE, user sign-off) | done | orchestrator (inline) | signed off 2026-10-21 |
 | 5 | 33.5.1 | T1 agent loop with tracing | done | orchestrator (inline) | 431b89a |
 | 5 | 33.5.2 | T1 scorers | done | orchestrator (inline) | 8787a65 |
-| 6 | 33.6.1 | T1 runner, notebook, 5-case serverless check (LIVE step) | pending | | |
-| 6 | 33.6.2 | Documentation and Make target | pending | | |
+| 6 | 33.6.1 | T1 runner, notebook, 5-case serverless check (LIVE step) | done | orchestrator (inline) | 274b540; run 69535e209a0c4e1dbb7b6bd79ad40c19 |
+| 6 | 33.6.2 | Documentation and Make target | done | orchestrator (inline) | c2b8fd9 |
 
 ## Wave gates
 
@@ -35,7 +35,7 @@ Plan: `planning/EXECUTION_PLAN_33.md` · Template: `planning/PROMPT_TEMPLATE_33.
 | 3 | 429 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 396 formatted | n/a | +22 dataset tests |
 | 4 | 429 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 396 formatted | n/a | user sign-off: approved 2026-10-21 (with POINT-01 county + 413100 corrections) |
 | 5 | 443 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 403 formatted | 14 passed; exact no-group env: 2 skipped | +14 T1 tests |
-| 6 | | | | | T1 run ID / experiment / per-scorer counts: |
+| 6 | 448 passed, 1 skipped, 22 deselected (with group); exact no-group env: 429 passed, 4 skipped | pass (EXE002 ignored) | 409 formatted | 19 passed | +5 runner tests. T1 run `69535e209a0c4e1dbb7b6bd79ad40c19`, experiment `/Users/andrew.g.brown@usda.gov/fpac-soil-mcp-eval`; counts in 33.6.1 report |
 
 Pre-merge manual: Pi live `make test-eval` on laptop → ___
 
@@ -151,3 +151,28 @@ Validation:
 Deviations: none. All six judges accept `inference_params={"temperature": 0}` on MLflow 3.12.0 and 3.17.1 (D11 fully applied).
 Gotchas for dependents:
 - Deterministic scorers return `None` when their expectation key is absent, so `numeric_within_tolerance` is null on 4 of the 5 ground-truth rows (only INTERP-01 has numerics). D8 "every scorer non-null on all 5 rows" must be read as "non-null where the expectation applies"; 33.6.1 should report this, not fail on it.
+
+## 33.6.1
+
+Status: done (274b540)
+Changes:
+- eval/databricks/run_mlflow_eval.py (C5): self-inserts `eval/` + `eval/databricks/` on sys.path; git tags via `subprocess.run(cwd=repo)`; tagged `mlflow.start_run` wrapping `genai.evaluate`; `summarize_traces` counts pass/fail/null from trace assessments (works on MLflow 3.12 and 3.17); default experiment from `current_user.me()`
+- run_t1_eval_notebook.py: `%pip` repo + `databricks-sdk[openai]`, shapely reinstall, `restartPython()`, cwd-relative paths; test_databricks_runner.py: 5 tests (dry-run 5/2/20 records, summary counts, git tags)
+Live (serverless, mlflow-skinny 3.12.0, 71 s): run `69535e209a0c4e1dbb7b6bd79ad40c19`, tags git_sha 1ac0cb5 / feat/databricks-eval1 / v1 / 2.0.0. pass/fail/null:
+- required_tools_called 4/0/1 (RES-01 n/a), keywords_present 4/1/0, numeric_within_tolerance 1/0/4, tool_arguments_within_tolerance 4/0/1, correctness 3/2/0, fppa_compliance 5/0/0, expectations_guidelines 5/0/0, tool_call_correctness 2/3/0, safety 5/0/0, tool_call_efficiency 1/4/0
+- Findings: POINT-01 fails keywords + correctness; INTERP-01 fails correctness; agent appends an extra `read_resource` on 4/5 rows (drives efficiency/tool-correctness misses). Every scorer non-null wherever its expectation applies (D8 as read in 33.5.2).
+Deviations:
+- Live step ran the notebook's cells in a serverless Python session (no notebook-run tool here); editable install needed `src/` on sys.path because that session cannot restart Python (the notebook's `restartPython()` covers this).
+- First attempt (run 26924507433b4231a8359804857778ab) hit the SDA daily maintenance window (12:30-12:45 AM CT); discard it.
+Discovered:
+- `SDAClient` raises a raw `JSONDecodeError` when SDA returns its HTML maintenance page with HTTP 200; should map to an explicit service-unavailable error (source change, out of scope).
+- Tune system prompt v2 to avoid the redundant `read_resource` call.
+
+## 33.6.2
+
+Status: done (c2b8fd9)
+Changes:
+- eval/databricks/README.md (new): components, CLI flags, notebook, prompt versioning, privacy, scoring nulls, SDA maintenance note, deferred T2
+- README.md eval section: three tiers; AGENTS.md Find Things + Validate; Makefile `eval-databricks` target in `.PHONY` and help
+Validation: `make help` lists `eval-databricks`; ruff check/format pass; referenced paths exist
+Deviations: removed draft reference to nonexistent `eval_auth.py`; privacy wording narrowed to what `sanitize_public_payload` actually does.
