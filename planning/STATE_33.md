@@ -21,8 +21,8 @@ Plan: `planning/EXECUTION_PLAN_33.md` · Template: `planning/PROMPT_TEMPLATE_33.
 | 2 | 33.2.2 | T0 contract tests | done | orchestrator (inline) | 0818300 |
 | 3 | 33.3.1 | Dataset v2 schema and loader | done | orchestrator (inline) | 85a8077 |
 | 4 | 33.4.1 | Ground truth for five rows (LIVE, user sign-off) | done | orchestrator (inline) | signed off 2026-10-21 |
-| 5 | 33.5.1 | T1 agent loop with tracing | pending | | |
-| 5 | 33.5.2 | T1 scorers | pending | | |
+| 5 | 33.5.1 | T1 agent loop with tracing | done | orchestrator (inline) | 431b89a |
+| 5 | 33.5.2 | T1 scorers | done | orchestrator (inline) | 8787a65 |
 | 6 | 33.6.1 | T1 runner, notebook, 5-case serverless check (LIVE step) | pending | | |
 | 6 | 33.6.2 | Documentation and Make target | pending | | |
 
@@ -34,7 +34,7 @@ Plan: `planning/EXECUTION_PLAN_33.md` · Template: `planning/PROMPT_TEMPLATE_33.
 | 2 | 407 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 393 formatted | n/a | +12 T0 tests |
 | 3 | 429 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 396 formatted | n/a | +22 dataset tests |
 | 4 | 429 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 396 formatted | n/a | user sign-off: approved 2026-10-21 (with POINT-01 county + 413100 corrections) |
-| 5 | | | | | |
+| 5 | 443 passed, 1 skipped, 22 deselected | pass (EXE002 ignored) | 403 formatted | 14 passed; exact no-group env: 2 skipped | +14 T1 tests |
 | 6 | | | | | T1 run ID / experiment / per-scorer counts: |
 
 Pre-merge manual: Pi live `make test-eval` on laptop → ___
@@ -124,3 +124,30 @@ Findings for sign-off:
 Deviations:
 - No `.development/` script committed; live queries were run as an ad hoc session script.
 - QUICKSTART.md edited (outside listed scope) to keep the docs prompt consistent with the dataset; user-directed.
+
+## 33.5.1
+
+Status: done (431b89a)
+Changes:
+- eval/databricks/agent.py (C4): `build_agent`, `available_prompt_versions`, `load_system_prompt`, `chat_params`; synthetic `read_resource`/`get_prompt`; sanitized TOOL spans; thread fallback copies contextvars
+- eval/databricks/prompts/system_prompt_v1.txt: screening role + `[forced-tool]` block
+- eval/databricks/test_databricks_agent.py: scripted fake client tests
+Validation:
+- `uv run --group eval-databricks pytest eval/databricks/test_databricks_agent.py`: pass; exact no-group env: skipped
+Deviations:
+- `chat_params` adds `reasoning_effort="none"` for `gpt-5*`: `databricks-gpt-5-6-luna` rejects function tools on Chat Completions otherwise (probed live).
+Gotchas for dependents:
+- `%pip install -e .` does not install the group; the 33.6.1 notebook must also install `databricks-sdk[openai]` (MLflow is preinstalled on serverless).
+- Coordinates are not stripped by `sanitize_public_payload`, so argument scoring works on spans.
+
+## 33.5.2
+
+Status: done (8787a65)
+Changes:
+- eval/databricks/scorers.py: `required_tools_called`, `keywords_present`, `numeric_within_tolerance` (coerces numeric strings), `tool_arguments_within_tolerance` (1e-4; string lists order-insensitive; extra args ignored), `resolve_path`, `build_scorers`
+- eval/databricks/test_databricks_scorers.py: pass/fail/skip per scorer over C4 traces, names, temperature
+Validation:
+- `uv run --group eval-databricks pytest eval/databricks/test_databricks_scorers.py`: pass
+Deviations: none. All six judges accept `inference_params={"temperature": 0}` on MLflow 3.12.0 and 3.17.1 (D11 fully applied).
+Gotchas for dependents:
+- Deterministic scorers return `None` when their expectation key is absent, so `numeric_within_tolerance` is null on 4 of the 5 ground-truth rows (only INTERP-01 has numerics). D8 "every scorer non-null on all 5 rows" must be read as "non-null where the expectation applies"; 33.6.1 should report this, not fail on it.
