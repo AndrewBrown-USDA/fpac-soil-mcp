@@ -11,6 +11,7 @@ from fpac_soil_mcp.sda_client import (
     SQL_POINT_LOOKUP,
     SDAClient,
     SDAQueryError,
+    SDAServiceUnavailableError,
     SDAValidationError,
     build_dynamic_sdv_county_max_query,
     build_dynamic_sdv_query,
@@ -253,6 +254,28 @@ class TestSDAClientExecution:
             client.get_by_point(39.7684, -86.1581)
 
         assert attempts == 3
+
+    def test_maintenance_html_raises_service_unavailable(self) -> None:
+        html = (
+            "<html><body><h1>Site is under daily maintenance from "
+            "12:30 AM CST to 12:45 AM CST. Please try after 12:45 AM CST."
+            "</h1></body></html>"
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, text=html, headers={"content-type": "text/html"})
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        with pytest.raises(SDAServiceUnavailableError, match="maintenance"):
+            client.get_by_point(39.7684, -86.1581)
+
+    def test_non_json_non_maintenance_raises_query_error(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, text="<html>unexpected</html>")
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        with pytest.raises(SDAQueryError, match="non-JSON response"):
+            client.get_by_point(39.7684, -86.1581)
 
     def test_retry_eventual_success(self, mock_sda_prime_response: dict) -> None:
         attempts = 0
