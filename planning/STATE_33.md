@@ -178,6 +178,23 @@ Live rerun: run `b7d7dfd512dc47bab0d8f116e8109373` (git_sha 0713eb7, dataset 2.0
 - New keyword miss: RES-01 `7 CFR Part 658` (agent wrote "7 CFR § 658.5" / "§ 658.2(a)"; passed in the prior run). Phrasing variance, not a data error; candidate for a normalization or keyword change.
 - Resolved (e4fbe01): `common.matching.keywords_present` treats `CFR Part N`, `CFR § N.x`, `CFR §§`, `Sec.`/`section`, `C.F.R.` as the same title+part; Pi's two inline keyword checks (`run_evals.py`, `test_agent_eval.py` point test) now call it, so Pi and T1 share one matcher. +13 matching tests; offline 461 passed. Rerun `5afdedd4796b475cb05466f94048c345`: keywords_present 5/0/0, correctness 5/0/0, tool_call_correctness 4/1/0 (judge variance), tool_call_efficiency still 1/4 (extra `read_resource`).
 
+## D12 — v2 system prompt (post-wave, user-directed)
+
+Status: done (c6a6ee7)
+Changes:
+- prompts/system_prompt_v2.txt: v1 minus line 7 ("Use read_resource … fppa://regulatory-notice"); v1 kept for comparison.
+- agent.py: DEFAULT_PROMPT_VERSION = "v2"; load_system_prompt and build_agent default to it.
+- run_mlflow_eval.py: --system-prompt-version default reads the same constant.
+- test_databricks_agent.py: +1 test asserting v2 is default and differs by one line; C4 trace test expects v2.
+- README.md: documents v2 as default and the reason for the change.
+- EXECUTION_PLAN_33.md: D12 recorded.
+Gate: 462 passed, 1 skipped, 22 deselected; ruff clean.
+Comparison runs (same dataset 2.0.1, same agent/judge, same 5 ground-truth rows):
+- v1 `671575f4939244c39b8ca1d462343d9d` (79s): `read_resource` appended on 4/5 rows (all except RES-01). tool_call_efficiency 1/4, tool_call_correctness 1/4.
+- v2 `bc2e4bee68594f4a8c809b6961d1c2b8` (59s): no spurious `read_resource`. tool_call_efficiency **5/0**, tool_call_correctness **5/0**.
+- All other scorers identical between runs: correctness 5/0, fppa_compliance 5/0, expectations_guidelines 5/0, safety 5/0, keywords_present 5/0.
+- Root cause confirmed: v1 line 7 naming the URI triggered GPT-5 to fetch it on every row.
+
 ## 33.6.2
 
 Status: done (c2b8fd9)
