@@ -71,3 +71,37 @@ def test_keywords_present_reports_missing_keywords_in_order():
 
 def test_keywords_present_with_no_keywords_passes():
     assert keywords_present("anything", []) == (True, [])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "under 7 CFR Part 658",
+        "criteria under 7 CFR \u00a7 658.5",
+        "exempt under 7 CFR \u00a7658.2(a)",
+        "see 7 CFR \u00a7\u00a7 658.4-658.5",
+        "see 7 C.F.R. part 658",
+        "7 CFR Sec. 658.4",
+        "7 CFR section 658.4",
+        "7 CFR 658",
+    ],
+)
+def test_keywords_present_treats_cfr_part_and_section_forms_as_equal(text):
+    assert keywords_present(text, ["7 CFR Part 658"]) == (True, [])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "under 7 CFR Part 657",
+        "under 7 CFR \u00a7 657.5",
+        "Section 658 of the regulations",
+        "\u00a7 658.5",
+    ],
+)
+def test_keywords_present_cfr_equivalence_still_requires_title_and_part(text):
+    assert keywords_present(text, ["7 CFR Part 658"]) == (False, ["7 CFR Part 658"])
+
+
+def test_keywords_present_bare_cfr_keyword_matches_section_citation():
+    assert keywords_present("criteria under 7 CFR \u00a7 658.5", ["7 CFR"]) == (True, [])

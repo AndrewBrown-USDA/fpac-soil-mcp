@@ -19,13 +19,13 @@ from typing import Any
 
 import pytest
 import run_evals
+from common.matching import keywords_present
 from run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
     extract_assistant_content,
     extract_structured_prompt_names,
     extract_structured_tool_names,
-    normalize_text,
     prompt_case_instruction,
     should_retry_missing_tools,
 )
@@ -1126,11 +1126,8 @@ def test_pi_point_screening_evaluation(
         extract_assistant_content(ev) for ev in events if extract_assistant_content(ev)
     ]
     combined_content = " ".join(assistant_texts) if assistant_texts else (result.stdout or "")
-    norm_content = normalize_text(combined_content).lower()
-
     # Verify key expected content or keywords
-    for kw in case.get("expected_keywords", []):
-        norm_kw = normalize_text(kw).lower()
-        assert norm_kw in norm_content, (
-            f"Expected keyword '{kw}' not found in normalized assistant output: {result.stdout}"
-        )
+    _, missing = keywords_present(combined_content, case.get("expected_keywords", []))
+    assert not missing, (
+        f"Expected keyword(s) {missing} not found in normalized assistant output: {result.stdout}"
+    )

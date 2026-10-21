@@ -23,7 +23,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from common.matching import normalize_text, tool_matches
+from common.matching import keywords_present, tool_matches
 
 # Ensure UTF-8 output on Windows console
 if sys.platform == "win32":
@@ -700,10 +700,7 @@ def run_case(
                 if extract_assistant_content(event)
             ]
             combined_assistant_text = " ".join(assistant_texts) if assistant_texts else output
-            norm_content = normalize_text(combined_assistant_text).lower()
-            missing_keywords = [
-                kw for kw in expected_keywords if normalize_text(kw).lower() not in norm_content
-            ]
+            _, missing_keywords = keywords_present(combined_assistant_text, expected_keywords)
             failures = []
             if missing_tools:
                 failures.append(f"Missing tools: {', '.join(missing_tools)}")
