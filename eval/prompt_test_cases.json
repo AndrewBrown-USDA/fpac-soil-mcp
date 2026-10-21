@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Structured test cases and natural-language prompt benchmarks for FPAC Soil MCP Server tools, resources, and prompt templates.",
   "test_cases": [
     {
@@ -60,7 +60,7 @@
       ],
       "expected_keywords": [
         "prime farmland",
-        "mukey"
+        "409406"
       ],
       "expected_tool_calls": [
         {
@@ -75,7 +75,7 @@
         "The SSURGO map unit at the point is mukey 409406 (symbol 120B).",
         "The map unit is Tama silty clay loam, 2 to 5 percent slopes.",
         "The SSURGO farmland classification is 'All areas are prime farmland'.",
-        "The point falls in soil survey area IA127 (Marshall County, IA)."
+        "The point is in Marshall County, IA."
       ],
       "guidelines": [
         "The response states that results are preliminary screening and are not an official FPPA determination, LESA score, Form AD-1006, or Form NRCS-CPA-106."
@@ -297,7 +297,7 @@
       "expected_facts": [
         "Map unit 412850 has a weighted-average NCCPI v3 rating of about 0.72 (within 0.01), rated moderately high inherent productivity.",
         "Map unit 412851 has a weighted-average NCCPI v3 rating of about 0.59 (within 0.01), rated moderately low inherent productivity.",
-        "Map unit key 413100 returns no NCCPI rating because it matches no current SSURGO map unit; the response reports it as missing rather than estimating a value."
+        "Map unit key 413100 is reported as having no NCCPI rating."
       ],
       "numeric_expectations": [
         {

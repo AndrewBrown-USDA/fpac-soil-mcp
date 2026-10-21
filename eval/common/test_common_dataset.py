@@ -70,7 +70,7 @@ def _write(tmp_path: Path, cases: list[dict[str, Any]], version: str = "2.0.0") 
 def test_checked_in_dataset_validates() -> None:
     cases = load_cases()
     assert len(cases) >= 20
-    assert dataset_version(DEFAULT_PATH) in {"1.0.0", "2.0.0"}
+    assert dataset_version(DEFAULT_PATH).split(".")[0] in {"1", "2"}
 
 
 def test_v1_row_and_full_v2_row_validate() -> None:
