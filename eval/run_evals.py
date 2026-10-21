@@ -19,10 +19,11 @@ import subprocess
 import sys
 import tempfile
 import time
-import unicodedata
 import uuid
 from pathlib import Path
 from typing import Any
+
+from common.matching import normalize_text, tool_matches
 
 # Ensure UTF-8 output on Windows console
 if sys.platform == "win32":
@@ -246,17 +247,6 @@ def create_sandbox(sandbox_dir: Path) -> None:
     mcp_file = sandbox_dir / "mcp_config.json"
     with open(mcp_file, "w", encoding="utf-8") as f:
         json.dump(mcp_config, f, indent=2)
-
-
-def normalize_text(text: str) -> str:
-    """Normalize text by standardizing unicode characters (e.g. non-breaking hyphens, special spaces)."""
-    # NFKD normalizes compatibility characters
-    normalized = unicodedata.normalize("NFKD", text)
-    # Replace non-breaking hyphen (U+2011), figure dash (U+2012), en dash (U+2013), em dash (U+2014) with ASCII hyphen
-    normalized = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]", "-", normalized)
-    # Replace non-breaking space (U+00A0) and other unicode whitespace with standard space
-    normalized = re.sub(r"[\u00a0\u2000-\u200b\u202f\u205f\u3000]", " ", normalized)
-    return normalized
 
 
 def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
@@ -503,10 +493,7 @@ def prompt_case_instruction(case: dict[str, Any]) -> str:
     )
 
 
-def _tool_matches(expected: str, executed: set[str]) -> bool:
-    return expected in executed or any(
-        name.endswith((f"_{expected}", f":{expected}")) for name in executed
-    )
+_tool_matches = tool_matches
 
 
 def should_retry_missing_tools(
@@ -933,12 +920,9 @@ def main() -> None:
     print("=" * 70)
 
     passed = sum(1 for r in results if r["status"] == "PASS")
-    warned = sum(1 for r in results if r["status"] == "WARN")
-    failed = sum(1 for r in results if r["status"] in ("FAIL", "ERROR", "TIMEOUT", "WARN"))
+    failed = sum(1 for r in results if r["status"] in ("FAIL", "ERROR", "TIMEOUT"))
 
-    print(
-        f"\nSummary: {passed} Passed, {warned} Warnings, {failed} Failed out of {len(results)} total cases.\n"
-    )
+    print(f"\nSummary: {passed} Passed, {failed} Failed out of {len(results)} total cases.\n")
 
     if failed > 0:
         sys.exit(1)

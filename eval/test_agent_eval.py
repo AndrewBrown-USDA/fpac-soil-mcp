@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import unicodedata
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -23,7 +22,10 @@ import run_evals
 from run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
+    extract_assistant_content,
     extract_structured_prompt_names,
+    extract_structured_tool_names,
+    normalize_text,
     prompt_case_instruction,
     should_retry_missing_tools,
 )
@@ -31,14 +33,6 @@ from run_evals import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 CAPTURE_FIXTURES_PATH = REPO_ROOT / "eval" / "fixtures" / "event_capture"
-
-
-def normalize_text(text: str) -> str:
-    """Normalize text by standardizing unicode characters (e.g. non-breaking hyphens, special spaces)."""
-    normalized = unicodedata.normalize("NFKD", text)
-    normalized = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]", "-", normalized)
-    normalized = re.sub(r"[\u00a0\u2000-\u200b\u202f\u205f\u3000]", " ", normalized)
-    return normalized
 
 
 def parse_pi_events(output: str) -> list[dict[str, Any]]:
@@ -687,144 +681,6 @@ def event_text(event: dict[str, Any]) -> str:
     return json.dumps(event, ensure_ascii=False).lower()
 
 
-def extract_structured_tool_names(event: dict[str, Any]) -> set[str]:
-    """Extract tool names specifically from dedicated name/function fields in an event."""
-    names: set[str] = set()
-    event_type = str(event.get("type", "")).lower()
-
-    if (
-        event_type in {"tool_execution_start", "tool_execution_end"}
-        and event.get("toolName") == "mcpScript"
-    ):
-        args = event.get("args")
-        code = args.get("code") if isinstance(args, dict) else None
-        if isinstance(code, str):
-            names.update(
-                match.group(1)
-                for match in re.finditer(
-                    r"""tools\.call\(\s*["']([A-Za-z0-9_.:-]+)["']\s*,""", code
-                )
-            )
-        details = event.get("details")
-        calls = details.get("calls") if isinstance(details, dict) else None
-        if isinstance(calls, list):
-            for call in calls:
-                path = call.get("path") if isinstance(call, dict) else None
-                if isinstance(path, str):
-                    leaf = re.split(r"[/.:]", path.rstrip("/"))[-1]
-                    if re.fullmatch(r"[A-Za-z0-9_-]+", leaf):
-                        names.add(leaf)
-
-    # Direct tool execution or tool call events
-    if "tool" in event_type or event_type in {
-        "call",
-        "tool_use",
-        "tool_call",
-        "tool_execution",
-    }:
-        for key in ("tool_name", "tool", "name", "function_name", "toolName"):
-            val = event.get(key)
-            if isinstance(val, str) and val:
-                names.add(val)
-
-        args_obj = event.get("args")
-        if isinstance(args_obj, dict):
-            sub_tool = args_obj.get("tool") or args_obj.get("name")
-            if isinstance(sub_tool, str) and sub_tool:
-                names.add(sub_tool)
-
-        tool_call_obj = event.get("tool_call") or event.get("call") or event.get("function")
-        if isinstance(tool_call_obj, dict):
-            for key in ("name", "tool_name", "tool", "toolName"):
-                val = tool_call_obj.get(key)
-                if isinstance(val, str) and val:
-                    names.add(val)
-            sub_args = tool_call_obj.get("args") or tool_call_obj.get("arguments")
-            if isinstance(sub_args, dict):
-                sub_tool = sub_args.get("tool") or sub_args.get("name")
-                if isinstance(sub_tool, str) and sub_tool:
-                    names.add(sub_tool)
-
-    # Tool calls embedded inside message objects
-    message = event.get("message")
-    if isinstance(message, dict):
-        tool_calls = message.get("tool_calls") or message.get("toolCalls")
-        if isinstance(tool_calls, list):
-            for tc in tool_calls:
-                if isinstance(tc, dict):
-                    fn = tc.get("function")
-                    if isinstance(fn, dict) and isinstance(fn.get("name"), str):
-                        names.add(fn["name"])
-                    elif isinstance(tc.get("name"), str):
-                        names.add(tc["name"])
-                    sub_args = tc.get("args") or tc.get("arguments")
-                    if isinstance(sub_args, dict):
-                        sub_tool = sub_args.get("tool") or sub_args.get("name")
-                        if isinstance(sub_tool, str) and sub_tool:
-                            names.add(sub_tool)
-
-        # Content blocks inside message (e.g. toolCall, tool_use)
-        msg_content = message.get("content")
-        if isinstance(msg_content, list):
-            for block in msg_content:
-                if isinstance(block, dict):
-                    btype = block.get("type", "")
-                    if btype in {"tool_use", "tool_call", "toolCall"}:
-                        val = block.get("name") or block.get("tool") or block.get("toolName")
-                        if isinstance(val, str) and val:
-                            names.add(val)
-                        b_args = block.get("arguments") or block.get("args")
-                        if isinstance(b_args, dict):
-                            sub_tool = b_args.get("tool") or b_args.get("name")
-                            if isinstance(sub_tool, str) and sub_tool:
-                                names.add(sub_tool)
-
-    # Nested content blocks (e.g. Claude/Pi tool_use content blocks)
-    content = event.get("content")
-    if isinstance(content, list):
-        for block in content:
-            if isinstance(block, dict) and block.get("type") in {
-                "tool_use",
-                "tool_call",
-                "toolCall",
-            }:
-                val = block.get("name") or block.get("tool") or block.get("toolName")
-                if isinstance(val, str) and val:
-                    names.add(val)
-                b_args = block.get("arguments") or block.get("args")
-                if isinstance(b_args, dict):
-                    sub_tool = b_args.get("tool") or b_args.get("name")
-                    if isinstance(sub_tool, str) and sub_tool:
-                        names.add(sub_tool)
-
-    return names
-
-
-def extract_assistant_content(event: dict[str, Any]) -> str:
-    """Extract assistant response text or tool output from an event."""
-    event_type = str(event.get("type", "")).lower()
-    text_parts: list[str] = []
-
-    # Handle pi structured events (message_end is emitted per assistant message turn)
-    if event_type == "message_end":
-        msg = event.get("message")
-        if isinstance(msg, dict):
-            msg_role = str(msg.get("role", "")).lower()
-            if msg_role in {"assistant", "model"}:
-                content = msg.get("content")
-                if isinstance(content, str):
-                    text_parts.append(content)
-                elif isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, str):
-                            text_parts.append(block)
-                        elif isinstance(block, dict) and block.get("type") == "text":
-                            text_parts.append(block.get("text") or "")
-                return " ".join(text_parts)
-
-    return ""
-
-
 def extract_tool_calls(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Extract structured MCP/tool invocations from pi's JSON stream."""
     calls: list[dict[str, Any]] = []
@@ -1168,7 +1024,13 @@ def test_prompt_dataset_schema_and_completeness(prompt_dataset: list[dict[str, A
         "check_urban_area_exemption",
         "get_soil_interpretations",
         "analyze_corridor_fppa",
+        "calculate_preliminary_lesa",
     }
+    manifest_text = (REPO_ROOT / "manifest.yaml").read_text(encoding="utf-8")
+    tools_block = manifest_text.split("\ntools:\n", 1)[1].split("\nresources:\n", 1)[0]
+    manifest_tools = set(re.findall(r"^  - name: (\S+)", tools_block, flags=re.MULTILINE))
+    assert len(manifest_tools) == 10
+    assert expected_tools == manifest_tools
     expected_resources = {
         "fppa://regulatory-notice",
         "fppa://screening-guidance",
