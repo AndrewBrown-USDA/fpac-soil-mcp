@@ -54,6 +54,10 @@ htmlcov/
 *.swp
 *.swo
 *~
+package-lock.json
+yarn.lock
+.npmrc
+node_modules/
 
 # OS files
 .DS_Store
