@@ -168,6 +168,15 @@ Discovered:
 - `SDAClient` raises a raw `JSONDecodeError` when SDA returns its HTML maintenance page with HTTP 200; should map to an explicit service-unavailable error (source change, out of scope).
 - Tune system prompt v2 to avoid the redundant `read_resource` call.
 
+## 33.6.1 follow-up (post-wave, user-directed)
+
+Status: done (0713eb7)
+Changes:
+- eval/prompt_test_cases.json -> 2.0.1: POINT-01 keyword `mukey` -> `409406`; POINT-01 fact IA127 -> "in Marshall County, IA" (prompt never asks for the survey area); INTERP-01 413100 fact drops the unknowable cause (guideline already covers no-invention)
+- eval/common/test_common_dataset.py: version check accepts any 1.x/2.x
+Live rerun: run `b7d7dfd512dc47bab0d8f116e8109373` (git_sha 0713eb7, dataset 2.0.1). correctness 5/0/0 (was 3/2); POINT-01 keywords now pass; other scorers unchanged.
+- New keyword miss: RES-01 `7 CFR Part 658` (agent wrote "7 CFR § 658.5" / "§ 658.2(a)"; passed in the prior run). Phrasing variance, not a data error; candidate for a normalization or keyword change.
+
 ## 33.6.2
 
 Status: done (c2b8fd9)
