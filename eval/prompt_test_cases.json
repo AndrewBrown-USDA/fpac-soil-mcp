@@ -177,7 +177,7 @@
       "category": "Phase 3 - Urban Exemption",
       "target_type": "tool",
       "target_name": "check_urban_area_exemption",
-      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR \u00c2\u00a7 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
+      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR \u00a7 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
       "expected_tools": [
         "check_urban_area_exemption"
       ],
@@ -232,7 +232,7 @@
       "category": "Phase 3 - Corridor Analysis",
       "target_type": "tool",
       "target_name": "analyze_corridor_fppa",
-      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR \u00c2\u00a7 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
+      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR \u00a7 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
       "expected_tools": [
         "analyze_corridor_fppa"
       ],
@@ -346,7 +346,7 @@
       "category": "Assistant Prompts",
       "target_type": "prompt",
       "target_name": "fppa_corridor_screening_assistant",
-      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR \u00c2\u00a7 658.5(c).",
+      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR \u00a7 658.5(c).",
       "expected_tools": [],
       "expected_keywords": [
         "corridor",
@@ -384,7 +384,7 @@
       "category": "Phase 4 - Land Evaluation & Site Assessment",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Check if the total score triggers the 160-point statutory threshold under 7 CFR \u00c2\u00a7 658.4(c)(2).",
+      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Check if the total score triggers the 160-point statutory threshold under 7 CFR \u00a7 658.4(c)(2).",
       "expected_tools": [
         "calculate_preliminary_lesa"
       ],
