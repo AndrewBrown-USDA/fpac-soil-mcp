@@ -56,6 +56,9 @@ uv run pytest -m live_network
 - `src\fpac_soil_mcp\prompts\` - MCP prompt implementations (`fppa_prompts.py`) for guided workflows.
 - `src\fpac_soil_mcp\routes.py` - HTTP-only `/health` and `/meta` routes.
 - `src\fpac_soil_mcp\data\` - bundled official data registries and regional scoring references (`official_sources.v1.json`, `regional_scoring.v1.json`).
+- `eval\common\` - harness-neutral matching, dataset loader, and validation code shared by Pi and Databricks tiers.
+- `eval\contract\` - T0 offline contract tests over the in-memory FastMCP client.
+- `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
 - `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md`, then inspect the directory for execution-specific files.
 - `pyproject.toml` - package metadata, dependencies, script entry point, pytest markers, and Ruff settings.
@@ -95,6 +98,12 @@ uv run pytest -m live_network
 uv run pytest -m "not live_network"
 uv run ruff check .
 uv run ruff format --check .
+```
+
+Run T1 Databricks eval tests (requires the `eval-databricks` dependency group):
+
+```powershell
+uv run --group eval-databricks pytest eval/databricks -q
 ```
 
 Run `uv run pytest -m live_network` separately when changing requests, SQL templates, parsing, retries, or live integration behavior.

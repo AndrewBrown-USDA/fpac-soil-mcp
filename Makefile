@@ -12,7 +12,7 @@ MCP_PORT    ?= 8000
 IMAGE_NAME  ?= fpac-soil-mcp
 EVAL_ARTIFACT_ROOT ?= ../fpac-soil-mcp-eval-artifacts
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval lint lint-fix format format-check check clean docker-build docker-run all
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -46,6 +46,9 @@ test-eval: ## Run Pi agent evaluation benchmark suite
 	$(PYTHON) eval/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
 
 eval: test-eval ## Alias for test-eval
+
+eval-databricks: ## Run T1 Databricks-native MLflow evaluation (requires eval-databricks group)
+	$(UV) run --group eval-databricks python eval/databricks/run_mlflow_eval.py $(ARGS)
 
 lint: ## Run Ruff linter checks
 	$(UV) run ruff check .

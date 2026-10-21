@@ -734,6 +734,10 @@ class SDATimeoutError(SDAClientError):
     """Raised when an SDA request times out."""
 
 
+class SDAServiceUnavailableError(SDAClientError):
+    """Raised when SDA is temporarily unavailable (e.g. daily maintenance window)."""
+
+
 class SDAClient:
     """Client for USDA NRCS Soil Data Access (SDA) REST service."""
 
@@ -843,7 +847,19 @@ class SDAClient:
                 max_retries=max(0, self.max_retries - 1),
                 client=self._http_client,
             )
-            return self._parse_table_response(response.json())
+            try:
+                data = response.json()
+            except Exception as json_exc:
+                body = response.text[:500]
+                if "maintenance" in body.lower():
+                    raise SDAServiceUnavailableError(
+                        "SDA is temporarily unavailable (daily maintenance window). "
+                        "Retry after a few minutes."
+                    ) from json_exc
+                raise SDAQueryError(
+                    f"SDA returned non-JSON response (HTTP {response.status_code}): {body}"
+                ) from json_exc
+            return self._parse_table_response(data)
         except HttpStatusError as exc:
             text = exc.response.text
             if exc.status_code < 500:

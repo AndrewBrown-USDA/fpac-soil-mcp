@@ -359,6 +359,12 @@ uv run ruff format --check .
 
 ### Evaluation Capture (Opt-In)
 
+The project has three evaluation tiers:
+
+1. **Pi local** (`make test-eval`) -- Pi CLI agent evaluation benchmark suite on a laptop. Live, opt-in, serial.
+2. **T0 contract** (`uv run pytest eval/contract/`) -- Offline contract tests over the in-memory FastMCP client. Part of the default offline suite.
+3. **T1 Databricks** (`make eval-databricks ARGS="--ground-truth"`) -- In-process agent loop with MLflow tracing and scoring on serverless compute. Requires the `eval-databricks` dependency group (`uv sync --group eval-databricks`). See `eval/databricks/README.md` for details.
+
 Capture is opt-in and non-retaining by default. The normal offline test command
 does not start Pi, contact external services, or enable capture. To retain
 artifacts, explicitly enable capture and provide a repository-external root:

@@ -37,7 +37,7 @@ resources:
     description: Reference listing of SSURGO farmland classification categories and statutory criteria.
 prompts:
   - name: fppa_screening_assistant
-    description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 9 tools, and regulatory disclaimers.
+    description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 10 tools, and regulatory disclaimers.
     arguments:
       - name: project_name
         description: Optional name or description of the proposed project.

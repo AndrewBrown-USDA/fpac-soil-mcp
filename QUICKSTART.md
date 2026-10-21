@@ -69,7 +69,7 @@ Once connected, test the server tools, resources, and prompt templates using the
 
 ### Category 2: Point & Map Unit Lookups (Phase 1)
 - **Prime Farmland / Midwest Corn Belt (`get_farmland_classification_by_point`)**:
-  > *"What is the USDA soil map unit, farmland classification, and FPPA status at latitude `41.8781`, longitude `-93.0977` (Story County, IA)?"*
+  > *"What is the USDA soil map unit, farmland classification, and FPPA status at latitude `41.8781`, longitude `-93.0977` (Marshall County, IA)?"*
 - **Conditional Prime Farmland**:
   > *"Can you check the soil map unit and farmland classification for latitude `39.7684` and longitude `-87.1581`?"*
 - **Urban / Non-Prime Farmland**:
