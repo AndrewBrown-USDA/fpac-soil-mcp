@@ -171,11 +171,24 @@ def load_cases(
 ) -> list[dict[str, Any]]:
     """Load and validate the dataset, then filter rows.
 
+    Raises ``ValueError`` when the file is not an object with a ``test_cases`` list
+    or when any row fails validation.
+
     ``ids`` keeps rows in dataset order and raises ``ValueError`` for unknown ids.
     ``ground_truth_only`` keeps rows that carry ``verified_on``. ``category`` is a
     case-insensitive substring match, as in the Pi runner.
     """
-    cases = _read(Path(path)).get("test_cases", [])
+    data = _read(Path(path))
+    problem = None
+    if not isinstance(data, dict):
+        problem = f"top-level JSON must be an object, got {type(data).__name__}"
+    elif "test_cases" not in data:
+        problem = "'test_cases' is missing"
+    elif not isinstance(data["test_cases"], list):
+        problem = f"'test_cases' must be a list, got {type(data['test_cases']).__name__}"
+    if problem:
+        raise ValueError(f"{path}: {problem}")
+    cases = data["test_cases"]
     validate_cases(cases)
 
     if ids is not None:

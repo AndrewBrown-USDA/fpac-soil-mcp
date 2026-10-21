@@ -185,3 +185,27 @@ def test_load_cases_rejects_invalid_file(tmp_path: Path) -> None:
     path = _write(tmp_path, [_row(), _row(id="X-01", surprise=True)])
     with pytest.raises(ValueError, match="X-01.surprise: unknown field"):
         load_cases(path)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"version": "2.0.0"}, "'test_cases' is missing"),
+        ({"test_cases": {"POINT-01": V2_ROW}}, "'test_cases' must be a list, got dict"),
+        ({"test_cases": "POINT-01"}, "'test_cases' must be a list, got str"),
+        ([V2_ROW], "top-level JSON must be an object, got list"),
+        ({"test_cases": [_row(), "POINT-02"]}, "row[1]: expected an object"),
+    ],
+)
+def test_load_cases_rejects_malformed_test_cases(
+    tmp_path: Path, payload: Any, message: str
+) -> None:
+    path = tmp_path / "cases.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError) as excinfo:
+        load_cases(path)
+    assert message in str(excinfo.value)
+
+
+def test_load_cases_accepts_empty_list(tmp_path: Path) -> None:
+    assert load_cases(_write(tmp_path, [])) == []
