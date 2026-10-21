@@ -12,6 +12,7 @@ serverless compute. No service principal is required.
 - `run_t1_eval_notebook.py` -- Databricks notebook wrapper for the 5-case serverless check
 - `prompts/system_prompt_v{N}.txt` -- Versioned system prompts (`v2` default; `v1` kept for comparison)
 - `test_databricks_agent.py`, `test_databricks_scorers.py`, `test_databricks_runner.py` -- Offline tests
+- `test_databricks_dry_run.py` -- Dry-run tests that pass with or without the `eval-databricks` group
 
 ## Prerequisites
 
@@ -30,7 +31,8 @@ installs via `%pip`.
 ### CLI (local or serverless)
 
 ```bash
-# Dry run (build records and scorers, no model calls)
+# Dry run (build records and list scorer names, no model calls).
+# Works without the eval-databricks group too: `uv run python ... --dry-run`.
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --dry-run
 
 # 5-case ground-truth run
@@ -73,7 +75,7 @@ up as tool errors in the traces; rerun after the window.
 | `--max-workers` | 1 | Parallel eval workers (sets `MLFLOW_GENAI_EVAL_MAX_WORKERS`) |
 | `--max-turns` | 8 | Max agent turns per case |
 | `--system-prompt-version` | `v2` | System prompt version (from `prompts/`) |
-| `--dry-run` | | Build records and scorers only, no model calls |
+| `--dry-run` | | Build records and list scorer names only; no model calls, no MLflow needed |
 
 ## System prompt versioning
 
@@ -84,14 +86,23 @@ The default is `v2` (forced-tool screening role). `v1` additionally named
 harness resource tests; it led the agent to re-read the notice on nearly every
 row. Resource rows name their URI in the user prompt and the `read_resource` tool
 description lists all URIs, so the system prompt does not point at any one
-resource. `v1` stays for run-to-run comparison. A scope-aware prompt (planned as
-v2 in D11) is deferred and will take the next free number.
+resource. `v1` stays for run-to-run comparison. A scope-aware prompt is deferred and
+will be `v3`.
 
 ## Privacy
+
+T1 is for known synthetic or public cases only. Do not run it on producer data
+or any other non-public input.
 
 TOOL span inputs and outputs pass through `privacy.sanitize_public_payload`
 before being recorded. Coordinates are not stripped by that policy, so argument
 scoring works on spans; use synthetic or public locations only.
+
+The root AGENT span (`@mlflow.trace` on `predict`) records the plain-text
+request and the plain-text answer. It is not sanitized: the sanitizer drops
+prohibited keys from structured payloads and has nothing to act on in a plain
+string, so routing these through it would add no protection. The synthetic-only
+rule above is what keeps the AGENT span safe.
 
 ## Scoring
 
