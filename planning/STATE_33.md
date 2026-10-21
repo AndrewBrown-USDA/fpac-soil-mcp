@@ -176,6 +176,7 @@ Changes:
 - eval/common/test_common_dataset.py: version check accepts any 1.x/2.x
 Live rerun: run `b7d7dfd512dc47bab0d8f116e8109373` (git_sha 0713eb7, dataset 2.0.1). correctness 5/0/0 (was 3/2); POINT-01 keywords now pass; other scorers unchanged.
 - New keyword miss: RES-01 `7 CFR Part 658` (agent wrote "7 CFR § 658.5" / "§ 658.2(a)"; passed in the prior run). Phrasing variance, not a data error; candidate for a normalization or keyword change.
+- Resolved (e4fbe01): `common.matching.keywords_present` treats `CFR Part N`, `CFR § N.x`, `CFR §§`, `Sec.`/`section`, `C.F.R.` as the same title+part; Pi's two inline keyword checks (`run_evals.py`, `test_agent_eval.py` point test) now call it, so Pi and T1 share one matcher. +13 matching tests; offline 461 passed. Rerun `5afdedd4796b475cb05466f94048c345`: keywords_present 5/0/0, correctness 5/0/0, tool_call_correctness 4/1/0 (judge variance), tool_call_efficiency still 1/4 (extra `read_resource`).
 
 ## 33.6.2
 
