@@ -43,7 +43,7 @@ test-live: ## Run live network integration tests (requires network)
 	$(UV) run pytest -m live_network
 
 test-eval: ## Run Pi agent evaluation benchmark suite
-	$(PYTHON) eval/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
+	$(PYTHON) eval/pi/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
 
 eval: test-eval ## Alias for test-eval
 
