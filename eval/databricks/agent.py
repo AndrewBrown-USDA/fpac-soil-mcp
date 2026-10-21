@@ -5,6 +5,13 @@ checked-out code (`create_mcp_server`); upstream SDA/TIGERweb/NASS calls still g
 
 `mlflow`, `openai`, and `databricks.sdk` are imported lazily so this module imports
 without the `eval-databricks` dependency group.
+
+Tracing and privacy: the root AGENT span (``@mlflow.trace`` on ``predict``) records the
+plain-text request and the plain-text answer. It does not pass through ``_sanitize``,
+because ``privacy.sanitize_public_payload`` drops prohibited *keys* and has nothing to
+strip from a plain string. TOOL spans carry structured arguments and results and are
+always sanitized. T1 must only be run on known synthetic or public cases, never on
+producer data.
 """
 
 from __future__ import annotations

@@ -153,6 +153,30 @@ def test_agent_calls_tool_then_answers_with_c4_trace() -> None:
     assert json.loads(tool_message["content"])["regulatory_notice"] == REGULATORY_NOTICE
 
 
+def test_agent_span_shape_is_pinned() -> None:
+    """AGENT root records plain request/answer text; TOOL spans hang off it (D1, K4)."""
+    request = "Explain FPPA scope for a synthetic case."
+    llm = FakeLLM(
+        ("tools", [("explain_fppa_screening_scope", {}), ("list_farmland_classes", {})]),
+        ("text", "Pinned final answer."),
+    )
+    answer, trace = _run(llm, request)
+
+    root = next(span for span in trace.data.spans if span.parent_id is None)
+    assert root.name == "fpac_soil_agent"
+    assert root.span_type == "AGENT"
+    assert request in json.dumps(root.inputs)
+    assert answer == "Pinned final answer."
+    assert answer in json.dumps(root.outputs)
+
+    spans = _tool_spans(trace)
+    assert [span.name for span in spans] == [
+        "explain_fppa_screening_scope",
+        "list_farmland_classes",
+    ]
+    assert all(span.parent_id == root.span_id for span in spans)
+
+
 def test_read_resource_and_get_prompt_dispatch() -> None:
     llm = FakeLLM(
         (
