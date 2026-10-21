@@ -2,7 +2,15 @@
 
 import pytest
 
-from common.matching import keywords_present, normalize_text, tool_matches
+from common.dataset import load_cases
+from common.matching import _keyword_form, keywords_present, normalize_text, tool_matches
+
+
+def _digit_edged_dataset_keywords() -> list[str]:
+    keywords = {kw for case in load_cases() for kw in case["expected_keywords"]}
+    return sorted(
+        kw for kw in keywords if _keyword_form(kw)[:1].isdigit() or _keyword_form(kw)[-1:].isdigit()
+    )
 
 
 @pytest.mark.parametrize(
@@ -105,3 +113,39 @@ def test_keywords_present_cfr_equivalence_still_requires_title_and_part(text):
 
 def test_keywords_present_bare_cfr_keyword_matches_section_citation():
     assert keywords_present("criteria under 7 CFR \u00a7 658.5", ["7 CFR"]) == (True, [])
+
+
+@pytest.mark.parametrize(
+    ("keyword", "text"),
+    [
+        ("7 CFR", "under 27 CFR Part 658"),
+        ("7 CFR Part 658", "under 7 CFR Part 6580"),
+        ("409406", "map unit 4094061"),
+        ("160", "a threshold of 1600 points"),
+        ("AD-1006", "form AD-10060"),
+    ],
+)
+def test_keywords_present_rejects_numbers_extended_at_digit_edges(keyword, text):
+    assert keywords_present(text, [keyword]) == (False, [keyword])
+
+
+@pytest.mark.parametrize(
+    ("keyword", "text"),
+    [
+        ("7 CFR Part 658", "criteria under 7 CFR \u00a7 658.5"),
+        ("7 CFR Part 658", "see 7 C.F.R. 658"),
+        ("160", "a total score of 160."),
+        ("658.5(c)", "factors in \u00a7 658.5(c) apply"),
+    ],
+)
+def test_keywords_present_allows_non_digit_neighbors_at_digit_edges(keyword, text):
+    assert keywords_present(text, [keyword]) == (True, [])
+
+
+def test_dataset_has_digit_edged_keywords():
+    assert len(_digit_edged_dataset_keywords()) >= 8
+
+
+@pytest.mark.parametrize("keyword", _digit_edged_dataset_keywords())
+def test_digit_edged_dataset_keywords_match_inside_a_sentence(keyword):
+    assert keywords_present(f"See {keyword} here.", [keyword]) == (True, [])

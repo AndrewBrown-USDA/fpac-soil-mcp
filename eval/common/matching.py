@@ -34,6 +34,16 @@ def _keyword_form(text: str) -> str:
     return _CFR_UNIT.sub("cfr ", normalize_text(text).lower())
 
 
+def _keyword_pattern(form: str) -> re.Pattern[str]:
+    """Literal pattern for ``form`` that cannot extend a number at a digit edge."""
+    pattern = re.escape(form)
+    if form[:1].isdigit():
+        pattern = r"(?<!\d)" + pattern
+    if form[-1:].isdigit():
+        pattern += r"(?!\d)"
+    return re.compile(pattern)
+
+
 def keywords_present(text: str, keywords: Iterable[str]) -> tuple[bool, list[str]]:
     """Check case-insensitive keyword presence over normalized text.
 
@@ -41,8 +51,13 @@ def keywords_present(text: str, keywords: Iterable[str]) -> tuple[bool, list[str
     ``7 CFR Part 658`` matches ``7 CFR Part 658``, ``7 CFR § 658.5``, and
     ``7 C.F.R. 658``.
 
+    Numbers are not extended: a keyword that starts with a digit must not be
+    preceded by a digit, and one that ends with a digit must not be followed by
+    a digit. Any other character, including ``.``, may follow, so ``160``
+    matches ``160.`` but not ``1600``, and ``7 CFR`` does not match ``27 CFR``.
+
     Returns ``(all_present, missing_keywords)``.
     """
     haystack = _keyword_form(text)
-    missing = [kw for kw in keywords if _keyword_form(kw) not in haystack]
+    missing = [kw for kw in keywords if not _keyword_pattern(_keyword_form(kw)).search(haystack)]
     return not missing, missing
