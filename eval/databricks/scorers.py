@@ -30,6 +30,16 @@ DETERMINISTIC_SCORER_NAMES = (
     "tool_arguments_within_tolerance",
 )
 
+# Names of the scorers returned by `judge_scorers`, in order (MLflow 3.12 class defaults).
+JUDGE_SCORER_NAMES = (
+    "correctness",
+    "fppa_compliance",
+    "expectations_guidelines",
+    "tool_call_correctness",
+    "safety",
+    "tool_call_efficiency",
+)
+
 _PATH_TOKEN = re.compile(r"([^.\[\]]+)|\[(\d+)\]")
 
 
@@ -83,7 +93,9 @@ def _matches_expected(expected: Any, actual: Any) -> bool:
         if not isinstance(actual, list) or len(actual) != len(expected):
             return False
         if all(isinstance(item, str) for item in expected):
-            return sorted(expected) == sorted(str(item) for item in actual)
+            if not all(isinstance(item, str) for item in actual):
+                return False
+            return sorted(expected) == sorted(actual)
         return all(_matches_expected(e, a) for e, a in zip(expected, actual, strict=True))
     return actual == expected
 
@@ -186,6 +198,15 @@ def judge_scorers(judge_model: str) -> list[Any]:
         Safety(**common),
         ToolCallEfficiency(**common),
     ]
+
+
+def scorer_names(judge_model: str | None = None) -> list[str]:
+    """Names ``build_scorers`` produces, in order, without importing MLflow.
+
+    ``judge_model`` is accepted for symmetry with ``build_scorers``; names do not depend on it.
+    """
+    del judge_model
+    return [*DETERMINISTIC_SCORER_NAMES, *JUDGE_SCORER_NAMES]
 
 
 def build_scorers(judge_model: str) -> list[Any]:

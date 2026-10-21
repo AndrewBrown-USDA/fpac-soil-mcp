@@ -11,9 +11,11 @@ mlflow = pytest.importorskip("mlflow")
 
 from scorers import (
     DETERMINISTIC_SCORER_NAMES,
+    _matches_expected,
     build_scorers,
     deterministic_scorers,
     resolve_path,
+    scorer_names,
 )
 
 
@@ -151,3 +153,24 @@ def test_build_scorers_names_and_judge_settings() -> None:
     for judge in built[4:]:
         assert judge.model == "databricks:/databricks-claude-sonnet-4-5"
         assert judge.inference_params == {"temperature": 0}
+
+
+def test_scorer_names_match_built_scorers() -> None:
+    built = build_scorers("databricks-claude-sonnet-4-5")
+    assert scorer_names() == [s.name for s in built]
+    assert scorer_names("databricks-claude-sonnet-4-5") == scorer_names()
+
+
+@pytest.mark.parametrize(
+    ("expected", "actual", "matches"),
+    [
+        (["1"], [1], False),
+        (["a", "b"], ["b", "a"], True),
+        (["1", "2"], ["1", 2], False),
+        (["a"], ["a", "b"], False),
+    ],
+)
+def test_string_lists_compare_strictly_and_ignore_order(
+    expected: list[str], actual: list[Any], matches: bool
+) -> None:
+    assert _matches_expected(expected, actual) is matches
