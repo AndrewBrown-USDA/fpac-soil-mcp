@@ -48,6 +48,7 @@ Extend the fpac-soil-mcp evaluation workflow to Databricks as proposed in `plann
 | D9 | 2026-10-20 | Scorers in: deterministic (tools called, keywords, numeric tolerance, argument tolerance), `Correctness`, `Guidelines` compliance, `ToolCallCorrectness`, `Safety`, `ToolCallEfficiency` (last two non-gating). `read_resource`/`get_prompt` exposed as agent tools. `force_tool_use` schema field in, scope rows deferred. Traces sanitized through `privacy.py`. Runs tagged `git_sha` + `git_branch`. Prompt registry and UC dataset sync deferred. |
 | D10 | 2026-10-20 | Do not bring over or use the template `mcp-eval` skill. Phoenix setup is addressed separately. USAI API key/gateway is a no-go. |
 | D11 | 2026-10-20 | Adopt two methods directly (no skill): `temperature=0` for the agent and for judges where the judge API supports it; file-based versioned system prompts at `eval/databricks/prompts/system_prompt_v{n}.txt`, selected by `--system-prompt-version` (default `v1`) and logged as a run tag. Only v1 (forced-tool) ships; v2 scope-aware prompt waits for scope rows; MLflow prompt registry stays deferred. |
+| D12 | 2026-10-21 | Default system prompt becomes `v2` = v1 minus the line naming `fppa://regulatory-notice` (a Pi resource-test carry-over that triggered a redundant `read_resource` per row). System prompts do not steer toward specific resources or tools. v1 kept for comparison; the scope-aware prompt from D11 takes the next free number. Supersedes the D11/C5 `v1` default. |
 
 ## Recon log (facts)
 

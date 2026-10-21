@@ -27,7 +27,7 @@ for _path in (_HERE.parent, _HERE):  # eval/ (common) and eval/databricks/ (agen
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from agent import available_prompt_versions, build_agent
+from agent import DEFAULT_PROMPT_VERSION, available_prompt_versions, build_agent
 from common.dataset import dataset_version, load_cases, to_mlflow_records
 from scorers import build_scorers
 
@@ -89,9 +89,9 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--max-turns", type=int, default=8, help="Max agent turns per case")
     parser.add_argument(
         "--system-prompt-version",
-        default="v1",
+        default=DEFAULT_PROMPT_VERSION,
         choices=available_prompt_versions(),
-        help="System prompt version (default v1)",
+        help=f"System prompt version (default {DEFAULT_PROMPT_VERSION})",
     )
     parser.add_argument("--dry-run", action="store_true", help="Build records and scorers only")
     return parser.parse_args(argv)

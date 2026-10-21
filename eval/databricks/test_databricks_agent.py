@@ -17,6 +17,7 @@ import pytest
 mlflow = pytest.importorskip("mlflow")
 
 from agent import (
+    DEFAULT_PROMPT_VERSION,
     GET_PROMPT,
     READ_RESOURCE,
     available_prompt_versions,
@@ -93,6 +94,18 @@ def test_v1_prompt_is_available_and_loads() -> None:
     assert "[/forced-tool]" not in forced + unforced
 
 
+def test_v2_prompt_is_v1_without_the_resource_example_line() -> None:
+    assert available_prompt_versions()[:2] == ["v1", "v2"]
+    assert DEFAULT_PROMPT_VERSION == "v2"
+    v1, v2 = load_system_prompt("v1"), load_system_prompt("v2")
+
+    assert "fppa://regulatory-notice" in v1
+    assert "fppa://regulatory-notice" not in v2
+    removed = [line for line in v1.splitlines() if line not in v2.splitlines()]
+    assert len(removed) == 1
+    assert removed[0].startswith("Use read_resource")
+
+
 def test_unknown_prompt_version_is_rejected() -> None:
     with pytest.raises(ValueError, match="Unknown system prompt version 'v99'"):
         load_system_prompt("v99")
@@ -128,7 +141,7 @@ def test_agent_calls_tool_then_answers_with_c4_trace() -> None:
     assert first["model"] == "databricks-gpt-5-6-luna"
     assert first["temperature"] == 0
     assert first["reasoning_effort"] == "none"
-    assert first["messages"][0] == {"role": "system", "content": load_system_prompt("v1")}
+    assert first["messages"][0] == {"role": "system", "content": load_system_prompt("v2")}
     assert first["messages"][1] == {"role": "user", "content": "Explain FPPA scope."}
     names = {spec["function"]["name"] for spec in first["tools"]}
     assert {READ_RESOURCE, GET_PROMPT, "get_farmland_classification_by_point"} <= names

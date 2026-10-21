@@ -29,13 +29,20 @@ READ_RESOURCE = "read_resource"
 GET_PROMPT = "get_prompt"
 
 
+# v1 named fppa://regulatory-notice as an example resource, which led the agent to
+# re-read the notice on every row; v2 drops that line (tool descriptions list URIs).
+DEFAULT_PROMPT_VERSION = "v2"
+
+
 def available_prompt_versions() -> list[str]:
     """Return system prompt versions present in `prompts/` (e.g. ``["v1"]``)."""
     versions = [m.group(1) for p in PROMPTS_DIR.iterdir() if (m := _PROMPT_FILE.match(p.name))]
     return sorted(versions, key=lambda v: int(v[1:]))
 
 
-def load_system_prompt(version: str = "v1", *, force_tool_use: bool = True) -> str:
+def load_system_prompt(
+    version: str = DEFAULT_PROMPT_VERSION, *, force_tool_use: bool = True
+) -> str:
     """Load a versioned system prompt; drop the ``[forced-tool]`` block when not forcing."""
     if version not in available_prompt_versions():
         raise ValueError(
@@ -200,7 +207,7 @@ def build_agent(
     client: Any = None,
     max_turns: int = 8,
     force_tool_use: bool = True,
-    system_prompt_version: str = "v1",
+    system_prompt_version: str = DEFAULT_PROMPT_VERSION,
 ) -> Callable[[str], str]:
     """Build a traced ``predict(request) -> str`` for ``mlflow.genai.evaluate``."""
     import fastmcp

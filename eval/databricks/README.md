@@ -10,7 +10,7 @@ serverless compute. No service principal is required.
 - `scorers.py` -- Deterministic scorers + MLflow judges (decision D9)
 - `run_mlflow_eval.py` -- CLI runner (contract C5)
 - `run_t1_eval_notebook.py` -- Databricks notebook wrapper for the 5-case serverless check
-- `prompts/system_prompt_v1.txt` -- Versioned system prompt (forced-tool screening role)
+- `prompts/system_prompt_v{N}.txt` -- Versioned system prompts (`v2` default; `v1` kept for comparison)
 - `test_databricks_agent.py`, `test_databricks_scorers.py`, `test_databricks_runner.py` -- Offline tests
 
 ## Prerequisites
@@ -72,14 +72,20 @@ up as tool errors in the traces; rerun after the window.
 | `--experiment` | `/Users/<user>/fpac-soil-mcp-eval` | MLflow experiment path |
 | `--max-workers` | 1 | Parallel eval workers (sets `MLFLOW_GENAI_EVAL_MAX_WORKERS`) |
 | `--max-turns` | 8 | Max agent turns per case |
-| `--system-prompt-version` | `v1` | System prompt version (from `prompts/`) |
+| `--system-prompt-version` | `v2` | System prompt version (from `prompts/`) |
 | `--dry-run` | | Build records and scorers only, no model calls |
 
 ## System prompt versioning
 
 Versioned prompts live at `prompts/system_prompt_v{N}.txt`. The `--system-prompt-version`
 flag selects one; available versions are discovered from the `prompts/` directory.
-Only `v1` (forced-tool screening role) ships. A v2 scope-aware prompt is deferred.
+The default is `v2` (forced-tool screening role). `v1` additionally named
+`fppa://regulatory-notice` as an example resource, a carry-over from the Pi
+harness resource tests; it led the agent to re-read the notice on nearly every
+row. Resource rows name their URI in the user prompt and the `read_resource` tool
+description lists all URIs, so the system prompt does not point at any one
+resource. `v1` stays for run-to-run comparison. A scope-aware prompt (planned as
+v2 in D11) is deferred and will take the next free number.
 
 ## Privacy
 
