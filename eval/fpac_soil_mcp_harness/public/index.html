@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FPAC Soil MCP Harness</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">SOIL</span>
+        <div>
+          <h1>FPAC Soil MCP Harness</h1>
+          <p class="subtitle">Interactive test bench for the <code>fpac-soil-mcp</code> FastMCP server</p>
+        </div>
+      </div>
+      <div class="conn-summary">
+        <span id="connPill" class="pill pill-off">Disconnected</span>
+        <span id="serverName" class="muted"></span>
+      </div>
+    </header>
+
+    <div class="notice" role="note">
+      Results are <strong>preliminary soil inventory screening</strong> under 7 CFR Part 657 only. They are not an
+      official FPPA determination, LESA score, Form AD-1006, or NRCS-CPA-106 (7 CFR Part 658).
+    </div>
+
+    <section class="card connect" aria-label="Connection">
+      <form id="connectForm" class="connect-grid">
+        <label>Transport
+          <select id="connMode" name="mode">
+            <option value="stdio">stdio (spawn server)</option>
+            <option value="sse">SSE (URL)</option>
+            <option value="http">Streamable HTTP (URL)</option>
+          </select>
+        </label>
+        <label class="stdio-only">Command
+          <input id="connCommand" name="command" placeholder="uv" />
+        </label>
+        <label class="stdio-only wide">Args
+          <input id="connArgs" name="args" placeholder="run fpac-soil-mcp" />
+        </label>
+        <label class="stdio-only wide">Working directory
+          <input id="connCwd" name="cwd" placeholder="repository root" />
+        </label>
+        <label class="url-only wide">Server URL
+          <input id="connUrl" name="url" placeholder="http://127.0.0.1:8000/sse" />
+        </label>
+        <label class="url-only">Bearer token (optional)
+          <input id="connToken" name="authToken" type="password" autocomplete="off" />
+        </label>
+        <div class="actions">
+          <button type="submit" id="btnConnect" class="btn primary">Connect</button>
+          <button type="button" id="btnDisconnect" class="btn">Disconnect</button>
+        </div>
+      </form>
+      <p id="connMessage" class="muted small"></p>
+    </section>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="tools" role="tab">Tools <span class="count" id="countTools">0</span></button>
+      <button class="tab" data-tab="resources" role="tab">Resources <span class="count" id="countResources">0</span></button>
+      <button class="tab" data-tab="prompts" role="tab">Prompts <span class="count" id="countPrompts">0</span></button>
+      <button class="tab" data-tab="evals" role="tab">Eval Cases <span class="count" id="countEvals">0</span></button>
+      <button class="tab" data-tab="history" role="tab">History</button>
+      <button class="tab" data-tab="server" role="tab">Server</button>
+    </nav>
+
+    <main>
+      <!-- TOOLS -->
+      <section class="panel active" id="panel-tools">
+        <aside class="sidebar">
+          <input id="toolFilter" class="filter" placeholder="Filter tools..." />
+          <ul id="toolList" class="item-list"></ul>
+        </aside>
+        <div class="workspace">
+          <div id="toolEmpty" class="empty">Connect to the server and select a tool.</div>
+          <div id="toolDetail" class="hidden">
+            <div class="detail-head">
+              <h2 id="toolName"></h2>
+              <div class="inline">
+                <label class="small">Preset
+                  <select id="toolPreset"><option value="">(defaults)</option></select>
+                </label>
+                <label class="small"><input type="checkbox" id="toolJsonMode" /> Edit as JSON</label>
+              </div>
+            </div>
+            <details class="desc"><summary>Description &amp; input schema</summary>
+              <pre id="toolDescription" class="prewrap"></pre>
+              <pre id="toolSchema" class="json"></pre>
+            </details>
+            <form id="toolForm" class="arg-form"></form>
+            <textarea id="toolJson" class="json-editor hidden" spellcheck="false"></textarea>
+            <div class="run-bar">
+              <label class="small">Timeout (s) <input id="toolTimeout" type="number" min="5" value="180" class="narrow" /></label>
+              <button id="btnRunTool" class="btn primary">Run tool</button>
+              <span id="toolRunStatus" class="muted small"></span>
+            </div>
+            <div id="toolResult" class="result"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESOURCES -->
+      <section class="panel" id="panel-resources">
+        <aside class="sidebar">
+          <ul id="resourceList" class="item-list"></ul>
+        </aside>
+        <div class="workspace">
+          <div id="resourceEmpty" class="empty">Select a resource to read it.</div>
+          <div id="resourceResult" class="result"></div>
+        </div>
+      </section>
+
+      <!-- PROMPTS -->
+      <section class="panel" id="panel-prompts">
+        <aside class="sidebar">
+          <ul id="promptList" class="item-list"></ul>
+        </aside>
+        <div class="workspace">
+          <div id="promptEmpty" class="empty">Select a prompt to render it.</div>
+          <div id="promptDetail" class="hidden">
+            <div class="detail-head">
+              <h2 id="promptName"></h2>
+              <label class="small">Preset
+                <select id="promptPreset"><option value="">(defaults)</option></select>
+              </label>
+            </div>
+            <p id="promptDescription" class="prewrap muted"></p>
+            <form id="promptForm" class="arg-form"></form>
+            <div class="run-bar">
+              <button id="btnRunPrompt" class="btn primary">Render prompt</button>
+              <span id="promptRunStatus" class="muted small"></span>
+            </div>
+            <div id="promptResult" class="result"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EVALS -->
+      <section class="panel panel-wide" id="panel-evals">
+        <div class="workspace">
+          <div class="detail-head">
+            <div>
+              <h2>Eval cases</h2>
+              <p id="evalSource" class="muted small"></p>
+            </div>
+            <div class="inline">
+              <select id="evalFilter"><option value="">All categories</option></select>
+              <button id="btnRunAllEvals" class="btn primary">Run all (filtered)</button>
+              <button id="btnStopEvals" class="btn" disabled>Stop</button>
+            </div>
+          </div>
+          <p class="muted small">
+            Deterministic run: each case is mapped to a direct MCP call (no LLM in the loop) and the response is
+            checked for the case's <code>expected_keywords</code>. Use the agent evals in <code>eval/run_evals.py</code>
+            for tool-selection behaviour.
+          </p>
+          <div id="evalSummary" class="eval-summary"></div>
+          <table class="grid" id="evalTable">
+            <thead>
+              <tr><th>ID</th><th>Category</th><th>Target</th><th>Prompt</th><th>Status</th><th>Time</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div id="evalDetail" class="result"></div>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="panel panel-wide" id="panel-history">
+        <div class="workspace">
+          <div class="detail-head">
+            <h2>Run history</h2>
+            <div class="inline">
+              <button id="btnRefreshHistory" class="btn">Refresh</button>
+              <button id="btnClearHistory" class="btn">Clear</button>
+            </div>
+          </div>
+          <table class="grid" id="historyTable">
+            <thead><tr><th>Time</th><th>Kind</th><th>Name</th><th>Status</th><th>Duration</th><th>Arguments / error</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SERVER -->
+      <section class="panel panel-wide" id="panel-server">
+        <div class="workspace">
+          <div class="detail-head">
+            <h2>Server</h2>
+            <div class="inline">
+              <button id="btnRefreshServer" class="btn">Refresh</button>
+              <button id="btnServerRoutes" class="btn">Check /health &amp; /meta</button>
+            </div>
+          </div>
+          <h3>Status</h3>
+          <pre id="serverStatus" class="json"></pre>
+          <h3>Instructions</h3>
+          <pre id="serverInstructions" class="prewrap"></pre>
+          <h3>HTTP routes</h3>
+          <pre id="serverRoutes" class="json">Only available for SSE / HTTP transports.</pre>
+          <h3>Server stderr (stdio mode)</h3>
+          <pre id="serverStderr" class="log"></pre>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
