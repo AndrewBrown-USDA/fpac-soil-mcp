@@ -23,6 +23,7 @@ A Model Context Protocol (MCP) server built with [FastMCP](https://github.com/jl
 - [Resources, Prompts & HTTP Routes](#resources-prompts--http-routes)
 - [Configuration Reference](#configuration-reference)
 - [Development Commands](#development-commands)
+- [Local Deterministic Browser Harness](#local-deterministic-browser-harness)
 - [License](#license)
 
 ---
@@ -356,6 +357,39 @@ uv run ruff check .
 # Check formatting
 uv run ruff format --check .
 ```
+
+## Local Deterministic Browser Harness
+
+The repository includes a local browser workbench at
+[`eval\fpac_soil_mcp_harness`](eval/fpac_soil_mcp_harness/README.md). It connects to the
+same public MCP surface as other clients and is intended for interactive inspection and
+deterministic contract checks, not production hosting.
+
+```powershell
+Set-Location eval\fpac_soil_mcp_harness
+npm install
+npm start
+# open http://127.0.0.1:3030
+```
+
+Use `npm run dev` for Node watch mode or `npm run check` for JavaScript syntax checks.
+The default mode is local `stdio`, which starts `uv run fpac-soil-mcp` from the repository
+root. Set `MCP_MODE=sse` with `MCP_URL=http://127.0.0.1:8000/sse`, or
+`MCP_MODE=http` with `MCP_URL=http://127.0.0.1:8000/mcp`, to connect to an existing
+network server. See the harness `.env.example` for command, working-directory, timeout,
+and optional bearer-token settings.
+
+The harness binds to `127.0.0.1` by default. Command and working-directory overrides are
+local-development controls and are restricted when bound to a non-loopback host; do not
+expose them on a shared deployment without an explicit security design. Its Eval Cases
+tab performs deterministic MCP invocations and response checks; it does not use an LLM
+to select tools or claim model-evaluation results. The existing `eval\prompt_test_cases.json`
+corpus and Python T0/T1 evaluation paths remain separate.
+
+Databricks App hosting/deployment and model-based agent evaluation are intentionally
+outside this local workbench and belong to separate forthcoming work. The harness, like
+this server, provides preliminary soil inventory screening only; it does not produce an
+official FPPA determination, LESA score, Form AD-1006, or NRCS-CPA-106.
 
 ### Evaluation Capture (Opt-In)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,6 +21,30 @@ from fpac_soil_mcp.tools.soil_tools import get_farmland_classification_by_point
 class TestServerInitialization:
     """Test FastMCP server creation and registration of components."""
 
+    EXPECTED_TOOLS: ClassVar[set[str]] = {
+        "get_farmland_classification_by_point",
+        "get_farmland_classification_by_mukey",
+        "analyze_farmland_by_polygon",
+        "calculate_preliminary_lesa",
+        "get_soil_polygons_by_geometry",
+        "check_urban_area_exemption",
+        "get_soil_interpretations",
+        "analyze_corridor_fppa",
+        "explain_fppa_screening_scope",
+        "list_farmland_classes",
+    }
+    EXPECTED_RESOURCES: ClassVar[set[str]] = {
+        "fppa://regulatory-notice",
+        "fppa://screening-guidance",
+        "fppa://farmland-classes",
+    }
+    EXPECTED_PROMPTS: ClassVar[set[str]] = {
+        "fppa_screening_assistant",
+        "fppa_corridor_screening_assistant",
+        "fppa_urban_exemption_assistant",
+        "fppa_site_assessment_assistant",
+    }
+
     def test_create_mcp_server(self) -> None:
         server = create_mcp_server()
         assert server.name == "fpac-soil-mcp"
@@ -30,12 +55,8 @@ class TestServerInitialization:
         server = create_mcp_server()
         tools = await server.list_tools()
         tool_names = [t.name for t in tools]
-        assert "analyze_corridor_fppa" in tool_names
-        assert "analyze_farmland_by_polygon" in tool_names
-        assert "get_farmland_classification_by_point" in tool_names
-        assert "get_farmland_classification_by_mukey" in tool_names
-        assert "check_urban_area_exemption" in tool_names
-        assert "get_soil_interpretations" in tool_names
+        assert set(tool_names) == self.EXPECTED_TOOLS
+        assert len(tool_names) == 10
 
     def test_published_server_metadata_exposes_lesa_capabilities(self) -> None:
         with open("server.json", encoding="utf-8") as metadata_file:
@@ -46,6 +67,15 @@ class TestServerInitialization:
         assert "analyze_corridor_fppa" in published_tools
         assert "LESA" in published_tools["calculate_preliminary_lesa"]
         assert "corridor" in published_tools["analyze_corridor_fppa"].lower()
+
+    @pytest.mark.asyncio
+    async def test_runtime_tool_metadata_matches_published_metadata(self) -> None:
+        server = create_mcp_server()
+        runtime_tools = {tool.name: tool.description for tool in await server.list_tools()}
+        metadata = json.loads(Path("server.json").read_text(encoding="utf-8"))
+        published_tools = {tool["name"]: tool["description"] for tool in metadata["tools"]}
+
+        assert runtime_tools == published_tools
 
     def test_published_tool_metadata_matches_manifest(self) -> None:
         metadata = json.loads(Path("server.json").read_text(encoding="utf-8"))
@@ -64,15 +94,36 @@ class TestServerInitialization:
         assert set(published_tools) == set(manifest_tools)
         assert published_tools == manifest_tools
 
+    def test_published_resource_and_prompt_metadata_matches_public_surface(self) -> None:
+        manifest = Path("manifest.yaml").read_text(encoding="utf-8")
+        resource_entries = re.findall(
+            r"^  - uri: ([^\r\n]+)\r?\n    name: ([^\r\n]+)\r?\n    description: ([^\r\n]+)$",
+            manifest.split("\nprompts:", 1)[0].split("\nresources:", 1)[1],
+            re.MULTILINE,
+        )
+        prompt_entries = dict(
+            re.findall(
+                r"^  - name: ([^\r\n]+)\r?\n    description: ([^\r\n]+)$",
+                manifest.split("\nprompts:", 1)[1],
+                re.MULTILINE,
+            )
+        )
+
+        resource_uris = {uri for uri, _, _ in resource_entries}
+        assert resource_uris == TestServerInitialization.EXPECTED_RESOURCES
+        assert len(resource_entries) == 3
+        assert all(name and description for _, name, description in resource_entries)
+        assert set(prompt_entries) == TestServerInitialization.EXPECTED_PROMPTS
+        assert len(prompt_entries) == 4
+        assert all(prompt_entries.values())
+
     @pytest.mark.asyncio
     async def test_server_initialization_includes_all_tools_and_prompts(self) -> None:
         server = create_mcp_server()
         prompts = await server.list_prompts()
         prompt_names = [p.name for p in prompts]
-        assert "fppa_screening_assistant" in prompt_names
-        assert "fppa_corridor_screening_assistant" in prompt_names
-        assert "fppa_urban_exemption_assistant" in prompt_names
-        assert "fppa_site_assessment_assistant" in prompt_names
+        assert set(prompt_names) == self.EXPECTED_PROMPTS
+        assert len(prompt_names) == 4
 
 
 class TestResourcesAndPrompts:
@@ -84,12 +135,8 @@ class TestResourcesAndPrompts:
         resources = await server.list_resources()
         resource_uris = {str(r.uri) for r in resources}
 
-        expected_uris = {
-            "fppa://regulatory-notice",
-            "fppa://screening-guidance",
-            "fppa://farmland-classes",
-        }
-        assert expected_uris.issubset(resource_uris)
+        assert resource_uris == TestServerInitialization.EXPECTED_RESOURCES
+        assert len(resource_uris) == 3
 
         # Validate regulatory notice resource schema and keys
         reg_res = await server.read_resource("fppa://regulatory-notice")
