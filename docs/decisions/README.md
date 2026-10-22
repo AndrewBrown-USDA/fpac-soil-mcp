@@ -23,6 +23,8 @@ and refined through `adr-distillation`.
 | [0009](0009-shared-http-request-helper-with-retry-composition.md) | Shared HTTP Request Helper with Retry Composition | Accepted | 2026-09-21 | - | - | EXECUTION_PLAN_10 |
 | [0010](0010-public-payload-pii-detection-and-sanitization.md) | Public Payload PII Detection & Sanitization | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4 |
 | [0011](0011-mocked-default-live-opt-in-test-architecture.md) | Mocked Default, Live Opt-In Test Architecture | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1, 13 |
+| [0012](0012-databricks-agent-app-as-separate-mcp-client.md) | Databricks Agent App as a Separate MCP Client Project | Accepted | 2026-10-22 | - | - | EXECUTION_PLAN_35 |
+| [0013](0013-pin-pypi-default-index-in-every-uv-project.md) | Pin PyPI as the Default uv Index in Every uv Project | Accepted | 2026-10-22 | - | - | Commits bcf6626, f27eb3b |
 
 ## Architectural Eras
 
@@ -42,6 +44,10 @@ productivity index contract.
 
 **Cross-Cutting (2026-09-16-22)**: ADR 0011 established the test architecture
 that governed all 26 execution plans.
+
+**Databricks Delivery (2026-10-22)**: ADR 0012 set the boundary for the
+Databricks chat agent app as a separate MCP client project, and ADR 0013 made
+lock files portable off Databricks compute.
 
 ## Maintenance
 

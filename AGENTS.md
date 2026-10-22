@@ -65,6 +65,7 @@ uv run pytest -m live_network
 - `eval\pi\` - Pi agent evaluation runner and evaluation tests.
 - `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`.
 - `eval\fpac_soil_mcp_harness\` - local Node.js browser client/workbench; see its nested `AGENTS.md`.
+- `apps\agent-fpac-soil-openai-sdk\` - Databricks chat agent app that calls the deployed MCP server; separate uv project; see its nested `AGENTS.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
 - `docs\decisions\` - durable architecture decision records.
 - `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md`, then inspect the directory for execution-specific files.
@@ -121,9 +122,11 @@ make eval-databricks
 
 Run `make test-live` separately when changing requests, SQL templates, parsing, retries, or live integration behavior.
 
+Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-sdk\` (root `make check` skips `apps\`).
+
 ## Infrastructure
 
-- Python: `>=3.11`; package and environment management use `uv` with `uv.lock`.
+- Python: `>=3.11`; package and environment management use `uv` with `uv.lock`. Every uv project pins PyPI as its default index so lock files never record the Databricks package proxy (ADR 0013).
 - Console entry point: `fpac-soil-mcp = fpac_soil_mcp.app:main`; `main.py` is the container/development entry point.
 - Default transport: `stdio`.
 - Network transports: set `MCP_TRANSPORT=sse` or `MCP_TRANSPORT=http`; default bind is `127.0.0.1:8000`. Use `make run-sse` or `make run-http`.
