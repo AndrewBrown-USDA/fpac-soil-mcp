@@ -35,6 +35,25 @@ jobs:
       - name: Run live USDA SDA tests (make test-live)
         run: make test-live
 
+  agent-app:
+    name: Agent app (apps/agent-fpac-soil-openai-sdk)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Lint and test the agent app (make app-check)
+        run: make app-check
+        
   harness:
     name: Test JavaScript harness
     runs-on: ubuntu-latest
@@ -42,7 +61,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-
+        
       - name: Set up Node.js 26
         uses: actions/setup-node@v7
         with:
