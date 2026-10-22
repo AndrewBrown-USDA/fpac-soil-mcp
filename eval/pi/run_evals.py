@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-"""Release-time agentic evaluation benchmark runner using the pi coding agent CLI.
 
-Runs prompt test cases against the fpac-soil-mcp server in an isolated sandbox,
 verifies tool call execution and keyword presence, and displays a summary report.
 
 Usage:
@@ -21,19 +18,9 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Any
-
-# Ensure UTF-8 output on Windows console
-if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+from eval.common.matching import keywords_present, tool_matches
 
 EVAL_ROOT = Path(__file__).resolve().parent.parent
-if str(EVAL_ROOT) not in sys.path:
-    sys.path.insert(0, str(EVAL_ROOT))
-
-from common.matching import keywords_present, tool_matches
-
 REPO_ROOT = EVAL_ROOT.parent
 FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 MAX_CAPTURE_BYTES = 64 * 1024
@@ -43,7 +30,10 @@ SAFE_ID = re.compile(r"[^A-Za-z0-9_-]+")
 SENSITIVE = re.compile(
     r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
     r"email|phone|address|coordinates?|geometry|geojson|wkt)\s*[:=]\s*[^\s,;]+"
-)
+# Ensure UTF-8 output on Windows console
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 def parse_args() -> argparse.Namespace:
