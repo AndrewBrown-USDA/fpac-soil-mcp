@@ -5,7 +5,7 @@ from urllib.parse import parse_qs
 
 import httpx
 import pytest
-from shapely.geometry import LinearRing, MultiPolygon, Polygon
+from shapely.geometry import GeometryCollection, LinearRing, LineString, MultiPolygon, Polygon
 
 from fpac_soil_mcp.integration_models import CountyPartitionGeometry, IntegrationStatus
 from fpac_soil_mcp.tigerweb_client import (
@@ -13,6 +13,7 @@ from fpac_soil_mcp.tigerweb_client import (
     _esri_rings_to_geometry,
     _normalize_ring_winding,
     _polygon_to_esri_rings,
+    _polygonal_parts,
 )
 
 
@@ -158,6 +159,34 @@ def test_tigerweb_partial_polygon_overlap_returns_screened_acreage(sample_geojso
 
     assert record.is_urban_intersected is True
     assert record.screened_acreage == pytest.approx(117.54, rel=0.001)
+
+
+def test_polygonal_parts_preserve_overlap_from_geometry_collection():
+    polygon = Polygon(
+        [
+            [-86.155, 39.76],
+            [-86.15, 39.76],
+            [-86.15, 39.77],
+            [-86.155, 39.77],
+            [-86.155, 39.76],
+        ]
+    )
+    mixed = GeometryCollection(
+        [
+            polygon,
+            LineString(
+                [
+                    [-86.155, 39.76],
+                    [-86.15, 39.76],
+                ]
+            ),
+        ]
+    )
+
+    parts = _polygonal_parts(mixed)
+
+    assert parts
+    assert all(isinstance(part, Polygon) for part in parts)
 
 
 def test_tigerweb_non_intersected_rural(sample_geojson):

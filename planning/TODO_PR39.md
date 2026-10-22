@@ -33,3 +33,9 @@ Compute urban-area overlap acreage for polygon-based FPPA exemption screening an
 - Scope is limited to the required `screened_acreage`; do not add `screened_pct`.
 - Use existing geometry and acreage helpers rather than introducing a parallel calculation method.
 - Preserve explicit preliminary-screening limitations and point-input semantics.
+
+## Discovered Tasks
+
+### 6. Handle polygonal members of geometry collections
+- [x] Update `TigerwebClient.check_urban_exemption` to extract and union polygonal members when the footprint/urban intersection returns a `GeometryCollection`, preserving real overlap acreage when other components only touch the boundary.
+- [x] Add a regression test covering polygon extraction from a mixed geometry result.
