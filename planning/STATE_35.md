@@ -21,9 +21,9 @@ Plan: `planning/EXECUTION_PLAN_35.md` · Template: `planning/PROMPT_TEMPLATE_35.
 | 1 | 35.1.2 | Agent config module and chat system prompt | done | orchestrator (inline) | `073d464` |
 | 1 | 35.1.3 | Deployment config declarations | done | orchestrator (inline) | `c33a830` |
 | 1 | 35.1.4 | App README FPAC section | done | orchestrator (inline) | `6b48342` |
-| 2 | 35.2.1 | FPAC agent: model, prompt, reasoning, no template tool | pending | | |
-| 3 | 35.3.1 | Connect `mcp-fpac-soil` in both handlers | pending | | |
-| 4 | 35.4.1 | Full offline gates (serial) | pending | | |
+| 2 | 35.2.1 | FPAC agent: model, prompt, reasoning, no template tool | done | orchestrator (inline) | `1fa62ac` |
+| 3 | 35.3.1 | Connect `mcp-fpac-soil` in both handlers | done | orchestrator (inline) | `fa3961d` |
+| 4 | 35.4.1 | Full offline gates (serial) | done | orchestrator (inline) | all green |
 | 5 | 35.5.1 | Grants, redeploy, 3-prompt live check (MANUAL) | pending | user / Apps page | |
 
 ## Wave gates
@@ -31,9 +31,9 @@ Plan: `planning/EXECUTION_PLAN_35.md` · Template: `planning/PROMPT_TEMPLATE_35.
 | Wave | App pytest | Root pytest (group) | ruff check . | ruff format --check . | Explicit apps/ ruff | Notes |
 |---|---|---|---|---|---|---|
 | 1 | 32 passed | 496 passed, 24 deselected | All checks passed | 427 formatted, 0 reformat | 4 files clean | `apps/` absent from `--show-files`; `uv.lock` still untracked |
-| 2 | | | | | | |
-| 3 | | | | | | |
-| 4 | | | | | | |
+| 2 | 37 passed | 496 passed, 24 deselected | All checks passed | 428 formatted, 0 reformat | 2 template F841 in handlers (fixed by 35.3.1) | expected; see 35.2.1 |
+| 3 | 46 passed | (run in wave 4) | All checks passed | 0 reformat | `agent.py` + wiring test clean | grep `system/ai\|get_current_time\|claude-sonnet-5-5` in `agent.py` → none |
+| 4 | 46 passed | 496 passed, 24 deselected | All checks passed | 429 formatted, 0 reformat | 7 plan `.py` files clean | `git status`: only `apps/.../uv.lock` untracked (H4); same format count with `--exclude apps`, so `apps/` is not formatted from root |
 
 ## Live check (35.5.1)
 
@@ -69,3 +69,19 @@ Plan: `planning/EXECUTION_PLAN_35.md` · Template: `planning/PROMPT_TEMPLATE_35.
 - Status: done (`6b48342`). README +37 lines: `## FPAC Soil configuration` before `## Build with AI Assistance` (purpose + limitation, env table, grants, sonnet-5-5 note, deploy path, 180 s timeout).
 - `grep -c "FPAC_MCP_URL\|AGENT_MODEL\|CAN_USE"` → 4.
 - Deviations: the last README sentence (tools-unavailable behavior) describes K2/K3 and becomes true after 35.3.1.
+
+## 35.2.1
+- Status: done (`1fa62ac`). `agent.py`: removed `get_current_time`, `datetime`, `function_tool`; added `ModelSettings`, `Reasoning`, config imports, `TOOLS_UNAVAILABLE_NOTE`, and `create_agent` per K2. New `tests/test_agent_construction.py` (5 tests).
+- App pytest `tests` → 37 passed.
+- Deviations: also fixed import-block lint (UP035 `collections.abc.AsyncGenerator`; F401 unused `get_user_workspace_client`). Two template `F841 stack` errors remained in the handlers until 35.3.1, because handler edits were out of scope here.
+
+## 35.3.1
+- Status: done (`fa3961d`). `agent.py`: `init_mcp_server` → sync `init_fpac_mcp_server` + `FPAC_MCP_SERVER_NAME`; dropped `build_mcp_url` import; both handlers call a new private `_connect_fpac_agent(stack)` (connect, one warning if unavailable, `create_agent(mcp_servers=..., tools_unavailable=...)`). New `tests/test_agent_mcp_wiring.py` (9 tests).
+- App pytest `tests` → 46 passed. Ruff check + format clean; grep check prints nothing.
+- Deviations: the 2-line SP-auth / health-check comment sits in the shared helper rather than being duplicated in each handler. Handler signatures, decorators, history normalization, and stream processing are unchanged.
+- Gotcha for 35.5.1: if the agent says tools are unavailable, the app log has `MCP servers unavailable for this request: fpac-soil-mcp` plus the `connect_healthy_mcp_servers` traceback. Check the `CAN_USE` grant first.
+
+## 35.4.1
+- Status: done. All gates green (see wave 4 row). Plan `.py` files under `apps/` linted explicitly: `agent.py`, `config.py`, `conftest.py`, and 4 test files.
+- `git status --short` → only `?? apps/agent-fpac-soil-openai-sdk/uv.lock` (H4; the user decides whether to delete it).
+- Next: push `git push -u origin feat/agent-app-fpac-mcp`, then 35.5.1 (manual).
