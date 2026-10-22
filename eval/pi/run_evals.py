@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
 """Release-time agentic evaluation benchmark runner using the pi coding agent CLI.
-
-Runs prompt test cases against the fpac-soil-mcp server in an isolated sandbox,
 verifies tool call execution and keyword presence, and displays a summary report.
 
 Usage:
-    python eval/run_evals.py [--category CATEGORY] [--case-id CASE_ID] [--model MODEL] [--timeout TIMEOUT] [--verbose]
+    python eval/pi/run_evals.py [--category CATEGORY] [--case-id CASE_ID] [--model MODEL] [--timeout TIMEOUT] [--verbose]
 """
 
 from __future__ import annotations
@@ -23,14 +20,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from common.matching import keywords_present, tool_matches
+from eval.common.matching import keywords_present, tool_matches
 
-# Ensure UTF-8 output on Windows console
-if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
+EVAL_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = EVAL_ROOT.parent
 FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 MAX_CAPTURE_BYTES = 64 * 1024
 MAX_CAPTURE_LINES = 1000
@@ -40,6 +33,11 @@ SENSITIVE = re.compile(
     r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
     r"email|phone|address|coordinates?|geometry|geojson|wkt)\s*[:=]\s*[^\s,;]+"
 )
+
+# Ensure UTF-8 output on Windows console
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 def parse_args() -> argparse.Namespace:

@@ -155,5 +155,5 @@ uv run ruff check .
 uv run ruff format --check .
 
 # Run agent evaluations with pi (requires pi CLI and API keys)
-python eval/run_evals.py
+python eval/pi/run_evals.py
 ```

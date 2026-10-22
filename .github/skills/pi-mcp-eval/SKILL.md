@@ -20,26 +20,26 @@ Run the repository's release-time Pi evaluation without mixing it with productio
 Run one case:
 
 ```powershell
-uv run python eval\run_evals.py --case-id POINT-01
+uv run python eval\pi\run_evals.py --case-id POINT-01
 ```
 
 Run a category:
 
 ```powershell
-uv run python eval\run_evals.py --category point
+uv run python eval\pi\run_evals.py --category point
 ```
 
 Inspect available options:
 
 ```powershell
-uv run python eval\run_evals.py --help
+uv run python eval\pi\run_evals.py --help
 ```
 
 Use the runner's explicit capture option only when evidence is needed. Use an artifact root outside the repository and never place credentials, prompts, coordinates, geometry, producer data, or generated responses in filenames or metadata.
 
 ## Execution rules
 
-1. Use `eval\run_evals.py`; do not improvise a production invocation.
+1. Use `eval\pi\run_evals.py`; do not improvise a production invocation.
 2. Preserve the temporary sandbox and stdio MCP transport.
 3. Treat dedicated structured tool events as execution evidence. Prose and prompt echo never count.
 4. Keep Pi/agent evaluation opt-in; do not replace the default offline test path.
@@ -71,12 +71,12 @@ Do not interpret Pi output as an official FPPA determination, an NRCS form, or a
 After parser or capture changes, run the deterministic checks first:
 
 ```powershell
-uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q
+uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q
 uv run pytest -m "not live_network and not agent_eval"
 uv run ruff check .
 uv run ruff format --check .
 ```
 
-Run `uv run pytest eval\test_agent_eval.py -m agent_eval -q` or `make test-eval` only as explicit opt-in gates when Pi and provider access are available.
+Run `uv run pytest eval\pi\test_agent_eval.py -m agent_eval -q` or `make test-eval` only as explicit opt-in gates when Pi and provider access are available.
 
 Related skills: use `performance-benchmarking` for scaling or branch-speed comparisons, `worker-validation` for validating code fixes, and `skill-research` for creating or revising skills.

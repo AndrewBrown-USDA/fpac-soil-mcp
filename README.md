@@ -370,7 +370,7 @@ does not start Pi, contact external services, or enable capture. To retain
 artifacts, explicitly enable capture and provide a repository-external root:
 
 ```powershell
-uv run python eval\run_evals.py --capture-artifacts --artifact-root C:\path\to\eval-artifacts
+uv run python eval\pi\run_evals.py --capture-artifacts --artifact-root C:\path\to\eval-artifacts
 ```
 
 `EVAL_CAPTURE_ARTIFACTS=1` and `EVAL_CAPTURE_ROOT` may be used instead of the
@@ -429,7 +429,7 @@ worker changes are merged and records their exact results in
 
 ```powershell
 uv run pytest -m "not live_network and not agent_eval" -q
-uv run pytest eval\test_agent_eval.py -m "not agent_eval" -q
+uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q
 uv run ruff check .
 uv run ruff format --check .
 git diff --check

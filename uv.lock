@@ -1195,6 +1195,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
+    { name = "zipp" },
 ]
 eval-databricks = [
     { name = "databricks-sdk", extra = ["openai"] },
@@ -1216,6 +1217,7 @@ dev = [
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.23.0" },
     { name = "ruff", specifier = ">=0.4.0" },
+    { name = "zipp", specifier = "==4.1.1" },
 ]
 eval-databricks = [
     { name = "databricks-sdk", extras = ["openai"], specifier = ">=0.122" },
