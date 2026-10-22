@@ -14,3 +14,9 @@ env:
     value: "300"
   - name: MLFLOW_EXPERIMENT_ID
     valueFrom: "experiment"
+  - name: AGENT_MODEL
+    valueFrom: "llm-endpoint"
+  - name: FPAC_MCP_URL
+    value: "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
+  - name: FPAC_MCP_TIMEOUT_SECONDS
+    value: "180"

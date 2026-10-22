@@ -4,7 +4,7 @@ bundle:
 resources:
   apps:
     agent_openai_agents_sdk:
-      name: "agent-openai-agents-sdk"
+      name: "agent-fpac-soil-openai-sdk"
       description: "OpenAI Agents SDK agent application"
       source_code_path: ./
       config:
@@ -22,6 +22,12 @@ resources:
             value: "300"
           - name: MLFLOW_EXPERIMENT_ID
             value_from: "experiment"
+          - name: AGENT_MODEL
+            value_from: "llm-endpoint"
+          - name: FPAC_MCP_URL
+            value: "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
+          - name: FPAC_MCP_TIMEOUT_SECONDS
+            value: "180"
 
       # Resources which this app has access to
       resources:
@@ -31,13 +37,19 @@ resources:
             permission: 'CAN_MANAGE'
 
         # NOTE: grants the app's service principal CAN_QUERY on the LLM endpoint so
-        # the deployed app (and UI-created apps via manifest.yaml) can call the model
-        # without a manual grant. If you change the model in agent_server/agent.py,
-        # update the name below to match.
+        # the deployed app can call the model without a manual grant. The agent reads
+        # the endpoint name from AGENT_MODEL (value_from: "llm-endpoint" above), so
+        # changing the name below changes the model.
         - name: 'llm-endpoint'
           serving_endpoint:
-            name: 'databricks-claude-sonnet-5-5'
+            name: 'databricks-gpt-5-6-luna'
             permission: 'CAN_QUERY'
+
+        # Grants the app's service principal CAN_USE on the fpac-soil-mcp server app.
+        - name: 'mcp_server'
+          app:
+            name: 'mcp-fpac-soil'
+            permission: CAN_USE
 
 targets:
   dev:
@@ -53,4 +65,4 @@ targets:
     resources:
       apps:
         agent_openai_agents_sdk:
-          name: agent-openai-agents-sdk
+          name: agent-fpac-soil-openai-sdk
