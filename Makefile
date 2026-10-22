@@ -18,7 +18,7 @@ help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 install: ## Sync dependencies and locked environment via uv
-	$(UV) sync
+	$(UV) sync --dev
 
 sync: install ## Alias for install
 
@@ -51,16 +51,16 @@ eval-databricks: ## Run T1 Databricks-native MLflow evaluation (requires eval-da
 	$(UV) run --group eval-databricks python eval/databricks/run_mlflow_eval.py $(ARGS)
 
 lint: ## Run Ruff linter checks
-	$(UV) run ruff check .
+	$(UV) run --group dev ruff check .
 
 lint-fix: ## Auto-fix linting issues with Ruff
-	$(UV) run ruff check --fix .
+	$(UV) run --group dev ruff check --fix .
 
 format: ## Format codebase using Ruff
-	$(UV) run ruff format .
+	$(UV) run --group dev ruff format .
 
 format-check: ## Check code formatting without applying changes
-	$(UV) run ruff format --check .
+	$(UV) run --group dev ruff format --check .
 
 check: lint format-check test ## Run full validation suite (lint, format-check, mocked tests)
 
