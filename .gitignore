@@ -46,7 +46,6 @@ htmlcov/
 *.cover
 *.py,cover
 .hypothesis/
-package-lock.json
 yarn.lock
 .npmrc
 node_modules/
