@@ -6,6 +6,7 @@
 // overrides below encode the parameters described in each user_prompt.
 
 import fs from "node:fs";
+import path from "node:path";
 
 // ---------------------------------------------------------------------------
 // Explicit per-case arguments for cases whose parameters live only in prose.
@@ -158,8 +159,27 @@ export function loadEvalCases(file) {
     return { version: null, description: `Eval case file not found: ${file}`, test_cases: [], source: file };
   }
   const data = JSON.parse(fs.readFileSync(file, "utf-8"));
-  const cases = (data.test_cases || []).map((tc) => ({ ...tc, invocation: buildInvocation(tc) }));
-  return { version: data.version ?? null, description: data.description ?? "", test_cases: cases, source: file };
+  const fixturePath = path.resolve(path.dirname(file), "eval_cases.v1.json");
+  let executable = [];
+  if (fs.existsSync(fixturePath)) {
+    const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
+    executable = fixture.test_cases || [];
+  }
+  const byId = new Map(executable.map((tc) => [tc.id, tc]));
+  const cases = (data.test_cases || []).map((tc) => {
+    const central = byId.get(tc.id);
+    const merged = central ? { ...tc, ...central } : tc;
+    return { ...merged, invocation: merged.invocation || buildInvocation(merged) };
+  });
+  for (const tc of executable) if (!cases.some((item) => item.id === tc.id)) cases.push({ ...tc, invocation: tc.invocation || buildInvocation(tc) });
+  return {
+    version: data.version ?? null,
+    executable_version: executable.length ? "1.0.0" : null,
+    description: data.description ?? "",
+    test_cases: cases,
+    source: file,
+    executable_source: executable.length ? fixturePath : null,
+  };
 }
 
 export function buildPresets(cases) {

@@ -64,8 +64,8 @@ function responseText(kind, out) {
 
 async function invoke(inv, timeoutMs) {
   if (inv.kind === "tool") return bridge.callTool(inv.name, inv.arguments || {}, timeoutMs);
-  if (inv.kind === "resource") return bridge.readResource(inv.uri);
-  if (inv.kind === "prompt") return bridge.getPrompt(inv.name, inv.arguments || {});
+  if (inv.kind === "resource") return bridge.readResource(inv.uri, timeoutMs);
+  if (inv.kind === "prompt") return bridge.getPrompt(inv.name, inv.arguments || {}, timeoutMs);
   throw Object.assign(new Error(`Unknown invocation kind '${inv.kind}'.`), { status: 400 });
 }
 
@@ -106,7 +106,7 @@ app.get(
       return res.json({ available: false, reason: "/health and /meta are only served over SSE/HTTP transports." });
     }
     const origin = new URL(baseUrl).origin;
-    const headers = config.mcp.authToken ? { Authorization: `Bearer ${config.mcp.authToken}` } : {};
+    const headers = bridge.activeAuthToken ? { Authorization: "Bearer " + bridge.activeAuthToken } : {};
     const out = { available: true, origin };
     for (const route of ["health", "meta"]) {
       try {

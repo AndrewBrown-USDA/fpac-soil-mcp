@@ -41,6 +41,7 @@ export class McpBridge {
     this.client = null;
     this.transport = null;
     this.connection = null;
+    this.activeAuthToken = "";
     this.connectedAt = null;
     this.lastError = null;
     this.stderr = [];
@@ -92,7 +93,7 @@ export class McpBridge {
       if (stream) stream.on("data", (chunk) => this._pushStderr(chunk.toString()));
     } else if (mode === "sse" || mode === "http") {
       if (!opts.url) throw new Error(`A server URL is required for '${mode}' mode.`);
-      const headers = opts.authToken ? { Authorization: `Bearer ${opts.authToken}` } : {};
+      const headers = opts.authToken ? { Authorization: "Bearer " + opts.authToken } : {};
       const url = new URL(opts.url);
       transport =
         mode === "sse"
@@ -134,6 +135,7 @@ export class McpBridge {
 
     this.client = client;
     this.transport = transport;
+    this.activeAuthToken = opts.authToken || "";
     this.lastError = null;
     this.connectedAt = new Date().toISOString();
     this.connection = {
@@ -152,6 +154,7 @@ export class McpBridge {
     this.client = null;
     this.transport = null;
     this.connection = null;
+    this.activeAuthToken = "";
     this.connectedAt = null;
     if (client) {
       try {
@@ -194,10 +197,10 @@ export class McpBridge {
     return { resources, templates };
   }
 
-  async readResource(uri) {
+  async readResource(uri, timeoutMs = 180000) {
     const client = this._require();
     const started = Date.now();
-    const result = await client.readResource({ uri });
+    const result = await client.readResource({ uri }, { timeout: timeoutMs, resetTimeoutOnProgress: true });
     const contents = (result.contents || []).map((c) => {
       let parsed;
       if (typeof c.text === "string") {
@@ -217,7 +220,7 @@ export class McpBridge {
     return res.prompts || [];
   }
 
-  async getPrompt(name, args = {}) {
+  async getPrompt(name, args = {}, timeoutMs = 180000) {
     const client = this._require();
     // MCP prompt arguments are string-valued; drop empty values so server defaults apply.
     const stringArgs = {};
@@ -226,7 +229,10 @@ export class McpBridge {
       stringArgs[k] = typeof v === "string" ? v : JSON.stringify(v);
     }
     const started = Date.now();
-    const result = await client.getPrompt({ name, arguments: stringArgs });
+    const result = await client.getPrompt(
+      { name, arguments: stringArgs },
+      { timeout: timeoutMs, resetTimeoutOnProgress: true },
+    );
     return { durationMs: Date.now() - started, result };
   }
 }

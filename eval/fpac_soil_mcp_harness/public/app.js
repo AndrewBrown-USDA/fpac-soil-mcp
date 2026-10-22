@@ -102,10 +102,44 @@
   }
 
   function copyText(text) {
-    navigator.clipboard?.writeText(text).then(
-      () => toast("Copied to clipboard"),
-      () => toast("Copy failed", true),
-    );
+    const clipboard = globalThis.navigator?.clipboard;
+    if (clipboard && typeof clipboard.writeText === "function") {
+      Promise.resolve()
+        .then(() => clipboard.writeText(text))
+        .then(
+          () => toast("Copied to clipboard"),
+          () => copyTextFallback(text),
+        );
+      return;
+    }
+    copyTextFallback(text);
+  }
+
+  function copyTextFallback(text) {
+    let input;
+    try {
+      input = el("textarea", {
+        readonly: true,
+        "aria-hidden": "true",
+      });
+      input.value = text;
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      input.style.pointerEvents = "none";
+      document.body.append(input);
+      input.focus();
+      input.select();
+      const copied = typeof document.execCommand === "function" && document.execCommand("copy");
+      if (copied) {
+        toast("Copied to clipboard");
+      } else {
+        toast("Copy failed", true);
+      }
+    } catch {
+      toast("Copy failed", true);
+    } finally {
+      input?.remove();
+    }
   }
 
   function downloadJson(name, value) {
@@ -380,6 +414,7 @@
         if (kind === "number" || kind === "integer") {
           const n = Number(raw);
           if (!Number.isFinite(n)) throw new Error("not a number");
+          if (kind === "integer" && !Number.isInteger(n)) throw new Error("must be an integer");
           args[name] = n;
         } else if (kind === "boolean") {
           args[name] = raw === "true";
