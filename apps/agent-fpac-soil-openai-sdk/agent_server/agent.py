@@ -1,10 +1,15 @@
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
-from datetime import datetime
-from typing import AsyncGenerator
 
 import mlflow
-from agents import Agent, Runner, function_tool, set_default_openai_api, set_default_openai_client
+from agents import (
+    Agent,
+    ModelSettings,
+    Runner,
+    set_default_openai_api,
+    set_default_openai_client,
+)
 from agents.tracing import set_trace_processors
 from databricks.sdk import WorkspaceClient
 from databricks_openai import AsyncDatabricksOpenAI
@@ -15,12 +20,13 @@ from mlflow.types.responses import (
     ResponsesAgentResponse,
     ResponsesAgentStreamEvent,
 )
+from openai.types.shared import Reasoning
 
+from agent_server.config import agent_model, load_system_prompt, uses_reasoning_effort_none
 from agent_server.history import normalize_history_items
 from agent_server.utils import (
     build_mcp_url,
     get_session_id,
-    get_user_workspace_client,
     process_agent_stream_events,
 )
 
@@ -34,10 +40,10 @@ mlflow.openai.autolog()
 logging.getLogger("mlflow.utils.autologging_utils").setLevel(logging.ERROR)
 
 
-@function_tool
-def get_current_time() -> str:
-    """Get the current date and time."""
-    return datetime.now().isoformat()
+TOOLS_UNAVAILABLE_NOTE = (
+    "The fpac-soil-mcp tools are unavailable for this request. Tell the user you cannot run "
+    "the screening right now; do not answer from memory."
+)
 
 
 async def init_mcp_server(workspace_client: WorkspaceClient):
@@ -75,13 +81,30 @@ async def connect_healthy_mcp_servers(
     return healthy, unavailable
 
 
-def create_agent(mcp_servers: list[McpServer] | None = None) -> Agent:
+def create_agent(
+    mcp_servers: list[McpServer] | None = None, *, tools_unavailable: bool = False
+) -> Agent:
+    """Build the FPAC Soil agent.
+
+    The model comes from ``AGENT_MODEL``. GPT-5 endpoints get ``reasoning_effort="none"``,
+    which they need for tool calling. When ``tools_unavailable`` is set, the instructions
+    tell the model to say so instead of answering from memory.
+    """
+    model = agent_model()
+    instructions = load_system_prompt()
+    if tools_unavailable:
+        instructions = f"{instructions}\n\n{TOOLS_UNAVAILABLE_NOTE}"
+    if uses_reasoning_effort_none(model):
+        model_settings = ModelSettings(reasoning=Reasoning(effort="none"))
+    else:
+        model_settings = ModelSettings()
     return Agent(
-        name="Agent",
-        instructions="You are a helpful assistant.",
-        model="databricks-claude-sonnet-5-5",
-        tools=[get_current_time],
+        name="FPAC Soil Agent",
+        instructions=instructions,
+        model=model,
+        tools=[],
         mcp_servers=mcp_servers or [],
+        model_settings=model_settings,
     )
 
 
