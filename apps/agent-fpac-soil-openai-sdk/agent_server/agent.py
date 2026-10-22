@@ -22,13 +22,15 @@ from mlflow.types.responses import (
 )
 from openai.types.shared import Reasoning
 
-from agent_server.config import agent_model, load_system_prompt, uses_reasoning_effort_none
-from agent_server.history import normalize_history_items
-from agent_server.utils import (
-    build_mcp_url,
-    get_session_id,
-    process_agent_stream_events,
+from agent_server.config import (
+    agent_model,
+    fpac_mcp_timeout_seconds,
+    fpac_mcp_url,
+    load_system_prompt,
+    uses_reasoning_effort_none,
 )
+from agent_server.history import normalize_history_items
+from agent_server.utils import get_session_id, process_agent_stream_events
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,16 @@ TOOLS_UNAVAILABLE_NOTE = (
 )
 
 
-async def init_mcp_server(workspace_client: WorkspaceClient):
+FPAC_MCP_SERVER_NAME = "fpac-soil-mcp"
+
+
+def init_fpac_mcp_server(workspace_client: WorkspaceClient) -> McpServer:
+    """Build the client for the deployed fpac-soil-mcp server."""
     return McpServer(
-        url=build_mcp_url("/api/2.0/mcp/functions/system/ai", workspace_client=workspace_client),
-        name="system.ai UC function MCP server",
+        url=fpac_mcp_url(),
+        name=FPAC_MCP_SERVER_NAME,
         workspace_client=workspace_client,
+        timeout=fpac_mcp_timeout_seconds(),
     )
 
 
@@ -108,21 +115,24 @@ def create_agent(
     )
 
 
+async def _connect_fpac_agent(stack: AsyncExitStack) -> Agent:
+    # WorkspaceClient() authenticates as the app's service principal, not the user.
+    # connect_healthy_mcp_servers drops a server that fails, so the request still runs.
+    servers, unavailable = await connect_healthy_mcp_servers(
+        stack, [init_fpac_mcp_server(WorkspaceClient())]
+    )
+    if unavailable:
+        logger.warning("MCP servers unavailable for this request: %s", ", ".join(unavailable))
+    return create_agent(mcp_servers=servers, tools_unavailable=bool(unavailable))
+
+
 @invoke()
 async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentResponse:
     if session_id := get_session_id(request):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
-    # The agent runs inside an AsyncExitStack so any MCP servers stay open for the whole
-    # request. To give the agent MCP tools, connect them with connect_healthy_mcp_servers,
-    # which health-checks each server so one unavailable server can't crash the request
-    # (the Agents SDK lists each server's tools lazily inside Runner.run):
-    #   servers, unavailable = await connect_healthy_mcp_servers(
-    #       stack, [await init_mcp_server(WorkspaceClient())])
-    #   agent = create_agent(mcp_servers=servers)
-    # WorkspaceClient() uses service principal credentials; use get_user_workspace_client()
-    # for on-behalf-of user authentication.
+    # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = create_agent()
+        agent = await _connect_fpac_agent(stack)
         messages = normalize_history_items([i.model_dump() for i in request.input])
         result = await Runner.run(agent, messages)
         return ResponsesAgentResponse(output=[item.to_input_item() for item in result.new_items])
@@ -134,17 +144,9 @@ async def stream_handler(
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
     if session_id := get_session_id(request):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
-    # The agent runs inside an AsyncExitStack so any MCP servers stay open for the whole
-    # request. To give the agent MCP tools, connect them with connect_healthy_mcp_servers,
-    # which health-checks each server so one unavailable server can't crash the request
-    # (the Agents SDK lists each server's tools lazily inside Runner.run):
-    #   servers, unavailable = await connect_healthy_mcp_servers(
-    #       stack, [await init_mcp_server(WorkspaceClient())])
-    #   agent = create_agent(mcp_servers=servers)
-    # WorkspaceClient() uses service principal credentials; use get_user_workspace_client()
-    # for on-behalf-of user authentication.
+    # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = create_agent()
+        agent = await _connect_fpac_agent(stack)
         messages = normalize_history_items([i.model_dump() for i in request.input])
         result = Runner.run_streamed(agent, input=messages)
 
