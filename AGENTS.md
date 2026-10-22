@@ -146,3 +146,9 @@ Run `uv run pytest -m live_network` separately when changing requests, SQL templ
 - [US Census Bureau TIGERweb REST Services](https://tigerweb.geo.census.gov/)
 - [USDA NASS QuickStats API](https://quickstats.nass.usda.gov/api)
 
+### Browser Evaluation Harness
+
+- `eval\fpac_soil_mcp_harness\` is the local Node.js/Express browser harness for exercising the MCP server through stdio, SSE, or Streamable HTTP; see its nested `AGENTS.md` and `README.md`.
+- `eval\prompt_test_cases.json` contains shared tool, resource, and prompt evaluation cases consumed by the harness and Python evaluation runners.
+- From the repository root, use `Set-Location eval\fpac_soil_mcp_harness; npm install`, then `npm start` or `npm run dev`; run `npm run check` after JavaScript changes.
+- The harness defaults to `http://127.0.0.1:3030` and is a local client/workbench, not a production deployment or official FPPA determination system.
