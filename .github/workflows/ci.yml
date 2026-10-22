@@ -38,13 +38,6 @@ jobs:
   agent-app:
     name: Agent app (apps/agent-fpac-soil-openai-sdk)
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-        
-    runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
