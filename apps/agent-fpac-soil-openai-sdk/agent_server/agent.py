@@ -117,12 +117,13 @@ def create_agent(
 
 async def _connect_fpac_agent(stack: AsyncExitStack) -> Agent:
     # WorkspaceClient() authenticates as the app's service principal, not the user.
-    # connect_healthy_mcp_servers drops a server that fails, so the request still runs.
+    # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
+    # traceback), so the request still runs.
     servers, unavailable = await connect_healthy_mcp_servers(
         stack, [init_fpac_mcp_server(WorkspaceClient())]
     )
     if unavailable:
-        logger.warning("MCP servers unavailable for this request: %s", ", ".join(unavailable))
+        logger.info("MCP servers unavailable for this request: %s", ", ".join(unavailable))
     return create_agent(mcp_servers=servers, tools_unavailable=bool(unavailable))
 
 

@@ -90,7 +90,7 @@ def test_init_fpac_mcp_server_env_overrides(monkeypatch):
 
 @pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])
 def test_handler_healthy_path(patched, caplog, run_handler):
-    with caplog.at_level(logging.WARNING, logger=agent_module.__name__):
+    with caplog.at_level(logging.INFO, logger=agent_module.__name__):
         run_handler()
     patched.init.assert_called_once_with(patched.workspace_client.return_value)
     servers_arg = patched.connect.await_args.args[1]
@@ -104,12 +104,13 @@ def test_handler_healthy_path(patched, caplog, run_handler):
 @pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])
 def test_handler_unavailable_path(patched, caplog, run_handler):
     patched.connect.return_value = ([], ["fpac-soil-mcp"])
-    with caplog.at_level(logging.WARNING, logger=agent_module.__name__):
+    with caplog.at_level(logging.INFO, logger=agent_module.__name__):
         run_handler()
     patched.create_agent.assert_called_once_with(mcp_servers=[], tools_unavailable=True)
-    warnings = [r for r in caplog.records if r.name == agent_module.__name__]
-    assert len(warnings) == 1
-    assert "fpac-soil-mcp" in warnings[0].getMessage()
+    # The health check owns the WARNING (with traceback); the handler adds one INFO summary.
+    records = [r for r in caplog.records if r.name == agent_module.__name__]
+    assert [r.levelno for r in records] == [logging.INFO]
+    assert "fpac-soil-mcp" in records[0].getMessage()
 
 
 def test_invoke_runs_agent_from_mcp(patched):
