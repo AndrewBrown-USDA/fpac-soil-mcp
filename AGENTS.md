@@ -19,6 +19,9 @@ uv run pytest tests\test_sda_client.py
 uv run ruff check .
 uv run ruff format --check .
 
+# Run the repository validation target
+make check
+
 # Build and run the container
 docker build -t fpac-soil-mcp .
 docker run -i --rm -e MCP_TRANSPORT=stdio fpac-soil-mcp
@@ -43,6 +46,7 @@ uv run pytest -m live_network
 - `src\fpac_soil_mcp\privacy.py` - data governance, section 1619 compliance, and coordinate redaction / privacy guardrails.
 - `src\fpac_soil_mcp\workflow.py` - step-by-step workflow tracking and guidance for FPPA evaluation processes.
 - `src\fpac_soil_mcp\official_sources.py` - registry and lookups for official federal dataset provenance, layers, and service endpoints.
+- `src\fpac_soil_mcp\fppa.py` and `src\fpac_soil_mcp\lesa.py` - FPPA screening and preliminary LESA scoring domain logic.
 - `src\fpac_soil_mcp\http_client.py` - base resilient HTTP client with retry logic, timeouts, and structured error handling.
 - `src\fpac_soil_mcp\sda_client.py` - USDA SDA HTTP client, validation, fixed SQL templates, retries, and response parsing.
 - `src\fpac_soil_mcp\tigerweb_client.py` - US Census Bureau TIGERweb API client for 2020 Urban Areas and County geography queries.
@@ -58,10 +62,15 @@ uv run pytest -m live_network
 - `src\fpac_soil_mcp\data\` - bundled official data registries and regional scoring references (`official_sources.v1.json`, `regional_scoring.v1.json`).
 - `eval\common\` - harness-neutral matching, dataset loader, and validation code shared by Pi and Databricks tiers.
 - `eval\contract\` - T0 offline contract tests over the in-memory FastMCP client.
+- `eval\pi\` - Pi agent evaluation runner and evaluation tests.
 - `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`.
+- `eval\fpac_soil_mcp_harness\` - local Node.js browser client/workbench; see its nested `AGENTS.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
+- `docs\decisions\` - durable architecture decision records.
 - `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md`, then inspect the directory for execution-specific files.
 - `pyproject.toml` - package metadata, dependencies, script entry point, pytest markers, and Ruff settings.
+- `Makefile` - canonical install, run, test, evaluation, lint, format, and Docker targets.
+- `requirements.txt` - generated pinned requirements export; update with `make requirements`.
 - `.env.example` - supported environment variables and defaults.
 - `Dockerfile` - production container build.
 - `server.json` and `manifest.yaml` - MCP registry and capability metadata.
@@ -95,24 +104,29 @@ uv run pytest -m live_network
 ### Validate a Change
 
 ```powershell
-uv run pytest -m "not live_network"
-uv run ruff check .
-uv run ruff format --check .
+make check
 ```
 
-Run T1 Databricks eval tests (requires the `eval-databricks` dependency group):
+Run the Pi evaluation suite:
 
 ```powershell
-uv run --group eval-databricks pytest eval/databricks -q
+make test-eval
 ```
 
-Run `uv run pytest -m live_network` separately when changing requests, SQL templates, parsing, retries, or live integration behavior.
+Run T1 Databricks evaluation:
+
+```powershell
+make eval-databricks
+```
+
+Run `make test-live` separately when changing requests, SQL templates, parsing, retries, or live integration behavior.
 
 ## Infrastructure
 
 - Python: `>=3.11`; package and environment management use `uv` with `uv.lock`.
+- Console entry point: `fpac-soil-mcp = fpac_soil_mcp.app:main`; `main.py` is the container/development entry point.
 - Default transport: `stdio`.
-- Network transports: set `MCP_TRANSPORT=sse` or `MCP_TRANSPORT=http`; default bind is `127.0.0.1:8000`.
+- Network transports: set `MCP_TRANSPORT=sse` or `MCP_TRANSPORT=http`; default bind is `127.0.0.1:8000`. Use `make run-sse` or `make run-http`.
 - Configuration loads from environment variables and an optional repository-root `.env`; copy `.env.example` for local overrides.
 - External APIs and Upstream Services:
   - **USDA NRCS Soil Data Access (SDA)**: Tabular API for SSURGO/STATSGO2 soil survey queries, configured by `SDA_TABULAR_URL`.
@@ -121,6 +135,7 @@ Run `uv run pytest -m live_network` separately when changing requests, SQL templ
 - HTTP routes: `/health` and `/meta` are registered on the FastMCP application for network transports.
 - Tests use mocked `httpx` transports by default. Tests marked `live_network` contact external services (USDA SDA, Census TIGERweb) and are opt-in.
 - SDA responses use `JSON+COLUMNNAME`, where the first table row contains column names; parsing is centralized in `SDAClient`.
+- Databricks Apps deployment uses `app.yaml` and Streamable HTTP on `/mcp`; container defaults are defined in `Dockerfile`.
 
 ### Operational Rules
 
@@ -140,9 +155,16 @@ Run `uv run pytest -m live_network` separately when changing requests, SQL templ
 - `manifest.yaml` - published MCP tools and resources.
 - `server.json` - MCP server launch metadata.
 - `planning\MASTER_PLAN.md` - product mission, target architecture, governance, and roadmap.
+- `docs\decisions\` - architecture decision records.
 - [FastMCP documentation](https://gofastmcp.com/)
 - [USDA NRCS Soil Data Access](https://sdmdataaccess.nrcs.usda.gov/)
 - [USDA Web Soil Survey](https://websoilsurvey.sc.egov.usda.gov/)
 - [US Census Bureau TIGERweb REST Services](https://tigerweb.geo.census.gov/)
 - [USDA NASS QuickStats API](https://quickstats.nass.usda.gov/api)
 
+### Browser Evaluation Harness
+
+- `eval\fpac_soil_mcp_harness\` is the local Node.js/Express browser harness for exercising the MCP server through stdio, SSE, or Streamable HTTP; see its nested `AGENTS.md` and `README.md`.
+- `eval\prompt_test_cases.json` contains shared tool, resource, and prompt evaluation cases consumed by the harness and Python evaluation runners.
+- From the repository root, use `Set-Location eval\fpac_soil_mcp_harness; npm install`, then `npm start` or `npm run dev`; run `npm run check` after JavaScript changes.
+- The harness defaults to `http://127.0.0.1:3030` and is a local client/workbench, not a production deployment or official FPPA determination system.

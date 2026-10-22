@@ -18,9 +18,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import run_evals
 from common.matching import keywords_present
-from run_evals import (
+from pi import run_evals
+from pi.run_evals import (
     _tool_matches,
     extract_advertised_tool_names,
     extract_assistant_content,
@@ -30,7 +30,7 @@ from run_evals import (
     should_retry_missing_tools,
 )
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 CAPTURE_FIXTURES_PATH = REPO_ROOT / "eval" / "fixtures" / "event_capture"
 

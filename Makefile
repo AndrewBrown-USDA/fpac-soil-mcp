@@ -24,7 +24,7 @@ help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 install: ## Sync dependencies and locked environment via uv
-	$(UV) sync
+	$(UV) sync --dev
 
 sync: install ## Alias for install
 
@@ -41,7 +41,7 @@ run-http: ## Run MCP server locally over Streamable HTTP transport
 	MCP_TRANSPORT=http MCP_HOST=$(MCP_HOST) MCP_PORT=$(MCP_PORT) $(UV) run fpac-soil-mcp
 
 test: ## Run unit and mocked test suite (offline)
-	$(UV) run pytest -m "not live_network and not agent_eval"
+	$(UV) run --group dev pytest -m "not live_network and not agent_eval"
 
 test-unit: test ## Alias for offline test suite
 
@@ -55,10 +55,10 @@ app-lint: ## Ruff check + format check on the agent app files this repo owns
 app-check: app-lint app-test ## Run agent app lint and tests
 
 test-live: ## Run live network integration tests (requires network)
-	$(UV) run pytest -m live_network
+	$(UV) run --group dev pytest -m live_network
 
 test-eval: ## Run Pi agent evaluation benchmark suite
-	$(PYTHON) eval/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
+	$(PYTHON) eval/pi/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
 
 eval: test-eval ## Alias for test-eval
 
@@ -66,16 +66,16 @@ eval-databricks: ## Run T1 Databricks-native MLflow evaluation (requires eval-da
 	$(UV) run --group eval-databricks python eval/databricks/run_mlflow_eval.py $(ARGS)
 
 lint: ## Run Ruff linter checks
-	$(UV) run ruff check .
+	$(UV) tool run ruff check .
 
 lint-fix: ## Auto-fix linting issues with Ruff
-	$(UV) run ruff check --fix .
+	$(UV) tool run ruff check --fix .
 
 format: ## Format codebase using Ruff
-	$(UV) run ruff format .
+	$(UV) tool run ruff format .
 
 format-check: ## Check code formatting without applying changes
-	$(UV) run ruff format --check .
+	$(UV) tool run ruff format --check .
 
 check: lint format-check test ## Run full validation suite (lint, format-check, mocked tests)
 

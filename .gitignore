@@ -17,7 +17,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -47,6 +46,9 @@ htmlcov/
 *.cover
 *.py,cover
 .hypothesis/
+yarn.lock
+.npmrc
+node_modules/
 
 # IDE / Editor files
 .vscode/
@@ -54,10 +56,6 @@ htmlcov/
 *.swp
 *.swo
 *~
-package-lock.json
-yarn.lock
-.npmrc
-node_modules/
 
 # OS files
 .DS_Store

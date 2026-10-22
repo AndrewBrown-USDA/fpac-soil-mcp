@@ -1,0 +1,67 @@
+{
+  "version": "1.0.0",
+  "description": "Declarative deterministic MCP contract cases for the local harness.",
+  "test_cases": [
+    {
+      "id": "CORR-01",
+      "category": "Representative polygon/corridor contract",
+      "target_type": "tool",
+      "target_name": "analyze_corridor_fppa",
+      "invocation": {
+        "kind": "tool",
+        "name": "analyze_corridor_fppa",
+        "arguments": {
+          "centerline": {
+            "type": "LineString",
+            "coordinates": [
+              [-93.62, 42.0],
+              [-93.58, 42.06],
+              [-93.5, 42.1]
+            ]
+          },
+          "buffer_distance": 75,
+          "buffer_units": "feet",
+          "indirect_geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [-93.56, 42.07],
+                [-93.54, 42.07],
+                [-93.54, 42.09],
+                [-93.56, 42.09],
+                [-93.56, 42.07]
+              ]
+            ]
+          },
+          "productivity_index": "nccpi",
+          "site_assessment_inputs": {
+            "project_farm_acres": 350
+          }
+        }
+      },
+      "expected_result": {
+        "type": "object",
+        "required": ["preliminary_screening", "segments"],
+        "properties": {
+          "preliminary_screening": { "type": "boolean" },
+          "segments": { "type": "array" }
+        }
+      },
+      "assertions": {
+        "predicates": [
+          "preliminaryScreeningOnly",
+          "containsRegulatoryLimitation"
+        ]
+      },
+      "ownership": {
+        "maintainer": "evaluation",
+        "regulatory_approval_required": true
+      },
+      "protected_regulatory_assertions": [
+        "not_official_fppa_determination",
+        "not_lesa_score",
+        "not_ad_1006_or_cpa_106"
+      ]
+    }
+  ]
+}
