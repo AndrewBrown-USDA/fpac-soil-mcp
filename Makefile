@@ -35,12 +35,12 @@ run-http: ## Run MCP server locally over Streamable HTTP transport
 	MCP_TRANSPORT=http MCP_HOST=$(MCP_HOST) MCP_PORT=$(MCP_PORT) $(UV) run fpac-soil-mcp
 
 test: ## Run unit and mocked test suite (offline)
-	$(UV) run pytest -m "not live_network and not agent_eval"
+	$(UV) run --group dev pytest -m "not live_network and not agent_eval"
 
 test-unit: test ## Alias for offline test suite
 
 test-live: ## Run live network integration tests (requires network)
-	$(UV) run pytest -m live_network
+	$(UV) run --group dev pytest -m live_network
 
 test-eval: ## Run Pi agent evaluation benchmark suite
 	$(PYTHON) eval/pi/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
