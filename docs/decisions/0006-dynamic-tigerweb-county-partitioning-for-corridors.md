@@ -68,6 +68,14 @@ client architecture (already used for urban area screening in EP4).
 * **Negative**: Adds network latency for TIGERweb + NASS queries per county
   segment, though queries are cacheable.
 
+### Urban Overlap Propagation
+
+Each county segment is independently screened against Census 2020 urban
+boundaries. The segment response preserves the TIGERweb
+`screened_acreage` value, allowing corridor consumers to distinguish partial
+urban overlap from a boolean intersection alone while retaining the same
+geodesic acreage method defined in ADR 0004.
+
 ## Validation & Compliance
 
 Multi-county synthetic and real-world corridor test fixtures traversing 2+ and

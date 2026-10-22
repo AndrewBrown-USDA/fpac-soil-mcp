@@ -153,6 +153,9 @@ def test_corridor_analysis_two_counties():
 
     assert response.query_type == "corridor"
     assert len(response.county_segments) == 2
+    assert all(
+        segment.urban_screening["screened_acreage"] == 0.0 for segment in response.county_segments
+    )
     assert response.impact_breakdown.direct_acres > 0
     assert response.impact_breakdown.indirect_acres == 0.0
     assert response.reconciliation_summary["reconciliation_passed"] is True

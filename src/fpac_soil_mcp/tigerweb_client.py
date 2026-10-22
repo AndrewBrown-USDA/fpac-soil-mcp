@@ -13,7 +13,8 @@ from typing import Any
 
 import httpx
 from shapely.errors import GEOSException
-from shapely.geometry import LinearRing, MultiPolygon, Point, Polygon
+from shapely.geometry import GeometryCollection, LinearRing, MultiPolygon, Point, Polygon
+from shapely.ops import unary_union
 from shapely.validation import make_valid
 
 from fpac_soil_mcp.authority import Provenance
@@ -195,6 +196,20 @@ def _esri_rings_to_geometry(
     return MultiPolygon(valid_polys)
 
 
+def _polygonal_parts(geometry: Any) -> list[Polygon]:
+    """Extract polygon members from a polygonal or collection geometry."""
+    if isinstance(geometry, Polygon):
+        return [geometry]
+    if isinstance(geometry, MultiPolygon):
+        return list(geometry.geoms)
+    if isinstance(geometry, GeometryCollection):
+        parts: list[Polygon] = []
+        for member in geometry.geoms:
+            parts.extend(_polygonal_parts(member))
+        return parts
+    return []
+
+
 class TigerwebClientError(Exception):
     """Base exception for Census TIGERweb client errors."""
 
@@ -258,7 +273,7 @@ class TigerwebClient:
                 "inSR": "4326",
                 "spatialRel": "esriSpatialRelIntersects",
                 "outFields": "GEOID,NAME,BASENAME,POP100,HU100",
-                "returnGeometry": "false",
+                "returnGeometry": "false" if isinstance(geom, Point) else "true",
                 "outSR": "4326",
                 "f": "json",
             }
@@ -289,6 +304,26 @@ class TigerwebClient:
                 for f in features
                 if f.get("attributes")
             ]
+            screened_acreage: float | None = None
+            if not isinstance(geom, Point):
+                urban_geometries: list[Polygon | MultiPolygon] = []
+                for feature in features:
+                    feature_rings = feature.get("geometry", {}).get("rings", [])
+                    urban_geometry = _esri_rings_to_geometry(feature_rings)
+                    if urban_geometry is not None and not urban_geometry.is_empty:
+                        urban_geometries.append(urban_geometry)
+
+                if urban_geometries:
+                    urban_union = unary_union(urban_geometries)
+                    overlap = geom.intersection(urban_union)
+                    if not overlap.is_empty:
+                        if not overlap.is_valid:
+                            overlap = make_valid(overlap)
+                        polygon_parts = _polygonal_parts(overlap)
+                        if polygon_parts:
+                            screened_acreage = calculate_acreage(unary_union(polygon_parts))
+                if screened_acreage is None:
+                    screened_acreage = 0.0
 
             return UrbanExemptionRecord(
                 status=IntegrationStatus.SUCCESS,
@@ -298,6 +333,7 @@ class TigerwebClient:
                 layer_version="2020",
                 is_urban_intersected=is_intersected,
                 urban_area_names=urban_names,
+                screened_acreage=screened_acreage,
             )
 
         except (
