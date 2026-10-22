@@ -6,6 +6,43 @@ The agent in this template implements the [OpenAI Responses API](https://platfor
 
 The agent input and output format are defined by MLflow's ResponsesAgent interface, which closely follows the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses) interface. See [the MLflow docs](https://mlflow.org/docs/latest/genai/flavors/responses-agent-intro/) for input and output formats for streaming and non-streaming requests, tracing requirements, and other agent authoring details.
 
+## FPAC Soil configuration
+
+This app is the FPAC Soil agent. It helps USDA staff run preliminary Farmland Protection Policy Act (FPPA) screening by calling the tools on the deployed `mcp-fpac-soil` MCP server. Its system prompt is in `agent_server/prompts/system_prompt.txt`.
+
+Answers are preliminary screening only. They are based on SSURGO soil inventory data under 7 CFR Part 657 and are not an official FPPA determination, a Land Evaluation and Site Assessment (LESA) score, or a completed Form AD-1006 or Form NRCS-CPA-106.
+
+### Environment variables
+
+| Name | Default | Purpose |
+| --- | --- | --- |
+| `AGENT_MODEL` | `databricks-gpt-5-6-luna` | Model serving endpoint. In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
+| `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | URL of the fpac-soil-mcp server. |
+| `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
+
+GPT-5 endpoints are called with `reasoning_effort="none"`, which they need for tool calling.
+
+### Required grants
+
+The agent calls the MCP server as the app's service principal, not on behalf of the user. The app needs two resources:
+
+* An App resource `mcp_server` for `mcp-fpac-soil` with `CAN_USE`. This grants the service principal access to the MCP server. Apps-hosted MCP servers accept OAuth only, not PATs.
+* A serving-endpoint resource `llm-endpoint` for the configured model with `CAN_QUERY`.
+
+Both are declared in `databricks.yml`. For the UI-created app, add them on the app's Apps page.
+
+Note: `databricks-claude-sonnet-5-5` is disabled in this workspace (403 `PERMISSION_DENIED`, checked 2026-10-22). Do not use it as `AGENT_MODEL`.
+
+### Deploying
+
+The app was created in the UI and deploys from its git source. Set the git source branch to `feat/agent-app-fpac-mcp` (switch to `main` after merge), keep `source_code_path` as `apps/agent-fpac-soil-openai-sdk`, and redeploy. Do not run `databricks bundle deploy` for this app.
+
+### MCP timeout
+
+The client timeout is 180 seconds, not the 20-second default. Some tools, such as preliminary LESA and corridor analysis, query several USDA and Census services and can run longer than 20 seconds. 180 seconds matches the timeout used by the JS test harness.
+
+If the MCP server cannot be reached, the agent tells the user that the tools are unavailable instead of answering from memory.
+
 ## Build with AI Assistance
 
 We recommend using AI coding assistants (Claude Code, Cursor, GitHub Copilot) to customize and deploy this template. Agent Skills in `.claude/skills/` provide step-by-step guidance for common tasks like setup, adding tools, and deployment. These skills are automatically detected by Claude, Cursor, and GitHub Copilot.
