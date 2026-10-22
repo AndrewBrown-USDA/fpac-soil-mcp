@@ -12,7 +12,13 @@ MCP_PORT    ?= 8000
 IMAGE_NAME  ?= fpac-soil-mcp
 EVAL_ARTIFACT_ROOT ?= ../fpac-soil-mcp-eval-artifacts
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all
+# Databricks agent app (separate uv project; root Ruff/pytest skip apps/)
+APP_DIR     ?= apps/agent-fpac-soil-openai-sdk
+APP_PYTHON  ?= 3.11
+# Files this repo owns in the app; the remaining template runtime files are not linted.
+APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/config.py agent_server/history.py tests)
+
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-check
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -38,6 +44,15 @@ test: ## Run unit and mocked test suite (offline)
 	$(UV) run pytest -m "not live_network and not agent_eval"
 
 test-unit: test ## Alias for offline test suite
+
+app-test: ## Run the agent app's offline tests (uses the committed uv.lock)
+	cd $(APP_DIR) && $(UV) run --frozen --python $(APP_PYTHON) pytest tests -q
+
+app-lint: ## Ruff check + format check on the agent app files this repo owns
+	$(UV) run ruff check $(APP_LINT_PATHS)
+	$(UV) run ruff format --check $(APP_LINT_PATHS)
+
+app-check: app-lint app-test ## Run agent app lint and tests
 
 test-live: ## Run live network integration tests (requires network)
 	$(UV) run pytest -m live_network

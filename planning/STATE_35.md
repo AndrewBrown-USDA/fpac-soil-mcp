@@ -76,10 +76,16 @@ Plan: `planning/EXECUTION_PLAN_35.md` · Template: `planning/PROMPT_TEMPLATE_35.
 - Deviations: also fixed import-block lint (UP035 `collections.abc.AsyncGenerator`; F401 unused `get_user_workspace_client`). Two template `F841 stack` errors remained in the handlers until 35.3.1, because handler edits were out of scope here.
 
 ## 35.3.1
-- Status: done (`fa3961d`). `agent.py`: `init_mcp_server` → sync `init_fpac_mcp_server` + `FPAC_MCP_SERVER_NAME`; dropped `build_mcp_url` import; both handlers call a new private `_connect_fpac_agent(stack)` (connect, one warning if unavailable, `create_agent(mcp_servers=..., tools_unavailable=...)`). New `tests/test_agent_mcp_wiring.py` (9 tests).
+- Status: done (`fa3961d`). `agent.py`: `init_mcp_server` → sync `init_fpac_mcp_server` + `FPAC_MCP_SERVER_NAME`; dropped `build_mcp_url` import; both handlers call a new private `_connect_fpac_agent(stack)` (connect, one INFO summary if unavailable, `create_agent(mcp_servers=..., tools_unavailable=...)`). New `tests/test_agent_mcp_wiring.py` (9 tests).
 - App pytest `tests` → 46 passed. Ruff check + format clean; grep check prints nothing.
 - Deviations: the 2-line SP-auth / health-check comment sits in the shared helper rather than being duplicated in each handler. Handler signatures, decorators, history normalization, and stream processing are unchanged.
-- Gotcha for 35.5.1: if the agent says tools are unavailable, the app log has `MCP servers unavailable for this request: fpac-soil-mcp` plus the `connect_healthy_mcp_servers` traceback. Check the `CAN_USE` grant first.
+- Gotcha for 35.5.1: if the agent says tools are unavailable, the app log has the `connect_healthy_mcp_servers` WARNING `MCP server 'fpac-soil-mcp' unavailable; continuing without it.` with a traceback, plus an INFO `MCP servers unavailable for this request: fpac-soil-mcp`. Check the `CAN_USE` grant first.
+
+## PR review follow-up (Copilot)
+- Duplicate warning: the handler summary is now `logger.info`; the health check keeps the single WARNING with traceback. Wiring test asserts exactly one INFO record from `agent_server.agent`.
+- CI coverage: new Makefile targets `app-test` (`uv run --frozen --python 3.11 pytest tests -q` in the app dir), `app-lint` (Ruff on `agent.py`, `config.py`, `history.py`, `tests/`), `app-check`; new CI job `agent-app` runs `make app-check`. Template runtime files (`start_app.py`, `start_server.py`, `utils.py`, `app_diagnostics.py`) are not linted: 18 pre-existing findings, left unchanged.
+- asyncio `exc_info=exc` in `scripts/app_diagnostics.py`: declined. `logging` has accepted an exception instance for `exc_info` since Python 3.5 and uses its `__traceback__`; verified on 3.12 outside an `except` block (traceback printed). File is unchanged template code.
+- Results: app 46 passed via `make app-test`; app-owned files Ruff clean.
 
 ## 35.4.1
 - Status: done. All gates green (see wave 4 row). Plan `.py` files under `apps/` linted explicitly: `agent.py`, `config.py`, `conftest.py`, and 4 test files.
