@@ -1,8 +1,6 @@
-# Responses API Agent
+# FPAC Soil Agent App
 
-This template defines a conversational agent app. The app comes with a built-in chat UI, but also exposes an API endpoint for invoking the agent so that you can serve your UI elsewhere (e.g. on your website or in a mobile app).
-
-The agent in this template implements the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses) interface. It ships with a sample `get_current_time` tool. The agent code includes commented-out examples showing how to connect to [Databricks MCP servers](https://docs.databricks.com/aws/en/generative-ai/agent-framework/agent-tool) (including the built-in code interpreter, Vector Search, Genie, and UC functions). You can customize agent code and test it via the API or UI.
+A Databricks App that serves the FPAC Soil agent. It has a built-in chat UI and also exposes an API endpoint for invoking the agent. The app started from the Databricks `agent-openai-agents-sdk` template.
 
 The agent input and output format are defined by MLflow's ResponsesAgent interface, which closely follows the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses) interface. See [the MLflow docs](https://mlflow.org/docs/latest/genai/flavors/responses-agent-intro/) for input and output formats for streaming and non-streaming requests, tracing requirements, and other agent authoring details.
 
@@ -43,36 +41,7 @@ The client timeout is 180 seconds, not the 20-second default. Some tools, such a
 
 If the MCP server cannot be reached, the agent tells the user that the tools are unavailable instead of answering from memory.
 
-## Build with AI Assistance
-
-We recommend using AI coding assistants (Claude Code, Cursor, GitHub Copilot) to customize and deploy this template. Agent Skills in `.claude/skills/` provide step-by-step guidance for common tasks like setup, adding tools, and deployment. These skills are automatically detected by Claude, Cursor, and GitHub Copilot.
-
-## Quick start
-
-Run the `uv run quickstart` script to quickly set up your local environment and start the agent server. At any step, if there are issues, refer to the manual local development loop setup below.
-
-This script will:
-
-1. Verify uv, nvm, and Databricks CLI installations
-2. Configure Databricks authentication
-3. Configure agent tracing, by creating and linking an MLflow experiment to your app
-4. Start the agent server and chat app
-
-```bash
-uv run quickstart
-```
-
-After the setup is complete, you can start the agent server and the chat app locally with:
-
-```bash
-uv run start-app
-```
-
-This will start the agent server and the chat app at http://localhost:8000.
-
-**Next steps**: see [modifying your agent](#modifying-your-agent) to customize and iterate on the agent code.
-
-## Manual local development loop setup
+## Local development
 
 1. **Set up your local environment**
    Install `uv` (python package manager), `nvm` (node version manager), and the Databricks CLI:
@@ -117,7 +86,7 @@ This will start the agent server and the chat app at http://localhost:8000.
 
 3. **Create and link an MLflow experiment to your app**
 
-   Create an MLflow experiment to enable tracing and version tracking. This is automatically done by the `uv run quickstart` script.
+   Create an MLflow experiment to enable tracing and version tracking.
 
    Create the MLflow experiment via the CLI:
 
@@ -189,65 +158,19 @@ Yes. This template uses MLflow's agent server, which comes with automatic tracin
 **Q: How can I extend this example with additional tools and capabilities?**
 This template can be extended by integrating additional MCP servers, Vector Search Indexes, UC Functions, and other Databricks tools. See the ["Agent Framework Tools Documentation"](https://docs.databricks.com/aws/en/generative-ai/agent-framework/agent-tool).
 
-## Evaluating your agent
+## Tests
 
-Evaluate your agent by calling the invoke function you defined for the agent locally.
-
-- Update your `evaluate_agent.py` file with the preferred evaluation dataset and scorers.
-
-Run the evaluation using the evaluation script:
+The tests run offline. Databricks clients and the MCP server are mocked.
 
 ```bash
-uv run agent-evaluate
+uv run pytest tests -q
 ```
 
-After it completes, open the MLflow UI link for your experiment to inspect results.
+Agent evaluation lives in the repository's `eval/databricks/` (T1), not in this app.
 
-## Deploying to Databricks Apps
+## Querying the deployed app
 
-This template uses [Databricks Asset Bundles (DABs)](https://docs.databricks.com/aws/en/dev-tools/bundles/) for deployment. The `databricks.yml` file defines the app configuration and resource permissions.
-
-> **`app.yaml` vs `databricks.yml`**: `app.yaml` is used when deploying via `databricks apps deploy` (manual path). When deploying via DABs (`databricks bundle deploy`), the `config:` section in `databricks.yml` takes precedence. If you change environment variables or the start command, update `databricks.yml` — that's what DABs reads.
-
-Ensure you have the [Databricks CLI](https://docs.databricks.com/aws/en/dev-tools/cli/tutorial) installed and configured.
-
-1. **Run the pre-flight check**
-
-   Start the agent locally, send a test request, and verify the response to catch configuration and code errors early:
-
-   ```bash
-   uv run preflight
-   ```
-
-2. **Validate the bundle configuration**
-
-   Catch any configuration errors before deploying:
-
-   ```bash
-   databricks bundle validate
-   ```
-
-3. **Deploy the bundle**
-
-   This uploads your code and configures resources (MLflow experiment, serving endpoints, etc.) defined in `databricks.yml`:
-
-   ```bash
-   databricks bundle deploy
-   ```
-
-4. **Start or restart the app**
-
-   ```bash
-   databricks bundle run agent_openai_agents_sdk
-   ```
-
-   > **Note:** `bundle deploy` only uploads files and configures resources. `bundle run` is **required** to actually start/restart the app with the new code.
-
-   To grant access to additional resources (serving endpoints, genie spaces, UC Functions, Vector Search), add them to `databricks.yml` and redeploy. See the [Databricks Apps resources documentation](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources).
-
-   **On-behalf-of (OBO) User Authentication**: Use `get_user_workspace_client()` from `agent_server.utils` to authenticate as the requesting user instead of the app service principal. See the [OBO authentication documentation](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth?language=Streamlit#retrieve-user-authorization-credentials).
-
-5. **Query your agent hosted on Databricks Apps**
+Deploy through the app's git source as described in [Deploying](#deploying). The deployed app uses `app.yaml`; `databricks.yml` documents the same env vars and resources.
 
    You must use a Databricks OAuth token to query agents hosted on Databricks Apps. See [Query an agent](https://docs.databricks.com/aws/en/generative-ai/agent-framework/query-agent) for full details.
 
@@ -311,37 +234,6 @@ Ensure you have the [Databricks CLI](https://docs.databricks.com/aws/en/dev-tool
        "input": [{ "role": "user", "content": "hi" }]
      }'
    ```
-
-For future updates, run `databricks bundle deploy` and `databricks bundle run agent_openai_agents_sdk` to redeploy.
-
-### Common Issues
-
-- **`databricks bundle deploy` fails with "An app with the same name already exists"**
-
-  This happens when an app with the same name was previously created outside of DABs. To fix, bind the existing app to your bundle:
-
-  ```bash
-  # 1. Get the existing app's config (note the budget_policy_id if present)
-  databricks apps get <app-name> --output json | jq '{name, budget_policy_id, description}'
-
-  # 2. Update databricks.yml to include budget_policy_id if it was returned above
-
-  # 3. Bind the existing app to your bundle
-  databricks bundle deployment bind agent_openai_agents_sdk <app-name> --auto-approve
-
-  # 4. Deploy
-  databricks bundle deploy
-  ```
-
-  Alternatively, delete the existing app and deploy fresh: `databricks apps delete <app-name>` (this permanently removes the app's URL and service principal).
-
-- **`databricks bundle deploy` fails with "Provider produced inconsistent result after apply"**
-
-  The existing app has server-side configuration (like `budget_policy_id`) that doesn't match your `databricks.yml`. Run `databricks apps get <app-name> --output json` and sync any missing fields to your `databricks.yml`.
-
-- **App is running old code after `databricks bundle deploy`**
-
-  `bundle deploy` only uploads files and configures resources. You must run `databricks bundle run agent_openai_agents_sdk` to actually start/restart the app with the new code.
 
 ### FAQ
 
