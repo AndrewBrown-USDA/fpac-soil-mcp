@@ -51,16 +51,16 @@ eval-databricks: ## Run T1 Databricks-native MLflow evaluation (requires eval-da
 	$(UV) run --group eval-databricks python eval/databricks/run_mlflow_eval.py $(ARGS)
 
 lint: ## Run Ruff linter checks
-	$(UV) run --group dev ruff check .
+	$(UV) tool run ruff check .
 
 lint-fix: ## Auto-fix linting issues with Ruff
-	$(UV) run --group dev ruff check --fix .
+	$(UV) tool run ruff check --fix .
 
 format: ## Format codebase using Ruff
-	$(UV) run --group dev ruff format .
+	$(UV) tool run ruff format .
 
 format-check: ## Check code formatting without applying changes
-	$(UV) run --group dev ruff format --check .
+	$(UV) tool run ruff format --check .
 
 check: lint format-check test ## Run full validation suite (lint, format-check, mocked tests)
 
