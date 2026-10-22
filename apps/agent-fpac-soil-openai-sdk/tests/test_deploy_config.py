@@ -59,6 +59,12 @@ def test_bundle_app_name():
     assert prod["name"] == APP_NAME
 
 
+def test_lockfile_uses_public_pypi():
+    # The Databricks workspace package proxy is unreachable from GitHub Actions; re-lock
+    # with the pyproject's PyPI default index if this fails.
+    assert "package-proxy" not in (APP_DIR / "uv.lock").read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize("name", ["app.yaml", "databricks.yml", ".env.example"])
 def test_disabled_model_not_referenced(name):
     # databricks-claude-sonnet-5-5 is disabled in this workspace (403 PERMISSION_DENIED).

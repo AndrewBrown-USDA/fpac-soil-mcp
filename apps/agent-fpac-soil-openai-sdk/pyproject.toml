@@ -34,6 +34,12 @@ setup = [
 exclude-newer = "7 days"
 default-groups = ["dev", "setup"]
 
+# Pin PyPI as the default index so uv.lock never records the Databricks workspace
+# package proxy (unreachable from GitHub Actions). Same fix as the root pyproject.toml.
+[[tool.uv.index]]
+url = "https://pypi.org/simple/"
+default = true
+
 
 [project.scripts]
 start-app = "scripts.start_app:main"
