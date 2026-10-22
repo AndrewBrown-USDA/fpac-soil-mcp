@@ -27,6 +27,7 @@ eval/fpac_soil_mcp_harness/
 
 * Node.js 18.18+ (20 LTS recommended)
 * The Python server installed per the repository README (`uv sync` at the repo root)
+* Run the workbench locally; it is not a hosted or production deployment
 
 ## Run
 
@@ -51,6 +52,12 @@ $env:MCP_MODE="sse"; $env:MCP_URL="http://127.0.0.1:8000/sse"; npm start
 Use `MCP_MODE=http` with `MCP_URL=http://127.0.0.1:8000/mcp` for Streamable HTTP. The transport can
 also be switched from the connection bar in the UI. See `.env.example` for all settings.
 
+For a quick syntax check without starting the server:
+
+```powershell
+npm run check
+```
+
 ## Features
 
 | Tab | What it does |
@@ -62,7 +69,7 @@ also be switched from the connection bar in the UI. See `.env.example` for all s
 | History | Server-side log of recent calls, durations, and errors. |
 | Server | Connection status, server capabilities and instructions, stderr tail (stdio), and `/health` + `/meta` checks (SSE/HTTP only). |
 
-## Eval case mapping
+## Deterministic evaluation
 
 The eval tab is deterministic: there is no LLM in the loop, so `expected_tools` is satisfied by
 construction and only keyword coverage and tool errors are scored. Arguments come from, in order:
@@ -73,6 +80,9 @@ construction and only keyword coverage and tool errors are scored. Arguments com
 3. generic derivation from `sample_geometry` by tool name.
 
 Use `eval/run_evals.py` / `eval/test_agent_eval.py` for agent tool-selection behaviour.
+Those Python evaluations and the T0/T1 contract and Databricks evaluation paths are separate
+from this browser workbench. This harness does not provide model-based scoring, production
+readiness, or a Databricks App deployment; those are separate forthcoming work.
 
 ## REST API (used by the UI)
 
@@ -101,5 +111,9 @@ Use `eval/run_evals.py` / `eval/test_agent_eval.py` for agent tool-selection beh
   `MCP_TOOL_TIMEOUT_MS`.
 * The harness binds to `127.0.0.1` by default. Command/cwd overrides from the browser are disabled
   automatically when bound to a non-loopback host unless `HARNESS_ALLOW_COMMAND_OVERRIDE=true`.
+  These overrides are local-development controls and require an explicit security design before
+  any shared deployment.
 * The harness does not modify the server; it only uses its public MCP surface.
+* Harness output is preliminary soil inventory screening only. It is not an official FPPA
+  determination, LESA score, Form AD-1006, or NRCS-CPA-106.
 * `node_modules/` and `.env` should not be committed.
