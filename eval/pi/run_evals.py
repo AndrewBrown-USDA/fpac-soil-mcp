@@ -1,4 +1,4 @@
-
+"""Release-time agentic evaluation benchmark runner using the pi coding agent CLI.
 verifies tool call execution and keyword presence, and displays a summary report.
 
 Usage:
@@ -18,6 +18,8 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
+from typing import Any
+
 from eval.common.matching import keywords_present, tool_matches
 
 EVAL_ROOT = Path(__file__).resolve().parent.parent
@@ -30,6 +32,8 @@ SAFE_ID = re.compile(r"[^A-Za-z0-9_-]+")
 SENSITIVE = re.compile(
     r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
     r"email|phone|address|coordinates?|geometry|geojson|wkt)\s*[:=]\s*[^\s,;]+"
+)
+
 # Ensure UTF-8 output on Windows console
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
