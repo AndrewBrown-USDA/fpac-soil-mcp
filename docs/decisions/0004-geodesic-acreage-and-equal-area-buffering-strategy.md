@@ -68,6 +68,14 @@ needed for distance-based buffer operations on corridors.
   require understanding when each applies. Mitigated by clear function names
   and docstrings.
 
+### Urban Screening Application
+
+Polygon-based Census urban screening requests boundary geometry, intersects the
+returned urban polygons with the submitted footprint, and measures the clipped
+overlap with `geometry.calculate_acreage()`. Polygon inputs return `0.0` when
+no urban boundary intersects; point inputs retain `None` because a point has no
+screened acreage.
+
 ## Validation & Compliance
 
 50 synthetic and real-world GeoJSON fixtures (CONUS, Alaska, Hawaii,

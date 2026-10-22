@@ -124,7 +124,40 @@ def test_tigerweb_intersected_success(sample_geojson):
     assert record.status == IntegrationStatus.SUCCESS
     assert record.is_urban_intersected is True
     assert record.urban_area_names == ["Indianapolis, IN"]
+    assert record.screened_acreage == 0.0
     assert record.geometry_hash.startswith("sha256:")
+
+
+def test_tigerweb_partial_polygon_overlap_returns_screened_acreage(sample_geojson):
+    mock_response = {
+        "features": [
+            {
+                "attributes": {"NAME": "Indianapolis, IN"},
+                "geometry": {
+                    "rings": [
+                        [
+                            [-86.155, 39.76],
+                            [-86.15, 39.76],
+                            [-86.15, 39.77],
+                            [-86.155, 39.77],
+                            [-86.155, 39.76],
+                        ]
+                    ]
+                },
+            }
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = parse_qs(request.content.decode("utf-8"))
+        assert body["returnGeometry"] == ["true"]
+        return httpx.Response(200, json=mock_response)
+
+    client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    record = client.check_urban_exemption(sample_geojson)
+
+    assert record.is_urban_intersected is True
+    assert record.screened_acreage == pytest.approx(117.54, rel=0.001)
 
 
 def test_tigerweb_non_intersected_rural(sample_geojson):
@@ -139,6 +172,7 @@ def test_tigerweb_non_intersected_rural(sample_geojson):
     assert record.status == IntegrationStatus.SUCCESS
     assert record.is_urban_intersected is False
     assert record.urban_area_names == []
+    assert record.screened_acreage == 0.0
 
 
 def test_tigerweb_point_geometry_success():
@@ -170,6 +204,7 @@ def test_tigerweb_point_geometry_success():
     assert record.status == IntegrationStatus.SUCCESS
     assert record.is_urban_intersected is True
     assert record.urban_area_names == ["Indianapolis, IN"]
+    assert record.screened_acreage is None
 
 
 def test_tigerweb_polygon_with_interior_rings():
