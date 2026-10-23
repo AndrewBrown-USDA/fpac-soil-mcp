@@ -27,7 +27,7 @@ The agent calls the MCP server as the app's service principal, not on behalf of 
 * An App resource `mcp_server` for `mcp-fpac-soil` with `CAN_USE`. This grants the service principal access to the MCP server. Apps-hosted MCP servers accept OAuth only, not PATs.
 * A **Model** resource `llm-endpoint` for the configured Unity Catalog model service (for example `models.ai.gpt-5-6-luna`) with `EXECUTE`. The Apps UI no longer offers a Serving endpoint resource, and the legacy `databricks-*` endpoint names are no longer served (AI Gateway returns 403 "no longer available"; `/serving-endpoints` returns 404 `ENDPOINT_NOT_FOUND` for UC names).
 
-Both are declared in `databricks.yml`. For the UI-created app, add them on the app's Apps page.
+Both are declared in `databricks.yml` (`llm-endpoint` as `uc_securable` with `securable_type: MODEL_SERVICE`) and `llm-endpoint` in `manifest.yaml` (`uc_securable_spec`). For the UI-created app, add them on the app's Apps page.
 
 Note: `databricks-claude-sonnet-5-5` is disabled in this workspace (403 `PERMISSION_DENIED`, checked 2026-10-22). Do not use it as `AGENT_MODEL`.
 
