@@ -7,7 +7,7 @@ updates:
       - "dependencies"
       - "github-actions"
     commit-message:
-      prefix: "ci"
+      prefix: "ci(github-actions)"
     groups:
       github-actions:
         patterns:
@@ -22,7 +22,7 @@ updates:
       - "dependencies"
       - "python"
     commit-message:
-      prefix: "deps"
+      prefix: "deps(python-root)"
     groups:
       python-dependencies:
         patterns:
@@ -37,7 +37,7 @@ updates:
       - "dependencies"
       - "python"
     commit-message:
-      prefix: "deps"
+      prefix: "deps(python-agent-app)"
     groups:
       python-dependencies:
         patterns:
@@ -52,7 +52,7 @@ updates:
       - "dependencies"
       - "javascript"
     commit-message:
-      prefix: "deps"
+      prefix: "deps(javascript-harness)"
     groups:
       npm-dependencies:
         patterns:
