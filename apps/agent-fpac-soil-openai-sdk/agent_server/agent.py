@@ -35,7 +35,9 @@ from agent_server.utils import get_session_id, process_agent_stream_events
 logger = logging.getLogger(__name__)
 
 # NOTE: this will work for all databricks models OTHER than GPT-OSS, which uses a slightly different API
-set_default_openai_client(AsyncDatabricksOpenAI())
+# use_ai_gateway routes to <host>/ai-gateway/mlflow/v1, which takes Unity Catalog model service
+# names (AGENT_MODEL). /serving-endpoints returns ENDPOINT_NOT_FOUND for those names.
+set_default_openai_client(AsyncDatabricksOpenAI(use_ai_gateway=True))
 set_default_openai_api("chat_completions")
 set_trace_processors([])  # only use mlflow for trace processing
 mlflow.openai.autolog()
@@ -93,7 +95,7 @@ def create_agent(
 ) -> Agent:
     """Build the FPAC Soil agent.
 
-    The model comes from ``AGENT_MODEL``. GPT-5 endpoints get ``reasoning_effort="none"``,
+    The model comes from ``AGENT_MODEL``. GPT-5 models get ``reasoning_effort="none"``,
     which they need for tool calling. When ``tools_unavailable`` is set, the instructions
     tell the model to say so instead of answering from memory.
     """

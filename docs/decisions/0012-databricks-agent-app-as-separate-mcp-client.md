@@ -60,10 +60,13 @@ Conventions this sets:
   prompts. The template's local `get_current_time` tool and `system.ai` server
   were removed.
 * **Configuration by env var, read at call time** (`agent_server/config.py`):
-  `AGENT_MODEL` (default `databricks-gpt-5-6-luna`, sourced from the
-  `llm-endpoint` app resource), `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS`
+  `AGENT_MODEL` (default `models.ai.gpt-5-6-luna`, a Unity Catalog model
+  service sourced from the `llm-endpoint` app Model resource and called through
+  AI Gateway `/ai-gateway/mlflow/v1`), `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS`
   (default 180 s; long LESA and corridor tools exceed the 20 s client default).
-  GPT-5 endpoints get `reasoning_effort="none"` for tool calling.
+  GPT-5 models get `reasoning_effort="none"` for tool calling. (Amended
+  2026-10-23: the Apps UI dropped the Serving endpoint resource and legacy
+  `databricks-*` endpoint names stopped being served.)
 * **Chat system prompt in a file** (`agent_server/prompts/system_prompt.txt`)
   carrying the preliminary-screening limitation and the no-invented-values rule,
   with no steering toward specific tools.

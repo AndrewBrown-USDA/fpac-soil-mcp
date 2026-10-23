@@ -36,14 +36,16 @@ resources:
             experiment_id: ""
             permission: 'CAN_MANAGE'
 
-        # NOTE: grants the app's service principal CAN_QUERY on the LLM endpoint so
-        # the deployed app can call the model without a manual grant. The agent reads
-        # the endpoint name from AGENT_MODEL (value_from: "llm-endpoint" above), so
-        # changing the name below changes the model.
+        # NOTE: grants the app's service principal EXECUTE on the Unity Catalog model
+        # service so the deployed app can call the model without a manual grant. The
+        # agent reads the service name from AGENT_MODEL (value_from: "llm-endpoint"
+        # above), so changing the name below changes the model. This mirrors what the
+        # Apps UI "Model" resource creates (apps get output); bundle deploy of this
+        # resource type is unverified.
         - name: 'llm-endpoint'
-          serving_endpoint:
-            name: 'databricks-gpt-5-6-luna'
-            permission: 'CAN_QUERY'
+          uc_securable:
+            securable_full_name: 'models.ai.gpt-5-6-luna'
+            permission: 'EXECUTE'
 
         # Grants the app's service principal CAN_USE on the fpac-soil-mcp server app.
         - name: 'mcp_server'

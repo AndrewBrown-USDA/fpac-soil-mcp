@@ -14,18 +14,18 @@ Answers are preliminary screening only. They are based on SSURGO soil inventory 
 
 | Name | Default | Purpose |
 | --- | --- | --- |
-| `AGENT_MODEL` | `databricks-gpt-5-6-luna` | Model serving endpoint. In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
+| `AGENT_MODEL` | `models.ai.gpt-5-6-luna` | Unity Catalog model service, called through AI Gateway (`/ai-gateway/mlflow/v1`). In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
 | `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | URL of the fpac-soil-mcp server. |
 | `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
 
-GPT-5 endpoints are called with `reasoning_effort="none"`, which they need for tool calling.
+GPT-5 models are called with `reasoning_effort="none"`, which they need for tool calling.
 
 ### Required grants
 
 The agent calls the MCP server as the app's service principal, not on behalf of the user. The app needs two resources:
 
 * An App resource `mcp_server` for `mcp-fpac-soil` with `CAN_USE`. This grants the service principal access to the MCP server. Apps-hosted MCP servers accept OAuth only, not PATs.
-* A serving-endpoint resource `llm-endpoint` for the configured model with `CAN_QUERY`.
+* A **Model** resource `llm-endpoint` for the configured Unity Catalog model service (for example `models.ai.gpt-5-6-luna`) with `EXECUTE`. The Apps UI no longer offers a Serving endpoint resource, and the legacy `databricks-*` endpoint names are no longer served (AI Gateway returns 403 "no longer available"; `/serving-endpoints` returns 404 `ENDPOINT_NOT_FOUND` for UC names).
 
 Both are declared in `databricks.yml`. For the UI-created app, add them on the app's Apps page.
 
@@ -33,7 +33,7 @@ Note: `databricks-claude-sonnet-5-5` is disabled in this workspace (403 `PERMISS
 
 ### Deploying
 
-The app was created in the UI and deploys from its git source. Set the git source branch to `feat/agent-app-fpac-mcp` (switch to `main` after merge), keep `source_code_path` as `apps/agent-fpac-soil-openai-sdk`, and redeploy. Do not run `databricks bundle deploy` for this app.
+The app was created in the UI and deploys from its git source. Set the git source branch to `main`, keep `source_code_path` as `apps/agent-fpac-soil-openai-sdk`, and redeploy. Do not run `databricks bundle deploy` for this app.
 
 ### MCP timeout
 
