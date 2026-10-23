@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: "weekly"
 
-  - package-ecosystem: "pip"
+  - package-ecosystem: "uv"
     directory: "/"
     open-pull-requests-limit: 10
     labels:
@@ -30,7 +30,7 @@ updates:
     schedule:
       interval: "weekly"
 
-  - package-ecosystem: "pip"
+  - package-ecosystem: "uv"
     directory: "/apps/agent-fpac-soil-openai-sdk"
     open-pull-requests-limit: 10
     labels:
