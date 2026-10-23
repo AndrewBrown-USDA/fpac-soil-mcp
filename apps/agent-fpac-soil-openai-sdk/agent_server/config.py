@@ -9,7 +9,9 @@ import functools
 import os
 from pathlib import Path
 
-DEFAULT_AGENT_MODEL = "databricks-gpt-5-6-luna"
+# Unity Catalog model service name. The workspace no longer serves the legacy
+# ``databricks-*`` endpoint names, and the Apps "Model" resource injects this form.
+DEFAULT_AGENT_MODEL = "models.ai.gpt-5-6-luna"
 DEFAULT_FPAC_MCP_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
 DEFAULT_FPAC_MCP_TIMEOUT_SECONDS = 180.0
 
@@ -23,7 +25,7 @@ def _env_or_default(name: str, default: str) -> str:
 
 
 def agent_model() -> str:
-    """Model serving endpoint for the agent (env ``AGENT_MODEL``)."""
+    """Unity Catalog model service for the agent (env ``AGENT_MODEL``)."""
     return _env_or_default("AGENT_MODEL", DEFAULT_AGENT_MODEL)
 
 
@@ -52,8 +54,11 @@ def fpac_mcp_timeout_seconds() -> float:
 
 
 def uses_reasoning_effort_none(model: str) -> bool:
-    """Return True for GPT-5 endpoints, which need ``reasoning_effort="none"`` for tools."""
-    return model.startswith("databricks-gpt-5")
+    """Return True for GPT-5 models, which need ``reasoning_effort="none"`` for tools.
+
+    Matches both ``models.ai.gpt-5-*`` service names and legacy ``databricks-gpt-5-*`` names.
+    """
+    return model.rsplit(".", 1)[-1].removeprefix("databricks-").startswith("gpt-5")
 
 
 @functools.lru_cache(maxsize=1)

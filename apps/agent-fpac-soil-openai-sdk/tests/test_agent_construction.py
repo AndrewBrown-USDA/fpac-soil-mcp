@@ -12,7 +12,7 @@ def _clear_model_env(monkeypatch):
 
 def test_default_agent():
     agent = agent_module.create_agent()
-    assert agent.model == "databricks-gpt-5-6-luna"
+    assert agent.model == "models.ai.gpt-5-6-luna"
     assert agent.model_settings.reasoning.effort == "none"
     assert agent.tools == []
     assert agent.mcp_servers == []
@@ -20,9 +20,9 @@ def test_default_agent():
 
 
 def test_non_gpt5_model_has_no_reasoning(monkeypatch):
-    monkeypatch.setenv("AGENT_MODEL", "databricks-claude-sonnet-4-5")
+    monkeypatch.setenv("AGENT_MODEL", "models.ai.claude-sonnet-4-5")
     agent = agent_module.create_agent()
-    assert agent.model == "databricks-claude-sonnet-4-5"
+    assert agent.model == "models.ai.claude-sonnet-4-5"
     assert agent.model_settings.reasoning is None
 
 
@@ -36,6 +36,15 @@ def test_mcp_servers_passthrough():
     servers = [object()]
     agent = agent_module.create_agent(mcp_servers=servers)
     assert agent.mcp_servers is servers
+
+
+def test_client_uses_ai_gateway():
+    # UC model service names only resolve on /ai-gateway; /serving-endpoints returns 404.
+    from agents.models._openai_shared import get_default_openai_client
+
+    client = get_default_openai_client()
+    assert isinstance(client, agent_module.AsyncDatabricksOpenAI)
+    assert str(client.base_url).rstrip("/").endswith("/ai-gateway/mlflow/v1")
 
 
 def test_template_tool_removed():

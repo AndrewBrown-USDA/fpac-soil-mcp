@@ -13,7 +13,7 @@ def _clear_env(monkeypatch):
 
 
 def _assert_defaults():
-    assert config.agent_model() == "databricks-gpt-5-6-luna"
+    assert config.agent_model() == "models.ai.gpt-5-6-luna"
     assert (
         config.fpac_mcp_url() == "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
     )
@@ -46,9 +46,19 @@ def test_invalid_timeout_raises(monkeypatch, raw):
         config.fpac_mcp_timeout_seconds()
 
 
-def test_reasoning_effort_rule():
-    assert config.uses_reasoning_effort_none("databricks-gpt-5-6-luna") is True
-    assert config.uses_reasoning_effort_none("databricks-claude-sonnet-4-5") is False
+@pytest.mark.parametrize(
+    ("model", "expected"),
+    [
+        ("models.ai.gpt-5-6-luna", True),
+        ("system.ai.gpt-5-6-sol", True),
+        ("databricks-gpt-5-6-luna", True),
+        ("models.ai.claude-sonnet-4-5", False),
+        ("databricks-claude-sonnet-4-5", False),
+        ("models.ai.gpt-oss-120b", False),
+    ],
+)
+def test_reasoning_effort_rule(model, expected):
+    assert config.uses_reasoning_effort_none(model) is expected
 
 
 def test_default_model_is_not_disabled_model():

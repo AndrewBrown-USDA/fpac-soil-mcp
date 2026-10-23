@@ -8,7 +8,7 @@ from ruamel.yaml import YAML
 APP_DIR = Path(__file__).resolve().parent.parent
 APP_NAME = "agent-fpac-soil-openai-sdk"
 MCP_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
-MODEL = "databricks-gpt-5-6-luna"
+MODEL = "models.ai.gpt-5-6-luna"
 
 
 def _load(name: str) -> dict:
@@ -45,11 +45,21 @@ def test_bundle_env(bundle_app):
 
 def test_bundle_resources(bundle_app):
     resources = {resource["name"]: resource for resource in bundle_app["resources"]}
-    assert resources["llm-endpoint"]["serving_endpoint"] == {
-        "name": MODEL,
-        "permission": "CAN_QUERY",
+    assert resources["llm-endpoint"]["uc_securable"] == {
+        "securable_full_name": MODEL,
+        "securable_type": "MODEL_SERVICE",
+        "permission": "EXECUTE",
     }
     assert resources["mcp_server"]["app"] == {"name": "mcp-fpac-soil", "permission": "CAN_USE"}
+
+
+def test_manifest_llm_endpoint_is_model_service():
+    # The Apps UI no longer offers a Serving endpoint resource; templates must request a
+    # UC model service so AGENT_MODEL resolves to a catalog.schema.name.
+    specs = {spec["name"]: spec for spec in _load("manifest.yaml")["resource_specs"]}
+    llm = specs["llm-endpoint"]
+    assert "serving_endpoint_spec" not in llm
+    assert llm["uc_securable_spec"] == {"securable_type": "MODEL_SERVICE", "permission": "EXECUTE"}
 
 
 def test_bundle_app_name():
