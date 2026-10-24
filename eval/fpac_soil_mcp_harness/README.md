@@ -114,6 +114,7 @@ readiness, or a Databricks App deployment; those are separate forthcoming work.
   These overrides are local-development controls and require an explicit security design before
   any shared deployment.
 * The harness does not modify the server; it only uses its public MCP surface.
+* The master plan calls this harness the "MCP Workbench" for developers and admins; it is not an authorization boundary. Roadmap: [Track W](../../planning/MASTER_PLAN.md#track-w-mcp-workbench).
 * Harness output is preliminary soil inventory screening only. It is not an official FPPA
   determination, LESA score, Form AD-1006, or NRCS-CPA-106.
 * `node_modules/` and `.env` should not be committed.

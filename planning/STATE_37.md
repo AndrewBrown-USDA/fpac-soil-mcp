@@ -24,9 +24,9 @@
 |---|---|---|
 | 1 | 37.1.1 | done |
 | 2 | 37.2.1 | done (user approved 2026-10-24) |
-| 3 | 37.3.1 | pending |
-| 3 | 37.3.2 | pending |
-| 3 | 37.3.3 | pending |
+| 3 | 37.3.1 | done |
+| 3 | 37.3.2 | done |
+| 3 | 37.3.3 | done |
 | 4 | 37.4.1 | pending |
 
 ## Task reports
@@ -47,3 +47,20 @@
 - **Checks:** `grep -n 'Phase 4: .*(Partially Complete)'` -> 1 line; `grep -niE 'marimo'` -> 1 line (superseded); `grep -cE '^### Track (D|E|A|W)'` -> 4; `**Exit criteria:**` count -> 4; ad hoc D9 script -> 0 errors (links, anchors, Plan/ADR refs); no `AOI registry` or `M6 = server`; `git diff --stat` -> only `MASTER_PLAN.md`.
 - **Deviations:** none from spec. The first draft's D2 decision line also named Marimo; reworded to "original demo client" to satisfy the single-line grep.
 - **Gotchas:** footnotes `[^1]`-`[^4]` in References are defined but never referenced (pre-existing; not changed). Track D carries the `STATE_35.md` live-check gap per spec; the research lists it under Track A. Track owners: none in the repo, so "Owner: not yet assigned".
+
+## 37.3.1
+
+- **Status:** done. `AGENTS.md` L71 and L160 (+2/-2): master plan described as "product mission, target architecture, governance, server roadmap, and delivery tracks". `planning/SPATIAL_VISUALIZATION_STRATEGY.md` section 2.1 (+2/-0): two-sentence superseded note linking Phase 8, Track A, and Plan 37 D2; sections 3-6 untouched.
+- **Checks:** `git diff --numstat` within limits (<=4 per file); ad hoc D9 script -> 0 errors. Deviations: none.
+
+## 37.3.2
+
+- **Status:** done. Status line under each research-note title; map note section 11 items 1-5 "(open: Track A)", item 6 "(resolved: Plan 37)"; tracks note section 5 annotated D5, D2 and D6, D1, D3, D4. Tracks note +7/-5, map note +8/-6 (the -lines are the annotated lines).
+- **Checks:** `git diff --word-diff=porcelain planning/RESEARCH_*.md | grep -c '^-[^-]'` -> 0 deleted words; D9 script -> 0 errors (map note `[^d-*]`-style wildcard mentions in prose are pre-existing footnote warnings). Deviations: none.
+- **Gotchas:** the tracks note Date line still says "`MASTER_PLAN.md` has not been edited" and question 2 says "seven open decisions" (section 11 has six); both pre-existing, left unchanged under the no-removed-text rule.
+
+## 37.3.3
+
+- **Status:** done. +1/-0 each: app `AGENTS.md` References -> Track A and map research; harness README Notes -> "MCP Workbench", not an authorization boundary, Track W; `eval/databricks/README.md` Deferred (T2) -> Track E.
+- **Checks:** numstat 1/0 per file; D9 script -> all relative links and anchors resolve.
+- **Deviation:** the harness README had no existing "not an authorization boundary" statement to keep, so the pointer line states it (consistent with D5).

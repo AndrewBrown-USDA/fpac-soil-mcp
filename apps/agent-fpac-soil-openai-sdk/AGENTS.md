@@ -66,3 +66,4 @@ Deploy from the app's git source in the Databricks Apps UI and redeploy. Do not 
 - [ADR 0003](../../docs/decisions/0003-preliminary-screening-authority-boundary.md) - preliminary screening boundary the prompt must preserve.
 - `planning/EXECUTION_PLAN_35.md` - original integration plan and decision log.
 - `eval/databricks/` - T1 agent evaluation (not part of this app).
+- [Master plan Track A](../../planning/MASTER_PLAN.md#track-a-agent-app) - roadmap and backlog for this app, including the map widget ([map research](../../planning/RESEARCH_MAP_WIDGET_AGENT_APP.md)).
