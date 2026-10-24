@@ -10,7 +10,7 @@ How should `planning/MASTER_PLAN.md` change so it covers the work found after th
 ## Summary
 
 1. `MASTER_PLAN.md` covers only the MCP server. Its architecture diagram stops at a generic "MCP Client"[^mp-arch]. Its roadmap is one sequential chain, Phase 0 to Phase 8[^mp-road]. It does not mention the Databricks Apps deployment, the agent chat app, the implemented T0/T1 evaluation tiers, the proposed T2 tier, or the JavaScript workbench. The deployment, agent app, T0/T1 tiers, and workbench exist in the repository; T2 remains proposed[^agents-find][^res-dbx].
-2. Plans 28-36 (9 of the last 10 orchestrations) were about clients, evaluation, or deployment, not new server features[^ep28][^ep29][^ep30][^ep33][^ep34][^ep35][^ep36]. The roadmap has no place for them, so they look like unplanned work.
+2. Plans 28-30 and 33-36 (7 of the last 10 orchestrations) were about clients, evaluation, or deployment, not new server features[^ep28][^ep29][^ep30][^ep33][^ep34][^ep35][^ep36]. Plans 31 and 32 were server-side Phase 4 productivity-index work. The roadmap has no place for the seven delivery-surface orchestrations, so they look like unplanned work.
 3. Recommendation: keep Phases 0-8 as the **server product roadmap**. Add a new section, **Delivery Surfaces and Parallel Tracks**, with four tracks: **E** (Evaluation), **A** (Agent App), **W** (Workbench), and **D** (Deployment & Platform). Each track gets a goal, its delivered orchestrations, open backlog, and exit criteria. Tracks fit better than Phases 9-12 because the work ran alongside Phases 4-8, not after them.
 4. Some existing sections are also stale or now overlap with other work. Phase 4 status is not marked although the state-index work shipped. Phase 7's "gold-set" item is now split across the eval tiers. Phase 8's Marimo demo client overlaps with the workbench and with the proposed agent-app map widget. The Definition of Done, workstream table, and post-hackathon list need entries for the new surfaces.
 5. The map widget note proposes a MapLibre map inside the agent chat app, with drawing, file upload, basemaps, and soil/Census overlays, phased M0-M7[^map-phase]. It is the strongest candidate for the Phase 8 interactive client: its required M3 server `map` envelope is Phase 8 deliverable 1, and it puts the map where USDA staff already use the agent. It belongs in Track A, with Phase 8 cross-references, not in a separate track. Its step zero, vendoring and pinning the chat UI that `start_app.py` currently clones unpinned at every start, is a prerequisite for any agent-app UI work[^map-ui].
@@ -42,7 +42,7 @@ Sources: `planning/MASTER_PLAN.md`[^mp-arch][^mp-road].
 | Pi prompt/citation failure fixes (RES-01, PROMPT-01/02) | Plan 30 | Done | [^ep30] |
 | Shared dataset + matching | `eval/common/` (`dataset.py`, `matching.py`); `prompt_test_cases.json` v2 | Done (Plans 33, 34) | [^agents-find][^ep33] |
 | T0 in-memory contract tests | `eval/contract/test_contract.py` | Done (Plan 33) | [^res-dbx] |
-| T1 MLflow in-process agent eval | `eval/databricks/` (agent, scorers, runner, notebook, `system_prompt_v1/v2.txt`) | Done (Plans 33, 34); 5 ground-truth cases | [^ep33][^ep34] |
+| T1 MLflow in-process agent eval | `eval/databricks/` (agent, scorers, runner, notebook, `system_prompt_v1/v2.txt`) | Done (Plans 33, 34); 5 ground-truth cases; model client currently uses Databricks Serving Endpoints, with AI Gateway migration pending | [^ep33][^ep34] |
 | T2 eval against the deployed MCP server on Streamable HTTP `/mcp` (SP M2M or Unity Gateway MCP service) | proposed | Not started | [^res-dbx] |
 | Deterministic executable cases | `eval/eval_cases.v1.json` + `lib/evalAssertions.js` | Done (Plan 36) | [^ep36] |
 | Phoenix LLM-as-judge | outside the repo | Handled separately, outside Plan 33 | project decision record |
@@ -88,7 +88,7 @@ These already belong to existing phases. Record them there, not as tracks.
 
 * Urban-area overlap acreage (`screened_acreage`), issue #29 / PR #39. Goes in Phase 2 item 7 and Phase 3 item 5. ADRs 0004 and 0006 were updated[^todo39].
 * State productivity indexes CSR2, CPI, and Storie were delivered by Plans 27, 31, and 32[^ep32]. Phase 4 item 2 and its exit criterion on L276 are therefore met. Phase 4 item 3 (Criterion 2 perimeter adjacency) needs checking before Phase 4 is marked complete.
-* SDA's HTML maintenance page raises a raw `JSONDecodeError`. This was found during the T1 runs and belongs to Phase 7 hardening (project decision record).
+* SDA HTML maintenance-page handling is delivered Phase 7 hardening: `SDAClient._execute_query()` raises `SDAServiceUnavailableError` for maintenance responses, with regression coverage in `tests/test_sda_client.py`.
 
 ## 3. Recommended structure
 
@@ -129,12 +129,12 @@ flowchart TD
 | # | Section | Edit |
 | --- | --- | --- |
 | 1 | Summary (L3-9) | Add one paragraph naming the four delivery surfaces: the deployed MCP app, the chat agent app, the evaluation tiers, and the workbench. Keep the non-official disclaimer. |
-| 2 | Section 2 Architecture | Keep the core-engine diagram. Add **2.1 Delivery Topology**: Databricks users -> agent app (SP OAuth, `CAN_USE`) -> `mcp-fpac-soil` `/mcp`; workbench -> stdio / SSE / HTTP; T0 in-memory; T1 in-process + AI Gateway model; T2 -> deployed `/mcp`; Pi -> stdio. |
+| 2 | Section 2 Architecture | Keep the core-engine diagram. Add **2.1 Delivery Topology**: Databricks users -> agent app (SP OAuth, `CAN_USE`; model through AI Gateway) -> `mcp-fpac-soil` `/mcp`; workbench -> stdio / SSE / HTTP; T0 in-memory; T1 in-process + Databricks Serving Endpoints model via `WorkspaceClient().serving_endpoints.get_open_ai_client()`; T2 -> deployed `/mcp`; Pi -> stdio. Record T1 migration to AI Gateway as pending. |
 | 3 | Key Principles (L98-106) | Add: "Clients use the public MCP surface only; the server package has no agent, MLflow, or Databricks SDK dependencies" (ADR 0012). Add: "Every uv project pins PyPI as default index" (ADR 0013). Add: "System prompts do not steer toward specific tools or resources" (D12, Plan 33). |
 | 4 | Roadmap (L110-138) | Replace the diagram with 3.1. Add a sentence that tracks run alongside phases and share the same plan-wave convention. |
 | 5 | Phase 4 heading | Mark "(Partially Complete)" and list what is done (Plans 17-27, 31, 32) and what is open (Criterion 2, after checking). |
 | 6 | Phase 2 / 3 | Add the `screened_acreage` deliverable (PR #39) under the urban pre-screen items. |
-| 7 | Phase 7 (L352-369) | Rewrite item 1 as "Gold-set across tiers": T0 contract = merge gate; T1 = scored, not gated; workbench deterministic suite = offline gate; Pi = local smoke. Move the dataset-expansion target (50+) here, and say ground truth needs domain-owner sign-off (Plan 36 D5). Add the SDA maintenance-page handling. |
+| 7 | Phase 7 (L352-369) | Rewrite item 1 as "Gold-set across tiers": T0 contract = merge gate; T1 = scored, not gated; workbench deterministic suite = offline gate; Pi = local smoke. Move the dataset-expansion target (50+) here, and say ground truth needs domain-owner sign-off (Plan 36 D5). Record delivered SDA maintenance-page handling (`SDAServiceUnavailableError` plus regression coverage) as completed hardening. |
 | 8 | Phase 8 (L373-407) | Add a decision point with three options: (a) the Marimo client as planned, (b) a workbench map tab, or (c) the agent-app map widget[^map-phase]. Option (c) is the recommended default: it is the only one aimed at end users, and its required M3 server `map` envelope is deliverable 1, which stays in Phase 8 because it changes the MCP surface. Replace the `demos/hackathon_demo.py` exit criteria with map-widget criteria if (c) is chosen. Keep the strategy doc's symbology and 508 rules either way. |
 | 9 | New Section 4: Delivery Surface Tracks | One subsection per track (D, E, A, W) with Goal, Delivered (orchestration + ADR refs), Backlog, and Exit Criteria. Content is in section 4 below. |
 | 10 | Workstream Ownership (old Section 4) | Renumber to 5. Add rows for Agent App Lead, Workbench Lead, and Platform/Deployment Lead. Let the Evaluation Lead own T0-T2 and the dataset. |
@@ -155,7 +155,7 @@ flowchart TD
 
 * **Goal:** Measure MCP contract stability, agent tool routing, answer correctness, and regulatory compliance across complementary tiers with explicit fixture ownership.
 * **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33-34 (`eval/common`, the shared `prompt_test_cases.json` corpus used by Pi and T1, T0 in-memory contract tests, T1 MLflow runner, scorers, and v2 prompt); Plan 36 (the separate `eval_cases.v1.json` deterministic workbench cases).
-* **Backlog:** T2 against the deployed `mcp-fpac-soil` Streamable HTTP `/mcp` endpoint, reusing T1 ground-truth rows and scorers where transport-independent; expand ground truth past 5 cases with domain sign-off; judge model upgrade (deferred, D6 Plan 35); run Pi live before merge; scheduled T1 job (deferred in Plan 33). Agent-app `/invocations` evaluation is a separate client/application concern and must not be labeled T2.
+* **Backlog:** migrate the T1 model client from direct Databricks Serving Endpoints access to AI Gateway; add T2 against the deployed `mcp-fpac-soil` Streamable HTTP `/mcp` endpoint, reusing T1 ground-truth rows and scorers where transport-independent; expand ground truth past 5 cases with domain sign-off; judge model upgrade (deferred, D6 Plan 35); run Pi live before merge; scheduled T1 job (deferred in Plan 33). Agent-app `/invocations` evaluation is a separate client/application concern and must not be labeled T2.
 * **Exit:** T0 contract tests and the separate deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for the shared prompt corpus; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
 
 ### 4.3 Track A: Agent App
