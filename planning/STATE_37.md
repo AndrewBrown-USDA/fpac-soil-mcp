@@ -23,7 +23,7 @@
 | Wave | Task | Status |
 |---|---|---|
 | 1 | 37.1.1 | done |
-| 2 | 37.2.1 | pending |
+| 2 | 37.2.1 | done (user approved 2026-10-24) |
 | 3 | 37.3.1 | pending |
 | 3 | 37.3.2 | pending |
 | 3 | 37.3.3 | pending |
@@ -39,3 +39,11 @@
 - **Resolution:** user chose to run Plan 37 on this branch (D11, revised; an interim choice to branch off `main` was withdrawn). Extras unstaged; map-note edit committed and pushed as `20592dc`. Plan revised: Recon Log revision 1, D2 and D6 revised, D11-D12 added, specs 37.1.1 step 8, 37.2.1 items 2/4/4a/5/8, 37.3.2, and D9 greps updated; prompt template points at D1-D12.
 - **Next:** re-run from step 1 on this branch.
 - **Attempt 2 (2026-10-24): done.** Baseline items 1-8 recorded above; no ESCALATE entries. Files: `STATE_37.md`, `planning/tasks/37.1.1.todo.md`; commit adds the three Plan 37 artifacts plus the todo. Deviations: none. Gotcha for 37.2.1: the tracks note's two map-note line cites have drifted (research text stays unchanged per 37.3.2; link to section headings, not line numbers).
+
+## 37.2.1
+
+- **Status:** done; user approved at the D10 gate (2026-10-24). Commit: `docs(planning): add delivery tracks to master plan`. Before committing, the working copy of `EXECUTION_PLAN_37.md` had reverted to a pre-revision draft (Git folder sync; no D11/D12); restored from HEAD, stale copy kept at `/tmp/EXECUTION_PLAN_37.stale-worktree.md`.
+- **Files:** `planning/MASTER_PLAN.md` (+102/-5; 457 -> 554 lines): Summary sentence; `### Delivery Surfaces` after Key Principles; Phase 4 heading, Delivered, Open; Phase 7 item 8; Phase 8 Goal, deliverable 1 note, deliverable 2 re-scope, client exit criterion; new `## Delivery Tracks` (Tracks D, E, A, W and `### Planning Decisions (2026-10-24)`) before section 4; four section 4 rows; section 5 item 9; three References links. `planning/tasks/37.2.1.todo.md`.
+- **Checks:** `grep -n 'Phase 4: .*(Partially Complete)'` -> 1 line; `grep -niE 'marimo'` -> 1 line (superseded); `grep -cE '^### Track (D|E|A|W)'` -> 4; `**Exit criteria:**` count -> 4; ad hoc D9 script -> 0 errors (links, anchors, Plan/ADR refs); no `AOI registry` or `M6 = server`; `git diff --stat` -> only `MASTER_PLAN.md`.
+- **Deviations:** none from spec. The first draft's D2 decision line also named Marimo; reworded to "original demo client" to satisfy the single-line grep.
+- **Gotchas:** footnotes `[^1]`-`[^4]` in References are defined but never referenced (pre-existing; not changed). Track D carries the `STATE_35.md` live-check gap per spec; the research lists it under Track A. Track owners: none in the repo, so "Owner: not yet assigned".
