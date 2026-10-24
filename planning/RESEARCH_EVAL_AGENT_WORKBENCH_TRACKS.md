@@ -1,5 +1,7 @@
 # Research: Updating `MASTER_PLAN.md` for Work Beyond the MCP Server
 
+Status: folded into `MASTER_PLAN.md` by Plan 37 (2026-10-24). Answered questions: see `EXECUTION_PLAN_37.md` D1-D7 and D12; remaining open items are listed in the master plan tracks.
+
 Date: 2026-10-23, updated 2026-10-24 to include `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md`. Status: research note. `MASTER_PLAN.md` has not been edited.
 Clone inspected: `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp` (workspace file reads; the clone was on `main` tracking `origin/main` before `origin/main` advanced to `21a1497`).
 
@@ -194,11 +196,11 @@ flowchart TD
 
 ## 5. Open questions for the user
 
-1. **Naming:** the repo says "workbench" or "UI harness", and the request says "admin workbench". Should the plan call it the admin workbench, and should it move out of `eval/`?
-2. **Phase 8:** should the interactive client be the agent-app map widget (recommended), a workbench map tab, or the original Marimo demo? Should the map note's M0-M7 become one orchestration or several (M0 is small and can merge first)? The map note's own seven open decisions (section 11) still need answers before its plan is drafted.
-3. **Tracks vs phases:** are tracks D/E/A/W acceptable, or does the team prefer numbered Phases 9-12?
-4. **Phase 4 status:** is Criterion 2 (perimeter adjacency) still required before Phase 4 is marked complete?
-5. **Frozen history:** `EXECUTION_PLAN_33.md` is frozen (Plan 34 D5). Should `MASTER_PLAN.md` link to plans without restating their details, so it doesn't drift from them again?
+1. **Naming:** the repo says "workbench" or "UI harness", and the request says "admin workbench". Should the plan call it the admin workbench, and should it move out of `eval/`? (answered: D5)
+2. **Phase 8:** should the interactive client be the agent-app map widget (recommended), a workbench map tab, or the original Marimo demo? Should the map note's M0-M7 become one orchestration or several (M0 is small and can merge first)? The map note's own seven open decisions (section 11) still need answers before its plan is drafted. (answered: D2 and D6)
+3. **Tracks vs phases:** are tracks D/E/A/W acceptable, or does the team prefer numbered Phases 9-12? (answered: D1)
+4. **Phase 4 status:** is Criterion 2 (perimeter adjacency) still required before Phase 4 is marked complete? (answered: D3)
+5. **Frozen history:** `EXECUTION_PLAN_33.md` is frozen (Plan 34 D5). Should `MASTER_PLAN.md` link to plans without restating their details, so it doesn't drift from them again? (answered: D4)
 
 ## 6. Suggested sequence
 

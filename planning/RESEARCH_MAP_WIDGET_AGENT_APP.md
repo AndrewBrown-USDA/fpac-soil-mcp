@@ -1,5 +1,7 @@
 # Research: Map Widget for the `agent-fpac-soil-openai-sdk` Chat App
 
+Status: folded into `MASTER_PLAN.md` by Plan 37 (2026-10-24). Answered questions: see `EXECUTION_PLAN_37.md` D1-D7 and D12; remaining open items are listed in the master plan tracks.
+
 Date: 2026-10-24. App inspected: `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp/apps/agent-fpac-soil-openai-sdk/` (personal clone; branch and commit not recorded because no compute was available to run git). The folder holds `agent_server/`, `scripts/`, `tests/`, `app.yaml`, `databricks.yml`, `manifest.yaml`, `pyproject.toml`, `uv.lock`, and docs. It has no frontend folder and no `package.json`. Input to `planning/MASTER_PLAN.md`; builds on `planning/SPATIAL_VISUALIZATION_STRATEGY.md`.
 
 ## Question
@@ -251,12 +253,12 @@ Rule: the proxy only forwards to hosts in the overlay/basemap catalog (no open p
 
 ## 11. Open decisions for the user
 
-1. Option A (fork template) vs C (own SPA).
-2. Allow user-supplied basemap URLs in production, or catalog only?
-3. Tier 3 formats on the backend (adds GDAL to the app image) in scope for the first release?
-4. Persist AOIs across sessions (Lakebase) or keep them session-only (privacy default)?
-5. Should required M3 server-map-contract work be its own orchestration before the agent-app M4 rendering work, or the first wave of one orchestration?
-6. Plan number: check for collisions before picking one (Plans 28-30 were taken by other work; latest seen here is 36).
+1. Option A (fork template) vs C (own SPA). (open: Track A)
+2. Allow user-supplied basemap URLs in production, or catalog only? (open: Track A)
+3. Tier 3 formats on the backend (adds GDAL to the app image) in scope for the first release? (open: Track A)
+4. Persist AOIs across sessions (Lakebase) or keep them session-only (privacy default)? (open: Track A)
+5. Should required M3 server-map-contract work be its own orchestration before the agent-app M4 rendering work, or the first wave of one orchestration? (open: Track A)
+6. Plan number: check for collisions before picking one (Plans 28-30 were taken by other work; latest seen here is 36). (resolved: Plan 37)
 
 ## Sources
 
