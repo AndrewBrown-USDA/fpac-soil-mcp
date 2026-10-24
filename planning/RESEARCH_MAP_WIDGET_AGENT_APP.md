@@ -1,6 +1,6 @@
 # Research: Map Widget for the `agent-fpac-soil-openai-sdk` Chat App
 
-Date: 2026-10-24. Repo state inspected: personal clone `apps/agent-fpac-soil-openai-sdk/` (post PR #41, `main` 34cde2e lineage). Input to `planning/MASTER_PLAN.md`; builds on `planning/SPATIAL_VISUALIZATION_STRATEGY.md`.
+Date: 2026-10-24. App inspected: `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp/apps/agent-fpac-soil-openai-sdk/` (personal clone; branch and commit not recorded because no compute was available to run git). The folder holds `agent_server/`, `scripts/`, `tests/`, `app.yaml`, `databricks.yml`, `manifest.yaml`, `pyproject.toml`, `uv.lock`, and docs. It has no frontend folder and no `package.json`. Input to `planning/MASTER_PLAN.md`; builds on `planning/SPATIAL_VISUALIZATION_STRATEGY.md`.
 
 ## Question
 
@@ -19,7 +19,7 @@ How can the agent chat app get a map widget, built on open-source tools such as 
 
 ## Summary
 
-1. **The chat UI is not in this repo.** `scripts/start_app.py` clones `databricks/app-templates/e2e-chatbot-app-next` from the `main` branch at app start, then runs `npm install`, `npm run build`, and `npm run start`[^r-start]. Nothing pins the commit. Databricks now labels this chat UI page **Legacy**[^d-chatapp]. A map cannot be added to a UI that is re-downloaded unpinned on each start. **Step zero is to vendor and pin the frontend into the repo**, whatever map design is chosen.
+1. **The app's Python backend is in this repo, but its chat UI is not.** The app folder (`apps/agent-fpac-soil-openai-sdk/`) contains only the agent server and launcher. At app start, `scripts/start_app.py` clones `databricks/app-templates/e2e-chatbot-app-next` from the `main` branch at app start, then runs `npm install`, `npm run build`, and `npm run start`[^r-start]. Nothing pins the commit. Databricks now labels this chat UI page **Legacy**[^d-chatapp]. A map cannot be added to a UI that is re-downloaded unpinned on each start. **Step zero is to vendor and pin the frontend into the repo**, whatever map design is chosen.
 2. **The backend can host map support routes.** The MLflow Agent Server is a FastAPI app, and Databricks documents adding routes to it the usual FastAPI way[^d-agentserver][^m-agentserver]. `start_server.py` exposes `app = agent_server.app` with `enable_chat_proxy=True`[^r-startserver]. That makes room for a file-conversion endpoint and an allowlisted tile/feature proxy next to `/invocations`. Route ordering against the chat proxy's catch-all is **unverified**.
 3. **Chat-to-map wiring has two documented hooks.** `ResponsesAgentRequest.custom_inputs` carries data that is not chat text (the active AOI). `custom_outputs` returns data that is not chat text (map layers)[^d-custominputs][^m-responses]. Tool outputs also stream to the UI as function-call output items. The template already renders tool calls[^d-chatapp].
 4. **Do not make the LLM copy coordinates.** The agent (`agent.py`) exposes MCP tools straight to the model, `tools=[]`[^r-agent]. Pasting a drawn polygon into the prompt costs tokens, can corrupt vertices, and writes geometry into model-visible inputs and traces. The recommended pattern is **explicit backend pre-dispatch**: a user clicks **Run screening**, the backend resolves the active AOI and calls the deployed MCP tool directly, and only a sanitized result summary is made available to chat. Raw AOI geometry must not pass through traced `/invocations` until an M1 spike proves pre-trace redaction and history exclusion. See section 4.2.
@@ -32,7 +32,7 @@ How can the agent chat app get a map widget, built on open-source tools such as 
 | Item | Fact | Source |
 | --- | --- | --- |
 | Process model | `uv run start-app` starts the Python backend (Agent Server, port 8000), plus a Node frontend on `CHAT_APP_PORT=3000`. `API_PROXY=http://localhost:8000/invocations`. | [^r-start][^r-appyaml] |
-| Frontend source | Runtime sparse clone of `databricks/app-templates` `e2e-chatbot-app-next`, unpinned `main`. Falls back to backend-only when the clone fails. | [^r-start] |
+| Frontend source | Not in `apps/agent-fpac-soil-openai-sdk/`. It is a runtime sparse clone of `databricks/app-templates` `e2e-chatbot-app-next`, unpinned `main`. Falls back to backend-only when the clone fails. | [^r-start] |
 | Frontend tech | NextJS, React, and AI SDK. Streams output, renders tool calls, uses Databricks auth, optional Lakebase chat history. | [^d-chatapp] |
 | Frontend limitation | "No support for image or other multi-modal inputs." There is no file attachment path today. | [^d-chatapp] |
 | Backend | `AgentServer("ResponsesAgent", enable_chat_proxy=True)`; `app = agent_server.app` is FastAPI. | [^r-startserver][^d-agentserver] |
