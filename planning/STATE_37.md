@@ -27,7 +27,7 @@
 | 3 | 37.3.1 | done |
 | 3 | 37.3.2 | done |
 | 3 | 37.3.3 | done |
-| 4 | 37.4.1 | pending |
+| 4 | 37.4.1 | done |
 
 ## Task reports
 
@@ -64,3 +64,15 @@
 - **Status:** done. +1/-0 each: app `AGENTS.md` References -> Track A and map research; harness README Notes -> "MCP Workbench", not an authorization boundary, Track W; `eval/databricks/README.md` Deferred (T2) -> Track E.
 - **Checks:** numstat 1/0 per file; D9 script -> all relative links and anchors resolve.
 - **Deviation:** the harness README had no existing "not an authorization boundary" statement to keep, so the pointer line states it (consistent with D5).
+
+## 37.4.1
+
+- **Status:** done. Plan 37 complete.
+- **Spec axis:** every In-scope file changed (MASTER_PLAN, AGENTS.md, strategy 2.1, both research notes, three pointer files, plan artifacts); D1-D7 and D12 traced to MASTER_PLAN lines (Delivery Tracks, Phase 4/7/8, Planning Decisions); D8 no out-of-scope file; D9-D11 met by this run. Findings: none.
+- **Standards axis:** ADR 0003 boundary referenced, not restated (0 new copies of the notice text); ADR 0012/0013 linked; no task/test counts or run IDs in MASTER_PLAN (D4); every backlog item labeled "Proposed"; exit criteria checkable. Findings: none.
+- **Sweep:** Phase 4 status, Phase 8 client, "MCP Workbench", and track names agree across non-frozen docs; remaining Marimo mentions are the superseded line, the strategy diagram under its superseded note, and research history.
+- **D9 script:** 0 errors over all 13 changed Markdown files. Footnote warnings are pre-existing (MASTER_PLAN `[^1]`-`[^4]` unreferenced) or inline-code mentions in planning text.
+- **Scope:** `git diff --stat origin/main...HEAD` -> 16 files, all in D8 scope or the expected research baseline (D11).
+- **`make check`:** `lint` fails only on EXE002 (workspace exec-bit artifact). Component run with `UV_PROJECT_ENVIRONMENT=/tmp/fpac-venv`: `ruff check . --extend-ignore EXE002` -> all passed; `ruff format --check .` -> 459 files formatted; `pytest` -> 474 passed, 3 skipped, 24 deselected.
+- **Remaining risks:** tracks note Date line and "seven open decisions" wording are stale history; two tracks-note line cites into the map note have drifted; Git folder sync reverted `EXECUTION_PLAN_37.md` once mid-run (restored from HEAD). Branch is not pushed.
+- **Deviation:** the spec's commit message targeted onboarding/research changes, which were committed per task in wave 3; this commit carries the review record only.
