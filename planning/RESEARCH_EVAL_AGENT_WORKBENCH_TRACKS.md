@@ -1,7 +1,7 @@
 # Research: Updating `MASTER_PLAN.md` for Work Beyond the MCP Server
 
-Date: 2026-10-23. Status: research note. `MASTER_PLAN.md` has not been edited.
-Clone inspected: `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp` (workspace file reads only; compute was unavailable, so the branch and `git log` were not checked).
+Date: 2026-10-23, updated 2026-10-24 to include `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md`. Status: research note. `MASTER_PLAN.md` has not been edited.
+Clone inspected: `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp` (workspace file reads; the clone was on `main` tracking `origin/main` before `origin/main` advanced to `21a1497`).
 
 ## Question
 
@@ -12,7 +12,8 @@ How should `planning/MASTER_PLAN.md` change so it covers the work found after th
 1. `MASTER_PLAN.md` covers only the MCP server. Its architecture diagram stops at a generic "MCP Client"[^mp-arch]. Its roadmap is one sequential chain, Phase 0 to Phase 8[^mp-road]. It does not mention the Databricks Apps deployment, the agent chat app, the T0/T1/T2 evaluation tiers, or the JavaScript workbench. All four exist in the repository now[^agents-find].
 2. Plans 28-36 (9 of the last 10 orchestrations) were about clients, evaluation, or deployment, not new server features[^ep28][^ep29][^ep30][^ep33][^ep34][^ep35][^ep36]. The roadmap has no place for them, so they look like unplanned work.
 3. Recommendation: keep Phases 0-8 as the **server product roadmap**. Add a new section, **Delivery Surfaces and Parallel Tracks**, with four tracks: **E** (Evaluation), **A** (Agent App), **W** (Workbench), and **D** (Deployment & Platform). Each track gets a goal, its delivered orchestrations, open backlog, and exit criteria. Tracks fit better than Phases 9-12 because the work ran alongside Phases 4-8, not after them.
-4. Some existing sections are also stale or now overlap with other work. Phase 4 status is not marked although the state-index work shipped. Phase 7's "gold-set" item is now split across the eval tiers. Phase 8's Marimo demo client overlaps with the workbench. The Definition of Done, workstream table, and post-hackathon list need entries for the new surfaces.
+4. Some existing sections are also stale or now overlap with other work. Phase 4 status is not marked although the state-index work shipped. Phase 7's "gold-set" item is now split across the eval tiers. Phase 8's Marimo demo client overlaps with the workbench and with the proposed agent-app map widget. The Definition of Done, workstream table, and post-hackathon list need entries for the new surfaces.
+5. The map widget note proposes a MapLibre map inside the agent chat app, with drawing, file upload, basemaps, and soil/Census overlays, phased M0-M7[^map-phase]. It is the strongest candidate for the Phase 8 interactive client: it reuses the Phase 8 visualization envelope (its M6 is Phase 8 deliverable 1) and puts the map where USDA staff already use the agent. It belongs in Track A, with Phase 8 cross-references, not in a separate track. Its step zero, vendoring and pinning the chat UI that `start_app.py` currently clones unpinned at every start, is a prerequisite for any agent-app UI work[^map-ui].
 
 ## 1. What the plan says today
 
@@ -23,7 +24,7 @@ How should `planning/MASTER_PLAN.md` change so it covers the work found after th
 | Roadmap | L110-138 | `P0 -> ... -> P8 -> PROD`, "each phase translates directly into an individual /plan-wave" | Assumes all work is a server phase |
 | Phase 4 | L235-278 | LE/SA workbench, SDV routing, CSR2/CPI/Storie | No status marker. Phases 0-3 say "(Complete)" |
 | Phase 7 | L352-369 | 50+ gold-set cases, adversarial suite, benchmarks, docs, demo, offline corpus, `live_network` marker | Assumes one eval suite. Now there are Pi, T0, T1, and a deterministic workbench suite |
-| Phase 8 | L373-407 | Visualization envelope + Marimo/ipyleaflet `demos/hackathon_demo.py` | Not started. The workbench already has an SVG geometry preview and schema-driven forms[^h-readme] |
+| Phase 8 | L373-407 | Visualization envelope + Marimo/ipyleaflet `demos/hackathon_demo.py` | Not started. The workbench already has an SVG geometry preview and schema-driven forms[^h-readme], and the map widget note proposes a MapLibre client in the agent app instead[^map-phase] |
 | Post-hackathon | L411-420 | ATO, RBAC, case-DB integration, 508, logging | Missing items found during app work (see section 4) |
 | Workstream ownership | L424-433 | Six roles | No owners for the agent app, workbench, or platform |
 | Definition of Done | L437-448 | 8 server-centric criteria | Nothing on the deployed app, agent, or eval tiers |
@@ -55,6 +56,8 @@ Sources: `planning/MASTER_PLAN.md`[^mp-arch][^mp-road].
 | Lint/CI boundary (`extend-exclude = ["apps"]`, `make app-check`, CI job `agent-app`) | root `pyproject.toml`, `Makefile`, CI | Done | [^adr12] |
 | Model routed through AI Gateway (`models.ai.gpt-5-6-luna`) | ADR 0012 amendment 2026-10-23 | Done | [^adr12] |
 | Live check DISC-01 / POINT-01 / LESA-01 with trace IDs | `planning/STATE_35.md` 35.5.1 | The table is still empty in this clone | [^st35] |
+| Chat UI source | `scripts/start_app.py` clones `databricks/app-templates` `e2e-chatbot-app-next` from unpinned `main` at each start; Databricks labels that UI Legacy | Open risk; vendor and pin (map M0) | [^map-ui] |
+| Map widget (MapLibre, Terra Draw, Turf; tiered file import; basemap/overlay catalog; AOI registry via `custom_inputs`; layers via `custom_outputs.map_layers`) | `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` | Research only; M0-M7 proposed; 7 open decisions; third-party claims marked "verify" | [^map-sum][^map-phase][^map-open] |
 
 ### 2.3 Workbench (Track W)
 
@@ -64,7 +67,7 @@ The repo calls this the "local MCP protocol workbench" or "UI harness"[^res-ui][
 | --- | --- | --- | --- |
 | Express + `@modelcontextprotocol/sdk` client; tabs for Tools, Resources, Prompts, Eval Cases, History, Server | `eval/fpac_soil_mcp_harness/` | Merged via PR #30 / Plan 36 | [^h-readme][^ep36] |
 | Runtime fixes (auth header, active token, timeouts, integer input, clipboard); Node tests; smoke test; Node CI; manifest parity | Plan 36 | All 10 tasks done | [^st36] |
-| WKT input and `.geojson` upload, converted in the browser (issue #36) | `eval/fpac_soil_mcp_harness/TODO.md` | Planned, not started | [^h-todo] |
+| WKT input and `.geojson` upload, converted in the browser (issue #36) | `eval/fpac_soil_mcp_harness/TODO.md` | Planned, not started. The map widget's Tier 1 import plans to reuse the same `wkt.js`, so build it as shared code | [^h-todo][^map-files] |
 | Keyboard/ARIA accessibility | review findings | Deferred by Plan 36 | [^ep36][^res-ui] |
 | Hosted Databricks App deployment (OAuth M2M, port env, bundled dataset) + Agent tab calling `/invocations` | Option A | Out of scope for Plan 36; "directly following PR" | [^ep36][^res-js] |
 | Python vs JS keyword-scoring parity (H6) | `keywords_present` vs `checkKeywords` | Open, unless Plan 36 assertions replaced it (not checked) | [^res-js] |
@@ -116,6 +119,7 @@ flowchart TD
     D --> W
     E -.scores.-> P7
     W -.map preview.-> P8
+    A -.map widget M0-M7.-> P8
     P8 --> PROD[(Post-Hackathon Production Authorization)]
     A --> PROD
 ```
@@ -131,7 +135,7 @@ flowchart TD
 | 5 | Phase 4 heading | Mark "(Partially Complete)" and list what is done (Plans 17-27, 31, 32) and what is open (Criterion 2, after checking). |
 | 6 | Phase 2 / 3 | Add the `screened_acreage` deliverable (PR #39) under the urban pre-screen items. |
 | 7 | Phase 7 (L352-369) | Rewrite item 1 as "Gold-set across tiers": T0 contract = merge gate; T1 = scored, not gated; workbench deterministic suite = offline gate; Pi = local smoke. Move the dataset-expansion target (50+) here, and say ground truth needs domain-owner sign-off (Plan 36 D5). Add the SDA maintenance-page handling. |
-| 8 | Phase 8 (L373-407) | Add a decision point: build the Marimo client as planned, or deliver the map UI as a workbench tab over the same visualization envelope. Keep deliverable 1, the envelope contract, either way. |
+| 8 | Phase 8 (L373-407) | Add a decision point with three options: (a) the Marimo client as planned, (b) a workbench map tab, or (c) the agent-app map widget[^map-phase]. Option (c) is the recommended default: it is the only one aimed at end users, and its M6 ("server map block") is deliverable 1, the envelope contract, which stays in Phase 8 because it changes the MCP surface. Replace the `demos/hackathon_demo.py` exit criteria with map-widget criteria if (c) is chosen. Keep the strategy doc's symbology and 508 rules either way. |
 | 9 | New Section 4: Delivery Surface Tracks | One subsection per track (D, E, A, W) with Goal, Delivered (orchestration + ADR refs), Backlog, and Exit Criteria. Content is in section 4 below. |
 | 10 | Workstream Ownership (old Section 4) | Renumber to 5. Add rows for Agent App Lead, Workbench Lead, and Platform/Deployment Lead. Let the Evaluation Lead own T0-T2 and the dataset. |
 | 11 | Definition of Done (old Section 5) | Renumber to 6. Add the criteria in 4.5. |
@@ -158,8 +162,13 @@ flowchart TD
 
 * **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and always states the preliminary-screening limitation.
 * **Delivered:** Plan 35 (config, prompt, MCP wiring, deploy declarations, CI job); ADR 0012 and its 2026-10-23 amendment (AI Gateway model).
-* **Backlog:** record the 35.5.1 live-check trace IDs; point T2 at the agent's `/invocations`; per-user attribution (SP auth does not identify the requesting user[^adr12]).
-* **Exit:** DISC-01, POINT-01, and LESA-01 answered in the chat UI with an fpac tool call in the trace, the limitation stated, and under 180 s.
+* **Backlog:** record the 35.5.1 live-check trace IDs; point T2 at the agent's `/invocations`; per-user attribution (SP auth does not identify the requesting user[^adr12]); map widget M0-M7 from the map note[^map-phase]:
+  * M0 vendor and pin the chat UI (prerequisite for any UI change);
+  * M1 spikes: `custom_inputs`/`custom_outputs` round trip, FastAPI routes past the chat proxy, CORS for SDM and TIGERweb;
+  * M2 map MVP, M3 results on the map (AOI registry wrapper tools), M4 overlays and proxy, M5 more file formats, M7 hardening;
+  * M6 server `map` block is tracked in Phase 8, not here.
+* **Exit:** DISC-01, POINT-01, and LESA-01 answered in the chat UI with an fpac tool call in the trace, the limitation stated, and under 180 s. With the map: a user draws or uploads an AOI and the agent screens it with no coordinates in the prompt, and POLY-01/POLY-02 results render with a legend and table view (map M2/M3 exits).
+* **Constraints carried from the map note:** server output stays authoritative (browser areas and buffers are labeled estimates, ADR 0003); AOI geometry is not written raw to traces or chat history (Section 1619); frontend lint, typecheck, and tests join `make app-check`, because root CI excludes `apps/` (ADR 0012)[^map-risk].
 
 ### 4.4 Track W: Workbench
 
@@ -179,12 +188,14 @@ flowchart TD
 
 * Per-user identity for MCP calls (on-behalf-of-user instead of the app SP).
 * Security design for any shared or hosted workbench (command override, token handling, single shared connection H9[^res-js]).
-* Section 508 audit covering the agent chat UI and the workbench (the ARIA work deferred in Plan 36).
+* Section 508 audit covering the agent chat UI, the map widget, and the workbench (the ARIA work deferred in Plan 36).
+* AOI persistence across sessions (Lakebase) and its privacy review; the map note defaults to session-only[^map-open].
+* Network policy domain allowlist for the map's basemap and overlay hosts, served through the app's proxy[^map-risk].
 
 ## 5. Open questions for the user
 
 1. **Naming:** the repo says "workbench" or "UI harness", and the request says "admin workbench". Should the plan call it the admin workbench, and should it move out of `eval/`?
-2. **Phase 8:** should the Marimo demo client stay, or should the map view become part of the workbench?
+2. **Phase 8:** should the interactive client be the agent-app map widget (recommended), a workbench map tab, or the original Marimo demo? Should the map note's M0-M7 become one orchestration or several (M0 is small and can merge first)? The map note's own seven open decisions (section 11) still need answers before its plan is drafted.
 3. **Tracks vs phases:** are tracks D/E/A/W acceptable, or does the team prefer numbered Phases 9-12?
 4. **Phase 4 status:** is Criterion 2 (perimeter adjacency) still required before Phase 4 is marked complete?
 5. **Frozen history:** `EXECUTION_PLAN_33.md` is frozen (Plan 34 D5). Should `MASTER_PLAN.md` link to plans without restating their details, so it doesn't drift from them again?
@@ -219,5 +230,11 @@ flowchart TD
 [^h-readme]: `eval/fpac_soil_mcp_harness/README.md` L61-85, L112-116.
 [^h-todo]: `eval/fpac_soil_mcp_harness/TODO.md` L1-60 (issue #36 plan).
 [^todo39]: `planning/TODO_PR39.md` L1-41.
+[^map-sum]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L20-28 (summary, recommended stack, server stays authoritative).
+[^map-ui]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L22, L34-37, L47-55 (unpinned runtime clone of a Legacy UI; option A fork recommended).
+[^map-files]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L45, L140-168 (file tiers; shared `wkt.js`).
+[^map-risk]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L195-205, L222-241 (proxy and egress, 508 and authority guardrails, risks R1-R9).
+[^map-phase]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L243-254 (phasing M0-M7).
+[^map-open]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L256-264 (open decisions).
 
 "Project decision record" means facts recorded in conversation with the user (auto-pull job, Phoenix handled separately, Unity Gateway registration pending, SDA maintenance-page defect). They are not yet written in a repo file.
