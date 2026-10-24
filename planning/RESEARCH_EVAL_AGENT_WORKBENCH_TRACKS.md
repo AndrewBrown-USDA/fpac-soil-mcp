@@ -2,7 +2,7 @@
 
 Status: folded into `MASTER_PLAN.md` by Plan 37 (2026-10-24). Answered questions: see `EXECUTION_PLAN_37.md` D1-D7 and D12; remaining open items are listed in the master plan tracks.
 
-Date: 2026-10-23, updated 2026-10-24 to include `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md`. Status: research note. `MASTER_PLAN.md` has not been edited.
+Date: 2026-10-23, updated 2026-10-24 to include `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md`.
 Clone inspected: `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp` (workspace file reads; the clone was on `main` tracking `origin/main` before `origin/main` advanced to `21a1497`).
 
 ## Question
@@ -59,7 +59,7 @@ Sources: `planning/MASTER_PLAN.md`[^mp-arch][^mp-road].
 | Model routed through AI Gateway (`models.ai.gpt-5-6-luna`) | ADR 0012 amendment 2026-10-23 | Done | [^adr12] |
 | Live check DISC-01 / POINT-01 / LESA-01 with trace IDs | `planning/STATE_35.md` 35.5.1 | The table is still empty in this clone | [^st35] |
 | Chat UI source | `scripts/start_app.py` clones `databricks/app-templates` `e2e-chatbot-app-next` from unpinned `main` at each start; Databricks labels that UI Legacy | Open risk; vendor and pin (map M0) | [^map-ui] |
-| Map widget (MapLibre, Terra Draw, Turf; tiered file import; basemap/overlay catalog; explicit backend AOI pre-dispatch; layers via `custom_outputs.map_layers` or an equivalent non-model response path) | `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` | Research only; M0-M7 proposed; 6 open decisions; third-party claims marked "verify" | [^map-sum][^map-phase][^map-open] |
+| Map widget (MapLibre, Terra Draw, Turf; tiered file import; basemap/overlay catalog; explicit backend AOI pre-dispatch; layers via `custom_outputs.map_layers` or an equivalent non-model response path) | `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` | Research only; M0-M7 proposed; 5 open decisions (item 6 resolved by Plan 37); third-party claims marked "verify" | [^map-sum][^map-phase][^map-open] |
 
 ### 2.3 Workbench (Track W)
 
@@ -197,7 +197,7 @@ flowchart TD
 ## 5. Open questions for the user
 
 1. **Naming:** the repo says "workbench" or "UI harness", and the request says "admin workbench". Should the plan call it the admin workbench, and should it move out of `eval/`? (answered: D5)
-2. **Phase 8:** should the interactive client be the agent-app map widget (recommended), a workbench map tab, or the original Marimo demo? Should the map note's M0-M7 become one orchestration or several (M0 is small and can merge first)? The map note's own seven open decisions (section 11) still need answers before its plan is drafted. (answered: D2 and D6)
+2. **Phase 8:** should the interactive client be the agent-app map widget (recommended), a workbench map tab, or the original Marimo demo? Should the map note's M0-M7 become one orchestration or several (M0 is small and can merge first)? The map note's own open decisions (section 11, items 1-5) still need answers before its plan is drafted. (answered: D2 and D6)
 3. **Tracks vs phases:** are tracks D/E/A/W acceptable, or does the team prefer numbered Phases 9-12? (answered: D1)
 4. **Phase 4 status:** is Criterion 2 (perimeter adjacency) still required before Phase 4 is marked complete? (answered: D3)
 5. **Frozen history:** `EXECUTION_PLAN_33.md` is frozen (Plan 34 D5). Should `MASTER_PLAN.md` link to plans without restating their details, so it doesn't drift from them again? (answered: D4)
@@ -231,11 +231,11 @@ flowchart TD
 [^res-js]: `planning/RESEARCH_JS_HARNESS_AGENT_APP_INTEGRATION.md` L37-49 (H1-H9), L69 (stateless HTTP), L71-109 (Options A/B, suggested order).
 [^h-readme]: `eval/fpac_soil_mcp_harness/README.md` L61-85, L112-116.
 [^todo39]: `planning/TODO_PR39.md` L1-41.
-[^map-sum]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L20-28 (summary, recommended stack, server stays authoritative).
-[^map-ui]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L22, L34-37, L47-55 (unpinned runtime clone of a Legacy UI; option A fork recommended).
-[^map-files]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L45, L140-168 (file tiers; shared `wkt.js`).
-[^map-risk]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L195-205, L222-241 (proxy and egress, 508 and authority guardrails, risks R1-R9).
-[^map-phase]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L243-254 (phasing M0-M7).
-[^map-open]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` L256-264 (open decisions).
+[^map-sum]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` Summary items 1-7 (recommended stack, server stays authoritative).
+[^map-ui]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` Summary item 1, section 1, and section 2 option A (unpinned runtime clone of a Legacy UI; option A fork recommended).
+[^map-files]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` section 1 (Related work row) and section 5 (file tiers; no `wkt.js` exists yet).
+[^map-risk]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` section 6.3 and sections 8-9 (proxy and egress, 508 and authority guardrails, risks R1-R9).
+[^map-phase]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` section 10 (phasing M0-M7).
+[^map-open]: `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` section 11 (open decisions).
 
-"Project decision record" means facts recorded in conversation with the user (auto-pull job, Phoenix handled separately, Unity Gateway registration pending, SDA maintenance-page defect). They are not yet written in a repo file.
+"Project decision record" means facts recorded in conversation with the user (auto-pull job, Phoenix handled separately, Unity Gateway registration pending). They are not yet written in a repo file.
