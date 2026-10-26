@@ -15,6 +15,8 @@ Building on the foundation completed in Phases 0–3 (geometry ingestion, geodes
 
 ### 2.1 Prototype Architecture (Hackathon & Analyst Workbench)
 
+> **Superseded for now (2026-10-24):** the Marimo prototype below is superseded by the agent-app map ([master plan Phase 8](MASTER_PLAN.md#phase-8-spatial-visualization--interactive-client-demo) and [Track A](MASTER_PLAN.md#track-a-agent-app); [Plan 37](EXECUTION_PLAN_37.md) D2). Sections 3-6 remain the contract the agent-app map follows.
+
 ```mermaid
 flowchart TD
     subgraph UI ["Interactive Demo UI (Marimo + ipyleaflet)"]

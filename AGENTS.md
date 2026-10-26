@@ -68,7 +68,7 @@ uv run pytest -m live_network
 - `apps\agent-fpac-soil-openai-sdk\` - Databricks chat agent app that calls the deployed MCP server; separate uv project; see its nested `AGENTS.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
 - `docs\decisions\` - durable architecture decision records.
-- `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md`, then inspect the directory for execution-specific files.
+- `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md` (product mission, target architecture, governance, server roadmap, and delivery tracks), then inspect the directory for execution-specific files.
 - `pyproject.toml` - package metadata, dependencies, script entry point, pytest markers, and Ruff settings.
 - `Makefile` - canonical install, run, test, evaluation, lint, format, and Docker targets.
 - `requirements.txt` - generated pinned requirements export; update with `make requirements`.
@@ -157,7 +157,7 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 - `.env.example` - configuration reference.
 - `manifest.yaml` - published MCP tools and resources.
 - `server.json` - MCP server launch metadata.
-- `planning\MASTER_PLAN.md` - product mission, target architecture, governance, and roadmap.
+- `planning\MASTER_PLAN.md` - product mission, target architecture, governance, server roadmap, and delivery tracks.
 - `docs\decisions\` - architecture decision records.
 - [FastMCP documentation](https://gofastmcp.com/)
 - [USDA NRCS Soil Data Access](https://sdmdataaccess.nrcs.usda.gov/)

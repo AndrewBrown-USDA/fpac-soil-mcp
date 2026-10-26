@@ -8,6 +8,8 @@ The system automates preliminary soil analysis, site assessments, project altern
 
 The server operates in a sandbox with public data. It generates preliminary screening estimates. It does not issue official NRCS land determinations or sign formal agency documents.
 
+The roadmap has two parts: server Phases 0-8 (section 3) and parallel delivery tracks for Deployment (D), Evaluation (E), the Agent App (A), and the MCP Workbench (W) (see [Delivery Tracks](#delivery-tracks)).
+
 ## 1. Problem and Goals
 
 ### Problem
@@ -104,6 +106,10 @@ flowchart LR
 - **Explicit Provenance**: Every response includes query timestamps, source tables, and caveats.
 - **Clear Status Codes**: Separate `covered`, `unmapped`, `invalid_request`, and `upstream_error` states.
 - **Human Authority**: Software generates estimates; only designated officials approve formal determinations.
+
+### Delivery Surfaces
+
+Clients use only the server's public MCP surface. The current surfaces are: the MCP server, deployed as the `mcp-fpac-soil` Databricks App on Streamable HTTP `/mcp`; the Databricks agent app, a separate MCP client project ([ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md); its model goes through AI Gateway per the ADR's 2026-10-23 amendment); the MCP Workbench, a local client for developers and admins that is not an authorization boundary; and the evaluation tiers T0 (in-memory contract tests) and T1 (in-process MLflow evaluation), with T2 against deployed `/mcp` planned. Status and backlog for each are in [Delivery Tracks](#delivery-tracks).
 
 ---
 
@@ -232,9 +238,13 @@ flowchart TD
 
 ---
 
-### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench
+### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (Partially Complete)
 
 **Goal**: Calculate reproducible candidate Land Evaluation (LE) and Site Assessment (SA) estimates integrating state productivity ratings, relative county baselines, and objective physical measurements.
+
+**Delivered**: Plans 17-26 (LE scoring, SDV routing, unified LESA, and PR #9 remediation), Plan 27 (state productivity indexes), Plans 31 and 32 (review remediation); see `planning/EXECUTION_PLAN_N.md` and [ADR 0008](../docs/decisions/0008-nccpi-validated-public-index-with-extensible-sdv-routing.md).
+
+**Open**: Criterion 2 perimeter agricultural adjacency (next server plan; data source decision pending).
 
 **Scope & Deliverables** (referencing `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`):
 1. **Relative Land Evaluation (LE) Normalization & Scoring (0–100 Scale)**:
@@ -361,6 +371,7 @@ flowchart TD
 5. **Presentation Materials**: Prepare 5-7 minute demo script, slides, and fallback video recording.
 6. **Offline Public-Data Corpus**: Add recorded NASS, TIGERweb, and SDA interpretation/NCCPI fixtures covering success, unavailable-data, malformed-response, and partial-upstream-failure scenarios.
 7. **Test Marker Refactoring**: Refactor pytest test markers to introduce a unified `live_network` marker for all external network tests (USDA SDA, Census TIGERweb, etc.). *(Implemented)*
+8. **SDA Maintenance-Page Handling**: `SDAClient` raises `SDAServiceUnavailableError` (`src/fpac_soil_mcp/sda_client.py`) when SDA returns its maintenance page. *(Implemented)*
 
 **Exit Criteria**:
 - 100% pass rate on unit, integration, and offline evaluation tests.
@@ -372,7 +383,7 @@ flowchart TD
 
 ### Phase 8: Spatial Visualization & Interactive Client Demo
 
-**Goal**: Deliver a structured, machine-readable MCP visualization contract and a responsive, open-source demonstration client (Marimo + ipyleaflet) enabling bi-directional map interaction, geometry staging, layer rendering, and resilient live/offline presentation.
+**Goal**: Deliver a structured, machine-readable MCP visualization contract and an interactive map client (the agent-app map, [Track A](#track-a-agent-app)) enabling bi-directional map interaction, geometry staging, layer rendering, and resilient live/offline presentation.
 
 **Scope & Deliverables** (referencing `planning/SPATIAL_VISUALIZATION_STRATEGY.md`):
 1. **Structured MCP Visualization Response Envelope & Layer Contract**:
@@ -383,8 +394,9 @@ flowchart TD
      - Layer metadata including stable category codes, display legends, color ramps, and bounded GeoJSON FeatureCollections (or MCP Resource URIs for large payloads).
      - Full provenance records (query timestamps, calculation CRS `EPSG:6933`, rule versions, and upstream service vintages).
      - Privacy and Section 1619 redaction states.
-2. **Interactive Demonstration UI & Map Client (`demos/hackathon_demo.py`)**:
-   - Implement an open-source reactive client using **Marimo** and **ipyleaflet** with zero proprietary GIS or API key dependencies.
+   - This deliverable is agent-app map phase M3 and must ship before Track A M4 (results on map).
+2. **Interactive Map Client** (delivered through [Track A](#track-a-agent-app) map phases M2 and M4):
+   - Marimo + ipyleaflet demo (`demos/hackathon_demo.py`): superseded for now by the agent-app map ([Plan 37](EXECUTION_PLAN_37.md) D2, 2026-10-24); not built.
    - **Bi-Modal Geometry Ingestion**: Support drawing AOI polygons and multi-alternative corridor centerlines directly on the interactive map, alongside chat/form parameter inputs (buffer distance, unit selection, route naming).
    - **Explicit Dispatch Control**: Provide an explicit *"Run Preliminary Screening"* / *"Evaluate Corridor Alternatives"* trigger button to stage geometries before executing MCP tool calls (preventing accidental queries during drawing).
    - **Accessible Results Visualization**: Render thematic farmland choropleths, Census urban contextual boundaries, and corridor impact buffers alongside an accessible tabular equivalent displaying direct/indirect acreages, farmland breakdowns, and objective comparative metrics.
@@ -401,7 +413,7 @@ flowchart TD
 
 **Exit Criteria**:
 - MCP spatial tools return schema-validated visualization envelopes consumed cleanly by both headless LLM callers and map clients.
-- Presenter can draw an AOI and two corridor alternatives, stage geometries, and trigger end-to-end MCP analysis entirely within `demos/hackathon_demo.py`.
+- The interactive client meets the Track A map exit criteria for M2 (a user draws or uploads an AOI and receives a screening result without coordinates entering the prompt, model context, trace, or chat history) and M4 (results render from the server `map` envelope with legends and table views).
 - Map layers render styled farmland categories and buffer footprints matching server-calculated acreages and table values within 0.1% tolerance.
 - Offline demonstration mode runs seamlessly against `demo_testbeds.gpkg` with explicit `"data_mode": "fixture"` provenance banners.
 - All visualization outputs display preliminary screening notices and explicit authority levels.
@@ -421,6 +433,82 @@ flowchart TD
 
 ---
 
+## Delivery Tracks
+
+Tracks run alongside the server phases and depend on the server's public MCP surface, not on a particular phase. Each track backlog item becomes one plan-wave orchestration. Status lines state only what has shipped; Backlog and Open decisions lines are proposed or open.
+
+### Track D: Deployment
+
+- **Goal:** Run the MCP server and its clients as Databricks Apps with reproducible locks and least-privilege grants.
+- **Status:** The `mcp-fpac-soil` Databricks App serves Streamable HTTP on `/mcp`, plus `/health` and `/meta`.
+- **Delivered:** Databricks App deployment (`app.yaml`); [ADR 0013](../docs/decisions/0013-pin-pypi-default-index-in-every-uv-project.md) (PyPI default index in every uv project).
+- **Backlog:**
+  - Proposed: record the agent-app live-check evidence; the 35.5.1 table in [STATE_35.md](STATE_35.md) is empty.
+  - Proposed: decide stateless versus stateful Streamable HTTP ("Missing session ID" risk).
+  - Proposed: register the server as a Unity Gateway MCP service.
+  - Proposed: add a uv Dependabot entry.
+- **Exit criteria:** `/health` is healthy after each `main` deploy; every client service principal has a documented `CAN_USE` grant on `mcp-fpac-soil`.
+- **Open decisions:** stateless Streamable HTTP; Unity Gateway MCP service registration.
+- **Source:** [Tracks research, 4.1](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#41-track-d-deployment--platform).
+
+### Track E: Evaluation
+
+- **Goal:** Measure MCP contract stability, agent tool routing, answer correctness, and preliminary-screening compliance across complementary tiers.
+- **Status:** T0 in-memory contract tests (`eval/contract/`) and T1 in-process MLflow evaluation (`eval/databricks/`) have shipped; the Pi harness remains a local smoke test.
+- **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases).
+- **Backlog:**
+  - Proposed: move the T1 model client to AI Gateway.
+  - Proposed: T2 against the deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent.
+  - Proposed: expand ground truth with domain-owner sign-off.
+  - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
+- **Exit criteria:** T0 contract tests and the deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for every ground-truth case; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
+- **Open decisions:** T2 authentication path (service principal M2M or Unity Gateway MCP service). An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
+- **Source:** [Tracks research, 4.2](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#42-track-e-evaluation).
+
+### Track A: Agent App
+
+- **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and keeps the preliminary-screening boundary ([ADR 0003](../docs/decisions/0003-preliminary-screening-authority-boundary.md)).
+- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. It has no map; its chat UI is cloned unpinned at app start.
+- **Delivered:** Plan 35; [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment.
+- **Backlog:**
+  - Proposed: M0, vendor and pin the chat UI (first standalone orchestration; exit item: an ADR on the vendored frontend).
+  - Proposed: M1 spikes R2, R3, R4, and R6 (second orchestration; exit item: an ADR on AOI handoff).
+  - Proposed: M2-M7, scoped after M1 findings. M3 (server `map` envelope) is tracked in [Phase 8](#phase-8-spatial-visualization--interactive-client-demo) and must precede M4. AOI integration stays blocked until R6 proves pre-trace redaction and history exclusion ([ADR 0010](../docs/decisions/0010-public-payload-pii-detection-and-sanitization.md)).
+  - Proposed: a separate agent-app evaluation against `/invocations` (not MCP T2).
+  - Proposed: per-user attribution (service principal auth does not identify the requesting user).
+- **Exit criteria:** DISC-01, POINT-01, and LESA-01 are answered in the chat UI with an fpac tool call in the trace, the server-provided `regulatory_notice` rendered, and a response within 180 s; map phases meet the M2 and M4 exit criteria in the map research, section 10.
+- **Open decisions:** map research section 11 items 1-5: fork the template or build a separate SPA; user-supplied basemap URLs in production; backend Tier 3 formats in the first release; AOI persistence across sessions or session-only; whether M3 is its own orchestration before M4.
+- **Source:** [Tracks research, 4.3](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#43-track-a-agent-app); [map research, sections 10](RESEARCH_MAP_WIDGET_AGENT_APP.md#10-suggested-phasing-for-the-master-plan) and [11](RESEARCH_MAP_WIDGET_AGENT_APP.md#11-open-decisions-for-the-user).
+
+### Track W: MCP Workbench
+
+- **Goal:** A deterministic MCP protocol workbench for developers and admins to inspect discovery, call capabilities, and run fixed regression cases. It is not an authorization boundary and does no model-based evaluation.
+- **Status:** A local Node.js workbench in `eval/fpac_soil_mcp_harness/` connects over stdio, SSE, or Streamable HTTP; it is not hosted.
+- **Delivered:** Plan 36 (PR #30).
+- **Backlog:**
+  - Proposed: hosted Databricks App deployment (OAuth M2M, app port, bundled dataset) with an Agent tab that calls `/invocations`, after a security review.
+  - Proposed: keyboard and ARIA accessibility (deferred by Plan 36).
+  - Proposed: keyword-scoring parity with `eval/common/matching.py`.
+  - Proposed (optional): a map tab; not a Phase 8 dependency.
+- **Exit criteria:** `npm test` and the smoke test pass in CI; a hosted deployment, if approved, passes a security review of the command-override and auth model.
+- **Open decisions:** relocate the folder if hosted; whether WKT/GeoJSON upload becomes explicitly planned code shared with the agent-app map.
+- **Source:** [Tracks research, 4.4](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#44-track-w-workbench).
+
+### Planning Decisions (2026-10-24)
+
+From [Plan 37](EXECUTION_PLAN_37.md#decision-log):
+
+- D1: Phases 0-8 stay the server roadmap; tracks D, E, A, W run in parallel; each phase and track backlog item is one plan-wave.
+- D2: The agent-app map is the Phase 8 client; Phase 8 keeps the server `map` envelope (map M3, before M4); the original demo client is superseded for now; a workbench map tab is optional.
+- D3: Phase 4 is partially complete; Criterion 2 is the next server plan.
+- D4: This plan links to plans and ADRs instead of restating counts, run IDs, or file lists.
+- D5: The workbench is the "MCP Workbench" for developers and admins, stays in `eval/fpac_soil_mcp_harness/`, and is not an authorization boundary.
+- D6: Track A commits structure only: M0, then M1 spikes, then M2-M7 scoped after M1; AOI integration is blocked until R6 passes.
+- D7: No new or superseded ADRs in Plan 37; ADRs on the vendored frontend and AOI handoff are M0 and M1 exit items.
+- D12: Track E backlog is T1 to AI Gateway and T2 against deployed `/mcp`; WKT/GeoJSON upload is an open Track W decision; SDA maintenance-page handling is recorded as delivered in Phase 7.
+
+---
+
 ## 4. Workstream Ownership
 
 | Role | Responsibility |
@@ -431,6 +519,10 @@ flowchart TD
 | **Evaluation Lead** | Gold-set test cases, benchmark suite, evaluation report. |
 | **Security & Privacy Lead** | Data minimization, input validation, sandbox enforcement. |
 | **Presentation Lead** | Demo script, slide deck, video recording. |
+| **Track D: Deployment** | Owner: not yet assigned. |
+| **Track E: Evaluation** | Owner: not yet assigned. |
+| **Track A: Agent App** | Owner: not yet assigned. |
+| **Track W: MCP Workbench** | Owner: not yet assigned. |
 
 ---
 
@@ -446,10 +538,15 @@ The hackathon submission is complete when:
 6. System rejects adversarial attempts to sign forms or bypass review gates.
 7. Gold-set evaluation passes with 100% completion.
 8. Submission repository includes code, docs, evaluation report, and demo assets.
+9. Delivery-track work also meets the exit criteria of its track ([Delivery Tracks](#delivery-tracks)).
 
 ---
 
 ## References
+
+- [Research: eval, agent app, and workbench tracks](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md)
+- [Research: map widget for the agent chat app](RESEARCH_MAP_WIDGET_AGENT_APP.md)
+- [Plan 37: fold delivery-track research into the master plan](EXECUTION_PLAN_37.md)
 
 [^1]: GSA MCP Server and AI Agent Government Hackathon guidelines (2026).
 [^2]: 7 CFR Part 658 - Farmland Protection Policy Act regulations.

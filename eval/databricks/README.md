@@ -125,6 +125,7 @@ track across runs, not pass/fail gates.
 - Scheduled serverless Lakeflow Job for recurring T1 runs.
 - Dataset expansion to 50+ rows and scope-refusal rows.
 - MLflow prompt registry and UC-backed dataset sync.
+- Roadmap and T2 backlog: [master plan Track E](../../planning/MASTER_PLAN.md#track-e-evaluation).
 
 All results are preliminary screening and are not an official FPPA determination,
 LESA score, Form AD-1006, or NRCS-CPA-106.
