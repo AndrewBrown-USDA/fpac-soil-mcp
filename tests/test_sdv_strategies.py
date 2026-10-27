@@ -164,20 +164,80 @@ class TestMapunitNoAggregation:
         assert "INNER JOIN component" not in sql
 
 
-class TestUnsupportedStrategy:
-    """Unsupported table+algorithm combinations raise."""
+class TestChorizonWeightedSum:
+    """chorizon + Weighted Average + horizon Weighted Sum (D6, 0-100 cm)."""
 
-    def test_aws_raises_in_wave3(self) -> None:
-        """AWS (chorizon) is not yet handled by the new builder."""
+    def test_rating_query_clips_to_100cm(self) -> None:
         spec = SDV_RATING_REGISTRY["aws_0_100"]
-        with pytest.raises(SDAValidationError, match="Unsupported"):
+        sql = build_sdv_rating_query(spec, ["1001"])
+        assert "chorizon" in sql
+        assert "hzdepb_r" in sql
+        assert "hzdept_r" in sql
+        # Depth clipping at 100 cm
+        assert "100" in sql
+
+    def test_rating_query_uses_awc_r(self) -> None:
+        spec = SDV_RATING_REGISTRY["aws_0_100"]
+        sql = build_sdv_rating_query(spec, ["1001"])
+        assert "awc_r" in sql
+
+    def test_rating_query_excludes_nulls(self) -> None:
+        spec = SDV_RATING_REGISTRY["aws_0_100"]
+        sql = build_sdv_rating_query(spec, ["1001"])
+        assert "awc_r IS NOT NULL" in sql
+
+    def test_rating_query_has_misc_area_filter(self) -> None:
+        spec = SDV_RATING_REGISTRY["aws_0_100"]
+        sql = build_sdv_rating_query(spec, ["1001"])
+        assert "miscellaneous area" in sql
+
+    def test_county_max_query(self) -> None:
+        spec = SDV_RATING_REGISTRY["aws_0_100"]
+        sql = build_sdv_county_max_query(spec, "IL019")
+        assert "MAX(mukey_rating)" in sql
+        assert "IL019" in sql
+
+
+class TestCocropyldWeightedAverage:
+    """cocropyld + Weighted Average (D7, crop filter, nulls-as-zero)."""
+
+    def test_rating_query_has_crop_filter(self) -> None:
+        spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
+        sql = build_sdv_rating_query(spec, ["1001"], constraints={"cropname": "Corn"})
+        assert "cocropyld" in sql
+        assert "cropname = 'Corn'" in sql
+
+    def test_rating_query_has_nulls_as_zero(self) -> None:
+        spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
+        sql = build_sdv_rating_query(spec, ["1001"], constraints={"cropname": "Corn"})
+        assert "COALESCE" in sql
+
+    def test_rating_query_has_mixed_unit_detection(self) -> None:
+        spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
+        sql = build_sdv_rating_query(spec, ["1001"], constraints={"cropname": "Corn"})
+        assert "unit_count" in sql
+        assert "yldunits_min" in sql
+        assert "yldunits_max" in sql
+
+    def test_missing_crop_raises(self) -> None:
+        spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
+        with pytest.raises(SDAValidationError, match="Crop name is required"):
             build_sdv_rating_query(spec, ["1001"])
 
-    def test_nonirr_crop_raises_in_wave3(self) -> None:
-        """cocropyld is not yet handled by the new builder."""
+    def test_county_max_query_has_crop_filter(self) -> None:
         spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
-        with pytest.raises(SDAValidationError, match="Unsupported"):
-            build_sdv_rating_query(spec, ["1001"])
+        sql = build_sdv_county_max_query(spec, "IL019", constraints={"cropname": "Corn"})
+        assert "cropname = 'Corn'" in sql
+        assert "IL019" in sql
+
+    def test_county_max_missing_crop_raises(self) -> None:
+        spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
+        with pytest.raises(SDAValidationError, match="Crop name is required"):
+            build_sdv_county_max_query(spec, "IL019")
+
+
+class TestValidation:
+    """Input validation tests."""
 
     def test_invalid_mukeys_raise(self) -> None:
         spec = SDV_RATING_REGISTRY["nccpi"]

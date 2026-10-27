@@ -1038,11 +1038,202 @@ WHERE l.areasymbol = '{areasymbol}'
 """
 
 
+def _build_chorizon_ws_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
+    """chorizon + Weighted Average + horizon Weighted Sum (D6, 0-100 cm)."""
+    col = spec.value_column
+    depth_top = int(spec.depth_top_cm) if spec.depth_top_cm is not None else 0
+    depth_bot = int(spec.depth_bottom_cm) if spec.depth_bottom_cm is not None else 100
+    return f"""\
+WITH hz_weighted AS (
+    SELECT
+        c.cokey,
+        c.comppct_r,
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        SUM(CAST(ch.{col} AS float) * (CASE WHEN ch.hzdepb_r > {depth_bot} THEN {depth_bot} ELSE ch.hzdepb_r END - CASE WHEN ch.hzdept_r < {depth_top} THEN {depth_top} ELSE ch.hzdept_r END))
+            AS attr_sum
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+      AND ch.{col} IS NOT NULL
+      AND ch.hzdepb_r > {depth_top}
+      AND ch.hzdept_r < {depth_bot}
+    GROUP BY c.cokey, c.comppct_r, m.mukey, l.areasymbol, m.musym, m.muname
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(attr_sum * comppct_r) / NULLIF(SUM(comppct_r), 0), {spec.precision}) AS numeric_rating,
+    SUM(CASE WHEN attr_sum IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM hz_weighted
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+
+def _build_chorizon_ws_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
+    """chorizon + Weighted Average + horizon Weighted Sum county max (D6)."""
+    col = spec.value_column
+    depth_top = int(spec.depth_top_cm) if spec.depth_top_cm is not None else 0
+    depth_bot = int(spec.depth_bottom_cm) if spec.depth_bottom_cm is not None else 100
+    return f"""\
+WITH hz_weighted AS (
+    SELECT
+        c.cokey,
+        c.comppct_r,
+        m.mukey,
+        SUM(CAST(ch.{col} AS float) * (CASE WHEN ch.hzdepb_r > {depth_bot} THEN {depth_bot} ELSE ch.hzdepb_r END - CASE WHEN ch.hzdept_r < {depth_top} THEN {depth_top} ELSE ch.hzdept_r END))
+            AS attr_sum
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
+    WHERE l.areasymbol = '{areasymbol}'
+      AND c.compkind != 'miscellaneous area'
+      AND ch.{col} IS NOT NULL
+      AND ch.hzdepb_r > {depth_top}
+      AND ch.hzdept_r < {depth_bot}
+    GROUP BY c.cokey, c.comppct_r, m.mukey
+),
+mukey_val AS (
+    SELECT mukey, SUM(attr_sum * comppct_r) / NULLIF(SUM(comppct_r), 0) AS mukey_rating
+    FROM hz_weighted
+    GROUP BY mukey
+)
+SELECT MAX(mukey_rating) AS max_county_rating
+FROM mukey_val
+"""
+
+
+def _build_cocropyld_wa_rating(
+    spec: SdvRatingSpec, mukeys_sql: str, constraints: dict[str, Any] | None = None
+) -> str:
+    """cocropyld + Weighted Average (D7, crop filter, nulls-as-zero, mixed-unit detection)."""
+    col = spec.value_column
+    crop = ""
+    if constraints and "cropname" in constraints:
+        crop = constraints["cropname"].replace("'", "''")
+    if not crop:
+        raise SDAValidationError("Crop name is required for crop yield ratings.")
+
+    null_handling = ""
+    if spec.nulls_as_zero:
+        # nulls-as-zero: COALESCE nulls to 0 in both numerator and denominator
+        rating_expr = f"COALESCE(CAST(cy.{col} AS float), 0)"
+        weight_expr = "c.comppct_r"
+    else:
+        # Exclude nulls
+        rating_expr = f"CAST(cy.{col} AS float)"
+        weight_expr = "CASE WHEN cy.{col} IS NOT NULL THEN c.comppct_r ELSE 0 END"
+
+    if spec.nulls_as_zero:
+        return f"""\
+WITH comp_yield AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.comppct_r,
+        {rating_expr} AS rating,
+        cy.yldunits
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+      AND cy.cropname = '{crop}'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(rating * comppct_r) / NULLIF(SUM(comppct_r), 0), {spec.precision}) AS numeric_rating,
+    SUM(comppct_r) AS rated_pct,
+    SUM(comppct_r) AS total_pct,
+    COUNT(DISTINCT yldunits) AS unit_count,
+    MIN(yldunits) AS yldunits_min,
+    MAX(yldunits) AS yldunits_max
+FROM comp_yield
+GROUP BY mukey, areasymbol, musym, muname
+"""
+    else:
+        return f"""\
+WITH comp_yield AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.comppct_r,
+        {rating_expr} AS rating,
+        cy.yldunits
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+      AND cy.cropname = '{crop}'
+      AND cy.{col} IS NOT NULL
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(rating * comppct_r) / NULLIF(SUM({weight_expr}), 0), {spec.precision}) AS numeric_rating,
+    SUM({weight_expr}) AS rated_pct,
+    SUM(comppct_r) AS total_pct,
+    COUNT(DISTINCT yldunits) AS unit_count,
+    MIN(yldunits) AS yldunits_min,
+    MAX(yldunits) AS yldunits_max
+FROM comp_yield
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+
+def _build_cocropyld_wa_county_max(
+    spec: SdvRatingSpec, areasymbol: str, constraints: dict[str, Any] | None = None
+) -> str:
+    """cocropyld + Weighted Average county max (D7)."""
+    col = spec.value_column
+    crop = ""
+    if constraints and "cropname" in constraints:
+        crop = constraints["cropname"].replace("'", "''")
+    if not crop:
+        raise SDAValidationError("Crop name is required for crop yield ratings.")
+
+    return f"""\
+SELECT
+    MAX(CAST(cy.{col} AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND c.compkind != 'miscellaneous area'
+  AND cy.cropname = '{crop}'
+  AND cy.{col} IS NOT NULL
+"""
+
+
 _BUILDERS_RATING = {
     ("cointerp", "Weighted Average"): _build_cointerp_wa_rating,
     ("cointerp", "Dominant Condition"): _build_cointerp_dc_rating,
     ("component", "Weighted Average"): _build_component_wa_rating,
     ("mapunit", "No Aggregation Necessary"): _build_mapunit_no_agg_rating,
+    ("chorizon", "Weighted Average"): _build_chorizon_ws_rating,
+    ("cocropyld", "Weighted Average"): _build_cocropyld_wa_rating,
 }
 
 _BUILDERS_COUNTY_MAX = {
@@ -1050,9 +1241,11 @@ _BUILDERS_COUNTY_MAX = {
     ("cointerp", "Dominant Condition"): _build_cointerp_dc_county_max,
     ("component", "Weighted Average"): _build_component_wa_county_max,
     ("mapunit", "No Aggregation Necessary"): _build_mapunit_no_agg_county_max,
+    ("chorizon", "Weighted Average"): _build_chorizon_ws_county_max,
+    ("cocropyld", "Weighted Average"): _build_cocropyld_wa_county_max,
 }
 
-_WAVE3_TABLES = frozenset({"cointerp", "component", "mapunit"})
+_WAVE3_TABLES = frozenset({"cointerp", "component", "mapunit", "chorizon", "cocropyld"})
 
 
 def build_sdv_rating_query(
@@ -1072,6 +1265,8 @@ def build_sdv_rating_query(
         raise SDAValidationError(
             f"Unsupported aggregation method: table='{spec.table}', algorithm='{spec.algorithm}'."
         )
+    if spec.table == "cocropyld":
+        return builder(spec, mukeys_sql, constraints)
     return builder(spec, mukeys_sql)
 
 
@@ -1092,6 +1287,8 @@ def build_sdv_county_max_query(
         raise SDAValidationError(
             f"Unsupported aggregation method: table='{spec.table}', algorithm='{spec.algorithm}'."
         )
+    if spec.table == "cocropyld":
+        return builder(spec, clean_area, constraints)
     return builder(spec, clean_area)
 
 
@@ -1114,7 +1311,12 @@ def build_dynamic_sdv_query(
     if table in _WAVE3_TABLES:
         try:
             spec = validate_sdv_record(attribute_meta)
-            return build_sdv_rating_query(spec, mukeys_csv)
+            constraints = {}
+            if spec.table == "cocropyld":
+                cropname = str(attribute_meta.get("cropname", "")).strip()
+                if cropname:
+                    constraints["cropname"] = cropname
+            return build_sdv_rating_query(spec, mukeys_csv, constraints)
         except SDAValidationError:
             pass  # Non-registered record: fall through to legacy path
 
@@ -1316,7 +1518,12 @@ def build_dynamic_sdv_county_max_query(
     if table in _WAVE3_TABLES:
         try:
             spec = validate_sdv_record(attribute_meta)
-            return build_sdv_county_max_query(spec, areasymbol)
+            constraints = {}
+            if spec.table == "cocropyld":
+                cropname = str(attribute_meta.get("cropname", "")).strip()
+                if cropname:
+                    constraints["cropname"] = cropname
+            return build_sdv_county_max_query(spec, areasymbol, constraints)
         except SDAValidationError:
             pass  # Non-registered record: fall through to legacy path
 

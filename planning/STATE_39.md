@@ -108,7 +108,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | - | STOP A | pending |
 | 2 | 39.2.1 Registry and two-gate record validation | done |
 | 3 | 39.3.1 Component-level strategies | done |
-| 4 | 39.4.1 Horizon and crop strategies | pending |
+| 4 | 39.4.1 Horizon and crop strategies | done |
 | 5 | 39.5.1 One engine: selectors, provenance, caveats, template retirement | pending |
 | - | STOP B | pending |
 | 6 | 39.6.1 Corridor provenance and sentinel dedupe | pending |
@@ -129,6 +129,7 @@ Status: done. Added SdvRatingSpec dataclass, SDV_RATING_REGISTRY (6 entries), SU
 Status: done. Added per-strategy SQL builders: cointerp+Weighted Average (NCCPI-style), cointerp+Dominant Condition (Storie D5, window function with tiebreak), component+Weighted Average (CPI-style), mapunit+No Aggregation (CSR2-style). Added build_sdv_rating_query/build_sdv_county_max_query dispatching on (table, algorithm). build_dynamic_sdv_query/county_max delegate to new builders for registered cointerp/component/mapunit records, fall back to legacy for non-registered (backward compat). Updated 4 tests in test_sda_client.py (H1/H2 routing: interphr->interphrc, add algorithmname, registered rule names). New test_sdv_strategies.py (27 tests). Offline: 539 passed (27 new). Ruff: EXE002 only. Files: sda_client.py, test_sda_client.py (4 tests updated), test_sdv_strategies.py (new).
 ## 39.4.1
 
+Status: done. Added chorizon + Weighted Sum (D6, 0-100cm depth clipping, awc_r*thickness) and cocropyld + Weighted Average (D7, crop filter, COALESCE nulls-as-zero, COUNT(DISTINCT yldunits) mixed-unit detection) builders. Registered both in _BUILDERS_RATING/_BUILDERS_COUNTY_MAX dispatch. _WAVE3_TABLES expanded to all 5 tables. Dynamic builders pass constraints for cocropyld. Missing crop raises SDAValidationError before SQL built. Updated 2 Wave 3 tests (AWS/cocropyld now supported). 9 new Wave 4 tests. Offline: 548 passed (9 new). Ruff: EXE002 only.
 ## 39.5.1
 
 ## 39.6.1
