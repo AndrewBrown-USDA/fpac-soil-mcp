@@ -144,41 +144,6 @@ def get_farmland_classification_by_mukey(
     )
 
 
-def analyze_farmland_by_polygon(
-    geojson: dict | str,
-    include_nccpi: bool = True,
-    productivity_index: str = "nccpi",
-    max_county_rating_override: float | None = None,
-) -> PolygonFarmlandAnalysisResponse:
-    """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
-
-    Calculates geodesic surface acreage, checks Census 2020 Urban Area boundaries,
-    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches NCCPI
-    crop productivity ratings, computes candidate Land
-    Evaluation scores, and summarizes acreage across statutory farmland categories.
-
-    Args:
-        geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
-        include_nccpi: Whether to retrieve crop productivity ratings.
-        productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
-        max_county_rating_override: Optional user-supplied maximum county rating benchmark.
-
-    Returns:
-        PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
-    """
-    normalized_productivity_index = _normalize_productivity_index(productivity_index)
-    if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
-        raise ValueError(
-            f"Unsupported productivity index type '{productivity_index}'. {SUPPORTED_INDEX_MSG}"
-        )
-    analyzer = PolygonAnalyzer()
-    return analyzer.analyze_polygon(
-        geojson,
-        include_nccpi=include_nccpi,
-        productivity_index=normalized_productivity_index,
-        max_county_rating_override=max_county_rating_override,
-    )
-
 def get_soil_interpretations(
     mukeys: list[str],
     rule_name: str = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",

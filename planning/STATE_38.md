@@ -16,7 +16,7 @@
 |---|---|---|
 | 1 | 38.1.1 | done |
 | 2 | 38.2.1 | done |
-| 3 | 38.3.1 | pending |
+| 3 | 38.3.1 | done |
 | 4 | 38.4.1 | pending |
 | 5 | 38.5.1 | pending |
 
@@ -44,6 +44,12 @@
 - **Gotchas:** new modules own the moved collaborators; dependent tasks must update direct imports and patches without changing public MCP names.
 
 ## 38.3.1
+
+- **Status:** complete (2026-10-27).
+- **Changes:** extracted polygon/corridor analysis to `spatial_analysis_tools.py` and preliminary LESA to `lesa_tools.py`; removed duplicate implementations from `soil_tools.py`.
+- **Validation:** focused imports/compilation passed. `uv run pytest tests\test_tools.py -k "farmland or corridor or lesa"` -> 5 passed, 16 failed, 4 deselected because tests still patch collaborators on `soil_tools`; task 38.4.1 owns those updates.
+- **Deviations:** corrected an accidental duplicate `analyze_farmland_by_polygon` found during review; it now exists only in `spatial_analysis_tools.py`.
+- **Gotchas:** task 38.4.1 must rewire centralized registration and all direct imports/patch targets while preserving the ten MCP names.
 
 ## 38.4.1
 
