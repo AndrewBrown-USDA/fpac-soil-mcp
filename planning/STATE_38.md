@@ -15,7 +15,7 @@
 | Wave | Task | Status |
 |---|---|---|
 | 1 | 38.1.1 | done |
-| 2 | 38.2.1 | pending |
+| 2 | 38.2.1 | done |
 | 3 | 38.3.1 | pending |
 | 4 | 38.4.1 | pending |
 | 5 | 38.5.1 | pending |
@@ -36,6 +36,12 @@
 - **Dependent-task gotchas:** preserve decorators, signatures, docstrings, imports, patchable collaborators, ten public MCP names, and centralized registration. Do not add compatibility re-exports from `soil_tools.py`; live-network tests remain deferred.
 
 ## 38.2.1
+
+- **Status:** complete (2026-10-27).
+- **Changes:** extracted four lookup tools to `soil_lookup_tools.py` and the urban exemption tool to `exemption_tools.py`; removed duplicate implementations from `soil_tools.py`; preserved temporary imports for the later registration rewiring.
+- **Validation:** repository search found exactly one implementation per moved function. Targeted command `uv run pytest tests\test_tools.py -k "classification or interpretation or polygon or urban"` -> 10 failed, 4 passed, 11 deselected because tests still patch `soil_tools.SDAClient`; this is the planned wave 4 import/patch-target update.
+- **Deviations:** targeted tests cannot pass until task 38.4.1 rewires registration and test patch targets; no broader tests were run.
+- **Gotchas:** new modules own the moved collaborators; dependent tasks must update direct imports and patches without changing public MCP names.
 
 ## 38.3.1
 
