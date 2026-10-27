@@ -1,5 +1,7 @@
 """Tests for create_agent (model, prompt, reasoning settings, and tools)."""
 
+from unittest.mock import MagicMock
+
 import pytest
 from agent_server import agent as agent_module
 from agent_server.config import load_system_prompt
@@ -38,13 +40,17 @@ def test_mcp_servers_passthrough():
     assert agent.mcp_servers is servers
 
 
-def test_client_uses_ai_gateway():
+def test_client_uses_ai_gateway(monkeypatch):
     # UC model service names only resolve on /ai-gateway; /serving-endpoints returns 404.
-    from agents.models._openai_shared import get_default_openai_client
-
-    client = get_default_openai_client()
-    assert isinstance(client, agent_module.AsyncDatabricksOpenAI)
-    assert str(client.base_url).rstrip("/").endswith("/ai-gateway/mlflow/v1")
+    client = MagicMock(spec=agent_module.AsyncDatabricksOpenAI)
+    constructor = MagicMock(return_value=client)
+    set_default = MagicMock()
+    monkeypatch.setattr(agent_module, "AsyncDatabricksOpenAI", constructor)
+    monkeypatch.setattr(agent_module, "set_default_openai_client", set_default)
+    agent_module.configure_openai_client.cache_clear()
+    assert agent_module.configure_openai_client() is client
+    constructor.assert_called_once_with(use_ai_gateway=True)
+    set_default.assert_called_once_with(client)
 
 
 def test_template_tool_removed():

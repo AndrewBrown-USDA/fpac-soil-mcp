@@ -41,6 +41,7 @@ def patched(monkeypatch):
         workspace_client=MagicMock(name="WorkspaceClient"),
         init=MagicMock(return_value=server),
         connect=AsyncMock(return_value=([server], [])),
+        configure_openai_client=MagicMock(name="configure_openai_client"),
         create_agent=MagicMock(return_value=MagicMock(name="agent")),
         run=AsyncMock(return_value=SimpleNamespace(new_items=[])),
         run_streamed=MagicMock(return_value=SimpleNamespace(stream_events=_empty_events)),
@@ -48,6 +49,7 @@ def patched(monkeypatch):
     monkeypatch.setattr(agent_module, "WorkspaceClient", mocks.workspace_client)
     monkeypatch.setattr(agent_module, "init_fpac_mcp_server", mocks.init)
     monkeypatch.setattr(agent_module, "connect_healthy_mcp_servers", mocks.connect)
+    monkeypatch.setattr(agent_module, "configure_openai_client", mocks.configure_openai_client)
     monkeypatch.setattr(agent_module, "create_agent", mocks.create_agent)
     monkeypatch.setattr(agent_module.Runner, "run", mocks.run)
     monkeypatch.setattr(agent_module.Runner, "run_streamed", mocks.run_streamed)

@@ -1,6 +1,7 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
+from functools import lru_cache
 
 import mlflow
 from agents import (
@@ -34,10 +35,6 @@ from agent_server.utils import get_session_id, process_agent_stream_events
 
 logger = logging.getLogger(__name__)
 
-# NOTE: this will work for all databricks models OTHER than GPT-OSS, which uses a slightly different API
-# use_ai_gateway routes to <host>/ai-gateway/mlflow/v1, which takes Unity Catalog model service
-# names (AGENT_MODEL). /serving-endpoints returns ENDPOINT_NOT_FOUND for those names.
-set_default_openai_client(AsyncDatabricksOpenAI(use_ai_gateway=True))
 set_default_openai_api("chat_completions")
 set_trace_processors([])  # only use mlflow for trace processing
 mlflow.openai.autolog()
@@ -51,6 +48,17 @@ TOOLS_UNAVAILABLE_NOTE = (
 
 
 FPAC_MCP_SERVER_NAME = "fpac-soil-mcp"
+
+
+@lru_cache(maxsize=1)
+def configure_openai_client() -> AsyncDatabricksOpenAI:
+    """Configure the Databricks client once, when a real request needs it."""
+    # This works for all Databricks models other than GPT-OSS, which uses a
+    # slightly different API. AI Gateway routes UC model service names through
+    # /ai-gateway/mlflow/v1.
+    client = AsyncDatabricksOpenAI(use_ai_gateway=True)
+    set_default_openai_client(client)
+    return client
 
 
 def init_fpac_mcp_server(workspace_client: WorkspaceClient) -> McpServer:
@@ -133,6 +141,7 @@ async def _connect_fpac_agent(stack: AsyncExitStack) -> Agent:
 async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentResponse:
     if session_id := get_session_id(request):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
+    configure_openai_client()
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
         agent = await _connect_fpac_agent(stack)
@@ -147,6 +156,7 @@ async def stream_handler(
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
     if session_id := get_session_id(request):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
+    configure_openai_client()
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
         agent = await _connect_fpac_agent(stack)

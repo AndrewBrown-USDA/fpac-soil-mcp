@@ -35,9 +35,30 @@ jobs:
       - name: Run live USDA SDA tests (make test-live)
         run: make test-live
 
+  changes:
+    name: Detect agent app changes
+    runs-on: ubuntu-latest
+    outputs:
+      agent: ${{ steps.filter.outputs.agent }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            agent:
+              - 'apps/agent-fpac-soil-openai-sdk/**'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+
   agent-app:
     name: Agent app (apps/agent-fpac-soil-openai-sdk)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.agent == 'true' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -47,12 +68,16 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
+          cache-dependency-glob: apps/agent-fpac-soil-openai-sdk/uv.lock
 
       - name: Set up Python 3.11
         run: uv python install 3.11
 
-      - name: Lint and test the agent app (make app-check)
-        run: make app-check
+      - name: Lint the agent app (make app-lint)
+        run: make app-lint
+
+      - name: Test the agent app (make app-test)
+        run: make app-test
         
   harness:
     name: Test JavaScript harness

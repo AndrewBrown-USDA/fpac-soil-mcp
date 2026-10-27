@@ -1,8 +1,8 @@
 """Shared test setup for the agent app.
 
 Importing ``agent_server.agent`` builds ``AsyncDatabricksOpenAI()`` at module load,
-which fails without Databricks credentials. These dummy values let the import
-succeed offline; no test may make a network call with them.
+which requires Databricks environment variables. These dummy values let the import
+proceed without real credentials; no test may make a network call with them.
 """
 
 import os
