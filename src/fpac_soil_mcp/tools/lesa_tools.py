@@ -19,6 +19,7 @@ from fpac_soil_mcp.models import (
     VALIDATED_PRODUCTIVITY_INDEXES,
     LandEvaluationSummary,
     PreliminaryLESAResponse,
+    ProductivityIndexType,
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 from fpac_soil_mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
@@ -161,5 +162,4 @@ def calculate_preliminary_lesa(
                 lesa_response.limitations.append(lim)
 
     return lesa_response
-
 

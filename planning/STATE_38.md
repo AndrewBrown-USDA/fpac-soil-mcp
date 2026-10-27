@@ -17,7 +17,7 @@
 | 1 | 38.1.1 | done |
 | 2 | 38.2.1 | done |
 | 3 | 38.3.1 | done |
-| 4 | 38.4.1 | pending |
+| 4 | 38.4.1 | done |
 | 5 | 38.5.1 | pending |
 
 ## Task reports
@@ -52,5 +52,11 @@
 - **Gotchas:** task 38.4.1 must rewire centralized registration and all direct imports/patch targets while preserving the ten MCP names.
 
 ## 38.4.1
+
+- **Status:** complete (2026-10-27).
+- **Changes:** rewired `tools\__init__.py` registration and exports for all five domain modules; updated direct test imports and collaborator patch targets in the scoped tests.
+- **Validation:** `uv run pytest tests\test_tools.py tests\test_server.py tests\test_phase2_contracts.py tests\test_phase3_contracts.py` -> 54 passed, 3 deselected.
+- **Deviation:** restored the existing `ProductivityIndexType` import in `lesa_tools.py`, a tightly coupled extraction omission discovered by the targeted suite.
+- **Gotchas:** final wave must verify the removed `soil_tools.py` has no executable/test references and run the full offline suite.
 
 ## 38.5.1

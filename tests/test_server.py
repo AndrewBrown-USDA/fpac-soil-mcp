@@ -15,7 +15,7 @@ from fpac_soil_mcp.app import create_mcp_server
 from fpac_soil_mcp.constants import CITATIONS, REGULATORY_NOTICE
 from fpac_soil_mcp.routes import register_routes
 from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tools.soil_tools import get_farmland_classification_by_point
+from fpac_soil_mcp.tools.soil_lookup_tools import get_farmland_classification_by_point
 
 
 class TestServerInitialization:

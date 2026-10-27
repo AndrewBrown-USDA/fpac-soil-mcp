@@ -36,7 +36,7 @@ from fpac_soil_mcp.nass_client import NassClient
 from fpac_soil_mcp.sda_client import SDAClient
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 from fpac_soil_mcp.tools import register_tools
-from fpac_soil_mcp.tools.soil_tools import analyze_corridor_fppa
+from fpac_soil_mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "corridor" / "multi_county_corridors.json"
 
@@ -446,7 +446,7 @@ def test_fastmcp_analyze_corridor_fppa_tool_contract():
     mock_resp.composite_relative_rating = 82.5
     mock_resp.county_segments = []
 
-    with patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer") as mock_cls:
+    with patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.analyze_corridor.return_value = mock_resp
         mock_cls.return_value = mock_instance
@@ -609,7 +609,7 @@ def test_contract_multi_county_criterion_7_weighting():
     mock_resp.composite_relative_rating = 85.0
     mock_resp.county_segments = [seg1, seg2]
 
-    with patch("fpac_soil_mcp.tools.soil_tools.CorridorAnalyzer") as mock_cls:
+    with patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.analyze_corridor.return_value = mock_resp
         mock_cls.return_value = mock_instance
