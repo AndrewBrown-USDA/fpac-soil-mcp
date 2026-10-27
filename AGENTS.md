@@ -55,7 +55,7 @@ uv run pytest -m live_network
 - `src\fpac_soil_mcp\polygon_analysis.py` - multi-point sampling and weighted spatial aggregation across area-of-interest polygons.
 - `src\fpac_soil_mcp\corridor_analysis.py` - linear infrastructure corridor segment sampling, buffer generation, and acreage summation.
 - `src\fpac_soil_mcp\corridor_scoring.py` - multi-criteria alternative evaluation and comparative impact ranking for linear projects.
-- `src\fpac_soil_mcp\tools\` - MCP tool implementations (`soil_tools.py`, `fppa_tools.py`) and registration.
+- `src\fpac_soil_mcp\tools\` - MCP tool implementations grouped by responsibility (`soil_lookup_tools.py`, `spatial_analysis_tools.py`, `fppa_tools.py`, `exemption_tools.py`, and `lesa_tools.py`) and centralized registration.
 - `src\fpac_soil_mcp\resources\` - MCP resource implementations (`fppa_resources.py`) and URI endpoints.
 - `src\fpac_soil_mcp\prompts\` - MCP prompt implementations (`fppa_prompts.py`) for guided workflows.
 - `src\fpac_soil_mcp\routes.py` - HTTP-only `/health` and `/meta` routes.
