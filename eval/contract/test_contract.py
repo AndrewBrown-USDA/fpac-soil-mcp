@@ -148,7 +148,7 @@ async def test_farmland_class_listing_cites_its_authority() -> None:
 async def test_soil_queries_carry_regulatory_notice(
     tool_name: str, arguments: dict[str, Any]
 ) -> None:
-    with patch("fpac_soil_mcp.tools.soil_tools.SDAClient", _sda_factory(_prime_handler)):
+    with patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient", _sda_factory(_prime_handler)):
         async with fastmcp.Client(create_mcp_server()) as client:
             result = await client.call_tool(tool_name, arguments)
 
@@ -176,7 +176,7 @@ async def test_invalid_inputs_return_structured_errors(
         requests.append(request)
         return httpx.Response(500)
 
-    with patch("fpac_soil_mcp.tools.soil_tools.SDAClient", _sda_factory(record)):
+    with patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient", _sda_factory(record)):
         async with fastmcp.Client(create_mcp_server()) as client:
             result = await client.call_tool(tool_name, arguments, raise_on_error=False)
 

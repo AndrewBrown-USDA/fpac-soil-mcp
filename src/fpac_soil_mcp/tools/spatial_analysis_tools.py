@@ -54,7 +54,6 @@ def analyze_farmland_by_polygon(
     )
 
 
-
 def analyze_corridor_fppa(
     centerline: dict | str,
     buffer_distance: float,
@@ -175,5 +174,3 @@ def analyze_corridor_fppa(
         result["lesa_evaluation"] = lesa_result.model_dump()
 
     return result
-
-

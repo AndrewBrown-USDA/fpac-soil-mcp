@@ -64,7 +64,7 @@
 | 2 | 38.2.1 | Extract lookup and exemption tools | `src\fpac_soil_mcp\tools\soil_lookup_tools.py`, `src\fpac_soil_mcp\tools\exemption_tools.py`, `src\fpac_soil_mcp\tools\soil_tools.py`, `planning/tasks/38.2.1.todo.md` | 38.1.1 |
 | 3 | 38.3.1 | Extract spatial and LESA tools | `src\fpac_soil_mcp\tools\spatial_analysis_tools.py`, `src\fpac_soil_mcp\tools\lesa_tools.py`, `src\fpac_soil_mcp\tools\soil_tools.py`, `planning/tasks/38.3.1.todo.md` | 38.2.1 |
 | 4 | 38.4.1 | Rewire registration and test imports | `src\fpac_soil_mcp\tools\__init__.py`, `tests\test_tools.py`, `tests\test_server.py`, `tests\test_phase2_contracts.py`, `tests\test_phase3_contracts.py`, `planning/tasks/38.4.1.todo.md` | 38.3.1 |
-| 5 | 38.5.1 | Remove monolith and validate | `src\fpac_soil_mcp\tools\soil_tools.py`, `planning/STATE_38.md`, `planning/tasks/38.5.1.todo.md` | 38.4.1 |
+| 5 | 38.5.1 | Remove monolith and validate | extracted tool modules, scoped tests, `src\fpac_soil_mcp\tools\soil_tools.py`, `eval\contract\test_contract.py`, `planning/STATE_38.md`, `planning/tasks/38.5.1.todo.md` | 38.4.1 |
 
 Tasks in each wave are intentionally serial where they touch `soil_tools.py`; no parallel task may edit the same file.
 
@@ -154,15 +154,15 @@ Tasks in each wave are intentionally serial where they touch `soil_tools.py`; no
 
 **Repository:** `D:\workspace\fpac-soil-mcp`
 
-**Files in scope:** `tools\soil_tools.py`, `planning/STATE_38.md`, and `planning/tasks/38.5.1.todo.md`.
+**Files in scope:** extracted tool modules (`tools\__init__.py`, `tools\soil_lookup_tools.py`, `tools\spatial_analysis_tools.py`, `tools\lesa_tools.py`), scoped tests (`tests\test_tools.py`), `tools\soil_tools.py`, `eval\contract\test_contract.py`, `planning/STATE_38.md`, and `planning/tasks/38.5.1.todo.md`.
 
 **Depends on:** 38.4.1.
 
-**Spec:** Delete the obsolete `soil_tools.py` once no references remain, run the required offline validation, and record exact results and any deviations in `STATE_38.md`.
+**Spec:** Update the contract test's stale collaborator patch target to the owning extracted module, apply only formatter/import-order fixes to the extracted modules and scoped tests, then delete the obsolete `soil_tools.py` once no executable source or test references remain. Run the required offline validation and record exact results and any deviations in `STATE_38.md`.
 
-**Do not touch:** any source/test file beyond the obsolete module, prior plans, manifests, or unrelated worktree changes.
+**Do not touch:** source/test files beyond the listed extracted modules and scoped tests, prior plans, manifests, or unrelated worktree changes; do not make behavioral changes.
 
-**Grep anchors:** repository-wide `soil_tools`, `register_soil_tools`, `from fpac_soil_mcp.tools`.
+**Grep anchors:** `eval\contract\test_contract.py` patch target; repository-wide `soil_tools`, `register_soil_tools`, `from fpac_soil_mcp.tools`.
 
 **Reference implementations:** `AGENTS.md` validation workflow; `planning\STATE_37.md` final validation report.
 

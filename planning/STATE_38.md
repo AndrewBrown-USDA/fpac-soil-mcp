@@ -18,7 +18,7 @@
 | 2 | 38.2.1 | done |
 | 3 | 38.3.1 | done |
 | 4 | 38.4.1 | done |
-| 5 | 38.5.1 | pending |
+| 5 | 38.5.1 | done |
 
 ## Task reports
 
@@ -60,3 +60,10 @@
 - **Gotchas:** final wave must verify the removed `soil_tools.py` has no executable/test references and run the full offline suite.
 
 ## 38.5.1
+
+- **Status:** complete (2026-10-27).
+- **Changes:** updated `eval\contract\test_contract.py` collaborator patches from `fpac_soil_mcp.tools.soil_tools.SDAClient` to the owning `fpac_soil_mcp.tools.soil_lookup_tools.SDAClient`; deleted `src\fpac_soil_mcp\tools\soil_tools.py`; updated this state report and the task todo.
+- **Reference gate:** post-update searches found no executable source or test/evaluation references to `soil_tools.py`, `soil_tools`, or `register_soil_tools`. The deleted path is absent. `tools\__init__.py` retains the eight extracted soil tools plus the two FPPA tools, preserving all ten public MCP tool registrations through `register_tools`.
+- **Validation:** `uv run ruff check .` -> exit 0, `All checks passed!`; `uv run ruff format --check .` -> exit 0, `472 files already formatted`; `uv run pytest -m "not live_network"` -> exit 0, 498 collected, 22 deselected, 3 skipped, 476 passed, 0 failed, 104 warnings (32.47s).
+- **Changed files:** `src\fpac_soil_mcp\tools\__init__.py`, `src\fpac_soil_mcp\tools\lesa_tools.py`, `src\fpac_soil_mcp\tools\soil_lookup_tools.py`, `src\fpac_soil_mcp\tools\spatial_analysis_tools.py`, `src\fpac_soil_mcp\tools\soil_tools.py` (deleted), `tests\test_tools.py`, `eval\contract\test_contract.py`, `planning\STATE_38.md`, and `planning\tasks\38.5.1.todo.md`. The pre-existing `planning\EXECUTION_PLAN_38.md` modification was left untouched.
+- **Deviations:** none. Live-network tests were not run.

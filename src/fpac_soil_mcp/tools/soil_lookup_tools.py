@@ -10,7 +10,12 @@ from shapely.errors import GEOSException, ShapelyError
 from shapely.geometry import mapping
 
 from fpac_soil_mcp.constants import REGULATORY_LIMITATIONS, REGULATORY_NOTICE
-from fpac_soil_mcp.geometry import GeometryValidationError, calculate_acreage, geometry_to_wkt, parse_geojson_geometry
+from fpac_soil_mcp.geometry import (
+    GeometryValidationError,
+    calculate_acreage,
+    geometry_to_wkt,
+    parse_geojson_geometry,
+)
 from fpac_soil_mcp.models import FarmlandClassificationResponse, QuerySource, SoilMapUnit
 from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
 
@@ -80,6 +85,7 @@ def get_farmland_classification_by_point(
         limitations=REGULATORY_LIMITATIONS,
         regulatory_notice=REGULATORY_NOTICE,
     )
+
 
 def get_farmland_classification_by_mukey(
     mukey: str,
@@ -165,6 +171,7 @@ def get_soil_interpretations(
         rule_name=rule_name,
         aggregation_method=aggregation_method,
     )
+
 
 def get_soil_polygons_by_geometry(
     geojson: dict | str,

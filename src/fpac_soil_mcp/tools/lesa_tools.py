@@ -162,4 +162,3 @@ def calculate_preliminary_lesa(
                 lesa_response.limitations.append(lim)
 
     return lesa_response
-
