@@ -51,9 +51,15 @@ flowchart TD
     
     subgraph FastMCP_Server ["fpac-soil-mcp FastMCP Server"]
         Router["Transport Layer\nstdio / SSE / HTTP"]
-        Tools["10 Tools Registry"]
-        Resources["3 Resources Registry"]
-        Prompts["4 Prompts Registry"]
+        subgraph ToolModules ["MCP Tool Modules"]
+            SoilTools["soil_lookup_tools.py\n4 soil lookup tools"]
+            SpatialTools["spatial_analysis_tools.py\n2 spatial analysis tools"]
+            FppaTools["fppa_tools.py\n2 FPPA guidance tools"]
+            ExemptionTools["exemption_tools.py\n1 exemption tool"]
+            LesaTools["lesa_tools.py\n1 LESA tool"]
+        end
+        Resources["resources/fppa_resources.py\n3 resources"]
+        Prompts["prompts/fppa_prompts.py\n4 prompts"]
         Routes["2 HTTP Routes: /health, /meta"]
         ClientModule["SDAClient / httpx"]
         TIGERClient["TIGERweb Client / httpx"]
@@ -75,13 +81,23 @@ flowchart TD
     end
 
     Client <-->|JSON-RPC via stdio or SSE/HTTP| Router
-    Router --> Tools
+    Router --> SoilTools
+    Router --> SpatialTools
+    Router --> FppaTools
+    Router --> ExemptionTools
+    Router --> LesaTools
     Router --> Resources
     Router --> Prompts
     Router --> Routes
-    Tools --> ClientModule
-    Tools --> TIGERClient
-    Tools --> NASSClient
+    SoilTools --> ClientModule
+    SpatialTools --> ClientModule
+    SpatialTools --> TIGERClient
+    SpatialTools --> NASSClient
+    FppaTools --> ClientModule
+    ExemptionTools --> TIGERClient
+    LesaTools --> ClientModule
+    LesaTools --> TIGERClient
+    LesaTools --> NASSClient
     ClientModule -->|SQL & Geometry Intersections| SDASpatial
     ClientModule -->|SQL Tabular & cointerp Queries| SDATabular
     TIGERClient -->|ArcGIS REST /query| TIGERUrban
