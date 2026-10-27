@@ -94,6 +94,7 @@ def test_init_fpac_mcp_server_env_overrides(monkeypatch):
 def test_handler_healthy_path(patched, caplog, run_handler):
     with caplog.at_level(logging.INFO, logger=agent_module.__name__):
         run_handler()
+    patched.configure_openai_client.assert_called_once_with()
     patched.init.assert_called_once_with(patched.workspace_client.return_value)
     servers_arg = patched.connect.await_args.args[1]
     assert servers_arg == [patched.server]
@@ -108,6 +109,7 @@ def test_handler_unavailable_path(patched, caplog, run_handler):
     patched.connect.return_value = ([], ["fpac-soil-mcp"])
     with caplog.at_level(logging.INFO, logger=agent_module.__name__):
         run_handler()
+    patched.configure_openai_client.assert_called_once_with()
     patched.create_agent.assert_called_once_with(mcp_servers=[], tools_unavailable=True)
     # The health check owns the WARNING (with traceback); the handler adds one INFO summary.
     records = [r for r in caplog.records if r.name == agent_module.__name__]
