@@ -801,20 +801,322 @@ def validate_survey_area_symbol(areasymbol: str) -> str:
     return clean_area
 
 
+def _spec_sentinel_predicate(spec: SdvRatingSpec, expression: str) -> str:
+    """Build an SQL sentinel predicate from a registry spec."""
+    if not spec.sentinels:
+        return f"{expression} IS NOT NULL"
+    sentinels = ", ".join(str(int(v)) if v.is_integer() else str(v) for v in sorted(spec.sentinels))
+    return f"{expression} IS NOT NULL AND {expression} NOT IN ({sentinels})"
+
+
+def _validate_mukeys(mukeys: str | list[str | int]) -> str:
+    """Validate mukeys and return a comma-quoted SQL list."""
+    if isinstance(mukeys, str):
+        items = mukeys.split(",")
+    else:
+        items = mukeys
+    try:
+        clean = [str(item).strip().strip("'") for item in items]
+        if not clean or any(not re.fullmatch(r"[1-9][0-9]*", m) for m in clean):
+            raise ValueError
+    except (TypeError, ValueError) as exc:
+        raise SDAValidationError(
+            f"Map unit keys must be positive numeric digits; received '{mukeys}'"
+        ) from exc
+    return ", ".join(f"'{m}'" for m in clean)
+
+
+def _build_cointerp_wa_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
+    """cointerp + Weighted Average (NCCPI-style)."""
+    sentinel = _spec_sentinel_predicate(spec, "rating")
+    rule = spec.rule_name.replace("'", "''")
+    return f"""\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.{spec.value_column} AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule}'
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    ROUND(SUM(CASE WHEN {sentinel} THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN {sentinel} THEN comppct_r ELSE 0 END), 0), {spec.precision}) AS numeric_rating,
+    SUM(CASE WHEN {sentinel} THEN comppct_r ELSE 0 END) AS rated_pct,
+    SUM(comppct_r) AS total_pct
+FROM comp_rating
+GROUP BY mukey, areasymbol, musym, muname
+"""
+
+
+def _build_cointerp_wa_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
+    """cointerp + Weighted Average county max (NCCPI-style)."""
+    sentinel = _spec_sentinel_predicate(spec, f"ci.{spec.value_column}")
+    rule = spec.rule_name.replace("'", "''")
+    return f"""\
+SELECT
+    MAX(ci.{spec.value_column}) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+WHERE l.areasymbol = '{areasymbol}'
+  AND ci.ruledepth = 0
+  AND ci.mrulename = '{rule}'
+  AND {sentinel}
+  AND c.compkind != 'miscellaneous area'
+"""
+
+
+def _build_cointerp_dc_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
+    """cointerp + Dominant Condition (Storie-style, D5)."""
+    sentinel = _spec_sentinel_predicate(spec, "rating")
+    rule = spec.rule_name.replace("'", "''")
+    tiebreak_dir = "ASC" if spec.tiebreak_rule < 0 else "DESC"
+    return f"""\
+WITH comp_rating AS (
+    SELECT
+        m.mukey,
+        l.areasymbol,
+        m.musym,
+        m.muname,
+        c.cokey,
+        c.comppct_r,
+        ci.{spec.value_column} AS rating
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+        AND ci.ruledepth = 0
+        AND ci.mrulename = '{rule}'
+    WHERE m.mukey IN ({mukeys_sql})
+      AND c.compkind != 'miscellaneous area'
+      AND {sentinel}
+),
+dominant AS (
+    SELECT
+        mukey,
+        areasymbol,
+        musym,
+        muname,
+        ROUND(rating, {spec.precision}) AS rating_val,
+        SUM(comppct_r) AS pct_sum,
+        ROW_NUMBER() OVER (
+            PARTITION BY mukey
+            ORDER BY SUM(comppct_r) DESC, rating {tiebreak_dir}
+        ) AS rn,
+        SUM(SUM(comppct_r)) OVER (PARTITION BY mukey) AS total_pct
+    FROM comp_rating
+    GROUP BY mukey, areasymbol, musym, muname, ROUND(rating, {spec.precision}), rating
+)
+SELECT
+    mukey,
+    areasymbol,
+    musym,
+    muname,
+    rating_val AS numeric_rating,
+    pct_sum AS rated_pct,
+    total_pct
+FROM dominant
+WHERE rn = 1
+"""
+
+
+def _build_cointerp_dc_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
+    """cointerp + Dominant Condition county max (D5)."""
+    sentinel = _spec_sentinel_predicate(spec, f"ci.{spec.value_column}")
+    rule = spec.rule_name.replace("'", "''")
+    tiebreak_dir = "ASC" if spec.tiebreak_rule < 0 else "DESC"
+    return f"""\
+WITH mukey_dominant AS (
+    SELECT
+        m.mukey,
+        ROUND(ci.{spec.value_column}, {spec.precision}) AS rating_val,
+        SUM(c.comppct_r) AS pct_sum,
+        ROW_NUMBER() OVER (
+            PARTITION BY m.mukey
+            ORDER BY SUM(c.comppct_r) DESC, ci.{spec.value_column} {tiebreak_dir}
+        ) AS rn
+    FROM legend AS l
+    INNER JOIN mapunit AS m ON m.lkey = l.lkey
+    INNER JOIN component AS c ON c.mukey = m.mukey
+    INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+    WHERE l.areasymbol = '{areasymbol}'
+      AND ci.ruledepth = 0
+      AND ci.mrulename = '{rule}'
+      AND {sentinel}
+      AND c.compkind != 'miscellaneous area'
+    GROUP BY m.mukey, ROUND(ci.{spec.value_column}, {spec.precision}), ci.{spec.value_column}
+)
+SELECT MAX(rating_val) AS max_county_rating
+FROM mukey_dominant
+WHERE rn = 1
+"""
+
+
+def _build_component_wa_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
+    """component + Weighted Average (CPI-style)."""
+    col = spec.value_column
+    return f"""\
+SELECT
+    m.mukey,
+    l.areasymbol,
+    m.musym,
+    m.muname,
+    SUM(CASE WHEN c.{col} IS NOT NULL
+        THEN CAST(c.{col} AS float) * c.comppct_r ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN c.{col} IS NOT NULL
+            THEN c.comppct_r ELSE 0 END), 0) AS numeric_rating,
+    SUM(CASE WHEN c.{col} IS NOT NULL THEN c.comppct_r ELSE 0 END) AS rated_pct,
+    SUM(c.comppct_r) AS total_pct
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+WHERE m.mukey IN ({mukeys_sql})
+  AND c.compkind != 'miscellaneous area'
+GROUP BY m.mukey, l.areasymbol, m.musym, m.muname
+"""
+
+
+def _build_component_wa_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
+    """component + Weighted Average county max (CPI-style)."""
+    col = spec.value_column
+    return f"""\
+SELECT
+    MAX(CAST(c.{col} AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+INNER JOIN component AS c ON c.mukey = m.mukey
+WHERE l.areasymbol = '{areasymbol}'
+  AND c.{col} IS NOT NULL
+  AND c.compkind != 'miscellaneous area'
+"""
+
+
+def _build_mapunit_no_agg_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
+    """mapunit + No Aggregation Necessary (CSR2-style)."""
+    col = spec.value_column
+    sentinel = _spec_sentinel_predicate(spec, f"m.{col}")
+    return f"""\
+SELECT
+    m.mukey,
+    l.areasymbol,
+    m.musym,
+    m.muname,
+    CAST(m.{col} AS float) AS numeric_rating,
+    CASE WHEN {sentinel} THEN 100.0 ELSE 0.0 END AS rated_pct,
+    100.0 AS total_pct
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+WHERE m.mukey IN ({mukeys_sql})
+"""
+
+
+def _build_mapunit_no_agg_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
+    """mapunit + No Aggregation Necessary county max (CSR2-style)."""
+    col = spec.value_column
+    return f"""\
+SELECT
+    MAX(CAST(m.{col} AS float)) AS max_county_rating
+FROM legend AS l
+INNER JOIN mapunit AS m ON m.lkey = l.lkey
+WHERE l.areasymbol = '{areasymbol}'
+  AND m.{col} IS NOT NULL
+"""
+
+
+_BUILDERS_RATING = {
+    ("cointerp", "Weighted Average"): _build_cointerp_wa_rating,
+    ("cointerp", "Dominant Condition"): _build_cointerp_dc_rating,
+    ("component", "Weighted Average"): _build_component_wa_rating,
+    ("mapunit", "No Aggregation Necessary"): _build_mapunit_no_agg_rating,
+}
+
+_BUILDERS_COUNTY_MAX = {
+    ("cointerp", "Weighted Average"): _build_cointerp_wa_county_max,
+    ("cointerp", "Dominant Condition"): _build_cointerp_dc_county_max,
+    ("component", "Weighted Average"): _build_component_wa_county_max,
+    ("mapunit", "No Aggregation Necessary"): _build_mapunit_no_agg_county_max,
+}
+
+_WAVE3_TABLES = frozenset({"cointerp", "component", "mapunit"})
+
+
+def build_sdv_rating_query(
+    spec: SdvRatingSpec,
+    mukeys: str | list[str | int],
+    constraints: dict[str, Any] | None = None,
+) -> str:
+    """Build a per-mukey rating SQL query from a validated SDV rating spec.
+
+    Dispatches on (spec.table, spec.algorithm) to the appropriate template.
+    Raises SDAValidationError for unsupported table+algorithm combinations.
+    """
+    mukeys_sql = _validate_mukeys(mukeys)
+    key = (spec.table, spec.algorithm)
+    builder = _BUILDERS_RATING.get(key)
+    if builder is None:
+        raise SDAValidationError(
+            f"Unsupported aggregation method: table='{spec.table}', algorithm='{spec.algorithm}'."
+        )
+    return builder(spec, mukeys_sql)
+
+
+def build_sdv_county_max_query(
+    spec: SdvRatingSpec,
+    areasymbol: str,
+    constraints: dict[str, Any] | None = None,
+) -> str:
+    """Build a county-max rating SQL query from a validated SDV rating spec.
+
+    Dispatches on (spec.table, spec.algorithm) to the appropriate template.
+    Raises SDAValidationError for unsupported table+algorithm combinations.
+    """
+    clean_area = validate_survey_area_symbol(areasymbol)
+    key = (spec.table, spec.algorithm)
+    builder = _BUILDERS_COUNTY_MAX.get(key)
+    if builder is None:
+        raise SDAValidationError(
+            f"Unsupported aggregation method: table='{spec.table}', algorithm='{spec.algorithm}'."
+        )
+    return builder(spec, clean_area)
+
+
 def build_dynamic_sdv_query(
     attribute_meta: dict[str, Any],
     mukeys_csv: str | list[str | int],
 ) -> str:
     """Dynamically build an SDA query from an sdvattribute metadata record.
 
-    Inspects attributetablename, attributecolumnname, and nasisrulename to construct
-    an injection-safe SQL query for component-weighted or mapunit values.
+    For cointerp, component, and mapunit tables, validates the record against
+    the registry and delegates to the per-strategy builder.  For chorizon and
+    cocropyld, uses the legacy inline code path (to be migrated in a later wave).
     """
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
     if table not in ALLOWED_SDV_TABLES:
         raise SDAValidationError(
             f"Unsupported or unallowed SDV table '{table}'. Allowed: {sorted(ALLOWED_SDV_TABLES)}"
         )
+
+    if table in _WAVE3_TABLES:
+        try:
+            spec = validate_sdv_record(attribute_meta)
+            return build_sdv_rating_query(spec, mukeys_csv)
+        except SDAValidationError:
+            pass  # Non-registered record: fall through to legacy path
 
     if isinstance(mukeys_csv, str):
         mukey_items = mukeys_csv.split(",")
@@ -1002,9 +1304,22 @@ def build_dynamic_sdv_county_max_query(
     attribute_meta: dict[str, Any],
     areasymbol: str,
 ) -> str:
-    """Dynamically build an SDA query for maximum county rating from sdvattribute metadata."""
+    """Dynamically build an SDA query for maximum county rating from sdvattribute metadata.
+
+    For cointerp, component, and mapunit tables, validates the record against
+    the registry and delegates to the per-strategy county max builder.  For
+    chorizon and cocropyld, uses the legacy inline code path.
+    """
     areasymbol = validate_survey_area_symbol(areasymbol)
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
+
+    if table in _WAVE3_TABLES:
+        try:
+            spec = validate_sdv_record(attribute_meta)
+            return build_sdv_county_max_query(spec, areasymbol)
+        except SDAValidationError:
+            pass  # Non-registered record: fall through to legacy path
+
     col = str(attribute_meta.get("attributecolumnname", "")).strip()
     rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
     norm_idx = _dynamic_index_name(attribute_meta)

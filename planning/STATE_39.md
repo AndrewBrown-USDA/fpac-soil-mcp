@@ -107,7 +107,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | 1 | 39.1.1 Branch, baseline, live capture, method research | done |
 | - | STOP A | pending |
 | 2 | 39.2.1 Registry and two-gate record validation | done |
-| 3 | 39.3.1 Component-level strategies | pending |
+| 3 | 39.3.1 Component-level strategies | done |
 | 4 | 39.4.1 Horizon and crop strategies | pending |
 | 5 | 39.5.1 One engine: selectors, provenance, caveats, template retirement | pending |
 | - | STOP B | pending |
@@ -126,6 +126,7 @@ Status: done. Branch `feat/sdv-metadata-contract` from `origin/main` `fd0189f`. 
 Status: done. Added SdvRatingSpec dataclass, SDV_RATING_REGISTRY (6 entries), SUPPORTED_SDV_ALGORITHMS, SUPPORTED_HORIZON_METHODS, SDV_CONTRACT_FIELDS (22 fields), validate_sdv_record (two-gate: registry match + structural), resolve_sdv_spec (exact alias match, crop validator). Removed sdvattribute from ALLOWED_SDV_TABLES (H2 fix). Extended SQL_SDV_ATTRIBUTE_LOOKUP to select all 22 contract fields. New test file tests/test_sdv_contract.py (37 tests). Offline suite: 512 passed (37 new), 4 skipped, 22 deselected. Ruff: 78 EXE002 only. Files: src/fpac_soil_mcp/sda_client.py (L74-450 new code, L354 removed sdvattribute), tests/test_sdv_contract.py (new). No changes to build_dynamic_sdv_query, get_productivity_ratings, or get_county_max_productivity_rating.
 ## 39.3.1
 
+Status: done. Added per-strategy SQL builders: cointerp+Weighted Average (NCCPI-style), cointerp+Dominant Condition (Storie D5, window function with tiebreak), component+Weighted Average (CPI-style), mapunit+No Aggregation (CSR2-style). Added build_sdv_rating_query/build_sdv_county_max_query dispatching on (table, algorithm). build_dynamic_sdv_query/county_max delegate to new builders for registered cointerp/component/mapunit records, fall back to legacy for non-registered (backward compat). Updated 4 tests in test_sda_client.py (H1/H2 routing: interphr->interphrc, add algorithmname, registered rule names). New test_sdv_strategies.py (27 tests). Offline: 539 passed (27 new). Ruff: EXE002 only. Files: sda_client.py, test_sda_client.py (4 tests updated), test_sdv_strategies.py (new).
 ## 39.4.1
 
 ## 39.5.1

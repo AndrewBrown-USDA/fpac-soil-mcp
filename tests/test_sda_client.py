@@ -643,8 +643,9 @@ class TestSDAClientExecution:
         meta = {
             "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
+            "attributecolumnname": "interphrc",
             "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_query(meta, "'1001', '1002'")
         assert "cointerp" in query
@@ -653,34 +654,44 @@ class TestSDAClientExecution:
 
     def test_build_dynamic_sdv_query_nccpi_excludes_negative_sentinels(self) -> None:
         meta = {
+            "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
+            "attributecolumnname": "interphrc",
             "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_query(meta, "'1001'")
         assert "rating IS NOT NULL AND rating NOT IN (-999, -99, 99, 999)" in query
 
     def test_build_dynamic_sdv_query_uses_exact_rule_name(self) -> None:
+        """Registry-validated records use the exact rule name from the spec."""
         meta = {
+            "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
-            "nasisrulename": "Future Validated Rule",
+            "attributecolumnname": "interphrc",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "ci.mrulename = 'Future Validated Rule'" in query
-        assert "LIKE '%Future Validated Rule%'" not in query
-        assert "NCCPI" not in query
+        assert (
+            "ci.mrulename = 'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'" in query
+        )
+        assert "LIKE" not in query
 
     def test_build_dynamic_sdv_county_max_uses_exact_rule_name(self) -> None:
+        """Registry-validated records use the exact rule name from the spec."""
         meta = {
+            "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
-            "nasisrulename": "Future Validated Rule",
+            "attributecolumnname": "interphrc",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_county_max_query(meta, "IA169")
-        assert "ci.mrulename = 'Future Validated Rule'" in query
-        assert "LIKE '%Future Validated Rule%'" not in query
-        assert "NCCPI" not in query
+        assert (
+            "ci.mrulename = 'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'" in query
+        )
+        assert "LIKE" not in query
 
     def test_build_dynamic_sdv_query_component(self) -> None:
         from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
