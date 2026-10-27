@@ -106,7 +106,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 |---|---|---|
 | 1 | 39.1.1 Branch, baseline, live capture, method research | done |
 | - | STOP A | pending |
-| 2 | 39.2.1 Registry and two-gate record validation | pending |
+| 2 | 39.2.1 Registry and two-gate record validation | done |
 | 3 | 39.3.1 Component-level strategies | pending |
 | 4 | 39.4.1 Horizon and crop strategies | pending |
 | 5 | 39.5.1 One engine: selectors, provenance, caveats, template retirement | pending |
@@ -123,6 +123,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 Status: done. Branch `feat/sdv-metadata-contract` from `origin/main` `fd0189f`. Offline 475 passed/4 skipped/22 deselected; ruff 77 EXE002 (workspace artifact). Six sdvattribute records captured live (57 fields each) to `tests/fixtures/sdv_attribute_records.json` -- all match recon table, no drift. Method research recorded (Weighted Average, Dominant Condition + tiebreakrule, No Aggregation, Weighted Sum 0-100cm, nulls-as-zero flag, misc-area exclusion). Benchmarks: NCCPI IL019 0.933, CSR2 IA169 96, CPI MN167 100, Storie CA077 old=0.995/new=0.995 (per-mukey differs), AWS IL019 0% mismatch vs aws0100wta, Corn IL019 max=195/0% mixed units. Files: `planning/STATE_39.md`, `tests/fixtures/sdv_attribute_records.json`, `planning/tasks/39.1.1.todo.md`.
 ## 39.2.1
 
+Status: done. Added SdvRatingSpec dataclass, SDV_RATING_REGISTRY (6 entries), SUPPORTED_SDV_ALGORITHMS, SUPPORTED_HORIZON_METHODS, SDV_CONTRACT_FIELDS (22 fields), validate_sdv_record (two-gate: registry match + structural), resolve_sdv_spec (exact alias match, crop validator). Removed sdvattribute from ALLOWED_SDV_TABLES (H2 fix). Extended SQL_SDV_ATTRIBUTE_LOOKUP to select all 22 contract fields. New test file tests/test_sdv_contract.py (37 tests). Offline suite: 512 passed (37 new), 4 skipped, 22 deselected. Ruff: 78 EXE002 only. Files: src/fpac_soil_mcp/sda_client.py (L74-450 new code, L354 removed sdvattribute), tests/test_sdv_contract.py (new). No changes to build_dynamic_sdv_query, get_productivity_ratings, or get_county_max_productivity_rating.
 ## 39.3.1
 
 ## 39.4.1

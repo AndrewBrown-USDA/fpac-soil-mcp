@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Any, Mapping
 
 import httpx
 
@@ -71,6 +73,369 @@ PRODUCTIVITY_SEMANTICS = {
         "provenance": PRODUCTIVITY_PROVENANCE["storie"],
     },
 }
+
+# ---------------------------------------------------------------------------
+# SDV metadata-driven rating contract (ADR 0014)
+#
+# Frozen, versioned registry of validated sdvattribute records.  Public callers
+# still use the four fixed selectors (nccpi, csr2, cpi, storie); the registry
+# adds internal support for Available Water Storage and crop yields.  See
+# docs/sdv-metadata-contract.md for the field-level contract.
+# ---------------------------------------------------------------------------
+
+SDV_REGISTRY_VERSION = "1"
+
+#: Fields the engine reads from sdvattribute (also the SELECT list for the
+#: metadata lookup query).
+SDV_CONTRACT_FIELDS = (
+    "attributekey",
+    "attributename",
+    "attributetablename",
+    "attributecolumnname",
+    "attributelogicaldatatype",
+    "nasisrulename",
+    "ruledesign",
+    "algorithmname",
+    "horzaggmeth",
+    "tiebreakrule",
+    "depthqualifiermode",
+    "layerdepthtotop",
+    "layerdepthtobottom",
+    "layerdepthuom",
+    "interpnullsaszeroflag",
+    "nullratingreplacementvalue",
+    "primaryconcolname",
+    "secondaryconcolname",
+    "componentpercentcutoff",
+    "resultcolumnname",
+    "notratedphrase",
+    "attributetype",
+)
+
+SUPPORTED_SDV_ALGORITHMS = frozenset(
+    {"Weighted Average", "Dominant Condition", "No Aggregation Necessary"}
+)
+
+SUPPORTED_HORIZON_METHODS = frozenset({"Weighted Sum", "Weighted Average"})
+
+_SDV_STRATEGY_TABLES = frozenset({"cointerp", "chorizon", "cocropyld", "component", "mapunit"})
+
+
+@dataclass(frozen=True)
+class SdvRatingSpec:
+    """A frozen, validated SDV rating specification from the registry."""
+
+    spec_id: str
+    provenance_id: str
+    attributename: str
+    table: str
+    column: str
+    value_column: str
+    rule_name: str
+    algorithm: str
+    horizon_method: str
+    depth_top_cm: float | None
+    depth_bottom_cm: float | None
+    tiebreak_rule: int
+    nulls_as_zero: bool
+    required_constraints: tuple[str, ...]
+    scale: str
+    precision: int
+    sentinels: frozenset[float]
+    aliases: frozenset[str]
+
+
+SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
+    {
+        "nccpi": SdvRatingSpec(
+            spec_id="nccpi",
+            provenance_id=PRODUCTIVITY_PROVENANCE["nccpi"],
+            attributename="National Commodity Crop Productivity Index",
+            table="cointerp",
+            column="interphrc",
+            value_column="interphr",
+            rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            algorithm="Weighted Average",
+            horizon_method="Weighted Average",
+            depth_top_cm=None,
+            depth_bottom_cm=None,
+            tiebreak_rule=1,
+            nulls_as_zero=False,
+            required_constraints=(),
+            scale=PRODUCTIVITY_SEMANTICS["nccpi"]["scale"],
+            precision=PRODUCTIVITY_SEMANTICS["nccpi"]["precision"],
+            sentinels=PRODUCTIVITY_SEMANTICS["nccpi"]["sentinels"],
+            aliases=PRODUCTIVITY_SEMANTICS["nccpi"]["aliases"],
+        ),
+        "storie": SdvRatingSpec(
+            spec_id="storie",
+            provenance_id=PRODUCTIVITY_PROVENANCE["storie"],
+            attributename="California Revised Storie Index (CA)",
+            table="cointerp",
+            column="interphrc",
+            value_column="interphr",
+            rule_name="AGR - California Revised Storie Index (CA)",
+            algorithm="Dominant Condition",
+            horizon_method="Weighted Average",
+            depth_top_cm=None,
+            depth_bottom_cm=None,
+            tiebreak_rule=-1,
+            nulls_as_zero=False,
+            required_constraints=(),
+            scale=PRODUCTIVITY_SEMANTICS["storie"]["scale"],
+            precision=PRODUCTIVITY_SEMANTICS["storie"]["precision"],
+            sentinels=PRODUCTIVITY_SEMANTICS["storie"]["sentinels"],
+            aliases=PRODUCTIVITY_SEMANTICS["storie"]["aliases"],
+        ),
+        "csr2": SdvRatingSpec(
+            spec_id="csr2",
+            provenance_id=PRODUCTIVITY_PROVENANCE["csr2"],
+            attributename="Iowa Corn Suitability Rating CSR2 (IA)",
+            table="mapunit",
+            column="iacornsr",
+            value_column="iacornsr",
+            rule_name="",
+            algorithm="No Aggregation Necessary",
+            horizon_method="Weighted Average",
+            depth_top_cm=None,
+            depth_bottom_cm=None,
+            tiebreak_rule=1,
+            nulls_as_zero=False,
+            required_constraints=(),
+            scale=PRODUCTIVITY_SEMANTICS["csr2"]["scale"],
+            precision=PRODUCTIVITY_SEMANTICS["csr2"]["precision"],
+            sentinels=PRODUCTIVITY_SEMANTICS["csr2"]["sentinels"],
+            aliases=PRODUCTIVITY_SEMANTICS["csr2"]["aliases"],
+        ),
+        "cpi": SdvRatingSpec(
+            spec_id="cpi",
+            provenance_id=PRODUCTIVITY_PROVENANCE["cpi"],
+            attributename="Crop Productivity Index",
+            table="component",
+            column="cropprodindex",
+            value_column="cropprodindex",
+            rule_name="",
+            algorithm="Weighted Average",
+            horizon_method="Weighted Average",
+            depth_top_cm=None,
+            depth_bottom_cm=None,
+            tiebreak_rule=1,
+            nulls_as_zero=True,
+            required_constraints=(),
+            scale=PRODUCTIVITY_SEMANTICS["cpi"]["scale"],
+            precision=PRODUCTIVITY_SEMANTICS["cpi"]["precision"],
+            sentinels=PRODUCTIVITY_SEMANTICS["cpi"]["sentinels"],
+            aliases=PRODUCTIVITY_SEMANTICS["cpi"]["aliases"],
+        ),
+        "aws_0_100": SdvRatingSpec(
+            spec_id="aws_0_100",
+            provenance_id="SDA:CHORIZON_AWC_R_0_100",
+            attributename="Available Water Storage",
+            table="chorizon",
+            column="awc_r",
+            value_column="awc_r",
+            rule_name="",
+            algorithm="Weighted Average",
+            horizon_method="Weighted Sum",
+            depth_top_cm=0.0,
+            depth_bottom_cm=100.0,
+            tiebreak_rule=1,
+            nulls_as_zero=False,
+            required_constraints=(),
+            scale="0-100 cm",
+            precision=3,
+            sentinels=frozenset(),
+            aliases=frozenset(),
+        ),
+        "nonirr_crop_yield": SdvRatingSpec(
+            spec_id="nonirr_crop_yield",
+            provenance_id="SDA:COCROPYLD_NONIRRYIELD_R",
+            attributename="Yields of Non-Irrigated Crops (Component)",
+            table="cocropyld",
+            column="nonirryield_r",
+            value_column="nonirryield_r",
+            rule_name="",
+            algorithm="Weighted Average",
+            horizon_method="Weighted Average",
+            depth_top_cm=None,
+            depth_bottom_cm=None,
+            tiebreak_rule=1,
+            nulls_as_zero=True,
+            required_constraints=("cropname",),
+            scale="varies",
+            precision=2,
+            sentinels=frozenset(),
+            aliases=frozenset(),
+        ),
+    }
+)
+
+
+def _normalize_sdv_string(value: Any) -> str:
+    """Normalize an sdvattribute field to a stripped string (empty for None)."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def validate_sdv_record(record: Mapping[str, Any]) -> SdvRatingSpec:
+    """Validate an sdvattribute record against the registry (two-gate).
+
+    Gate 1: match on normalized attributename, table, column, and rule name.
+    Gate 2: structural checks (required fields, supported algorithm, method
+    fields equal the spec).
+
+    Returns the matching SdvRatingSpec on success.
+    Raises SDAValidationError with distinct messages for each failure mode.
+    """
+    attr_name = _normalize_sdv_string(record.get("attributename")).lower()
+    table = _normalize_sdv_string(record.get("attributetablename")).lower()
+    column = _normalize_sdv_string(record.get("attributecolumnname")).lower()
+    rule = _normalize_sdv_string(record.get("nasisrulename")).lower()
+
+    # Gate 1: registry match
+    matched_spec: SdvRatingSpec | None = None
+    for spec in SDV_RATING_REGISTRY.values():
+        if (
+            spec.attributename.lower() == attr_name
+            and spec.table.lower() == table
+            and spec.column.lower() == column
+            and spec.rule_name.lower() == rule
+        ):
+            matched_spec = spec
+            break
+
+    if matched_spec is None:
+        raise SDAValidationError(
+            f"Unregistered SDV record: attributename='{attr_name}', "
+            f"table='{table}', column='{column}', rule='{rule}'."
+        )
+
+    # Gate 2: structural validation
+    algorithm = _normalize_sdv_string(record.get("algorithmname"))
+    if algorithm not in SUPPORTED_SDV_ALGORITHMS:
+        raise SDAValidationError(
+            f"Unsupported aggregation method: '{algorithm}'. "
+            f"Supported: {sorted(SUPPORTED_SDV_ALGORITHMS)}."
+        )
+
+    if algorithm != matched_spec.algorithm:
+        raise SDAValidationError(
+            f"Malformed SDV record: algorithmname '{algorithm}' "
+            f"does not match registry value '{matched_spec.algorithm}' "
+            f"for {matched_spec.spec_id}."
+        )
+
+    # Table must be a known strategy table
+    if table not in _SDV_STRATEGY_TABLES:
+        raise SDAValidationError(
+            f"Malformed SDV record: table '{table}' is not a supported strategy table."
+        )
+
+    # Identifier columns must match identifier pattern
+    for col_name in ("attributetablename", "attributecolumnname"):
+        col_val = _normalize_sdv_string(record.get(col_name))
+        if not re.fullmatch(r"[a-z_][a-z0-9_]*", col_val.lower()):
+            raise SDAValidationError(
+                f"Malformed SDV record: {col_name} '{col_val}' does not match identifier pattern."
+            )
+
+    # Horizon method check for chorizon
+    horizon_method = _normalize_sdv_string(record.get("horzaggmeth"))
+    if table == "chorizon":
+        if horizon_method not in SUPPORTED_HORIZON_METHODS:
+            raise SDAValidationError(
+                f"Unsupported horizon method: '{horizon_method}'. "
+                f"Supported: {sorted(SUPPORTED_HORIZON_METHODS)}."
+            )
+        if horizon_method != matched_spec.horizon_method:
+            raise SDAValidationError(
+                f"Malformed SDV record: horzaggmeth '{horizon_method}' "
+                f"does not match registry value '{matched_spec.horizon_method}'."
+            )
+
+    # Tiebreak rule check
+    tiebreak = record.get("tiebreakrule")
+    if tiebreak is not None:
+        try:
+            tiebreak_int = int(tiebreak)
+        except (ValueError, TypeError):
+            raise SDAValidationError(
+                f"Malformed SDV record: tiebreakrule '{tiebreak}' is not an integer."
+            )
+        if tiebreak_int != matched_spec.tiebreak_rule:
+            raise SDAValidationError(
+                f"Malformed SDV record: tiebreakrule {tiebreak_int} "
+                f"does not match registry value {matched_spec.tiebreak_rule}."
+            )
+
+    return matched_spec
+
+
+_CROP_RE = re.compile(r"^[A-Za-z0-9 ,()\-/'.]{1,80}$")
+
+
+def _validate_crop(cropname: str) -> str:
+    """Validate a crop name for SQL interpolation."""
+    crop = str(cropname).strip()
+    if not crop:
+        raise SDAValidationError("Crop name is required for this rating.")
+    if ";" in crop or "--" in crop:
+        raise SDAValidationError(f"Invalid characters in crop name: '{cropname}'.")
+    if not _CROP_RE.fullmatch(crop):
+        raise SDAValidationError(f"Invalid crop name: '{cropname}'.")
+    return crop
+
+
+def resolve_sdv_spec(
+    selector: str | None = None,
+    record: Mapping[str, Any] | None = None,
+    constraints: Mapping[str, Any] | None = None,
+) -> tuple[SdvRatingSpec, dict[str, Any]]:
+    """Resolve a rating specification from a selector or raw record.
+
+    Exactly one of *selector* or *record* must be provided.
+
+    - *selector* resolves via exact alias match against the registry.
+    - *record* goes through validate_sdv_record (two-gate validation).
+
+    Required constraints (e.g. cropname) are validated and returned in the
+    resolved constraints dict.
+    """
+    if selector is not None and record is not None:
+        raise SDAValidationError("Provide either a selector or a record, not both.")
+    if selector is None and record is None:
+        raise SDAValidationError("A selector or an SDV record is required.")
+
+    if selector is not None:
+        sel_lower = str(selector).strip().lower()
+        spec: SdvRatingSpec | None = None
+        for candidate_id, candidate_spec in SDV_RATING_REGISTRY.items():
+            if sel_lower == candidate_id or sel_lower in candidate_spec.aliases:
+                spec = candidate_spec
+                break
+        if spec is None:
+            raise SDAValidationError(f"Unregistered SDV selector: '{selector}'.")
+    else:
+        assert record is not None
+        spec = validate_sdv_record(record)
+
+    resolved_constraints: dict[str, Any] = {}
+    if constraints:
+        for key, val in constraints.items():
+            resolved_constraints[key] = val
+
+    for req in spec.required_constraints:
+        if req == "cropname":
+            crop = resolved_constraints.get("cropname")
+            if crop is None:
+                raise SDAValidationError(f"Constraint '{req}' is required for {spec.spec_id}.")
+            resolved_constraints["cropname"] = _validate_crop(crop)
+        elif req not in resolved_constraints:
+            raise SDAValidationError(f"Constraint '{req}' is required for {spec.spec_id}.")
+
+    return spec, resolved_constraints
+
 
 # Fixed SQL query templates - no user SQL passthrough allowed
 SQL_POINT_LOOKUP = """\
@@ -237,7 +602,23 @@ SELECT
     attributetablename,
     attributecolumnname,
     attributelogicaldatatype,
-    nasisrulename
+    nasisrulename,
+    ruledesign,
+    algorithmname,
+    horzaggmeth,
+    tiebreakrule,
+    depthqualifiermode,
+    layerdepthtotop,
+    layerdepthtobottom,
+    layerdepthuom,
+    interpnullsaszeroflag,
+    nullratingreplacementvalue,
+    primaryconcolname,
+    secondaryconcolname,
+    componentpercentcutoff,
+    resultcolumnname,
+    notratedphrase,
+    attributetype
 FROM sdvattribute
 WHERE attributename LIKE '{pattern}'
    OR nasisrulename LIKE '{pattern}'
@@ -351,7 +732,6 @@ ALLOWED_SDV_TABLES = {
     "cointerp",
     "component",
     "mapunit",
-    "sdvattribute",
 }
 
 _NCCPI_ALIASES = PRODUCTIVITY_SEMANTICS["nccpi"]["aliases"]
