@@ -191,9 +191,9 @@ Caveat text comes only from `SDV_CAVEATS`. Order per row: rating status
 | `no_rating` | Map unit has no numeric productivity rating. |
 | `partial_rating` | Partially rated map unit: {rated}% rated out of {total}% total component coverage. |
 | `mixed_units` | Mixed yield units: {min_unit} and {max_unit}. |
-| `dominant_condition` | Rating uses Dominant Condition aggregation (D5). |
-| `aws_fixed_depth` | Available water storage computed for fixed depth range 0-100 cm (D6). |
-| `crop_specific` | Crop-specific yield for '{crop}' (D7). |
+| `dominant_condition` | Rating uses Dominant Condition aggregation. |
+| `aws_fixed_depth` | Available water storage computed for fixed depth range 0-100 cm. |
+| `crop_specific` | Crop-specific yield for '{crop}'. |
 | `not_found` | Map unit not found in SDA query results. |
 
 `partial_rating` is added only for rated rows with `rated_pct < total_pct`. A

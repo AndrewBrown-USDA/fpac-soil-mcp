@@ -108,12 +108,12 @@
         "462057": {
           "numeric_rating": 0.375,
           "is_rated": true,
-          "caveats": ["Partially rated map unit: 85.0% rated out of 95.0% total component coverage.", "Rating uses Dominant Condition aggregation (D5)."]
+          "caveats": ["Partially rated map unit: 85.0% rated out of 95.0% total component coverage.", "Rating uses Dominant Condition aggregation."]
         },
         "462069": {
           "numeric_rating": null,
           "is_rated": false,
-          "caveats": ["Map unit has no numeric productivity rating.", "Rating uses Dominant Condition aggregation (D5)."]
+          "caveats": ["Map unit has no numeric productivity rating.", "Rating uses Dominant Condition aggregation."]
         }
       }
     },
@@ -277,7 +277,7 @@
         "242959": {
           "numeric_rating": 17.235,
           "is_rated": true,
-          "caveats": ["Available water storage computed for fixed depth range 0-100 cm (D6)."]
+          "caveats": ["Available water storage computed for fixed depth range 0-100 cm."]
         }
       }
     },
@@ -334,13 +334,13 @@
         "242959": {
           "numeric_rating": 182.46,
           "is_rated": true,
-          "caveats": ["Crop-specific yield for 'Corn' (D7)."],
+          "caveats": ["Crop-specific yield for 'Corn'."],
           "yldunits": "Bu"
         },
         "242960": {
           "numeric_rating": null,
           "is_rated": false,
-          "caveats": ["Mixed yield units: Bu and Tons.", "Crop-specific yield for 'Corn' (D7)."],
+          "caveats": ["Mixed yield units: Bu and Tons.", "Crop-specific yield for 'Corn'."],
           "yldunits": null
         }
       }

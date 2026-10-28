@@ -135,7 +135,7 @@ def test_live_sdv_sample_mukey_benchmarks(case: dict[str, Any]) -> None:
         assert row["spec_id"] == case["id"]
         assert row["productivity_rating_source"] == case["expected_productivity_rating_source"]
         if case["id"] == "storie":
-            assert "Rating uses Dominant Condition aggregation (D5)." in row["caveats"]
+            assert "Rating uses Dominant Condition aggregation." in row["caveats"]
         if "expected_yldunits" in bench:
             assert row["sdv_provenance"]["yldunits"] == bench["expected_yldunits"]
 
@@ -183,10 +183,7 @@ def test_live_aws_0_100_matches_muaggatt_aws0100wta() -> None:
     ]
     assert len(mismatches) / len(compared) <= check["max_mismatch_fraction"], mismatches
     for row in compared:
-        assert (
-            "Available water storage computed for fixed depth range 0-100 cm (D6)."
-            in row["caveats"]
-        )
+        assert "Available water storage computed for fixed depth range 0-100 cm." in row["caveats"]
 
 
 def test_live_corn_yield_mixed_units_are_unrated() -> None:
@@ -479,6 +476,6 @@ class TestLiveSDA:
         assert res["index_type"] == "storie"
         assert res["productivity_rating_source"] == "SDA:COINTERP_STORIE_CA"
         assert res["algorithm"] == "Dominant Condition"
-        assert "Rating uses Dominant Condition aggregation (D5)." in res["caveats"]
+        assert "Rating uses Dominant Condition aggregation." in res["caveats"]
         if res["is_rated"]:
             assert 0 < res["numeric_rating"] <= 1.0
