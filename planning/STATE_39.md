@@ -227,7 +227,7 @@ Status: done (2026-10-28, user chose Option A). Live `sdvattribute` CPI record: 
 | MN167 county max | 100 | 100 |
 | MN053 (CPI not populated) | unrated, county max None | unrated, county max None |
 
-Tests: fixture CPI `rating_sql_sha256`, `null_handling`, and live benchmark 2800029 = 79; CPI removed from rating-SQL parity (county-max parity kept); new SQLite test runs the generated SQL (all rated 72, partial 72 vs 90 under the old rule, all-null NULL); new live test MN053 stays unrated. Offline 593 passed, 4 skipped, 41 deselected; live `tests/test_live_sda.py` 37 passed; ruff clean (EXE002 aside). Docs: contract doc null handling, ADR 0014 main text (D12 bullet; ADR is new in this PR, so no amendment), ADR 0008 EP39 amendment, one README sentence, plan D12. Strict nulls-as-zero (Option B) was rejected: it would score 72 MN167 and all MN053 map units as CPI 0.
+Tests: fixture CPI `rating_sql_sha256`, `null_handling`, and live benchmark 2800029 = 79; CPI removed from rating-SQL parity (county-max parity kept); new SQLite test runs the generated SQL (all rated 72, partial 72 vs 90 under the old rule, all-null NULL); new live test MN053 stays unrated. Offline 593 passed, 4 skipped, 41 deselected; live `tests/test_live_sda.py` 37 passed; ruff clean (EXE002 aside). Docs: contract doc null handling, ADR 0014 main text (D12 bullet; ADR is new in this PR, so no amendment), ADR 0008 dated 2026-10-28 amendment bullet (older ADR), one README sentence, plan D12. Strict nulls-as-zero (Option B) was rejected: it would score 72 MN167 and all MN053 map units as CPI 0.
 
 ## Escalations
 
