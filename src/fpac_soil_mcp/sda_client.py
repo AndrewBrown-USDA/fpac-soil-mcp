@@ -4,15 +4,20 @@ Encapsulates HTTPS communication with the USDA NRCS Soil Data Access Tabular RES
 (https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest), implementing strict coordinate and
 mukey validation, fixed parameterized query templates, matrix table response parsing,
 and robust retry logic.
+
+The metadata-driven SDV rating contract is defined in ``SDV_RATING_REGISTRY`` (ADR 0014).
+See ``docs/sdv-metadata-contract.md`` for the field-level contract, per-table behaviour,
+provenance IDs, and the caveat catalogue.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any
 
 import httpx
 
@@ -30,49 +35,9 @@ from fpac_soil_mcp.models import SUPPORTED_INDEX_MSG
 
 logger = logging.getLogger(__name__)
 
-PRODUCTIVITY_PROVENANCE = {
-    "nccpi": "SDA:NCCPI_V3",
-    "csr2": "SDA:MAPUNIT_IACORNSR",
-    "cpi": "SDA:COMPONENT_CROPPRODINDEX",
-    "storie": "SDA:COINTERP_STORIE_CA",
-}
-
-PRODUCTIVITY_SEMANTICS = {
-    "nccpi": {
-        "aliases": frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"}),
-        "scale": "0-1",
-        "precision": 3,
-        "sentinels": frozenset({99.0, 999.0, -99.0, -999.0}),
-        "provenance": PRODUCTIVITY_PROVENANCE["nccpi"],
-    },
-    "csr2": {
-        "aliases": frozenset({"csr2", "iowa corn suitability rating csr2"}),
-        "scale": "5-100",
-        "precision": 0,
-        "sentinels": frozenset({999.0, -99.0, -999.0}),
-        "provenance": PRODUCTIVITY_PROVENANCE["csr2"],
-    },
-    "cpi": {
-        "aliases": frozenset({"cpi", "crop productivity index"}),
-        "scale": "1-100",
-        "precision": 0,
-        "sentinels": frozenset({999.0, -99.0, -999.0}),
-        "provenance": PRODUCTIVITY_PROVENANCE["cpi"],
-    },
-    "storie": {
-        "aliases": frozenset(
-            {
-                "storie",
-                "california revised storie index",
-                "agr - california revised storie index (ca)",
-            }
-        ),
-        "scale": "0-1",
-        "precision": 3,
-        "sentinels": frozenset({99.0, 999.0, -99.0, -999.0}),
-        "provenance": PRODUCTIVITY_PROVENANCE["storie"],
-    },
-}
+# Productivity provenance and semantics are derived from SDV_RATING_REGISTRY
+# (defined below) to ensure a single source of truth.  The four public selectors
+# (nccpi, csr2, cpi, storie) are re-exported here for backward compatibility.
 
 # ---------------------------------------------------------------------------
 # SDV metadata-driven rating contract (ADR 0014)
@@ -149,7 +114,7 @@ SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
     {
         "nccpi": SdvRatingSpec(
             spec_id="nccpi",
-            provenance_id=PRODUCTIVITY_PROVENANCE["nccpi"],
+            provenance_id="SDA:NCCPI_V3",
             attributename="National Commodity Crop Productivity Index",
             table="cointerp",
             column="interphrc",
@@ -162,14 +127,14 @@ SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
             tiebreak_rule=1,
             nulls_as_zero=False,
             required_constraints=(),
-            scale=PRODUCTIVITY_SEMANTICS["nccpi"]["scale"],
-            precision=PRODUCTIVITY_SEMANTICS["nccpi"]["precision"],
-            sentinels=PRODUCTIVITY_SEMANTICS["nccpi"]["sentinels"],
-            aliases=PRODUCTIVITY_SEMANTICS["nccpi"]["aliases"],
+            scale="0-1",
+            precision=3,
+            sentinels=frozenset({99.0, 999.0, -99.0, -999.0}),
+            aliases=frozenset({"nccpi", "nccpi_v3", "national commodity crop productivity index"}),
         ),
         "storie": SdvRatingSpec(
             spec_id="storie",
-            provenance_id=PRODUCTIVITY_PROVENANCE["storie"],
+            provenance_id="SDA:COINTERP_STORIE_CA",
             attributename="California Revised Storie Index (CA)",
             table="cointerp",
             column="interphrc",
@@ -182,14 +147,20 @@ SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
             tiebreak_rule=-1,
             nulls_as_zero=False,
             required_constraints=(),
-            scale=PRODUCTIVITY_SEMANTICS["storie"]["scale"],
-            precision=PRODUCTIVITY_SEMANTICS["storie"]["precision"],
-            sentinels=PRODUCTIVITY_SEMANTICS["storie"]["sentinels"],
-            aliases=PRODUCTIVITY_SEMANTICS["storie"]["aliases"],
+            scale="0-1",
+            precision=3,
+            sentinels=frozenset({99.0, 999.0, -99.0, -999.0}),
+            aliases=frozenset(
+                {
+                    "storie",
+                    "california revised storie index",
+                    "agr - california revised storie index (ca)",
+                }
+            ),
         ),
         "csr2": SdvRatingSpec(
             spec_id="csr2",
-            provenance_id=PRODUCTIVITY_PROVENANCE["csr2"],
+            provenance_id="SDA:MAPUNIT_IACORNSR",
             attributename="Iowa Corn Suitability Rating CSR2 (IA)",
             table="mapunit",
             column="iacornsr",
@@ -202,14 +173,14 @@ SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
             tiebreak_rule=1,
             nulls_as_zero=False,
             required_constraints=(),
-            scale=PRODUCTIVITY_SEMANTICS["csr2"]["scale"],
-            precision=PRODUCTIVITY_SEMANTICS["csr2"]["precision"],
-            sentinels=PRODUCTIVITY_SEMANTICS["csr2"]["sentinels"],
-            aliases=PRODUCTIVITY_SEMANTICS["csr2"]["aliases"],
+            scale="5-100",
+            precision=0,
+            sentinels=frozenset({999.0, -99.0, -999.0}),
+            aliases=frozenset({"csr2", "iowa corn suitability rating csr2"}),
         ),
         "cpi": SdvRatingSpec(
             spec_id="cpi",
-            provenance_id=PRODUCTIVITY_PROVENANCE["cpi"],
+            provenance_id="SDA:COMPONENT_CROPPRODINDEX",
             attributename="Crop Productivity Index",
             table="component",
             column="cropprodindex",
@@ -222,10 +193,10 @@ SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
             tiebreak_rule=1,
             nulls_as_zero=True,
             required_constraints=(),
-            scale=PRODUCTIVITY_SEMANTICS["cpi"]["scale"],
-            precision=PRODUCTIVITY_SEMANTICS["cpi"]["precision"],
-            sentinels=PRODUCTIVITY_SEMANTICS["cpi"]["sentinels"],
-            aliases=PRODUCTIVITY_SEMANTICS["cpi"]["aliases"],
+            scale="1-100",
+            precision=0,
+            sentinels=frozenset({999.0, -99.0, -999.0}),
+            aliases=frozenset({"cpi", "crop productivity index"}),
         ),
         "aws_0_100": SdvRatingSpec(
             spec_id="aws_0_100",
@@ -269,6 +240,86 @@ SDV_RATING_REGISTRY: MappingProxyType[str, SdvRatingSpec] = MappingProxyType(
         ),
     }
 )
+
+# ---------------------------------------------------------------------------
+# Derived public constants (single source of truth = the registry)
+# ---------------------------------------------------------------------------
+
+_PUBLIC_SELECTOR_IDS = ("nccpi", "csr2", "cpi", "storie")
+
+PRODUCTIVITY_PROVENANCE = {
+    spec_id: SDV_RATING_REGISTRY[spec_id].provenance_id for spec_id in _PUBLIC_SELECTOR_IDS
+}
+
+PRODUCTIVITY_SEMANTICS = {
+    spec_id: {
+        "aliases": SDV_RATING_REGISTRY[spec_id].aliases,
+        "scale": SDV_RATING_REGISTRY[spec_id].scale,
+        "precision": SDV_RATING_REGISTRY[spec_id].precision,
+        "sentinels": SDV_RATING_REGISTRY[spec_id].sentinels,
+        "provenance": SDV_RATING_REGISTRY[spec_id].provenance_id,
+    }
+    for spec_id in _PUBLIC_SELECTOR_IDS
+}
+
+# ---------------------------------------------------------------------------
+# Caveat catalogue (D8)
+# ---------------------------------------------------------------------------
+
+SDV_CAVEATS = {
+    "dominant_condition": "Rating uses Dominant Condition aggregation (D5).",
+    "unrated_sentinel": "Map unit contains unrated placeholder/sentinel code ({value}).",
+    "no_coverage": "Map unit has 0% rated component coverage.",
+    "no_rating": "Map unit has no numeric productivity rating.",
+    "partial_rating": "Partially rated map unit: {rated}% rated out of {total}% total component coverage.",
+    "mixed_units": "Mixed yield units: {min_unit} and {max_unit}.",
+    "aws_fixed_depth": "Available water storage computed for fixed depth range 0-100 cm (D6).",
+    "crop_specific": "Crop-specific yield for '{crop}' (D7).",
+    "not_found": "Map unit not found in SDA query results.",
+    "unparseable": "Unparseable rating value '{value}'.",
+}
+
+
+_NULLS_AS_ZERO_TABLES = frozenset({"cocropyld"})
+
+
+def _build_sdv_provenance(
+    spec: SdvRatingSpec, constraints: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """Build the internal structured provenance record for a registry spec (D8).
+
+    Crop yield records also carry ``cropname`` and ``yldunits`` (the latter is
+    filled per map unit by the caller).
+    """
+    record: dict[str, Any] = {
+        "id": spec.provenance_id,
+        "registry_version": SDV_REGISTRY_VERSION,
+        "spec_id": spec.spec_id,
+        "attributename": spec.attributename,
+        "table": spec.table,
+        "column": spec.column,
+        "value_column": spec.value_column,
+        "rule_name": spec.rule_name,
+        "algorithm": spec.algorithm,
+        "horizon_method": spec.horizon_method,
+        "depth_top_cm": spec.depth_top_cm,
+        "depth_bottom_cm": spec.depth_bottom_cm,
+        "tiebreak_rule": spec.tiebreak_rule,
+        "nulls_as_zero": spec.nulls_as_zero,
+        # The SDV flag is recorded as published; the engine applies it only for
+        # tables in _NULLS_AS_ZERO_TABLES (CPI keeps null exclusion for parity, D4).
+        "null_handling": (
+            "nulls_as_zero"
+            if spec.nulls_as_zero and spec.table in _NULLS_AS_ZERO_TABLES
+            else "exclude_nulls"
+        ),
+        "scale": spec.scale,
+        "precision": spec.precision,
+    }
+    if "cropname" in spec.required_constraints:
+        record["cropname"] = (constraints or {}).get("cropname")
+        record["yldunits"] = None
+    return record
 
 
 def _normalize_sdv_string(value: Any) -> str:
@@ -435,6 +486,25 @@ def resolve_sdv_spec(
             raise SDAValidationError(f"Constraint '{req}' is required for {spec.spec_id}.")
 
     return spec, resolved_constraints
+
+
+def _resolve_productivity_spec(
+    index_type: str,
+    attribute_meta: Mapping[str, Any] | None,
+    constraints: Mapping[str, Any] | None,
+) -> tuple[SdvRatingSpec, dict[str, Any]]:
+    """Resolve the client entry points to one registry spec (one engine, D9).
+
+    ``attribute_meta`` (explicit metadata selection) takes precedence; otherwise
+    ``index_type`` must be one of the four public fixed selectors (D1).
+    """
+    if attribute_meta:
+        return resolve_sdv_spec(
+            record=attribute_meta,
+            constraints=_record_constraints(attribute_meta, constraints),
+        )
+    selector = _normalize_productivity_index(index_type)
+    return resolve_sdv_spec(selector=selector, constraints=constraints)
 
 
 # Fixed SQL query templates - no user SQL passthrough allowed
@@ -625,106 +695,9 @@ WHERE attributename LIKE '{pattern}'
 ORDER BY attributename
 """
 
-SQL_PRODUCTIVITY_NCCPI = """\
-WITH comp_rating AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        ci.interphr AS rating
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
-        AND ci.ruledepth = 0
-        AND ci.mrulename = '{rule_name}'
-    WHERE m.mukey IN ({mukeys_csv})
-      AND c.compkind != 'miscellaneous area'
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (99, 999, -99, -999) THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM comp_rating
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
-SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI = """\
-SELECT
-    MAX(ci.interphr) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
-WHERE l.areasymbol = '{areasymbol}'
-  AND ci.ruledepth = 0
-  AND ci.mrulename = '{rule_name}'
-  AND ci.interphr IS NOT NULL
-  AND ci.interphr NOT IN (99, 999, -99, -999)
-  AND c.compkind != 'miscellaneous area'
-"""
-
-# CSR2 is a mapunit-level attribute (not component-aggregated); rated_pct is synthetic.
-SQL_PRODUCTIVITY_CSR2 = """\
-SELECT
-    m.mukey,
-    l.areasymbol,
-    m.musym,
-    m.muname,
-    CAST(m.iacornsr AS float) AS numeric_rating,
-    CASE WHEN m.iacornsr IS NOT NULL THEN 100.0 ELSE 0.0 END AS rated_pct,
-    100.0 AS total_pct
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-WHERE m.mukey IN ({mukeys_csv})
-"""
-
-SQL_PRODUCTIVITY_COUNTY_MAX_CSR2 = """\
-SELECT
-    MAX(CAST(m.iacornsr AS float)) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-WHERE l.areasymbol = '{areasymbol}'
-  AND m.iacornsr IS NOT NULL
-"""
-
-SQL_PRODUCTIVITY_CPI = """\
-SELECT
-    m.mukey,
-    l.areasymbol,
-    m.musym,
-    m.muname,
-    SUM(CASE WHEN c.cropprodindex IS NOT NULL
-        THEN CAST(c.cropprodindex AS float) * c.comppct_r ELSE 0 END)
-        / NULLIF(SUM(CASE WHEN c.cropprodindex IS NOT NULL
-            THEN c.comppct_r ELSE 0 END), 0) AS numeric_rating,
-    SUM(CASE WHEN c.cropprodindex IS NOT NULL THEN c.comppct_r ELSE 0 END) AS rated_pct,
-    SUM(c.comppct_r) AS total_pct
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-WHERE m.mukey IN ({mukeys_csv})
-  AND c.compkind != 'miscellaneous area'
-GROUP BY m.mukey, l.areasymbol, m.musym, m.muname
-"""
-
-SQL_PRODUCTIVITY_COUNTY_MAX_CPI = """\
-SELECT
-    MAX(CAST(c.cropprodindex AS float)) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-WHERE l.areasymbol = '{areasymbol}'
-  AND c.cropprodindex IS NOT NULL
-  AND c.compkind != 'miscellaneous area'
-"""
+# Productivity SQL is generated only by the per-strategy builders below
+# (build_sdv_rating_query / build_sdv_county_max_query); the former fixed
+# NCCPI/CSR2/CPI templates were retired after SQL parity was verified (D9).
 
 ALLOWED_SDV_TABLES = {
     "chorizon",
@@ -734,14 +707,9 @@ ALLOWED_SDV_TABLES = {
     "mapunit",
 }
 
-_NCCPI_ALIASES = PRODUCTIVITY_SEMANTICS["nccpi"]["aliases"]
-_CSR2_ALIASES = PRODUCTIVITY_SEMANTICS["csr2"]["aliases"]
-_CPI_ALIASES = PRODUCTIVITY_SEMANTICS["cpi"]["aliases"]
-_STORIE_ALIASES = PRODUCTIVITY_SEMANTICS["storie"]["aliases"]
-
 
 def _normalize_productivity_index(index_type: str) -> str:
-    """Normalize a fixed productivity selector and reject unsupported aliases."""
+    """Normalize a public fixed selector (nccpi, csr2, cpi, storie) by exact alias (D1)."""
     selector = str(index_type).strip().lower()
     for normalized, semantics in PRODUCTIVITY_SEMANTICS.items():
         if selector in semantics["aliases"]:
@@ -753,44 +721,17 @@ def _normalize_productivity_index(index_type: str) -> str:
     )
 
 
-def _is_productivity_sentinel(value: float, norm_idx: str) -> bool:
-    """Return whether a raw rating is an unrated sentinel for its index."""
-    return value in _sentinels_for_index(norm_idx)
-
-
-def _sentinels_for_index(norm_idx: str) -> frozenset[float]:
-    """Return sentinels for a known index, or the complete SDA fallback set."""
-    return PRODUCTIVITY_SEMANTICS.get(norm_idx, {}).get(
-        "sentinels", frozenset({99.0, 999.0, -99.0, -999.0})
-    )
-
-
-def _dynamic_index_name(attribute_meta: dict[str, Any]) -> str:
-    """Resolve a known productivity selector from SDV metadata when possible."""
-    candidates = (
-        str(attribute_meta.get("attributename", "")).strip().lower(),
-        str(attribute_meta.get("nasisrulename", "")).strip().lower(),
-    )
-    for candidate in candidates:
-        for normalized, semantics in PRODUCTIVITY_SEMANTICS.items():
-            if candidate in semantics["aliases"] or normalized in candidate:
-                return normalized
-    return "custom"
-
-
-def _sentinel_sql_predicate(expression: str, norm_idx: str) -> str:
-    """Build an SQL predicate that excludes index-specific unrated sentinels."""
-    sentinels = ", ".join(
-        str(int(value)) if value.is_integer() else str(value)
-        for value in sorted(_sentinels_for_index(norm_idx))
-    )
-    return f"{expression} IS NOT NULL AND {expression} NOT IN ({sentinels})"
-
-
-def _round_for_index(value: float, norm_idx: str) -> float:
-    """Round a productivity rating to the precision appropriate for its index type."""
-    precision = PRODUCTIVITY_SEMANTICS.get(norm_idx, {}).get("precision", 2)
-    return round(value, precision)
+def _record_constraints(
+    attribute_meta: Mapping[str, Any] | None,
+    constraints: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Merge explicit constraints with a legacy ``cropname`` key on the record."""
+    merged: dict[str, Any] = {}
+    if attribute_meta and attribute_meta.get("cropname"):
+        merged["cropname"] = attribute_meta["cropname"]
+    if constraints:
+        merged.update(constraints)
+    return merged or None
 
 
 def validate_survey_area_symbol(areasymbol: str) -> str:
@@ -882,8 +823,17 @@ WHERE l.areasymbol = '{areasymbol}'
 
 
 def _build_cointerp_dc_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
-    """cointerp + Dominant Condition (Storie-style, D5)."""
-    sentinel = _spec_sentinel_predicate(spec, "rating")
+    """cointerp + Dominant Condition (Storie-style, D5).
+
+    The rounded ``interphr`` value is the condition class.  Per map unit the
+    class with the largest summed ``comppct_r`` wins; ties follow
+    ``tiebreakrule`` (-1 lower wins, 1 higher wins).  ``rated_pct`` and
+    ``total_pct`` keep their Weighted Average meaning (rated vs all non-misc
+    components); ``dominant_pct`` is the winning class's summed percent.  Map
+    units with no rated component still return a row with a NULL rating.
+    """
+    col = spec.value_column
+    sentinel = _spec_sentinel_predicate(spec, f"ci.{col}")
     rule = spec.rule_name.replace("'", "''")
     tiebreak_dir = "ASC" if spec.tiebreak_rule < 0 else "DESC"
     return f"""\
@@ -893,63 +843,67 @@ WITH comp_rating AS (
         l.areasymbol,
         m.musym,
         m.muname,
-        c.cokey,
         c.comppct_r,
-        ci.{spec.value_column} AS rating
+        CASE WHEN {sentinel} THEN ROUND(ci.{col}, {spec.precision}) END AS rating_val
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
-    INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
+    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
         AND ci.ruledepth = 0
         AND ci.mrulename = '{rule}'
     WHERE m.mukey IN ({mukeys_sql})
       AND c.compkind != 'miscellaneous area'
-      AND {sentinel}
 ),
-dominant AS (
+mu_totals AS (
     SELECT
         mukey,
         areasymbol,
         musym,
         muname,
-        ROUND(rating, {spec.precision}) AS rating_val,
-        SUM(comppct_r) AS pct_sum,
+        SUM(CASE WHEN rating_val IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
+        SUM(comppct_r) AS total_pct
+    FROM comp_rating
+    GROUP BY mukey, areasymbol, musym, muname
+),
+classes AS (
+    SELECT
+        mukey,
+        rating_val,
+        SUM(comppct_r) AS class_pct,
         ROW_NUMBER() OVER (
             PARTITION BY mukey
-            ORDER BY SUM(comppct_r) DESC, rating {tiebreak_dir}
-        ) AS rn,
-        SUM(SUM(comppct_r)) OVER (PARTITION BY mukey) AS total_pct
+            ORDER BY SUM(comppct_r) DESC, rating_val {tiebreak_dir}
+        ) AS rn
     FROM comp_rating
-    GROUP BY mukey, areasymbol, musym, muname, ROUND(rating, {spec.precision}), rating
+    WHERE rating_val IS NOT NULL
+    GROUP BY mukey, rating_val
 )
 SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    rating_val AS numeric_rating,
-    pct_sum AS rated_pct,
-    total_pct
-FROM dominant
-WHERE rn = 1
+    t.mukey,
+    t.areasymbol,
+    t.musym,
+    t.muname,
+    d.rating_val AS numeric_rating,
+    d.class_pct AS dominant_pct,
+    t.rated_pct,
+    t.total_pct
+FROM mu_totals AS t
+LEFT JOIN classes AS d ON d.mukey = t.mukey AND d.rn = 1
 """
 
 
 def _build_cointerp_dc_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
-    """cointerp + Dominant Condition county max (D5)."""
-    sentinel = _spec_sentinel_predicate(spec, f"ci.{spec.value_column}")
+    """cointerp + Dominant Condition county max: MAX of per-mukey dominant classes (D5)."""
+    col = spec.value_column
+    sentinel = _spec_sentinel_predicate(spec, f"ci.{col}")
     rule = spec.rule_name.replace("'", "''")
     tiebreak_dir = "ASC" if spec.tiebreak_rule < 0 else "DESC"
     return f"""\
-WITH mukey_dominant AS (
+WITH comp_rating AS (
     SELECT
         m.mukey,
-        ROUND(ci.{spec.value_column}, {spec.precision}) AS rating_val,
-        SUM(c.comppct_r) AS pct_sum,
-        ROW_NUMBER() OVER (
-            PARTITION BY m.mukey
-            ORDER BY SUM(c.comppct_r) DESC, ci.{spec.value_column} {tiebreak_dir}
-        ) AS rn
+        c.comppct_r,
+        ROUND(ci.{col}, {spec.precision}) AS rating_val
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
@@ -959,10 +913,20 @@ WITH mukey_dominant AS (
       AND ci.mrulename = '{rule}'
       AND {sentinel}
       AND c.compkind != 'miscellaneous area'
-    GROUP BY m.mukey, ROUND(ci.{spec.value_column}, {spec.precision}), ci.{spec.value_column}
+),
+classes AS (
+    SELECT
+        mukey,
+        rating_val,
+        ROW_NUMBER() OVER (
+            PARTITION BY mukey
+            ORDER BY SUM(comppct_r) DESC, rating_val {tiebreak_dir}
+        ) AS rn
+    FROM comp_rating
+    GROUP BY mukey, rating_val
 )
 SELECT MAX(rating_val) AS max_county_rating
-FROM mukey_dominant
+FROM classes
 WHERE rn = 1
 """
 
@@ -1009,7 +973,8 @@ WHERE l.areasymbol = '{areasymbol}'
 def _build_mapunit_no_agg_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
     """mapunit + No Aggregation Necessary (CSR2-style)."""
     col = spec.value_column
-    sentinel = _spec_sentinel_predicate(spec, f"m.{col}")
+    # Parity with the retired CSR2 template: rated_pct reflects non-null only;
+    # sentinels are screened client-side so the reported rated_pct is unchanged.
     return f"""\
 SELECT
     m.mukey,
@@ -1017,7 +982,7 @@ SELECT
     m.musym,
     m.muname,
     CAST(m.{col} AS float) AS numeric_rating,
-    CASE WHEN {sentinel} THEN 100.0 ELSE 0.0 END AS rated_pct,
+    CASE WHEN m.{col} IS NOT NULL THEN 100.0 ELSE 0.0 END AS rated_pct,
     100.0 AS total_pct
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
@@ -1123,7 +1088,6 @@ def _build_cocropyld_wa_rating(
     if not crop:
         raise SDAValidationError("Crop name is required for crop yield ratings.")
 
-    null_handling = ""
     if spec.nulls_as_zero:
         # nulls-as-zero: COALESCE nulls to 0 in both numerator and denominator
         rating_expr = f"COALESCE(CAST(cy.{col} AS float), 0)"
@@ -1245,8 +1209,6 @@ _BUILDERS_COUNTY_MAX = {
     ("cocropyld", "Weighted Average"): _build_cocropyld_wa_county_max,
 }
 
-_WAVE3_TABLES = frozenset({"cointerp", "component", "mapunit", "chorizon", "cocropyld"})
-
 
 def build_sdv_rating_query(
     spec: SdvRatingSpec,
@@ -1298,9 +1260,9 @@ def build_dynamic_sdv_query(
 ) -> str:
     """Dynamically build an SDA query from an sdvattribute metadata record.
 
-    For cointerp, component, and mapunit tables, validates the record against
-    the registry and delegates to the per-strategy builder.  For chorizon and
-    cocropyld, uses the legacy inline code path (to be migrated in a later wave).
+    Thin wrapper: the record must pass two-gate registry validation
+    (``validate_sdv_record``); unregistered records raise before any SQL is
+    built (D2).  A legacy ``cropname`` key on the record is honoured.
     """
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
     if table not in ALLOWED_SDV_TABLES:
@@ -1308,198 +1270,10 @@ def build_dynamic_sdv_query(
             f"Unsupported or unallowed SDV table '{table}'. Allowed: {sorted(ALLOWED_SDV_TABLES)}"
         )
 
-    if table in _WAVE3_TABLES:
-        try:
-            spec = validate_sdv_record(attribute_meta)
-            constraints = {}
-            if spec.table == "cocropyld":
-                cropname = str(attribute_meta.get("cropname", "")).strip()
-                if cropname:
-                    constraints["cropname"] = cropname
-            return build_sdv_rating_query(spec, mukeys_csv, constraints)
-        except SDAValidationError:
-            pass  # Non-registered record: fall through to legacy path
-
-    if isinstance(mukeys_csv, str):
-        mukey_items = mukeys_csv.split(",")
-    else:
-        mukey_items = mukeys_csv
-    try:
-        clean_mukeys = [str(item).strip().strip("'") for item in mukey_items]
-        if not clean_mukeys or any(
-            not re.fullmatch(r"[1-9][0-9]*", mukey) for mukey in clean_mukeys
-        ):
-            raise ValueError
-    except (TypeError, ValueError) as exc:
-        raise SDAValidationError(
-            f"Map unit keys must be positive numeric digits; received '{mukeys_csv}'"
-        ) from exc
-    mukeys_sql = ", ".join(f"'{mukey}'" for mukey in clean_mukeys)
-
-    col = str(attribute_meta.get("attributecolumnname", "")).strip()
-    rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
-    norm_idx = _dynamic_index_name(attribute_meta)
-
-    if table == "cointerp" or rule_name:
-        rule_clean = rule_name.replace("'", "''")
-        rating_predicate = _sentinel_sql_predicate("rating", norm_idx)
-        return f"""\
-WITH comp_rating AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        ci.interphr AS rating
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    LEFT JOIN cointerp AS ci ON ci.cokey = c.cokey
-        AND ci.ruledepth = 0
-        AND ci.mrulename = '{rule_clean}'
-    WHERE m.mukey IN ({mukeys_sql})
-      AND c.compkind != 'miscellaneous area'
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN {rating_predicate} THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
-    SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM comp_rating
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
-    if not col or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]*", col):
-        raise SDAValidationError(f"Invalid column name '{col}' for SDV query generation.")
-
-    if table == "chorizon":
-        rating_predicate = _sentinel_sql_predicate(f"ch.{col}", norm_idx)
-        return f"""\
-WITH hz_weighted AS (
-    SELECT
-        c.cokey,
-        c.comppct_r,
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        SUM(CAST(ch.{col} AS float) * (ch.hzdepb_r - ch.hzdept_r))
-            / NULLIF(SUM(ch.hzdepb_r - ch.hzdept_r), 0) AS hz_avg
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
-    WHERE m.mukey IN ({mukeys_sql})
-      AND c.compkind != 'miscellaneous area'
-      AND {rating_predicate}
-    GROUP BY c.cokey, c.comppct_r, m.mukey, l.areasymbol, m.musym, m.muname
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN hz_avg IS NOT NULL THEN hz_avg * comppct_r ELSE 0 END)
-        / NULLIF(SUM(CASE WHEN hz_avg IS NOT NULL THEN comppct_r ELSE 0 END), 0), 3) AS numeric_rating,
-    SUM(CASE WHEN hz_avg IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM hz_weighted
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
-    if table == "cocropyld":
-        rating_predicate = _sentinel_sql_predicate(f"cy.{col}", norm_idx)
-        cropname = str(attribute_meta.get("cropname", "")).strip()
-        crop_filter = ""
-        if cropname:
-            crop_clean = cropname.replace("'", "''")
-            crop_filter = f"AND cy.cropname = '{crop_clean}'"
-        return f"""\
-WITH comp_yield AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        CAST(cy.{col} AS float) AS rating,
-        cy.cropname,
-        cy.yldunits
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
-    WHERE m.mukey IN ({mukeys_sql})
-      AND c.compkind != 'miscellaneous area'
-      AND {rating_predicate}
-      {crop_filter}
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN rating IS NOT NULL THEN rating * comppct_r ELSE 0 END)
-        / NULLIF(SUM(CASE WHEN rating IS NOT NULL THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN rating IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct,
-    MAX(cropname) AS cropname,
-    MAX(yldunits) AS yldunits
-FROM comp_yield
-GROUP BY mukey, areasymbol, musym, muname
-"""
-
-    if table == "mapunit":
-        rating_predicate = _sentinel_sql_predicate(f"m.{col}", norm_idx)
-        return f"""\
-SELECT
-    m.mukey,
-    l.areasymbol,
-    m.musym,
-    m.muname,
-    ROUND(CAST(m.{col} AS float), 2) AS numeric_rating,
-    CASE WHEN {rating_predicate} THEN 100.0 ELSE 0.0 END AS rated_pct,
-    100.0 AS total_pct
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-WHERE m.mukey IN ({mukeys_sql})
-"""
-
-    # Default to component-level attribute
-    rating_predicate = _sentinel_sql_predicate("rating", norm_idx)
-    return f"""\
-WITH comp_rating AS (
-    SELECT
-        m.mukey,
-        l.areasymbol,
-        m.musym,
-        m.muname,
-        c.cokey,
-        c.comppct_r,
-        CAST(c.{col} AS float) AS rating
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    WHERE m.mukey IN ({mukeys_sql})
-      AND c.compkind != 'miscellaneous area'
-)
-SELECT
-    mukey,
-    areasymbol,
-    musym,
-    muname,
-    ROUND(SUM(CASE WHEN {rating_predicate} THEN rating * comppct_r ELSE 0 END) / NULLIF(SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END), 0), 2) AS numeric_rating,
-    SUM(CASE WHEN {rating_predicate} THEN comppct_r ELSE 0 END) AS rated_pct,
-    SUM(comppct_r) AS total_pct
-FROM comp_rating
-GROUP BY mukey, areasymbol, musym, muname
-"""
+    spec, resolved = resolve_sdv_spec(
+        record=attribute_meta, constraints=_record_constraints(attribute_meta)
+    )
+    return build_sdv_rating_query(spec, mukeys_csv, resolved)
 
 
 def build_dynamic_sdv_county_max_query(
@@ -1508,116 +1282,21 @@ def build_dynamic_sdv_county_max_query(
 ) -> str:
     """Dynamically build an SDA query for maximum county rating from sdvattribute metadata.
 
-    For cointerp, component, and mapunit tables, validates the record against
-    the registry and delegates to the per-strategy county max builder.  For
-    chorizon and cocropyld, uses the legacy inline code path.
+    Thin wrapper over ``build_sdv_county_max_query``; unregistered records
+    raise before any SQL is built (D2).
     """
     areasymbol = validate_survey_area_symbol(areasymbol)
     table = str(attribute_meta.get("attributetablename", "")).strip().lower()
-
-    if table in _WAVE3_TABLES:
-        try:
-            spec = validate_sdv_record(attribute_meta)
-            constraints = {}
-            if spec.table == "cocropyld":
-                cropname = str(attribute_meta.get("cropname", "")).strip()
-                if cropname:
-                    constraints["cropname"] = cropname
-            return build_sdv_county_max_query(spec, areasymbol, constraints)
-        except SDAValidationError:
-            pass  # Non-registered record: fall through to legacy path
-
-    col = str(attribute_meta.get("attributecolumnname", "")).strip()
-    rule_name = str(attribute_meta.get("nasisrulename", "")).strip()
-    norm_idx = _dynamic_index_name(attribute_meta)
 
     if table not in ALLOWED_SDV_TABLES:
         raise SDAValidationError(
             f"Unsupported or unallowed SDV table '{table}'. Allowed: {sorted(ALLOWED_SDV_TABLES)}"
         )
 
-    if table == "cointerp" or rule_name:
-        rule_clean = rule_name.replace("'", "''")
-        rating_predicate = _sentinel_sql_predicate("ci.interphr", norm_idx)
-        return f"""\
-SELECT
-    MAX(ci.interphr) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-INNER JOIN cointerp AS ci ON ci.cokey = c.cokey
-WHERE l.areasymbol = '{areasymbol}'
-  AND ci.ruledepth = 0
-  AND ci.mrulename = '{rule_clean}'
-  AND {rating_predicate}
-  AND c.compkind != 'miscellaneous area'
-"""
-
-    if not col or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]*", col):
-        raise SDAValidationError(f"Invalid column name '{col}' for county max query generation.")
-
-    if table == "chorizon":
-        rating_predicate = _sentinel_sql_predicate(f"ch.{col}", norm_idx)
-        return f"""\
-SELECT
-    MAX(hz_avg) AS max_county_rating
-FROM (
-    SELECT
-        SUM(CAST(ch.{col} AS float) * (ch.hzdepb_r - ch.hzdept_r))
-            / NULLIF(SUM(ch.hzdepb_r - ch.hzdept_r), 0) AS hz_avg
-    FROM legend AS l
-    INNER JOIN mapunit AS m ON m.lkey = l.lkey
-    INNER JOIN component AS c ON c.mukey = m.mukey
-    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
-    WHERE l.areasymbol = '{areasymbol}'
-      AND c.compkind != 'miscellaneous area'
-      AND {rating_predicate}
-    GROUP BY c.cokey
-) AS hz_agg
-"""
-
-    if table == "cocropyld":
-        rating_predicate = _sentinel_sql_predicate(f"cy.{col}", norm_idx)
-        cropname = str(attribute_meta.get("cropname", "")).strip()
-        crop_filter = ""
-        if cropname:
-            crop_clean = cropname.replace("'", "''")
-            crop_filter = f"AND cy.cropname = '{crop_clean}'"
-        return f"""\
-SELECT
-    MAX(CAST(cy.{col} AS float)) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-INNER JOIN cocropyld AS cy ON cy.cokey = c.cokey
-WHERE l.areasymbol = '{areasymbol}'
-  AND c.compkind != 'miscellaneous area'
-  AND {rating_predicate}
-  {crop_filter}
-"""
-
-    if table == "mapunit":
-        rating_predicate = _sentinel_sql_predicate(f"m.{col}", norm_idx)
-        return f"""\
-SELECT
-    MAX(CAST(m.{col} AS float)) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-WHERE l.areasymbol = '{areasymbol}'
-  AND {rating_predicate}
-"""
-
-    rating_predicate = _sentinel_sql_predicate(f"c.{col}", norm_idx)
-    return f"""\
-SELECT
-    MAX(CAST(c.{col} AS float)) AS max_county_rating
-FROM legend AS l
-INNER JOIN mapunit AS m ON m.lkey = l.lkey
-INNER JOIN component AS c ON c.mukey = m.mukey
-WHERE l.areasymbol = '{areasymbol}'
-  AND {rating_predicate}
-  AND c.compkind != 'miscellaneous area'
-"""
+    spec, resolved = resolve_sdv_spec(
+        record=attribute_meta, constraints=_record_constraints(attribute_meta)
+    )
+    return build_sdv_county_max_query(spec, areasymbol, resolved)
 
 
 class SDAClientError(Exception):
@@ -2045,42 +1724,30 @@ class SDAClient:
         areasymbol: str,
         index_type: str = "nccpi",
         attribute_meta: dict[str, Any] | None = None,
+        constraints: Mapping[str, Any] | None = None,
     ) -> float | None:
         """Query maximum baseline productivity rating for a specific county/soil survey area.
 
+        Fixed selectors and explicit ``attribute_meta`` records both resolve to a
+        registry spec via ``resolve_sdv_spec`` and run the same builder path (D9).
+        Unregistered records raise ``SDAValidationError`` before any query (D2).
+
         Args:
             areasymbol: 5-character soil survey area symbol (e.g. 'IA169', 'IN097', 'CA001').
-            index_type: Fixed productivity selector ('nccpi').
-            attribute_meta: Optional sdvattribute record for dynamic query generation.
+            index_type: Fixed productivity selector ('nccpi', 'csr2', 'cpi', 'storie').
+            attribute_meta: Optional sdvattribute record (explicit metadata selection).
+            constraints: Optional constraints such as ``{"cropname": "Corn"}``.
 
         Returns:
             Maximum rating float if found, else None.
 
         Raises:
-            SDAValidationError: If areasymbol or index_type is invalid.
+            SDAValidationError: If areasymbol or index_type are invalid.
             SDAQueryError: If query execution fails.
         """
         clean_area = validate_survey_area_symbol(areasymbol)
-
-        if attribute_meta:
-            query = build_dynamic_sdv_county_max_query(attribute_meta, clean_area)
-            norm_idx = _dynamic_index_name(attribute_meta)
-        else:
-            norm_idx = _normalize_productivity_index(index_type)
-            if norm_idx == "nccpi":
-                query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
-                    areasymbol=clean_area,
-                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-                )
-            elif norm_idx == "csr2":
-                query = SQL_PRODUCTIVITY_COUNTY_MAX_CSR2.format(areasymbol=clean_area)
-            elif norm_idx == "cpi":
-                query = SQL_PRODUCTIVITY_COUNTY_MAX_CPI.format(areasymbol=clean_area)
-            elif norm_idx == "storie":
-                query = SQL_PRODUCTIVITY_COUNTY_MAX_NCCPI.format(
-                    areasymbol=clean_area,
-                    rule_name="AGR - California Revised Storie Index (CA)",
-                )
+        spec, resolved = _resolve_productivity_spec(index_type, attribute_meta, constraints)
+        query = build_sdv_county_max_query(spec, clean_area, resolved)
 
         rows = self._execute_query(query)
         if not rows:
@@ -2091,13 +1758,9 @@ class SDAClient:
             return None
         try:
             val_float = float(val)
-            if _is_productivity_sentinel(val_float, norm_idx) or val_float <= 0:
+            if val_float in spec.sentinels or val_float <= 0:
                 return None
-            return (
-                _round_for_index(val_float, norm_idx)
-                if norm_idx in PRODUCTIVITY_SEMANTICS
-                else round(val_float, 2)
-            )
+            return round(val_float, spec.precision)
         except (ValueError, TypeError):
             return None
 
@@ -2107,19 +1770,25 @@ class SDAClient:
         index_type: str = "nccpi",
         areasymbol: str | None = None,
         attribute_meta: dict[str, Any] | None = None,
+        constraints: Mapping[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Query map unit and component-level productivity ratings with unrated screening.
 
+        Fixed selectors and explicit ``attribute_meta`` records both resolve to a
+        registry spec via ``resolve_sdv_spec`` and run the same builder path (D9).
+        Unregistered records raise ``SDAValidationError`` before any query (D2).
+
         Args:
             mukeys: List of map unit keys (integers or numeric strings).
-            index_type: Fixed productivity selector ('nccpi').
+            index_type: Fixed productivity selector ('nccpi', 'csr2', 'cpi', 'storie').
             areasymbol: Optional county/survey area symbol filter or override.
-            attribute_meta: Optional sdvattribute record for dynamic query generation.
+            attribute_meta: Optional sdvattribute record (explicit metadata selection).
+            constraints: Optional constraints such as ``{"cropname": "Corn"}``.
 
         Returns:
             List of structured rating dictionaries with component rated percentages,
-            caveats, and ``productivity_rating_source`` identifying the selected
-            SDA interpretation.
+            caveats (from ``SDV_CAVEATS``), ``productivity_rating_source`` (stable
+            provenance ID) and ``sdv_provenance`` (structured record, D8).
 
         Raises:
             SDAValidationError: If mukeys or index_type are invalid.
@@ -2131,30 +1800,10 @@ class SDAClient:
         clean_mukeys = [self.validate_mukey(k) for k in mukeys]
         mukeys_csv = ", ".join(f"'{k}'" for k in clean_mukeys)
 
-        if attribute_meta:
-            norm_idx = _dynamic_index_name(attribute_meta)
-            productivity_rating_source = "SDA:SDVATTRIBUTE"
-            query = build_dynamic_sdv_query(attribute_meta, mukeys_csv)
-        else:
-            norm_idx = _normalize_productivity_index(index_type)
-            if norm_idx == "nccpi":
-                productivity_rating_source = PRODUCTIVITY_PROVENANCE["nccpi"]
-                query = SQL_PRODUCTIVITY_NCCPI.format(
-                    mukeys_csv=mukeys_csv,
-                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-                )
-            elif norm_idx == "csr2":
-                productivity_rating_source = PRODUCTIVITY_PROVENANCE["csr2"]
-                query = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv=mukeys_csv)
-            elif norm_idx == "cpi":
-                productivity_rating_source = PRODUCTIVITY_PROVENANCE["cpi"]
-                query = SQL_PRODUCTIVITY_CPI.format(mukeys_csv=mukeys_csv)
-            elif norm_idx == "storie":
-                productivity_rating_source = PRODUCTIVITY_PROVENANCE["storie"]
-                query = SQL_PRODUCTIVITY_NCCPI.format(
-                    mukeys_csv=mukeys_csv,
-                    rule_name="AGR - California Revised Storie Index (CA)",
-                )
+        spec, resolved = _resolve_productivity_spec(index_type, attribute_meta, constraints)
+        norm_idx = spec.spec_id
+        provenance = _build_sdv_provenance(spec, resolved)
+        query = build_sdv_rating_query(spec, mukeys_csv, resolved)
 
         raw_rows = self._execute_query(query)
         rows_by_mukey = {str(r.get("mukey")): r for r in raw_rows}
@@ -2170,12 +1819,18 @@ class SDAClient:
                         "musym": None,
                         "muname": None,
                         "index_type": norm_idx,
-                        "productivity_rating_source": productivity_rating_source,
+                        "productivity_rating_source": spec.provenance_id,
+                        "spec_id": spec.spec_id,
+                        "algorithm": spec.algorithm,
+                        "table": spec.table,
+                        "rule_name": spec.rule_name,
+                        "value_column": spec.value_column,
                         "numeric_rating": None,
                         "rated_pct": 0.0,
                         "total_pct": 0.0,
                         "is_rated": False,
-                        "caveats": ["Map unit not found in SDA query results."],
+                        "caveats": [SDV_CAVEATS["not_found"]],
+                        "sdv_provenance": dict(provenance),
                     }
                 )
                 continue
@@ -2194,23 +1849,50 @@ class SDAClient:
             if raw_rating is not None and str(raw_rating).strip() not in ("", "None"):
                 try:
                     r_val = float(raw_rating)
-                    if _is_productivity_sentinel(r_val, norm_idx) or r_val <= 0:
-                        caveats.append(
-                            f"Map unit contains unrated placeholder/sentinel code ({raw_rating})."
-                        )
+                    if r_val in spec.sentinels or r_val <= 0:
+                        caveats.append(SDV_CAVEATS["unrated_sentinel"].format(value=raw_rating))
                     elif rated_pct <= 0:
-                        caveats.append("Map unit has 0% rated component coverage.")
+                        caveats.append(SDV_CAVEATS["no_coverage"])
                     else:
-                        numeric_rating = _round_for_index(r_val, norm_idx)
+                        numeric_rating = round(r_val, spec.precision)
                         is_rated = True
                 except (ValueError, TypeError):
-                    caveats.append(f"Unparseable rating value '{raw_rating}'.")
+                    caveats.append(SDV_CAVEATS["unparseable"].format(value=raw_rating))
             else:
-                caveats.append("Map unit has no numeric productivity rating.")
+                caveats.append(SDV_CAVEATS["no_rating"])
 
             if is_rated and total_pct > 0 and rated_pct < total_pct:
                 caveats.append(
-                    f"Partially rated map unit: {round(rated_pct, 1)}% rated out of {round(total_pct, 1)}% total component coverage."
+                    SDV_CAVEATS["partial_rating"].format(
+                        rated=round(rated_pct, 1), total=round(total_pct, 1)
+                    )
+                )
+
+            row_provenance = dict(provenance)
+
+            # Crop yields (D7): a single yldunits per map unit, otherwise unrated.
+            if spec.table == "cocropyld":
+                unit_count = row.get("unit_count")
+                yld_min = row.get("yldunits_min")
+                yld_max = row.get("yldunits_max")
+                if unit_count is not None and int(unit_count) > 1:
+                    numeric_rating = None
+                    is_rated = False
+                    caveats.append(
+                        SDV_CAVEATS["mixed_units"].format(min_unit=yld_min, max_unit=yld_max)
+                    )
+                    row_provenance["yldunits"] = None
+                else:
+                    row_provenance["yldunits"] = yld_min
+
+            # Method and scope caveats, fixed order.
+            if spec.algorithm == "Dominant Condition":
+                caveats.append(SDV_CAVEATS["dominant_condition"])
+            if spec.table == "chorizon":
+                caveats.append(SDV_CAVEATS["aws_fixed_depth"])
+            if spec.table == "cocropyld":
+                caveats.append(
+                    SDV_CAVEATS["crop_specific"].format(crop=(resolved or {}).get("cropname", ""))
                 )
 
             results.append(
@@ -2222,12 +1904,18 @@ class SDAClient:
                     "musym": str(row.get("musym")) if row.get("musym") else None,
                     "muname": str(row.get("muname")) if row.get("muname") else None,
                     "index_type": norm_idx,
-                    "productivity_rating_source": productivity_rating_source,
+                    "productivity_rating_source": spec.provenance_id,
+                    "spec_id": spec.spec_id,
+                    "algorithm": spec.algorithm,
+                    "table": spec.table,
+                    "rule_name": spec.rule_name,
+                    "value_column": spec.value_column,
                     "numeric_rating": numeric_rating,
                     "rated_pct": round(rated_pct, 2),
                     "total_pct": round(total_pct, 2),
                     "is_rated": is_rated,
                     "caveats": caveats,
+                    "sdv_provenance": row_provenance,
                 }
             )
 

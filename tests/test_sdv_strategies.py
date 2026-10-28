@@ -66,16 +66,35 @@ class TestCointerpDominantCondition:
         assert "ROW_NUMBER()" in sql
         assert "PARTITION BY mukey" in sql
 
-    def test_rating_query_uses_inner_join(self) -> None:
+    def test_rating_query_keeps_unrated_components_in_totals(self) -> None:
+        """LEFT JOIN keeps unrated components in total_pct and all-unrated map units."""
         spec = SDV_RATING_REGISTRY["storie"]
         sql = build_sdv_rating_query(spec, ["1001"])
-        assert "INNER JOIN cointerp" in sql
+        assert "LEFT JOIN cointerp AS ci" in sql
+        assert "FROM mu_totals AS t" in sql
+        assert "LEFT JOIN classes AS d ON d.mukey = t.mukey AND d.rn = 1" in sql
+
+    def test_sentinel_screen_uses_source_column_not_alias(self) -> None:
+        """Regression: a select alias in the same WHERE is invalid T-SQL (live SDA 400)."""
+        spec = SDV_RATING_REGISTRY["storie"]
+        for sql in (
+            build_sdv_rating_query(spec, ["1001"]),
+            build_sdv_county_max_query(spec, "CA077"),
+        ):
+            assert "ci.interphr IS NOT NULL AND ci.interphr NOT IN" in sql
+            assert "rating IS NOT NULL AND rating NOT IN" not in sql
+
+    def test_rating_query_groups_by_rounded_class(self) -> None:
+        spec = SDV_RATING_REGISTRY["storie"]
+        sql = build_sdv_rating_query(spec, ["1001"])
+        assert "ROUND(ci.interphr, 3) END AS rating_val" in sql
+        assert "GROUP BY mukey, rating_val" in sql
 
     def test_rating_query_has_tiebreak_asc(self) -> None:
         """Storie tiebreakrule=-1: lower value wins ties (ASC)."""
         spec = SDV_RATING_REGISTRY["storie"]
         sql = build_sdv_rating_query(spec, ["1001"])
-        assert "ORDER BY SUM(comppct_r) DESC, rating ASC" in sql
+        assert "ORDER BY SUM(comppct_r) DESC, rating_val ASC" in sql
 
     def test_rating_query_has_storie_rule(self) -> None:
         spec = SDV_RATING_REGISTRY["storie"]
@@ -85,7 +104,8 @@ class TestCointerpDominantCondition:
     def test_rating_query_has_dominant_condition_filter(self) -> None:
         spec = SDV_RATING_REGISTRY["storie"]
         sql = build_sdv_rating_query(spec, ["1001"])
-        assert "WHERE rn = 1" in sql
+        assert "d.rn = 1" in sql
+        assert "d.class_pct AS dominant_pct" in sql
 
     def test_county_max_query_uses_dominant_condition(self) -> None:
         spec = SDV_RATING_REGISTRY["storie"]
@@ -94,13 +114,14 @@ class TestCointerpDominantCondition:
         assert "MAX(rating_val)" in sql
         assert "WHERE rn = 1" in sql
 
-    def test_nccpi_tiebreak_desc(self) -> None:
-        """NCCPI tiebreakrule=1: higher value wins ties (DESC)."""
-        spec = SDV_RATING_REGISTRY["nccpi"]
+    def test_tiebreak_rule_1_orders_desc(self) -> None:
+        """tiebreakrule=1 on a Dominant Condition spec: higher value wins ties (DESC)."""
+        import dataclasses
+
+        spec = dataclasses.replace(SDV_RATING_REGISTRY["storie"], tiebreak_rule=1)
         sql = build_sdv_rating_query(spec, ["1001"])
-        # NCCPI uses Weighted Average, not Dominant Condition, so no tiebreak
-        # But if we check the DC builder directly with a tiebreak=1 spec...
-        # This is covered by Storie being DC with tiebreak=-1 (ASC)
+        assert "rating_val DESC" in sql
+        assert "rating_val ASC" not in sql
 
 
 class TestComponentWeightedAverage:

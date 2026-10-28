@@ -109,7 +109,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | 2 | 39.2.1 Registry and two-gate record validation | done |
 | 3 | 39.3.1 Component-level strategies | done |
 | 4 | 39.4.1 Horizon and crop strategies | done |
-| 5 | 39.5.1 One engine: selectors, provenance, caveats, template retirement | pending |
+| 5 | 39.5.1 One engine: selectors, provenance, caveats, template retirement | done |
 | - | STOP B | pending |
 | 6 | 39.6.1 Corridor provenance and sentinel dedupe | pending |
 | 6 | 39.6.2 Contract doc, ADR 0014, ADR 0008 amendment, links | pending |
@@ -131,6 +131,21 @@ Status: done. Added per-strategy SQL builders: cointerp+Weighted Average (NCCPI-
 
 Status: done. Added chorizon + Weighted Sum (D6, 0-100cm depth clipping, awc_r*thickness) and cocropyld + Weighted Average (D7, crop filter, COALESCE nulls-as-zero, COUNT(DISTINCT yldunits) mixed-unit detection) builders. Registered both in _BUILDERS_RATING/_BUILDERS_COUNTY_MAX dispatch. _WAVE3_TABLES expanded to all 5 tables. Dynamic builders pass constraints for cocropyld. Missing crop raises SDAValidationError before SQL built. Updated 2 Wave 3 tests (AWS/cocropyld now supported). 9 new Wave 4 tests. Offline: 548 passed (9 new). Ruff: EXE002 only.
 ## 39.5.1
+
+Status: done (awaiting STOP B). Fixed selectors and explicit metadata now resolve through `_resolve_productivity_spec` -> `resolve_sdv_spec` -> per-strategy builders (one engine, D9); unregistered records raise before any SQL (D2), legacy inline dynamic SQL and helpers removed. Added optional `constraints` argument, `SDV_CAVEATS` catalogue, `sdv_provenance` (D8, incl. `null_handling`, crop, per-mukey `yldunits`), D7 mixed-unit -> unrated. Deleted the six `SQL_PRODUCTIVITY_*` templates; `grep "SQL_PRODUCTIVITY_\|SDA:SDVATTRIBUTE" src/` empty. Golden fixture `tests/fixtures/sdv_contract_cases.json` (6 cases) with fingerprint/value/provenance/caveat/county-max tests; legacy parity tests hash origin/main templates (canonical SQL). Mocked main-vs-branch client comparison for NCCPI/CSR2/CPI: all pre-existing keys identical (values, rounding, source, caveats, sentinel and not-found rows, county max); only new keys added. Live check found the Wave 3 Dominant Condition SQL invalid on SDA (select alias `rating` in its own WHERE -> HTTP 400, also dropped unrated components from totals); rewritten per D5 with regression test. Error text for bad selectors restored to main's. Offline 585 passed/4 skipped/22 deselected; ruff clean except EXE002; live productivity subset 12 passed/3 skipped.
+
+Live Storie CA077 (2026-10-27), origin/main Weighted Average vs branch Dominant Condition:
+
+| mukey | old WA | new DC | delta | new rated/total % |
+|---|---|---|---|---|
+| 462057 | 0.241 | 0.294 | +0.053 | 92/92 |
+| 462069 | 0.275 | 0.375 | +0.100 | 85/95 |
+| 462070 | 0.187 | 0.255 | +0.068 | 85/92 |
+| 461995 | 0.234 | 0.261 | +0.027 | 85/100 |
+| 461996 | 0.158 | 0.194 | +0.036 | 85/100 |
+| county max | 0.995 | 0.995 | 0 | - |
+
+New values equal the 39.1.1 Dominant Condition benchmarks exactly. Live NCCPI IL019 (max 0.933), CSR2 IA169 (96), CPI MN167 (100): origin/main and branch identical.
 
 ## 39.6.1
 
