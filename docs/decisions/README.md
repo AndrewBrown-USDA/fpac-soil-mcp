@@ -13,7 +13,7 @@ and refined through `adr-distillation`.
 | ID | Title | Status | Date | Supersedes | Superseded By | Context |
 |---|---|---|---|---|---|---|
 | [0001](0001-fastmcp-server-framework-and-package-layout.md) | FastMCP Server Framework & src-Layout Package Structure | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
-| [0002](0002-fixed-sql-templates-over-user-passthrough.md) | Fixed SQL Templates Over User SQL Passthrough | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
+| [0002](0002-fixed-sql-templates-over-user-passthrough.md) | Fixed SQL Templates Over User SQL Passthrough | Accepted (amended 2026-10-27, EP39) | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
 | [0003](0003-preliminary-screening-authority-boundary.md) | Preliminary Screening Authority Boundary | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1 |
 | [0004](0004-geodesic-acreage-and-equal-area-buffering-strategy.md) | Geodesic Acreage Calculation & Equal-Area Buffering Strategy | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4, 7 |
 | [0005](0005-sda-server-side-polygon-clipping.md) | SDA Server-Side Polygon Clipping for Spatial Soil Analysis | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4, 7 |
@@ -32,8 +32,8 @@ and refined through `adr-distillation`.
 The decisions cluster into distinct eras of the project lifecycle:
 
 **Foundation (2026-09-16)**: ADRs 0001-0003 established the MCP framework,
-SQL safety policy, and regulatory authority boundary. These three decisions
-have never been revisited.
+SQL safety policy, and regulatory authority boundary. None has been reversed;
+ADR 0002 has a clarifying amendment (2026-10-27).
 
 **Geospatial Engine (2026-09-17-21)**: ADRs 0004-0006, 0009-0010 defined the
 acreage calculation strategy, spatial query approach, corridor partitioning,
@@ -53,7 +53,8 @@ lock files portable off Databricks compute.
 **Rating Contract (2026-10-27)**: ADR 0014 limited SDV metadata ratings to a
 registry of validated records that follow the SDV aggregation method, and ran
 the four public productivity selectors through the same engine. ADR 0008 has a
-dated amendment for the resulting Storie method change.
+dated amendment for the resulting Storie method change, and ADR 0002 one for
+the move from named productivity constants to per-strategy builders.
 
 ## Maintenance
 

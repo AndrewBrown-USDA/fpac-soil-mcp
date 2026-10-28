@@ -101,7 +101,9 @@ checklist for adding a record are in
 ## Validation & Compliance
 
 * ADR 0002: builders are fixed templates; only validated map unit keys, area
-  symbols, registry values, and a validated crop name are interpolated.
+  symbols, registry values, and a validated crop name are interpolated. ADR
+  0002 carries a dated amendment recording the retired `SQL_PRODUCTIVITY_*`
+  constants.
 * ADR 0008: routing stays in `sda_client.py`; the public selector set is
   unchanged. ADR 0008 carries a dated amendment pointing here.
 * ADR 0011: golden, parity, and strategy tests run offline; live benchmarks
