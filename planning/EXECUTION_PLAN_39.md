@@ -89,6 +89,7 @@ Captured 2026-10-27 in `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp` 
     - Escalate on: live record drift from this recon; AWS 0-100 vs `muaggatt.aws0100wta` differing by more than 0.01 cm on more than 5% of benchmark map units; any NCCPI/CSR2/CPI parity failure.
     - Per wave: offline pytest green with at least 475 passing (count may only grow, net of removed constant-only tests that are recorded), `ruff check` clean, targeted tests. End: full live run and `make check`.
     - Public surface unchanged except one `README.md` line about the Storie method change.
+12. **D12, 2026-10-28, CPI nulls-as-zero (post-review follow-up):** after the final review, the user confirmed CPI's live `sdvattribute` record has `interpnullsaszeroflag = 1` and chose to apply it (Option A): a null-rated CPI component counts as 0 when its map unit has at least one rated component; a map unit with no rated component stays unrated. Miscellaneous areas stay excluded; `rated_pct` stays the non-null percent. Supersedes the CPI parity carve-out in D4/D9 (CPI rating SQL may differ from the retired template; CPI county-max SQL still matches). One more `README.md` sentence allowed. Live MN167: 2800029 83 to 79, county max 100 and benchmark map units unchanged; MN053 stays unrated.
 
 ## Wave & Dependency Table
 

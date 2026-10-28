@@ -211,9 +211,23 @@ Out of scope; not fixed.
 - Pre-existing: `TestLiveSDA::test_live_dynamic_sdv_queries_and_unrated_water_urban` does not catch network errors, so it fails instead of skipping when SDA is down.
 - Pre-existing: `ALLOWED_SDV_TABLES` in `sda_client.py` also lists field names, not just table names.
 - Pre-existing: older `TestLiveSDA` tests catch `SDAClientError`, which includes `SDAValidationError`, so a validation error shows up as a skip. The new tests use `_live()`, which catches only `SDAQueryError` and `httpx.HTTPError`.
-- CPI does not apply its SDV `interpnullsaszeroflag` (kept for parity). Applying it would change public CPI numbers; needs a user decision.
+- CPI does not apply its SDV `interpnullsaszeroflag` (kept for parity). Applying it would change public CPI numbers; needs a user decision. Resolved 2026-10-28 by D12, see "Follow-up: CPI nulls-as-zero".
 - Live drift-guard and mixed-unit failure paths were never exercised end to end (only success paths run live; the fake-SDA failure check was blocked by a sandbox rule in 39.7.1).
 - `planning/tasks/39.3.1.todo.md` and `39.4.1.todo.md` were never written; those tasks are documented only by their STATE reports.
+
+## Follow-up: CPI nulls-as-zero (D12)
+
+Status: done (2026-10-28, user chose Option A). Live `sdvattribute` CPI record: `interpnullsaszeroflag` '1', `nullratingreplacementvalue` null, Weighted Average. Change: `_build_component_wa_rating` counts null CPI as 0 when the map unit has at least one rated component, else NULL (unrated); `_NULLS_AS_ZERO_TABLES` now includes `component`, so CPI provenance `null_handling` = `nulls_as_zero`. County-max SQL unchanged.
+
+| Area | Before | After |
+|---|---|---|
+| MN167 2800029 (95/100 % rated) | 83 | 79 |
+| MN167 357409 / 357412 / 357418 | 71 / 83 / 71 | 71 / 83 / 71 |
+| MN167 rated map units | 46 of 123 | 46 of 123 |
+| MN167 county max | 100 | 100 |
+| MN053 (CPI not populated) | unrated, county max None | unrated, county max None |
+
+Tests: fixture CPI `rating_sql_sha256`, `null_handling`, and live benchmark 2800029 = 79; CPI removed from rating-SQL parity (county-max parity kept); new SQLite test runs the generated SQL (all rated 72, partial 72 vs 90 under the old rule, all-null NULL); new live test MN053 stays unrated. Offline 593 passed, 4 skipped, 41 deselected; live `tests/test_live_sda.py` 37 passed; ruff clean (EXE002 aside). Docs: contract doc null handling, ADR 0014 and ADR 0008 dated amendments, one README sentence, plan D12. Strict nulls-as-zero (Option B) was rejected: it would score 72 MN167 and all MN053 map units as CPI 0.
 
 ## Escalations
 
