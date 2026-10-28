@@ -112,7 +112,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | 5 | 39.5.1 One engine: selectors, provenance, caveats, template retirement | done |
 | - | STOP B | approved 2026-10-27 |
 | 6 | 39.6.1 Corridor provenance and sentinel dedupe | done |
-| 6 | 39.6.2 Contract doc, ADR 0014, ADR 0008 amendment, links | pending |
+| 6 | 39.6.2 Contract doc, ADR 0014, ADR 0008 amendment, links | done |
 | 7 | 39.7.1 Live benchmarks for all six records | pending |
 | 8 | 39.8.1 Two-axis review, full validation, final report | pending |
 
@@ -152,6 +152,8 @@ New values equal the 39.1.1 Dominant Condition benchmarks exactly. Live NCCPI IL
 Status: done. `corridor_analysis.py` sentinels, fallback sources, and NCCPI rule now come from `PRODUCTIVITY_SEMANTICS`, `PRODUCTIVITY_PROVENANCE`, and `SDV_RATING_REGISTRY` (H9). Fallback IDs are now the D8 IDs (`SDA:MAPUNIT_IACORNSR`, `SDA:COMPONENT_CROPPRODINDEX`, `SDA:COINTERP_STORIE_CA`); sentinel values and rule text unchanged (pinned by test). No public payload test referenced the drifted IDs. 5 new tests; corridor + phase3 41 passed; offline 590 passed/4 skipped/22 deselected; ruff clean except EXE002.
 
 ## 39.6.2
+
+Status: done. New `docs/sdv-metadata-contract.md` (fields, selection, two-gate validation with exact messages, constraints, per-table behavior, null handling, provenance, caveat order and text, registry, add-a-record checklist, deferrals) and ADR 0014 (Accepted, EXECUTION_PLAN_39). ADR 0008 got a dated EP39 amendment (Storie Dominant Condition; routing governed by 0014; templates and `_round_for_index()` retired); decisions README has the 0014 row, amended 0008 status, and a "Rating Contract" era; one AGENTS.md References line; one README Storie sentence. Ad hoc check: 22/22 `SDV_CONTRACT_FIELDS`, 6/6 provenance IDs, 10/10 `SDV_CAVEATS` keys and texts, all `sdv_provenance` keys present; relative links resolve; diff in scope; offline 590 passed. Follow-up for 39.8.1: ADR 0002 still names `SQL_PRODUCTIVITY_*` as decision-time history (out of this task's scope).
 
 ## 39.7.1
 
