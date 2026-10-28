@@ -4,6 +4,14 @@
   "cases": [
     {
       "id": "nccpi",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27; branch engine re-confirmed in 39.5.1",
+        "selector": "nccpi",
+        "areasymbol": "IL019",
+        "county_max": 0.933,
+        "mukeys": {"242959": 0.913, "242960": 0.647, "242961": 0.93},
+        "tolerance": 0.003
+      },
       "attributename": "National Commodity Crop Productivity Index",
       "constraints": {},
       "areasymbol": "IL019",
@@ -54,6 +62,15 @@
     },
     {
       "id": "storie",
+      "live_benchmark": {
+        "source": "39.1.1 Dominant Condition benchmark; branch engine re-confirmed in 39.5.1 (STOP B approved 2026-10-27)",
+        "selector": "storie",
+        "areasymbol": "CA077",
+        "county_max": 0.995,
+        "mukeys": {"462057": 0.294, "462069": 0.375, "462070": 0.255, "461995": 0.261, "461996": 0.194},
+        "legacy_weighted_average": {"462057": 0.241, "462069": 0.275, "462070": 0.187, "461995": 0.234, "461996": 0.158},
+        "tolerance": 0.003
+      },
       "attributename": "California Revised Storie Index (CA)",
       "constraints": {},
       "areasymbol": "CA077",
@@ -102,6 +119,14 @@
     },
     {
       "id": "csr2",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27; branch engine re-confirmed in 39.5.1",
+        "selector": "csr2",
+        "areasymbol": "IA169",
+        "county_max": 96,
+        "mukeys": {"411277": 96, "411278": 36, "411280": 72},
+        "tolerance": 0
+      },
       "attributename": "Iowa Corn Suitability Rating CSR2 (IA)",
       "constraints": {},
       "areasymbol": "IA169",
@@ -152,6 +177,14 @@
     },
     {
       "id": "cpi",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27 (raw 71.49, 82.9, 70.95); engine output at precision 0 re-confirmed in 39.5.1",
+        "selector": "cpi",
+        "areasymbol": "MN167",
+        "county_max": 100,
+        "mukeys": {"357409": 71, "357412": 83, "357418": 71},
+        "tolerance": 0.01
+      },
       "attributename": "Crop Productivity Index",
       "constraints": {},
       "areasymbol": "MN167",
@@ -202,6 +235,12 @@
     },
     {
       "id": "aws_0_100",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27: 20 IL019 map units within 0.005 cm of muaggatt.aws0100wta",
+        "selector": null,
+        "areasymbol": "IL019",
+        "muaggatt_cross_check": {"column": "aws0100wta", "sample_size": 20, "min_compared": 15, "max_diff_cm": 0.01, "max_mismatch_fraction": 0.05}
+      },
       "attributename": "Available Water Storage",
       "constraints": {},
       "areasymbol": "IL019",
@@ -244,6 +283,16 @@
     },
     {
       "id": "nonirr_crop_yield",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27 (Corn, Bu): county max 195, 0/73 mixed-unit map units",
+        "selector": null,
+        "areasymbol": "IL019",
+        "county_max": 195,
+        "mukeys": {"242955": 123.74, "243008": 118.7, "242969": 157.6, "242972": 151.84, "242968": 161.83},
+        "tolerance": 0.1,
+        "expected_yldunits": "Bu",
+        "max_mixed_unit_fraction": 0.05
+      },
       "attributename": "Yields of Non-Irrigated Crops (Component)",
       "constraints": {
         "cropname": "Corn"

@@ -6,12 +6,209 @@ Opt-in via: pytest -m live_network
 
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, TypeVar
+
 import httpx
 import pytest
 
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError, SDAValidationError
+from fpac_soil_mcp.sda_client import (
+    SDV_CONTRACT_FIELDS,
+    SDAClient,
+    SDAClientError,
+    SDAQueryError,
+    SDAValidationError,
+    validate_sdv_record,
+)
 
 pytestmark = pytest.mark.live_network
+
+_FIXTURES = Path(__file__).parent / "fixtures"
+_CASES = json.loads((_FIXTURES / "sdv_contract_cases.json").read_text(encoding="utf-8"))["cases"]
+_RECORDS = {
+    r["attributename"]: r
+    for r in json.loads((_FIXTURES / "sdv_attribute_records.json").read_text(encoding="utf-8"))[
+        "records"
+    ]
+}
+_BENCHMARKS = [c for c in _CASES if "live_benchmark" in c]
+_VALUE_BENCHMARKS = [c for c in _BENCHMARKS if "mukeys" in c["live_benchmark"]]
+_MAX_BENCHMARKS = [c for c in _BENCHMARKS if "county_max" in c["live_benchmark"]]
+_MIXED_UNITS_PREFIX = "Mixed yield units"
+
+_T = TypeVar("_T")
+
+
+def _live(call: Callable[[], _T]) -> _T:
+    """Run a live call; skip only on network/SDA availability errors, never on validation."""
+    try:
+        return call()
+    except (SDAQueryError, httpx.HTTPError) as exc:
+        pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+
+def _engine_kwargs(case: dict[str, Any]) -> dict[str, Any]:
+    """Fixed selector when the benchmark names one, else the captured sdvattribute record."""
+    selector = case["live_benchmark"]["selector"]
+    if selector:
+        return {"index_type": selector}
+    kwargs: dict[str, Any] = {"attribute_meta": dict(_RECORDS[case["attributename"]])}
+    if case["constraints"]:
+        kwargs["constraints"] = dict(case["constraints"])
+    return kwargs
+
+
+def _norm(value: Any) -> str:
+    """Compare SDA string output with captured values (numbers as floats, None as empty)."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    try:
+        return repr(float(text))
+    except ValueError:
+        return text
+
+
+def _area_mukeys(client: SDAClient, areasymbol: str) -> list[str]:
+    query = (
+        "SELECT m.mukey FROM legend AS l INNER JOIN mapunit AS m ON m.lkey = l.lkey "
+        f"WHERE l.areasymbol = '{areasymbol}' ORDER BY m.mukey"
+    )
+    return [str(r["mukey"]) for r in _live(lambda: client._execute_query(query))]
+
+
+@pytest.mark.parametrize("case", _BENCHMARKS, ids=[c["id"] for c in _BENCHMARKS])
+def test_live_sdv_record_matches_capture(case: dict[str, Any]) -> None:
+    """Drift guard: the live sdvattribute record still equals the capture and validates."""
+    captured = _RECORDS[case["attributename"]]
+    client = SDAClient()
+    rows = _live(lambda: client.lookup_sdv_attribute(case["attributename"]))
+    live = [
+        r
+        for r in rows
+        if _norm(r.get("attributename")) == _norm(captured["attributename"])
+        and _norm(r.get("nasisrulename")) == _norm(captured.get("nasisrulename"))
+    ]
+    assert len(live) == 1, f"expected one live record for {case['attributename']}, got {len(live)}"
+    drift = {
+        f: (captured.get(f), live[0].get(f))
+        for f in SDV_CONTRACT_FIELDS
+        if _norm(captured.get(f)) != _norm(live[0].get(f))
+    }
+    assert not drift, f"sdvattribute drift for {case['id']}: {drift}"
+    assert validate_sdv_record(live[0]).spec_id == case["id"]
+
+
+@pytest.mark.parametrize("case", _MAX_BENCHMARKS, ids=[c["id"] for c in _MAX_BENCHMARKS])
+def test_live_sdv_county_max_benchmark(case: dict[str, Any]) -> None:
+    """County maximum stays within the recorded tolerance of the 39.1.1 benchmark."""
+    bench = case["live_benchmark"]
+    client = SDAClient()
+    max_val = _live(
+        lambda: client.get_county_max_productivity_rating(
+            areasymbol=bench["areasymbol"], **_engine_kwargs(case)
+        )
+    )
+    assert max_val is not None
+    assert abs(max_val - bench["county_max"]) <= bench["tolerance"]
+
+
+@pytest.mark.parametrize("case", _VALUE_BENCHMARKS, ids=[c["id"] for c in _VALUE_BENCHMARKS])
+def test_live_sdv_sample_mukey_benchmarks(case: dict[str, Any]) -> None:
+    """Sample map unit values, source ID, and spec stay within the recorded tolerance."""
+    bench = case["live_benchmark"]
+    expected = bench["mukeys"]
+    client = SDAClient()
+    rows = _live(
+        lambda: client.get_productivity_ratings(mukeys=list(expected), **_engine_kwargs(case))
+    )
+    by_mukey = {r["mukey"]: r for r in rows}
+    assert set(by_mukey) == set(expected)
+    for mukey, value in expected.items():
+        row = by_mukey[mukey]
+        assert row["is_rated"], f"{case['id']} {mukey} unrated: {row['caveats']}"
+        assert abs(row["numeric_rating"] - value) <= bench["tolerance"], (
+            f"{case['id']} {mukey}: live {row['numeric_rating']} vs benchmark {value}"
+        )
+        assert row["spec_id"] == case["id"]
+        assert row["productivity_rating_source"] == case["expected_productivity_rating_source"]
+        if case["id"] == "storie":
+            assert "Rating uses Dominant Condition aggregation (D5)." in row["caveats"]
+        if "expected_yldunits" in bench:
+            assert row["sdv_provenance"]["yldunits"] == bench["expected_yldunits"]
+
+
+def test_live_storie_dominant_condition_differs_from_legacy_weighted_average() -> None:
+    """Storie now follows Dominant Condition: per-mukey values match the new, not the old, method."""
+    case = next(c for c in _CASES if c["id"] == "storie")
+    bench = case["live_benchmark"]
+    client = SDAClient()
+    rows = _live(
+        lambda: client.get_productivity_ratings(mukeys=list(bench["mukeys"]), index_type="storie")
+    )
+    for row in rows:
+        old = bench["legacy_weighted_average"][row["mukey"]]
+        new = bench["mukeys"][row["mukey"]]
+        assert abs(row["numeric_rating"] - new) <= bench["tolerance"]
+        assert abs(row["numeric_rating"] - old) > bench["tolerance"]
+
+
+def test_live_aws_0_100_matches_muaggatt_aws0100wta() -> None:
+    """D6/D11: AWS 0-100 cm agrees with muaggatt.aws0100wta on a county sample."""
+    case = next(c for c in _CASES if c["id"] == "aws_0_100")
+    bench = case["live_benchmark"]
+    check = bench["muaggatt_cross_check"]
+    client = SDAClient()
+    query = (
+        f"SELECT TOP {int(check['sample_size'])} m.mukey, ma.{check['column']} AS reference "
+        "FROM legend AS l INNER JOIN mapunit AS m ON m.lkey = l.lkey "
+        "INNER JOIN muaggatt AS ma ON ma.mukey = m.mukey "
+        f"WHERE l.areasymbol = '{bench['areasymbol']}' AND ma.{check['column']} IS NOT NULL "
+        "ORDER BY m.mukey"
+    )
+    reference = {
+        str(r["mukey"]): float(r["reference"]) for r in _live(lambda: client._execute_query(query))
+    }
+    rows = _live(
+        lambda: client.get_productivity_ratings(mukeys=list(reference), **_engine_kwargs(case))
+    )
+    compared = [r for r in rows if r["is_rated"]]
+    assert len(compared) >= check["min_compared"]
+    mismatches = [
+        (r["mukey"], r["numeric_rating"], reference[r["mukey"]])
+        for r in compared
+        if abs(r["numeric_rating"] - reference[r["mukey"]]) > check["max_diff_cm"]
+    ]
+    assert len(mismatches) / len(compared) <= check["max_mismatch_fraction"], mismatches
+    for row in compared:
+        assert (
+            "Available water storage computed for fixed depth range 0-100 cm (D6)."
+            in row["caveats"]
+        )
+
+
+def test_live_corn_yield_mixed_units_are_unrated() -> None:
+    """D7: across the county, mixed-unit map units are unrated and rare; others carry one unit."""
+    case = next(c for c in _CASES if c["id"] == "nonirr_crop_yield")
+    bench = case["live_benchmark"]
+    client = SDAClient()
+    mukeys = _area_mukeys(client, bench["areasymbol"])
+    assert mukeys
+    rows = _live(lambda: client.get_productivity_ratings(mukeys=mukeys, **_engine_kwargs(case)))
+    with_crop = [r for r in rows if not r["caveats"] or "not found" not in r["caveats"][0]]
+    assert with_crop
+    mixed = [r for r in with_crop if any(c.startswith(_MIXED_UNITS_PREFIX) for c in r["caveats"])]
+    for row in mixed:
+        assert row["is_rated"] is False
+        assert row["numeric_rating"] is None
+        assert row["sdv_provenance"]["yldunits"] is None
+    for row in with_crop:
+        if row["is_rated"]:
+            assert row["sdv_provenance"]["yldunits"] == bench["expected_yldunits"]
+            assert row["sdv_provenance"]["cropname"] == "Corn"
+    assert len(mixed) / len(with_crop) <= bench["max_mixed_unit_fraction"]
 
 
 class TestLiveSDA:
@@ -248,7 +445,8 @@ class TestLiveSDA:
             pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
 
         assert max_val is not None
-        assert 0.9 <= max_val <= 1.0  # known CA077 max ~0.995
+        # Dominant Condition county max; unchanged from the old weighted method (STATE_39 39.5.1)
+        assert abs(max_val - 0.995) <= 0.003
 
     def test_live_storie_county_max_non_ca_is_null(self) -> None:
         """Storie should return None for non-California counties."""
@@ -280,5 +478,7 @@ class TestLiveSDA:
         res = results[0]
         assert res["index_type"] == "storie"
         assert res["productivity_rating_source"] == "SDA:COINTERP_STORIE_CA"
+        assert res["algorithm"] == "Dominant Condition"
+        assert "Rating uses Dominant Condition aggregation (D5)." in res["caveats"]
         if res["is_rated"]:
             assert 0 < res["numeric_rating"] <= 1.0

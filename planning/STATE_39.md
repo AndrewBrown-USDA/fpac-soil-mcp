@@ -113,7 +113,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | - | STOP B | approved 2026-10-27 |
 | 6 | 39.6.1 Corridor provenance and sentinel dedupe | done |
 | 6 | 39.6.2 Contract doc, ADR 0014, ADR 0008 amendment, links | done |
-| 7 | 39.7.1 Live benchmarks for all six records | pending |
+| 7 | 39.7.1 Live benchmarks for all six records | tests written; live run blocked (SDA DNS) |
 | 8 | 39.8.1 Two-axis review, full validation, final report | pending |
 
 ## Task reports
@@ -157,8 +157,12 @@ Status: done. New `docs/sdv-metadata-contract.md` (fields, selection, two-gate v
 
 ## 39.7.1
 
+Status: implemented, live acceptance pending. `live_benchmark` blocks added to all six golden cases (39.1.1 values; engine output re-confirmed live in 39.5.1). 19 new `live_network` tests in `tests/test_live_sda.py`: drift guard (6), county max (5), sample map units (5), Storie new-vs-legacy, AWS vs `muaggatt.aws0100wta` (D11 thresholds), Corn county-wide mixed units (D7). Existing Storie live tests now assert Dominant Condition and the 0.995 county max. Tests skip only on network errors. Offline 590 passed (unchanged), ruff clean. Known-answer check against a fake SDA: 19/19 pass on benchmark values; a +1.0 change to a Storie, Corn, or NCCPI map unit fails the matching test. Live run not possible: `sdmdataaccess.nrcs.usda.gov` did not resolve from this compute 03:15-03:24 UTC (other USDA hosts did). Unverified until live: Corn `yldunits` = `Bu` and engine Corn county max = 195.
+
 ## 39.8.1
 
 ## Discovered
 
 ## Escalations
+
+- 2026-10-27 (39.7.1, infrastructure, not a value escalation): SDA hostname unresolvable from the workspace compute, so the live benchmark run is deferred. Rerun `uv run --frozen pytest -q -p no:cacheprovider -m live_network tests/test_live_sda.py` when it resolves.
