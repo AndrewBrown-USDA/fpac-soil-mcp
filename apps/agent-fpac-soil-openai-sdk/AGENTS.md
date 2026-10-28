@@ -32,6 +32,7 @@ uv run start-server   # agent server only
 - `app.yaml` - command and env vars used by the deployed app.
 - `databricks.yml` - declared app resources (`llm-endpoint`, `mcp_server`, `experiment`); reference only.
 - `README.md` - configuration, required grants, deploy path, and API usage.
+- `frontend/` - vendored Databricks chat UI, pinned to upstream tree `c7e05c0787909bc6e0b79adf2f162fd0bc2a8edd`; no map behavior.
 
 ## Workflows
 
@@ -51,6 +52,12 @@ uv run start-server   # agent server only
 ### Deploy
 
 Deploy from the app's git source in the Databricks Apps UI and redeploy. Do not run `databricks bundle deploy` for this app. Required resources and grants are listed in `README.md`.
+
+### Frontend
+
+The frontend is repository-owned and must be validated with `npm ci`, `npm run lint`,
+`npm run typecheck`, and `npm run build` from `frontend\`. Do not add map or AOI
+behavior as part of frontend maintenance.
 
 ## Infrastructure
 

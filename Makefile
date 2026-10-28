@@ -18,7 +18,7 @@ APP_PYTHON  ?= 3.11
 # Files this repo owns in the app; the remaining template runtime files are not linted.
 APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/config.py agent_server/history.py tests)
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-check
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -52,7 +52,10 @@ app-lint: ## Ruff check + format check on the agent app files this repo owns
 	$(UV) run ruff check $(APP_LINT_PATHS)
 	$(UV) run ruff format --check $(APP_LINT_PATHS)
 
-app-check: app-lint app-test ## Run agent app lint and tests
+app-frontend-check: ## Install and validate the vendored agent app frontend
+	cd $(APP_DIR)/frontend && npm ci && npm run lint && npm run typecheck && npm run build
+
+app-check: app-lint app-test app-frontend-check ## Run agent app and frontend validation
 
 test-live: ## Run live network integration tests (requires network)
 	$(UV) run --group dev pytest -m live_network

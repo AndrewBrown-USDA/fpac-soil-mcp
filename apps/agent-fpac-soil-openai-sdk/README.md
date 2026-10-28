@@ -35,6 +35,23 @@ Note: `databricks-claude-sonnet-5-5` is disabled in this workspace (403 `PERMISS
 
 The app was created in the UI and deploys from its git source. Set the git source branch to `main`, keep `source_code_path` as `apps/agent-fpac-soil-openai-sdk`, and redeploy. Do not run `databricks bundle deploy` for this app.
 
+The chat frontend is vendored in `frontend/` from
+`databricks/app-templates/e2e-chatbot-app-next` and is pinned to upstream tree
+`c7e05c0787909bc6e0b79adf2f162fd0bc2a8edd`. It is repository-owned; updates
+must refresh the frontend lockfile and rerun the frontend checks. Use Node/npm
+with the versions supported by the pinned template:
+
+```bash
+cd apps/agent-fpac-soil-openai-sdk/frontend
+npm ci
+npm run lint
+npm run typecheck
+npm run build
+```
+
+This task vendors only the existing chat UI. Map behavior, AOI drawing, and
+map-specific routes remain explicitly deferred.
+
 ### MCP timeout
 
 The client timeout is 180 seconds, not the 20-second default. Some tools, such as preliminary LESA and corridor analysis, query several USDA and Census services and can run longer than 20 seconds. 180 seconds matches the timeout used by the JS test harness.
