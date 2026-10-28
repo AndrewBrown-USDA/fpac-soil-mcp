@@ -14,11 +14,13 @@ from typing import Any, TypeVar
 import httpx
 import pytest
 
+from fpac_soil_mcp.http_client import HttpRequestError, HttpStatusError
 from fpac_soil_mcp.sda_client import (
     SDV_CONTRACT_FIELDS,
     SDAClient,
-    SDAClientError,
     SDAQueryError,
+    SDAServiceUnavailableError,
+    SDATimeoutError,
     SDAValidationError,
     validate_sdv_record,
 )
@@ -41,12 +43,29 @@ _MIXED_UNITS_PREFIX = "Mixed yield units"
 _T = TypeVar("_T")
 
 
+def _skip_if_unavailable(exc: Exception) -> None:
+    """Skip when SDA is unreachable, timed out, in maintenance, or failing with 5xx.
+
+    Returns for every other error so the caller re-raises it: validation errors,
+    SDA 4xx query errors, and SDA error payloads must fail the test, not skip it.
+    """
+    unavailable = isinstance(exc, (SDATimeoutError, SDAServiceUnavailableError, httpx.HTTPError))
+    if isinstance(exc, SDAQueryError):
+        cause = exc.__cause__
+        unavailable = isinstance(cause, HttpRequestError) or (
+            isinstance(cause, HttpStatusError) and cause.status_code >= 500
+        )
+    if unavailable:
+        pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+
+
 def _live(call: Callable[[], _T]) -> _T:
     """Run a live call; skip only on network/SDA availability errors, never on validation."""
     try:
         return call()
-    except (SDAQueryError, httpx.HTTPError) as exc:
-        pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+    except Exception as exc:
+        _skip_if_unavailable(exc)
+        raise
 
 
 def _engine_kwargs(case: dict[str, Any]) -> dict[str, Any]:
@@ -229,8 +248,9 @@ class TestLiveSDA:
         client = SDAClient()
         try:
             results = client.get_by_point(latitude=42.0308, longitude=-93.6319)
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) >= 1
         res = results[0]
@@ -248,8 +268,9 @@ class TestLiveSDA:
             results = client.get_spatial_intersection(
                 wkt_polygon, clip=True, geom_acres=True, return_geom=False
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) >= 1
         for row in results:
@@ -274,8 +295,9 @@ class TestLiveSDA:
                 rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
                 aggregation_method="Weighted Average",
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) >= 1
         res = results[0]
@@ -288,8 +310,9 @@ class TestLiveSDA:
         client = SDAClient()
         try:
             rules = client.get_available_interpretation_rules(refresh=True)
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)" in rules
 
@@ -307,8 +330,9 @@ class TestLiveSDA:
             results = client.get_spatial_intersection(
                 wkt_polygon, clip=True, geom_acres=True, return_geom=True
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) >= 1
         for row in results:
@@ -319,12 +343,14 @@ class TestLiveSDA:
         """Verify dynamic SDV query generation on live SDA with real attribute metadata."""
         client = SDAClient()
         # Query water/urban area (e.g. Lake Michigan coordinates near Chicago: 41.90, -87.60)
-        water_pts = client.get_by_point(latitude=41.9000, longitude=-87.6000)
+        water_pts = _live(lambda: client.get_by_point(latitude=41.9000, longitude=-87.6000))
         if water_pts and water_pts[0].get("mukey"):
             water_mukey = str(water_pts[0]["mukey"])
-            nccpi_res = client.get_interpretations(
-                mukeys=[water_mukey],
-                rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            nccpi_res = _live(
+                lambda: client.get_interpretations(
+                    mukeys=[water_mukey],
+                    rule_name="NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+                )
             )
             if nccpi_res:
                 # In water/urban land, numeric rating is None or sentinel (99/999)
@@ -333,7 +359,11 @@ class TestLiveSDA:
                 ) in (99, 999, 99.0, 999.0)
 
         # Query dynamic SDV county maximum for NCCPI in Iowa
-        max_val = client.get_county_max_productivity_rating(areasymbol="IA169", index_type="nccpi")
+        max_val = _live(
+            lambda: client.get_county_max_productivity_rating(
+                areasymbol="IA169", index_type="nccpi"
+            )
+        )
         assert max_val is not None
         assert max_val > 0.0
 
@@ -347,8 +377,9 @@ class TestLiveSDA:
             test_mukey = str(pt_res[0]["mukey"])
 
             results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="csr2")
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) == 1
         res = results[0]
@@ -365,8 +396,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="IA169", index_type="csr2"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert max_val is not None
         assert 90 <= max_val <= 100  # known IA169 max is 96
@@ -378,8 +410,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="IL019", index_type="csr2"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert max_val is None
 
@@ -390,8 +423,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="MN167", index_type="cpi"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert max_val is not None
         # Research found MN167 max=100
@@ -407,8 +441,9 @@ class TestLiveSDA:
             test_mukey = str(pt_res[0]["mukey"])
 
             results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="cpi")
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) == 1
         res = results[0]
@@ -424,8 +459,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="MN053", index_type="cpi"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         # MN053 (Hennepin) may have no CPI data
         # If it returns something, it should be in valid range
@@ -439,8 +475,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="CA077", index_type="cpi"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert max_val is None
 
@@ -451,8 +488,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="CA077", index_type="storie"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert max_val is not None
         # Dominant Condition county max; unchanged from the old weighted method (STATE_39 39.5.1)
@@ -465,8 +503,9 @@ class TestLiveSDA:
             max_val = client.get_county_max_productivity_rating(
                 areasymbol="IA169", index_type="storie"
             )
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert max_val is None
 
@@ -481,8 +520,9 @@ class TestLiveSDA:
             test_mukey = str(pt_res[0]["mukey"])
 
             results = client.get_productivity_ratings(mukeys=[test_mukey], index_type="storie")
-        except (SDAClientError, httpx.HTTPError) as exc:
-            pytest.skip(f"Live SDA endpoint unavailable or timed out: {exc}")
+        except Exception as exc:
+            _skip_if_unavailable(exc)
+            raise
 
         assert len(results) == 1
         res = results[0]
