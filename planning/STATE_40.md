@@ -18,9 +18,9 @@
 | Wave | Task | Status |
 |---|---|---|
 | 1 | 40.1.1 | done |
-| 2 | 40.2.1 | pending |
-| 2 | 40.2.2 | pending |
-| 2 | 40.2.3 | pending |
+| 2 | 40.2.1 | done |
+| 2 | 40.2.2 | done |
+| 2 | 40.2.3 | done |
 | 3 | 40.3.1 | pending |
 
 ## Task reports
@@ -38,15 +38,27 @@
 
 ## 40.2.1
 
-Pending.
+- **Status:** done; raw AOI integration remains blocked because pre-trace redaction could not be proven.
+- **Files:** agent/history filtering, focused AOI tests, evidence, and AOI handoff decision record.
+- **Checks:** targeted AOI tests passed (3); combined focused tests passed (6); full `make app-check` passed with 60 app tests.
+- **Deviation:** none from the approved safety boundary; no raw geometry, durable AOI storage, or M3 map envelope added.
+- **Gotcha:** future AOI implementation must resolve pre-trace capture order before enabling geometry handoff.
 
 ## 40.2.2
 
-Pending.
+- **Status:** done; added minimal `GET /api/geo/health` probe and route evidence.
+- **Files:** `start_server.py`, `tests\test_custom_routes.py`, route evidence.
+- **Checks:** route tests passed (3); full `make app-check` passed. One Ruff import-order failure was fixed on the permitted retry.
+- **Deviation:** none; no proxy, catalog, conversion, or unrestricted forwarding behavior added.
+- **Gotcha:** future `/api/geo/*` routes still require deployed/chat-proxy verification.
 
 ## 40.2.3
 
-Pending.
+- **Status:** done; networking evidence recorded without production code.
+- **Files:** `planning\evidence\40.2.3-networking.md`.
+- **Checks:** local HTTPS/CORS observations recorded; browser/app-context behavior remains explicitly unknown.
+- **Deviation:** none; no proxy, map component, or deployment networking policy added.
+- **Gotcha:** later map work must validate CORS and egress from the intended app context.
 
 ## 40.3.1
 

@@ -30,8 +30,8 @@ from agent_server.config import (
     load_system_prompt,
     uses_reasoning_effort_none,
 )
-from agent_server.history import normalize_history_items
-from agent_server.utils import get_session_id, process_agent_stream_events
+from agent_server.history import normalize_history_items, sanitize_custom_inputs
+from agent_server.utils import process_agent_stream_events
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ async def _connect_fpac_agent(stack: AsyncExitStack) -> Agent:
 
 @invoke()
 async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentResponse:
-    if session_id := get_session_id(request):
+    if session_id := sanitize_custom_inputs(request.custom_inputs).get("session_id"):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
     configure_openai_client()
     # The AsyncExitStack keeps the MCP server open for the whole request.
@@ -154,7 +154,7 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
 async def stream_handler(
     request: ResponsesAgentRequest,
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
-    if session_id := get_session_id(request):
+    if session_id := sanitize_custom_inputs(request.custom_inputs).get("session_id"):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
     configure_openai_client()
     # The AsyncExitStack keeps the MCP server open for the whole request.

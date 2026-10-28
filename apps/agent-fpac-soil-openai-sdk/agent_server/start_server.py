@@ -18,6 +18,14 @@ import agent_server.agent  # noqa: E402
 agent_server = AgentServer("ResponsesAgent", enable_chat_proxy=True)
 # Define the app as a module level variable to enable multiple workers
 app = agent_server.app  # noqa: F841
+
+
+@app.get("/api/geo/health")
+def geo_health() -> dict[str, str]:
+    """Expose a bounded probe for custom routes beside the chat proxy."""
+    return {"status": "ok"}
+
+
 setup_mlflow_git_based_version_tracking()
 
 
