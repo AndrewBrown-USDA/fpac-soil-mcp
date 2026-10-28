@@ -200,7 +200,7 @@ Spec axis (D1-D11 trace):
 
 Exit criterion evidence (`TestGoldenContractCases`, 19 passed): for each case (nccpi, storie, csr2, cpi, aws_0_100, nonirr_crop_yield), `test_sql_fingerprints` pins the SDA query (rating and county-max SQL SHA-256), `test_rating_outputs` pins aggregation output (`numeric_rating`, `is_rated`), provenance (`productivity_rating_source` and the full `sdv_provenance` record), and caveats (exact list and order), and `test_county_max_output` pins the county max.
 
-Totals: 12 commits on the branch (11 before this report, plus this one). Offline 475 -> 590 passed. Live SDV benchmarks: 19 new, all green.
+Totals: 13 commits on the branch (`fd0189f..HEAD`, including this report). Offline 475 -> 590 passed. Live SDV benchmarks: 19 new, all green.
 
 Deferrals (unchanged from plan): public property selection; unsupported SDV methods; caller-selectable AWS depth; crop allowlist; other sdvattribute tables; public structured provenance; separate routing module; push/PR.
 
