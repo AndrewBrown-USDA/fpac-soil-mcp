@@ -21,7 +21,7 @@
 | 2 | 40.2.1 | done |
 | 2 | 40.2.2 | done |
 | 2 | 40.2.3 | done |
-| 3 | 40.3.1 | pending |
+| 3 | 40.3.1 | done |
 
 ## Task reports
 
@@ -62,4 +62,11 @@
 
 ## 40.3.1
 
-Pending.
+- **Status:** done; M1 findings reviewed and frozen without enabling AOI integration.
+- **Changed files:** `planning\tasks\40.3.1.todo.md`; this report appended to `planning\STATE_40.md`. No Plan 40 implementation files or M2/M3 files were changed.
+- **Review:** user decisions are represented as vendor-template, custom-URLs-with-validation, browser-MVP, session-only AOIs, and M0+M1 scope. Wave 2 file scopes are disjoint. Acceptance commands are reproducible. ADR 0003 preliminary-screening and ADR 0012 separate-MCP-client boundaries remain intact.
+- **Checks:** `make app-check` passed: Ruff check, format check, 60 app tests passed with the existing unknown `asyncio_mode` and MLflow SQLAlchemy deprecation warnings. `cd apps\agent-fpac-soil-openai-sdk\frontend && npm ci && npm run lint && npm run typecheck && npm run build` passed: 555 packages installed, lint/typecheck/build passed; npm reported dependency audit vulnerabilities and deprecation/install-script warnings only.
+- **Findings:** 40.2.1 correctly keeps AOI integration blocked because pre-trace redaction is unproven; 40.2.2 proves only the bounded health probe; 40.2.3 preserves browser/app-context CORS, deployed egress, exact tile/layer, and constrained-proxy behavior as unknown where untested. No unsupported success claims or silent failures were found.
+- **Scope note:** an untracked `apps\agent-fpac-soil-openai-sdk\mlflow.db` was present before this task's validation and was not modified or included.
+- **Deviation:** none.
+- **Handoff:** future work must resolve the R6/pre-trace blocker before AOI dispatch, preserve session-only/raw-geometry exclusions, and separately scope M2/M3; no AOI, map UI, proxy, conversion, or server `map` envelope work is authorized by this task.
