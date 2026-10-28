@@ -178,18 +178,18 @@
     {
       "id": "cpi",
       "live_benchmark": {
-        "source": "39.1.1 live SDA 2026-10-27 (raw 71.49, 82.9, 70.95); engine output at precision 0 re-confirmed in 39.5.1",
+        "source": "39.1.1 live SDA 2026-10-27 (raw 71.49, 82.9, 70.95); engine output at precision 0 re-confirmed in 39.5.1; 2800029 live 2026-10-28 with nulls-as-zero (was 83 with null exclusion)",
         "selector": "cpi",
         "areasymbol": "MN167",
         "county_max": 100,
-        "mukeys": {"357409": 71, "357412": 83, "357418": 71},
+        "mukeys": {"357409": 71, "357412": 83, "357418": 71, "2800029": 79},
         "tolerance": 0.01
       },
       "attributename": "Crop Productivity Index",
       "constraints": {},
       "areasymbol": "MN167",
       "mukeys": ["357409", "357412"],
-      "rating_sql_sha256": "28cbe77371f516dcf0c0655329002823e196fd1ceff867f94f18e15e09cf2df4",
+      "rating_sql_sha256": "272963c265fb7386e903206ed8653f1a3adc1d715db1b58d5e1bbd32675938b1",
       "county_max_sql_sha256": "ba688ce18a06349410b4ef43cae6f4b6e36edfaf6c3930c1623efc84ab35e5eb",
       "mock_header": ["mukey", "areasymbol", "musym", "muname", "numeric_rating", "rated_pct", "total_pct"],
       "mock_rows": [
@@ -198,7 +198,6 @@
       ],
       "county_max_raw": 100.0,
       "expected_county_max": 100.0,
-      "legacy_rating_sql_canonical_sha256": "28cbe77371f516dcf0c0655329002823e196fd1ceff867f94f18e15e09cf2df4",
       "legacy_county_max_sql_canonical_sha256": "ba688ce18a06349410b4ef43cae6f4b6e36edfaf6c3930c1623efc84ab35e5eb",
       "expected_productivity_rating_source": "SDA:COMPONENT_CROPPRODINDEX",
       "expected_sdv_provenance": {
@@ -216,7 +215,7 @@
         "depth_bottom_cm": null,
         "tiebreak_rule": 1,
         "nulls_as_zero": true,
-        "null_handling": "exclude_nulls",
+        "null_handling": "nulls_as_zero",
         "scale": "1-100",
         "precision": 0
       },

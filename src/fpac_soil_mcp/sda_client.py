@@ -280,7 +280,7 @@ SDV_CAVEATS = {
 }
 
 
-_NULLS_AS_ZERO_TABLES = frozenset({"cocropyld"})
+_NULLS_AS_ZERO_TABLES = frozenset({"cocropyld", "component"})
 
 
 def _build_sdv_provenance(
@@ -307,7 +307,7 @@ def _build_sdv_provenance(
         "tiebreak_rule": spec.tiebreak_rule,
         "nulls_as_zero": spec.nulls_as_zero,
         # The SDV flag is recorded as published; the engine applies it only for
-        # tables in _NULLS_AS_ZERO_TABLES (CPI keeps null exclusion for parity, D4).
+        # tables in _NULLS_AS_ZERO_TABLES.
         "null_handling": (
             "nulls_as_zero"
             if spec.nulls_as_zero and spec.table in _NULLS_AS_ZERO_TABLES
@@ -932,18 +932,33 @@ WHERE rn = 1
 
 
 def _build_component_wa_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
-    """component + Weighted Average (CPI-style)."""
+    """component + Weighted Average (CPI-style).
+
+    With the SDV nulls-as-zero flag, null-rated components count as 0 in a
+    map unit that has at least one rated component; a map unit with no rated
+    component stays null (unrated).  ``rated_pct`` is always the percent of
+    components with a non-null value.
+    """
     col = spec.value_column
+    if spec.nulls_as_zero and spec.table in _NULLS_AS_ZERO_TABLES:
+        rating_sql = f"""\
+    CASE WHEN SUM(CASE WHEN c.{col} IS NOT NULL THEN 1 ELSE 0 END) > 0
+        THEN SUM(COALESCE(CAST(c.{col} AS float), 0) * c.comppct_r)
+            / NULLIF(SUM(c.comppct_r), 0)
+    END AS numeric_rating,"""
+    else:
+        rating_sql = f"""\
+    SUM(CASE WHEN c.{col} IS NOT NULL
+        THEN CAST(c.{col} AS float) * c.comppct_r ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN c.{col} IS NOT NULL
+            THEN c.comppct_r ELSE 0 END), 0) AS numeric_rating,"""
     return f"""\
 SELECT
     m.mukey,
     l.areasymbol,
     m.musym,
     m.muname,
-    SUM(CASE WHEN c.{col} IS NOT NULL
-        THEN CAST(c.{col} AS float) * c.comppct_r ELSE 0 END)
-        / NULLIF(SUM(CASE WHEN c.{col} IS NOT NULL
-            THEN c.comppct_r ELSE 0 END), 0) AS numeric_rating,
+{rating_sql}
     SUM(CASE WHEN c.{col} IS NOT NULL THEN c.comppct_r ELSE 0 END) AS rated_pct,
     SUM(c.comppct_r) AS total_pct
 FROM legend AS l

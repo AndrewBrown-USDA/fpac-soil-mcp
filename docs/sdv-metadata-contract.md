@@ -45,7 +45,7 @@ read from the caller's record; the engine uses the registry value instead.
 | `layerdepthtotop` | Top of depth range | Recorded; registry pins 0 cm for AWS |
 | `layerdepthtobottom` | Bottom of depth range | Recorded; registry pins 100 cm for AWS |
 | `layerdepthuom` | Depth unit | Recorded only |
-| `interpnullsaszeroflag` | SDV "treat nulls as zero" flag | Recorded as `nulls_as_zero`; applied only to `cocropyld` (see null handling) |
+| `interpnullsaszeroflag` | SDV "treat nulls as zero" flag | Recorded as `nulls_as_zero`; applied to `component` (CPI) and `cocropyld` (see null handling) |
 | `nullratingreplacementvalue` | SDV replacement for null ratings | Recorded only |
 | `primaryconcolname` | Primary constraint column (`cropname` for crop yields) | Recorded; the registry declares `cropname` as a required constraint |
 | `secondaryconcolname` | Secondary constraint column (`yldunits` for crop yields) | Recorded; units are checked per map unit |
@@ -132,7 +132,7 @@ components considered.
 |---|---|---|---|---|---|---|---|
 | `cointerp` | Weighted Average (NCCPI) | `cointerp.interphr`, rule filter, `ruledepth = 0` | Sum of rating x pct over rated pct; rounded to precision in SQL | Excluded in SQL (99, 999, -99, -999) | Excluded | n/a | none |
 | `cointerp` | Dominant Condition (Storie) | `cointerp.interphr` rounded to precision is the condition class | Sum pct per class; largest wins; ties by `tiebreakrule` (-1 lower, 1 higher). Returns `dominant_pct` (winning class percent) | Excluded in SQL | Excluded; map units with no rated component return a row with NULL rating | n/a | none |
-| `component` | Weighted Average (CPI) | `component.cropprodindex` | Sum of value x pct over non-null pct | Screened in the engine (999, -99, -999); `99` stays rated | Excluded (see null handling) | n/a | none |
+| `component` | Weighted Average (CPI) | `component.cropprodindex` | Sum of value x pct over all non-miscellaneous pct | Screened in the engine (999, -99, -999); `99` stays rated | Count as 0 when the map unit has at least one rated component; a map unit with none stays unrated (see null handling) | n/a | none |
 | `mapunit` | No Aggregation Necessary (CSR2) | `mapunit.iacornsr` | Map unit value as is; `rated_pct` 100 when non-null, `total_pct` 100 | Screened in the engine (999, -99, -999); `99` stays rated | NULL means unrated | n/a | none |
 | `chorizon` | Weighted Average + horizon Weighted Sum (AWS) | `chorizon.awc_r` | Per component: sum of awc_r x horizon thickness clipped to the depth range (cm); then pct-weighted average across components | none | Horizons with NULL `awc_r` excluded | Fixed 0-100 cm (registry; not caller-selectable) | none |
 | `cocropyld` | Weighted Average (crop yields) | `cocropyld.nonirryield_r` | Sum of yield x pct over pct of components with the crop | none | NULL yield counts as 0 (nulls-as-zero) | n/a | `cropname` required; one `yldunits` per map unit |
@@ -144,11 +144,17 @@ registry precision. County maximums use the same strategy, ignore unrated values
 and return `None` for sentinel or non-positive results. For Dominant Condition
 the county maximum is the largest per-map-unit dominant class.
 
-**Null handling.** SDV publishes `interpnullsaszeroflag = 1` for CPI and crop
-yields. The engine applies nulls-as-zero only to `cocropyld`. CPI keeps null
-exclusion so its values stay identical to the earlier fixed CPI template. The
+**Null handling.** SDV publishes `interpnullsaszeroflag = 1` (with no
+`nullratingreplacementvalue`, so the replacement is 0) for CPI and crop yields,
+and the engine applies it to both. For CPI, a null-rated component counts as 0
+in the weighted average only when the map unit has at least one rated
+component; a map unit whose components are all null stays unrated, so counties
+where CPI is not populated (for example MN053) are reported as unrated rather
+than as CPI 0. `rated_pct` is still the percent of components with a value, so
+the partial-rating caveat still appears. Miscellaneous areas stay excluded. The
 provenance record shows both: `nulls_as_zero` echoes the SDV flag and
 `null_handling` (`nulls_as_zero` or `exclude_nulls`) shows what the engine did.
+Adopted 2026-10-28; in MN167 one map unit changed (2800029: 83 to 79).
 
 ## Provenance
 

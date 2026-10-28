@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
 from fpac_soil_mcp.sda_client import (
@@ -150,6 +152,34 @@ class TestComponentWeightedAverage:
         sql = build_sdv_county_max_query(spec, "MN167")
         assert "MAX(CAST(c.cropprodindex AS float))" in sql
         assert "MN167" in sql
+
+    def test_nulls_as_zero_only_when_map_unit_has_a_rating(self) -> None:
+        """D12: null CPI counts as 0 beside rated components; all-null stays unrated."""
+        db = sqlite3.connect(":memory:")
+        db.executescript(
+            """
+            CREATE TABLE legend (lkey TEXT, areasymbol TEXT);
+            CREATE TABLE mapunit (mukey TEXT, lkey TEXT, musym TEXT, muname TEXT);
+            CREATE TABLE component (
+                mukey TEXT, comppct_r INTEGER, compkind TEXT, cropprodindex INTEGER
+            );
+            INSERT INTO legend VALUES ('L1', 'MN167');
+            INSERT INTO mapunit VALUES
+                ('1', 'L1', 'A', 'All rated'),
+                ('2', 'L1', 'B', 'Partly rated'),
+                ('3', 'L1', 'C', 'No ratings');
+            INSERT INTO component VALUES
+                ('1', 60, 'series', 80), ('1', 40, 'series', 60),
+                ('2', 80, 'series', 90), ('2', 20, 'inclusion', NULL),
+                ('2', 10, 'miscellaneous area', NULL),
+                ('3', 70, 'series', NULL), ('3', 30, 'series', NULL);
+            """
+        )
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["cpi"], ["1", "2", "3"])
+        rows = {r[0]: r[4:] for r in db.execute(sql)}
+        assert rows["1"] == (pytest.approx(72.0), 100, 100)
+        assert rows["2"] == (pytest.approx(72.0), 80, 100)
+        assert rows["3"] == (None, 0, 100)
 
 
 class TestMapunitNoAggregation:

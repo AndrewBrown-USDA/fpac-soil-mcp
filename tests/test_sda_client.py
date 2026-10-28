@@ -716,7 +716,7 @@ class TestSDAClientExecution:
     def test_build_dynamic_sdv_query_component(self) -> None:
         """Registered component record (CPI) builds the component weighted average."""
         query = build_dynamic_sdv_query(_sdv(_CPI), "'1001'")
-        assert "CAST(c.cropprodindex AS float) * c.comppct_r" in query
+        assert "COALESCE(CAST(c.cropprodindex AS float), 0) * c.comppct_r" in query
         assert "c.compkind != 'miscellaneous area'" in query
 
     def test_build_dynamic_sdv_query_rejects_unregistered_component(self) -> None:

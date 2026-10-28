@@ -135,6 +135,10 @@ public selector set is unchanged.
   Condition (tie-break: lower value wins), instead of the component-weighted
   average described above. Public Storie values change; the CA077 county
   maximum stays 0.995. NCCPI, CSR2, and CPI values are unchanged.
+* 2026-10-28: CPI now applies its SDV nulls-as-zero flag (null-rated
+  components count as 0 beside rated ones; map units with no CPI data stay
+  unrated). A few public CPI values drop (MN167: 2800029 from 83 to 79); the
+  MN167 county maximum stays 100. See ADR 0014's amendment.
 * Generic SDV routing is governed by
   [ADR 0014](0014-registry-validated-sdv-metadata-contract.md): only
   registry-validated `sdvattribute` records can be rated, and the four public

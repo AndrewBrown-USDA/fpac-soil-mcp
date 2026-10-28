@@ -60,7 +60,7 @@ Chosen option: **Option 1, frozen registry plus structural validation.**
 * **SDV method is authoritative (D4, D5).** Query strategy is chosen by table
   and `algorithmname`. Supported methods are only those the six records use:
   Weighted Average, Dominant Condition, No Aggregation Necessary, horizon
-  Weighted Sum over a depth range, and nulls-as-zero for crop yields. For
+  Weighted Sum over a depth range, and nulls-as-zero for CPI and crop yields. For
   Dominant Condition the rounded `interphr` value is the condition class; the
   class with the largest summed component percent wins, and `tiebreakrule`
   breaks ties. Storie therefore changes from a weighted average to Dominant
@@ -73,7 +73,8 @@ Chosen option: **Option 1, frozen registry plus structural validation.**
   `storie` resolve to registry entries and run the same validation, builders,
   aggregation, provenance, and caveat code as explicit metadata. The
   `SQL_PRODUCTIVITY_*` templates were retired after parity tests showed the
-  new SQL for NCCPI, CSR2, and CPI was equivalent to the old templates.
+  new SQL for NCCPI, CSR2, and CPI was equivalent to the old templates. CPI
+  rating SQL then changed on purpose to apply nulls-as-zero (see Amendment).
 
 The field-level contract, per-table behavior, caveat catalog, and the
 checklist for adding a record are in
@@ -95,8 +96,9 @@ checklist for adding a record are in
   lower-level methods now get `SDAValidationError`. No production caller did.
 * **Negative**: Each new rating needs a registry entry, fixture, golden case,
   and live benchmark.
-* **Neutral**: CPI records `interpnullsaszeroflag = 1` but keeps null exclusion
-  for parity; the provenance record states both.
+* **Negative**: Public CPI values change where a map unit mixes rated and
+  null-rated components (MN167: 1 of 46 rated map units, 2800029 from 83 to
+  79). See Amendment.
 
 ## Validation & Compliance
 
@@ -114,3 +116,16 @@ checklist for adding a record are in
   MN167 (100) are identical to `main`.
 * Live Storie CA077 comparison, approved by the user on 2026-10-27, is recorded
   in `planning/STATE_39.md` (task 39.5.1).
+
+### Amendment (2026-10-28)
+
+CPI now applies its SDV `interpnullsaszeroflag = 1`, as the user decided
+after the review found CPI was the only flagged record ignoring it. A
+null-rated component counts as 0 when its map unit has at least one rated
+component; a map unit with no rated component stays unrated, so counties
+without CPI data are not scored as 0. CPI rating SQL no longer matches the
+retired template (CPI county-max SQL still does); NCCPI and CSR2 parity is
+unchanged. Evidence: live MN167 (county maximum 100 and the three benchmark
+map units unchanged; 2800029 83 to 79), MN053 still unrated, and an offline
+SQLite test of the generated SQL. Recorded as D12 in
+`planning/EXECUTION_PLAN_39.md`.

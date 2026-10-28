@@ -312,22 +312,34 @@ class TestGoldenContractCases:
         assert value == case["expected_county_max"]
 
 
-_LEGACY_CASES = [c for c in _CASES if "legacy_rating_sql_canonical_sha256" in c]
+_LEGACY_RATING_CASES = [c for c in _CASES if "legacy_rating_sql_canonical_sha256" in c]
+_LEGACY_CASES = [c for c in _CASES if "legacy_county_max_sql_canonical_sha256" in c]
 
 
 class TestLegacyTemplateParity:
-    """NCCPI/CSR2/CPI builders reproduce the retired SQL_PRODUCTIVITY_* templates (D9)."""
+    """Builders reproduce the retired SQL_PRODUCTIVITY_* templates (D9).
+
+    CPI rating SQL intentionally differs since it applies the SDV nulls-as-zero
+    flag (D12); its county-max SQL is still identical.
+    """
 
     def test_legacy_cases_are_the_parity_indices(self) -> None:
+        assert sorted(c["id"] for c in _LEGACY_RATING_CASES) == ["csr2", "nccpi"]
         assert sorted(c["id"] for c in _LEGACY_CASES) == ["cpi", "csr2", "nccpi"]
 
-    @pytest.mark.parametrize("case", _LEGACY_CASES, ids=[c["id"] for c in _LEGACY_CASES])
-    def test_builder_sql_matches_retired_template(self, case: dict) -> None:
+    @pytest.mark.parametrize(
+        "case", _LEGACY_RATING_CASES, ids=[c["id"] for c in _LEGACY_RATING_CASES]
+    )
+    def test_builder_rating_sql_matches_retired_template(self, case: dict) -> None:
         spec, resolved = resolve_sdv_spec(selector=case["id"])
         assert (
             _canonical_sha(build_sdv_rating_query(spec, case["mukeys"], resolved))
             == (case["legacy_rating_sql_canonical_sha256"])
         )
+
+    @pytest.mark.parametrize("case", _LEGACY_CASES, ids=[c["id"] for c in _LEGACY_CASES])
+    def test_builder_county_max_sql_matches_retired_template(self, case: dict) -> None:
+        spec, resolved = resolve_sdv_spec(selector=case["id"])
         assert (
             _canonical_sha(build_sdv_county_max_query(spec, case["areasymbol"], resolved))
             == (case["legacy_county_max_sql_canonical_sha256"])

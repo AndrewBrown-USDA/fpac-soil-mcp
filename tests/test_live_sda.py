@@ -208,6 +208,19 @@ def test_live_corn_yield_mixed_units_are_unrated() -> None:
     assert len(mixed) / len(with_crop) <= bench["max_mixed_unit_fraction"]
 
 
+def test_live_cpi_nulls_as_zero_keeps_unpopulated_map_units_unrated() -> None:
+    """D12: CPI nulls count as zero only beside rated components; MN053 has no CPI data."""
+    client = SDAClient()
+    mukeys = _area_mukeys(client, "MN053")[:40]
+    assert mukeys
+    rows = _live(lambda: client.get_productivity_ratings(mukeys=mukeys, index_type="cpi"))
+    assert rows
+    for row in rows:
+        assert row["is_rated"] is False
+        assert row["numeric_rating"] is None
+        assert row["sdv_provenance"]["null_handling"] == "nulls_as_zero"
+
+
 class TestLiveSDA:
     """Live integration tests hitting live SDA web services."""
 
