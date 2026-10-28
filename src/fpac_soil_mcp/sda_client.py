@@ -699,13 +699,10 @@ ORDER BY attributename
 # (build_sdv_rating_query / build_sdv_county_max_query); the former fixed
 # NCCPI/CSR2/CPI templates were retired after SQL parity was verified (D9).
 
-ALLOWED_SDV_TABLES = {
-    "chorizon",
-    "cocropyld",
-    "cointerp",
-    "component",
-    "mapunit",
-}
+# Tables with at least one registry record; derived so it cannot drift from the
+# registry. A fast early check only: resolve_sdv_spec still rejects any record
+# that is not registered.
+ALLOWED_SDV_TABLES = frozenset(spec.table for spec in SDV_RATING_REGISTRY.values())
 
 
 def _normalize_productivity_index(index_type: str) -> str:

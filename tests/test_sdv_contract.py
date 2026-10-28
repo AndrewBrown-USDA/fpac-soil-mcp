@@ -256,6 +256,12 @@ class TestResolveSdvSpec:
         assert "component" in ALLOWED_SDV_TABLES
         assert "mapunit" in ALLOWED_SDV_TABLES
 
+    def test_allowed_tables_are_the_registry_tables(self) -> None:
+        from fpac_soil_mcp.sda_client import ALLOWED_SDV_TABLES
+
+        assert isinstance(ALLOWED_SDV_TABLES, frozenset)
+        assert ALLOWED_SDV_TABLES == {s.table for s in SDV_RATING_REGISTRY.values()}
+
 
 _CASE_IDS = [c["id"] for c in _CASES]
 
