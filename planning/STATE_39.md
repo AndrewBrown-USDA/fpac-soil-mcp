@@ -105,7 +105,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | Wave | Task | Status |
 |---|---|---|
 | 1 | 39.1.1 Branch, baseline, live capture, method research | done |
-| - | STOP A | pending |
+| - | STOP A | approved 2026-10-27 |
 | 2 | 39.2.1 Registry and two-gate record validation | done |
 | 3 | 39.3.1 Component-level strategies | done |
 | 4 | 39.4.1 Horizon and crop strategies | done |
@@ -114,7 +114,7 @@ Storie old-vs-new: county max unchanged (0.995). Per-mukey values increase under
 | 6 | 39.6.1 Corridor provenance and sentinel dedupe | done |
 | 6 | 39.6.2 Contract doc, ADR 0014, ADR 0008 amendment, links | done |
 | 7 | 39.7.1 Live benchmarks for all six records | done |
-| 8 | 39.8.1 Two-axis review, full validation, final report | pending |
+| 8 | 39.8.1 Two-axis review, full validation, final report | done |
 
 ## Task reports
 
@@ -163,7 +163,57 @@ Live acceptance (2026-10-28 04:05 UTC, SDA resolving again): `uv run --frozen py
 
 ## 39.8.1
 
+Status: done (2026-10-28). Review range `fd0189f..HEAD`. One standards fix committed (849733a): three `SDV_CAVEATS` strings ended in planning labels "(D5)", "(D6)", "(D7)"; `polygon_analysis.py` forwards row caveats into public responses, so Storie users would have seen them. Labels removed from `sda_client.py`, `docs/sdv-metadata-contract.md`, the golden fixture, and `tests/test_live_sda.py`. Plan labels remain only in docstrings and comments.
+
+Validation (after the fix):
+
+- `make check`: lint step fails on 79 EXE002 only (workspace exec-bit artifact, also on main); `ruff check . --extend-ignore EXE002` clean; `ruff format --check` 485 files formatted; `make test` 589 passed, 3 skipped, 43 deselected.
+- Plan offline command (`-m "not live_network"`): 590 passed, 4 skipped, 41 deselected (baseline 475; +115). The 1-pass difference from `make test` is one `agent_eval` test that `make test` deselects.
+- Full live suite (`-m live_network`): 41 passed, 3 skipped (the 3 are `eval/databricks` tests needing the optional mlflow group). `tests/test_live_sda.py`: 36 passed, 0 skipped.
+- Public surface: `git diff origin/main...HEAD --stat -- src/fpac_soil_mcp/tools manifest.yaml server.json src/fpac_soil_mcp/models.py` empty. `productivity_rating`, `productivity_rating_class`, `productivity_rating_source` and the `nccpi`/`csr2`/`cpi`/`storie` selectors unchanged; README has the one Storie sentence. Only Storie values and its new Dominant Condition caveat change, as approved at STOP B.
+
+Standards axis:
+
+| Check | Result |
+|---|---|
+| ADR 0002: no caller strings in SQL | Pass. Table, column, rule, method, depth come only from `SDV_RATING_REGISTRY`; mukey and areasymbol through existing validators; `cropname` through `_validate_crop` (allowlist regex, no `;`/`--`) plus quote doubling. ADR 0002 amended. |
+| ADR 0008: routing stays in `sda_client.py` | Pass. Builders and dispatch live only there; `corridor_analysis.py` imports registry constants (rule name, sentinels, provenance) but builds no SQL. |
+| ADR 0011: live opt-in | Pass. `pytestmark = pytest.mark.live_network`; default path offline. |
+| AGENTS.md conventions | Pass after 849733a. Ruff clean (EXE002 aside), no `.env`/caches committed, contract doc linked from References. |
+| Commit messages | Pass. Conventional, domain scopes, no wave/task/orchestration numbers. |
+
+Spec axis (D1-D11 trace):
+
+| Decision | Evidence |
+|---|---|
+| D1 internal only | Public surface diff empty; `_PUBLIC_SELECTOR_IDS` = 4 fixed selectors; exact alias match. |
+| D2 two gates | `validate_sdv_record` (registry match, then structural); unregistered records raise before SQL; `tests/test_sdv_contract.py`. |
+| D3 six records | `SDV_RATING_REGISTRY` has nccpi, storie, csr2, cpi, aws_0_100, nonirr_crop_yield; each has a live benchmark (39.7.1 green). |
+| D4 SDV method authoritative | Storie is Dominant Condition. Recorded deviation: CPI keeps null exclusion for parity, though its SDV null flag is 1 (39.1.1 research, contract doc, `_NULLS_AS_ZERO_TABLES`). |
+| D5 method scope | `SUPPORTED_SDV_ALGORITHMS` = Weighted Average, Dominant Condition, No Aggregation Necessary; horizon Weighted Sum; others rejected (tests). DC by rounded `interphr` with `tiebreakrule`. |
+| D6 AWS 0-100 | Registry pins 0.0/100.0; live cross-check vs `muaggatt.aws0100wta` passes. |
+| D7 crop | Required, validated, exact match; mixed units -> unrated + caveat; live Corn `Bu`, county max 195. |
+| D8 provenance | Six stable IDs; `sdv_provenance` record; corridor fallback IDs now match (39.6.1). |
+| D9 one engine | `grep SQL_PRODUCTIVITY_ src/` empty; legacy parity tests for NCCPI/CSR2/CPI pass. |
+| D10 docs | `docs/sdv-metadata-contract.md`, ADR 0014, ADR 0008 and 0002 amendments; linked from AGENTS.md, ADR 0014, module docstring. |
+| D11 execution | Branch from `fd0189f` (main moved past recon's `3d1fda7`; recorded in Baseline); both STOPs approved; no push/PR; offline count only grew; live run and `make check` done. |
+
+Exit criterion evidence (`TestGoldenContractCases`, 19 passed): for each case (nccpi, storie, csr2, cpi, aws_0_100, nonirr_crop_yield), `test_sql_fingerprints` pins the SDA query (rating and county-max SQL SHA-256), `test_rating_outputs` pins aggregation output (`numeric_rating`, `is_rated`), provenance (`productivity_rating_source` and the full `sdv_provenance` record), and caveats (exact list and order), and `test_county_max_output` pins the county max.
+
+Totals: 12 commits on the branch (11 before this report, plus this one). Offline 475 -> 590 passed. Live SDV benchmarks: 19 new, all green.
+
+Deferrals (unchanged from plan): public property selection; unsupported SDV methods; caller-selectable AWS depth; crop allowlist; other sdvattribute tables; public structured provenance; separate routing module; push/PR.
+
 ## Discovered
+
+Out of scope; not fixed.
+
+- Pre-existing: `TestLiveSDA::test_live_dynamic_sdv_queries_and_unrated_water_urban` does not catch network errors, so it fails instead of skipping when SDA is down.
+- Pre-existing: `ALLOWED_SDV_TABLES` in `sda_client.py` also lists field names, not just table names.
+- Pre-existing: older `TestLiveSDA` tests catch `SDAClientError`, which includes `SDAValidationError`, so a validation error shows up as a skip. The new tests use `_live()`, which catches only `SDAQueryError` and `httpx.HTTPError`.
+- CPI does not apply its SDV `interpnullsaszeroflag` (kept for parity). Applying it would change public CPI numbers; needs a user decision.
+- Live drift-guard and mixed-unit failure paths were never exercised end to end (only success paths run live; the fake-SDA failure check was blocked by a sandbox rule in 39.7.1).
+- `planning/tasks/39.3.1.todo.md` and `39.4.1.todo.md` were never written; those tasks are documented only by their STATE reports.
 
 ## Escalations
 
