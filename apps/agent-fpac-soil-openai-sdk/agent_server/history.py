@@ -6,23 +6,6 @@ templates (agent-openai-agents-sdk, agent-openai-agents-sdk-multiagent,
 agent-openai-advanced) — keep the copies in sync.
 """
 
-from typing import Any
-
-
-def sanitize_custom_inputs(custom_inputs: Any) -> dict[str, str]:
-    """Keep only opaque session metadata out of model-visible request data.
-
-    AOI geometry is intentionally not accepted here. The handler may use the
-    returned opaque identifier for correlation, but pre-trace redaction still
-    requires a platform-level boundary before the decorated handler runs.
-    """
-    if not isinstance(custom_inputs, dict):
-        return {}
-    session_id = custom_inputs.get("session_id")
-    if isinstance(session_id, str) and session_id:
-        return {"session_id": session_id}
-    return {}
-
 
 def normalize_history_items(messages: list[dict]) -> list[dict]:
     """Normalize replayed assistant history items before passing them to Runner.run.
