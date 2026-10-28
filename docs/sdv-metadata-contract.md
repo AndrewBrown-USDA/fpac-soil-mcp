@@ -154,7 +154,6 @@ than as CPI 0. `rated_pct` is still the percent of components with a value, so
 the partial-rating caveat still appears. Miscellaneous areas stay excluded. The
 provenance record shows both: `nulls_as_zero` echoes the SDV flag and
 `null_handling` (`nulls_as_zero` or `exclude_nulls`) shows what the engine did.
-Adopted 2026-10-28; in MN167 one map unit changed (2800029: 83 to 79).
 
 ## Provenance
 

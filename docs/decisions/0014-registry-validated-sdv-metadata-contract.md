@@ -19,7 +19,8 @@ could be built from `sdvattribute` metadata. That path accepted any record, read
 only the table, column, and rule name, and ignored the SDV aggregation method,
 horizon method, depth range, null flag, and crop constraint. As a result, any
 record with a rule name went to the `cointerp` path, Storie was
-component-weighted although SDV specifies Dominant Condition, horizon and crop
+component-weighted although SDV specifies Dominant Condition, CPI excluded null
+ratings although SDV says to treat them as zero, horizon and crop
 ratings mixed depths, crops, and units, and metadata-selected results carried
 the generic provenance `SDA:SDVATTRIBUTE`. The four public selectors meanwhile
 used separate fixed `SQL_PRODUCTIVITY_*` templates, so two engines could drift
@@ -34,7 +35,8 @@ aggregation, provenance, and caveat set?
   every time.
 * SDV metadata states the method for each attribute; the engine should follow it.
 * Unreviewed records must not reach SDA.
-* Public tool behavior for NCCPI, CSR2, and CPI must not change.
+* Public tool behavior for NCCPI and CSR2 must not change; Storie and CPI
+  change only where needed to follow their SDV records.
 * SQL must stay within fixed templates (ADR 0002).
 
 ## Considered Options
@@ -65,6 +67,11 @@ Chosen option: **Option 1, frozen registry plus structural validation.**
   class with the largest summed component percent wins, and `tiebreakrule`
   breaks ties. Storie therefore changes from a weighted average to Dominant
   Condition. All other methods are rejected.
+* **Nulls as zero (D12).** CPI and crop yields have
+  `interpnullsaszeroflag = 1`. For CPI, a null-rated component counts as 0
+  when its map unit has at least one rated component; a map unit with no rated
+  component stays unrated, so counties without CPI data are not scored as 0.
+  Miscellaneous areas stay excluded.
 * **Stable provenance (D8).** Each entry has a stable ID used in the public
   `productivity_rating_source` field, plus an internal structured
   `sdv_provenance` record (registry version, SDV fields, method, depth,
@@ -73,8 +80,9 @@ Chosen option: **Option 1, frozen registry plus structural validation.**
   `storie` resolve to registry entries and run the same validation, builders,
   aggregation, provenance, and caveat code as explicit metadata. The
   `SQL_PRODUCTIVITY_*` templates were retired after parity tests showed the
-  new SQL for NCCPI, CSR2, and CPI was equivalent to the old templates. CPI
-  rating SQL then changed on purpose to apply nulls-as-zero (see Amendment).
+  new SQL for NCCPI and CSR2, and the CPI county maximum, was equivalent to
+  the old templates. CPI rating SQL differs on purpose because it applies
+  nulls-as-zero.
 
 The field-level contract, per-table behavior, caveat catalog, and the
 checklist for adding a record are in
@@ -98,7 +106,7 @@ checklist for adding a record are in
   and live benchmark.
 * **Negative**: Public CPI values change where a map unit mixes rated and
   null-rated components (MN167: 1 of 46 rated map units, 2800029 from 83 to
-  79). See Amendment.
+  79; the county maximum is unchanged at 100).
 
 ## Validation & Compliance
 
@@ -111,21 +119,11 @@ checklist for adding a record are in
 * ADR 0011: golden, parity, and strategy tests run offline; live benchmarks
   are `live_network` opt-in.
 * Parity: canonical SQL fingerprints (whitespace and sentinel-list order
-  normalized) of the new NCCPI, CSR2, and CPI queries match the retired
-  templates, and live NCCPI IL019 (0.933), CSR2 IA169 (96), and CPI
-  MN167 (100) are identical to `main`.
+  normalized) of the new NCCPI and CSR2 queries and the CPI county-maximum
+  query match the retired templates, and live NCCPI IL019 (0.933), CSR2 IA169
+  (96), and CPI MN167 (100) county maximums are identical to `main`.
 * Live Storie CA077 comparison, approved by the user on 2026-10-27, is recorded
   in `planning/STATE_39.md` (task 39.5.1).
-
-### Amendment (2026-10-28)
-
-CPI now applies its SDV `interpnullsaszeroflag = 1`, as the user decided
-after the review found CPI was the only flagged record ignoring it. A
-null-rated component counts as 0 when its map unit has at least one rated
-component; a map unit with no rated component stays unrated, so counties
-without CPI data are not scored as 0. CPI rating SQL no longer matches the
-retired template (CPI county-max SQL still does); NCCPI and CSR2 parity is
-unchanged. Evidence: live MN167 (county maximum 100 and the three benchmark
-map units unchanged; 2800029 83 to 79), MN053 still unrated, and an offline
-SQLite test of the generated SQL. Recorded as D12 in
-`planning/EXECUTION_PLAN_39.md`.
+* CPI nulls-as-zero: an offline SQLite test runs the generated SQL (mixed
+  map unit counts nulls as 0, all-null map unit stays NULL); live MN167
+  2800029 is 79 and MN053 stays unrated. Recorded in `planning/STATE_39.md`.
