@@ -206,11 +206,11 @@ Deferrals (unchanged from plan): public property selection; unsupported SDV meth
 
 ## Discovered
 
-Out of scope; not fixed.
+Out of scope; open unless marked fixed or resolved.
 
-- Pre-existing: `TestLiveSDA::test_live_dynamic_sdv_queries_and_unrated_water_urban` does not catch network errors, so it fails instead of skipping when SDA is down.
+- Pre-existing: `TestLiveSDA::test_live_dynamic_sdv_queries_and_unrated_water_urban` does not catch network errors, so it fails instead of skipping when SDA is down. Fixed 2026-10-28 (calls wrapped in `_live()`).
 - Pre-existing: `ALLOWED_SDV_TABLES` in `sda_client.py` also lists field names, not just table names.
-- Pre-existing: older `TestLiveSDA` tests catch `SDAClientError`, which includes `SDAValidationError`, so a validation error shows up as a skip. The new tests use `_live()`, which catches only `SDAQueryError` and `httpx.HTTPError`.
+- Pre-existing: older `TestLiveSDA` tests catch `SDAClientError`, which includes `SDAValidationError`, so a validation error shows up as a skip. The new tests use `_live()`, which catches only `SDAQueryError` and `httpx.HTTPError`. Fixed 2026-10-28: one `_skip_if_unavailable()` helper in `tests/test_live_sda.py`, used by `_live()` and all 15 old `except` blocks, skips only on connection failures (DNS), timeouts, maintenance, and SDA 5xx; validation errors, SDA 4xx query errors, and SDA error payloads now fail. This also closes two gaps in the original `_live()`: it skipped on SDA 4xx/error payloads (all `SDAQueryError`) and failed on `SDATimeoutError`/`SDAServiceUnavailableError` (not `SDAQueryError` subclasses). Known-answer check against a fake SDA: DNS, timeout, 503, maintenance -> skip; 400, error payload, validation -> fail (also through an old test, the dynamic test, and a new test). Live `tests/test_live_sda.py` 37 passed; offline 593 passed.
 - CPI does not apply its SDV `interpnullsaszeroflag` (kept for parity). Applying it would change public CPI numbers; needs a user decision. Resolved 2026-10-28 by D12, see "Follow-up: CPI nulls-as-zero".
 - Live drift-guard and mixed-unit failure paths were never exercised end to end (only success paths run live; the fake-SDA failure check was blocked by a sandbox rule in 39.7.1).
 - `planning/tasks/39.3.1.todo.md` and `39.4.1.todo.md` were never written; those tasks are documented only by their STATE reports.
