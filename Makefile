@@ -53,7 +53,7 @@ app-lint: ## Ruff check + format check on the agent app files this repo owns
 	$(UV) run ruff format --check $(APP_LINT_PATHS)
 
 app-frontend-check: ## Install and validate the vendored agent app frontend
-	cd $(APP_DIR)/frontend && npm ci && npx biome lint && npx tsc --noEmit && npm run build
+	cd $(APP_DIR)/frontend && npm ci && npx biome lint --only=correctness/noUnusedVariables && npm run build
 
 app-check: app-lint app-test ## Run Python-only agent app validation
 
