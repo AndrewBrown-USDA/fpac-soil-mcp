@@ -25,6 +25,7 @@ and refined through `adr-distillation`.
 | [0011](0011-mocked-default-live-opt-in-test-architecture.md) | Mocked Default, Live Opt-In Test Architecture | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1, 13 |
 | [0012](0012-databricks-agent-app-as-separate-mcp-client.md) | Databricks Agent App as a Separate MCP Client Project | Accepted | 2026-10-22 | - | - | EXECUTION_PLAN_35 |
 | [0013](0013-pin-pypi-default-index-in-every-uv-project.md) | Pin PyPI as the Default uv Index in Every uv Project | Accepted | 2026-10-22 | - | - | Commits bcf6626, f27eb3b |
+| [0015](0015-vendored-agent-app-frontend.md) | Vendor the Full Pinned Chat Template for the Agent App Frontend | Accepted | 2026-10-28 | - | - | EXECUTION_PLAN_40, 41 |
 
 ## Architectural Eras
 
@@ -47,7 +48,8 @@ that governed all 26 execution plans.
 
 **Databricks Delivery (2026-10-22)**: ADR 0012 set the boundary for the
 Databricks chat agent app as a separate MCP client project, and ADR 0013 made
-lock files portable off Databricks compute.
+lock files portable off Databricks compute. ADR 0015 (2026-10-28) pinned the
+agent app's chat frontend to a vendored upstream template commit.
 
 ## Maintenance
 

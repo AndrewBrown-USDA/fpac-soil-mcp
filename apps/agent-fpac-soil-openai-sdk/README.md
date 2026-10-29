@@ -35,21 +35,28 @@ Note: `databricks-claude-sonnet-5-5` is disabled in this workspace (403 `PERMISS
 
 The app was created in the UI and deploys from its git source. Set the git source branch to `main`, keep `source_code_path` as `apps/agent-fpac-soil-openai-sdk`, and redeploy. Do not run `databricks bundle deploy` for this app.
 
-The chat frontend is vendored in `frontend/` from
-`databricks/app-templates/e2e-chatbot-app-next` and is pinned to upstream tree
-`c7e05c0787909bc6e0b79adf2f162fd0bc2a8edd`. It is repository-owned; updates
-must refresh the frontend lockfile and rerun the frontend checks. Use Node/npm
-with the versions supported by the pinned template:
+The chat frontend is vendored in `frontend/`: the whole
+`databricks/app-templates/e2e-chatbot-app-next` folder at upstream commit
+`0e572976459aafa3d41047067382cb9a6c015d52`, with no local edits
+([ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md)). It is an
+npm workspace (`client/`, `server/`, `packages/*`) with the upstream root
+`package-lock.json`. Upstream `.claude/`, `CLAUDE.md`, `tests/`,
+`playwright.config.ts`, `app.yaml`, `databricks.yml` and `manifest.yaml` are
+not vendored. To update, re-copy the folder at the new commit, keep the
+upstream lockfile, and rerun the checks.
+
+The frontend needs Node 22 (the Databricks Apps runtime is 22.16). From the
+repository root:
 
 ```bash
-cd apps/agent-fpac-soil-openai-sdk/frontend
-npm ci
-npm run lint
-npm run typecheck
-npm run build
+make app-frontend-check   # npm ci, read-only biome lint, npm run build
+make app-check            # Python lint and tests only; no npm needed
 ```
 
-This task vendors only the existing chat UI. Map behavior, AOI drawing, and
+Do not run the upstream `npm run lint`; it rewrites files (`--write --unsafe`).
+There is no typecheck target (see ADR 0015).
+
+Only the existing chat UI is vendored. Map behavior, AOI drawing, and
 map-specific routes remain explicitly deferred.
 
 ### MCP timeout
@@ -65,9 +72,9 @@ If the MCP server cannot be reached, the agent tells the user that the tools are
 
    - [`uv` installation docs](https://docs.astral.sh/uv/getting-started/installation/)
    - [`nvm` installation](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)
-     - Run the following to use Node 20 LTS:
+     - Run the following to use Node 22 LTS:
        ```bash
-       nvm use 20
+       nvm use 22
        ```
    - [`databricks CLI` installation](https://docs.databricks.com/aws/en/dev-tools/cli/install)
 

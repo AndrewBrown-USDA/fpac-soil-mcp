@@ -7,18 +7,22 @@ Databricks App (`agent-fpac-soil-openai-sdk`) that serves a chat agent which cal
 Run from the repository root:
 
 ```bash
-# Lint the app files this repo owns, then run the app's offline tests
+# Lint the app files this repo owns, then run the app's offline tests (Python only)
 make app-check
 
 # Tests only (installs from the committed uv.lock with --frozen)
 make app-test
+
+# Vendored frontend: npm ci, read-only biome lint, build (needs Node 22 + npm)
+make app-frontend-check
 ```
 
 Run locally from this directory (needs Databricks auth and a `.env` copied from `.env.example`):
 
 ```bash
-uv run start-app      # agent server + chat UI
-uv run start-server   # agent server only
+uv run start-app          # agent server + chat UI (npm ci, build, start in frontend/)
+uv run start-app --no-ui  # agent server only; also the fallback when frontend/package.json is missing
+uv run start-server       # agent server only
 ```
 
 ## Find Things
@@ -32,7 +36,7 @@ uv run start-server   # agent server only
 - `app.yaml` - command and env vars used by the deployed app.
 - `databricks.yml` - declared app resources (`llm-endpoint`, `mcp_server`, `experiment`); reference only.
 - `README.md` - configuration, required grants, deploy path, and API usage.
-- `frontend/` - vendored Databricks chat UI, pinned to upstream tree `c7e05c0787909bc6e0b79adf2f162fd0bc2a8edd`; no map behavior.
+- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) at upstream commit `0e572976459aafa3d41047067382cb9a6c015d52`; no local edits, no map behavior ([ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md)).
 
 ## Workflows
 
@@ -55,13 +59,16 @@ Deploy from the app's git source in the Databricks Apps UI and redeploy. Do not 
 
 ### Frontend
 
-The frontend is repository-owned and must be validated with `npm ci`, `npm run lint`,
-`npm run typecheck`, and `npm run build` from `frontend\`. Do not add map or AOI
-behavior as part of frontend maintenance.
+1. Do not edit files under `frontend/`. To update, re-copy the upstream folder at the new commit with the ADR 0015 exclusions and keep the upstream root `package-lock.json` byte-for-byte.
+2. Compare `git ls-tree` hashes of the `frontend/` entries with upstream (file modes included).
+3. Run `make app-frontend-check` (Node 22). Never run the upstream `npm run lint` or `lint:fix`; they use `--write`. There is no typecheck target; upstream fails `tsc` at the pinned commit.
+4. Update the pinned commit in ADR 0015, `README.md`, and this file.
+5. Do not add map or AOI behavior as part of frontend maintenance.
 
 ## Infrastructure
 
 - Python `>=3.11`; CI uses 3.11 (`agent-app` job in `.github/workflows/ci.yml`).
+- Node 22 for `frontend/` (Databricks Apps runtime 22.16; CI `setup-node` 22). npm is not available on Databricks serverless by default.
 - Root Ruff and pytest skip `apps/` (`extend-exclude = ["apps"]`); `make app-lint` lints the owned files explicitly (`APP_LINT_PATHS` in the root `Makefile`).
 - MCP auth: app service principal via `WorkspaceClient()`; needs `CAN_USE` on `mcp-fpac-soil`.
 - If the MCP server is unreachable, the health check logs a WARNING and the agent tells the user the tools are unavailable.
@@ -70,6 +77,7 @@ behavior as part of frontend maintenance.
 
 - [ADR 0012](../../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) - app boundary, auth, configuration, deploy, and CI decisions.
 - [ADR 0013](../../docs/decisions/0013-pin-pypi-default-index-in-every-uv-project.md) - uv index pinning.
+- [ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md) - vendored chat frontend pin, exclusions, checks, and update procedure.
 - [ADR 0003](../../docs/decisions/0003-preliminary-screening-authority-boundary.md) - preliminary screening boundary the prompt must preserve.
 - `planning/EXECUTION_PLAN_35.md` - original integration plan and decision log.
 - `eval/databricks/` - T1 agent evaluation (not part of this app).
