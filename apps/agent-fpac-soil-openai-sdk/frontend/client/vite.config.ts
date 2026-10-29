@@ -27,10 +27,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@databricks/chatbot-core/errors": path.resolve(
-        __dirname,
-        "./src/vendor/chatbot-core-errors.ts",
-      ),
     },
   },
   server: {
