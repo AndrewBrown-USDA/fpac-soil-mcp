@@ -19,10 +19,10 @@ Resolve all three open review threads on PR #55 by correcting sentinel and cover
 - [x] Add executable fixtures for partially rated and all-null AWS map units with independently calculated expected coverage and rating results.
 
 ### 4. Add raw-row strategy fixtures
-- [ ] Add executable raw-row fixtures for Storie grouping and tie handling.
-- [ ] Add executable raw-row fixtures for AWS depth clipping and NULL horizons.
-- [ ] Add executable raw-row fixtures for crop-yield weighting and unit detection.
-- [ ] Assert independently calculated expected outputs rather than only SQL fingerprints or pre-aggregated rows.
+- [x] Add executable raw-row fixtures for Storie grouping and tie handling.
+- [x] Add executable raw-row fixtures for AWS depth clipping and NULL horizons.
+- [x] Add executable raw-row fixtures for crop-yield weighting and unit detection.
+- [x] Assert independently calculated expected outputs rather than only SQL fingerprints or pre-aggregated rows.
 
 ### 5. Validate the review fixes
 - [ ] Run the focused SDV contract and strategy tests.

@@ -125,6 +125,30 @@ class TestCointerpDominantCondition:
         assert "rating_val DESC" in sql
         assert "rating_val ASC" not in sql
 
+    def test_raw_rows_group_and_break_storie_ties(self) -> None:
+        db = sqlite3.connect(":memory:")
+        db.executescript(
+            """
+            CREATE TABLE legend (lkey TEXT, areasymbol TEXT);
+            CREATE TABLE mapunit (mukey TEXT, lkey TEXT, musym TEXT, muname TEXT);
+            CREATE TABLE component (cokey TEXT, mukey TEXT, comppct_r INTEGER, compkind TEXT);
+            CREATE TABLE cointerp (cokey TEXT, ruledepth INTEGER, mrulename TEXT, interphr REAL);
+            INSERT INTO legend VALUES ('L1', 'CA077');
+            INSERT INTO mapunit VALUES ('1', 'L1', 'A', 'Storie tie');
+            INSERT INTO component VALUES
+                ('c1', '1', 40, 'series'),
+                ('c2', '1', 40, 'series'),
+                ('c3', '1', 20, 'series');
+            INSERT INTO cointerp VALUES
+                ('c1', 0, 'AGR - California Revised Storie Index (CA)', 0.4),
+                ('c2', 0, 'AGR - California Revised Storie Index (CA)', 0.2),
+                ('c3', 0, 'AGR - California Revised Storie Index (CA)', 0.2);
+            """
+        )
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["storie"], ["1"])
+        row = db.execute(sql).fetchone()
+        assert row[4:] == (pytest.approx(0.2), 60, 100, 100)
+
 
 class TestComponentWeightedAverage:
     """component + Weighted Average (CPI-style)."""
@@ -273,6 +297,28 @@ class TestChorizonWeightedSum:
         assert rows["1"] == (pytest.approx(20.0), 60, 100)
         assert rows["2"] == (None, 0, 100)
 
+    def test_raw_rows_clip_horizons_to_fixed_depth(self) -> None:
+        db = sqlite3.connect(":memory:")
+        db.executescript(
+            """
+            CREATE TABLE legend (lkey TEXT, areasymbol TEXT);
+            CREATE TABLE mapunit (mukey TEXT, lkey TEXT, musym TEXT, muname TEXT);
+            CREATE TABLE component (cokey TEXT, mukey TEXT, comppct_r INTEGER, compkind TEXT);
+            CREATE TABLE chorizon (cokey TEXT, hzdept_r INTEGER, hzdepb_r INTEGER, awc_r REAL);
+            INSERT INTO legend VALUES ('L1', 'IL019');
+            INSERT INTO mapunit VALUES ('1', 'L1', 'A', 'Clipped horizons');
+            INSERT INTO component VALUES ('c1', '1', 100, 'series');
+            INSERT INTO chorizon VALUES
+                ('c1', -10, 10, 0.1),
+                ('c1', 10, 150, 0.2),
+                ('c1', 150, 200, 0.9),
+                ('c1', 0, 100, NULL);
+            """
+        )
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["aws_0_100"], ["1"])
+        row = db.execute(sql).fetchone()
+        assert row[4:] == (pytest.approx(19.0), 100, 100)
+
     def test_county_max_query(self) -> None:
         spec = SDV_RATING_REGISTRY["aws_0_100"]
         sql = build_sdv_county_max_query(spec, "IL019")
@@ -316,6 +362,39 @@ class TestCocropyldWeightedAverage:
         spec = SDV_RATING_REGISTRY["nonirr_crop_yield"]
         with pytest.raises(SDAValidationError, match="Crop name is required"):
             build_sdv_county_max_query(spec, "IL019")
+
+    def test_raw_rows_weight_yields_and_detect_mixed_units(self) -> None:
+        db = sqlite3.connect(":memory:")
+        db.executescript(
+            """
+            CREATE TABLE legend (lkey TEXT, areasymbol TEXT);
+            CREATE TABLE mapunit (mukey TEXT, lkey TEXT, musym TEXT, muname TEXT);
+            CREATE TABLE component (cokey TEXT, mukey TEXT, comppct_r INTEGER, compkind TEXT);
+            CREATE TABLE cocropyld (
+                cokey TEXT, cropname TEXT, nonirryield_r REAL, yldunits TEXT
+            );
+            INSERT INTO legend VALUES ('L1', 'IL019');
+            INSERT INTO mapunit VALUES
+                ('1', 'L1', 'A', 'Single unit'),
+                ('2', 'L1', 'B', 'Mixed units');
+            INSERT INTO component VALUES
+                ('c1', '1', 60, 'series'),
+                ('c2', '1', 40, 'series'),
+                ('c3', '2', 50, 'series'),
+                ('c4', '2', 50, 'series');
+            INSERT INTO cocropyld VALUES
+                ('c1', 'Corn', 100, 'BU/A'),
+                ('c2', 'Corn', 50, 'BU/A'),
+                ('c3', 'Corn', 100, 'BU/A'),
+                ('c4', 'Corn', 80, 'TON/A');
+            """
+        )
+        sql = build_sdv_rating_query(
+            SDV_RATING_REGISTRY["nonirr_crop_yield"], ["1", "2"], {"cropname": "Corn"}
+        )
+        rows = {r[0]: r[4:] for r in db.execute(sql)}
+        assert rows["1"] == (pytest.approx(80.0), 100, 100, 1, "BU/A", "BU/A")
+        assert rows["2"] == (pytest.approx(90.0), 100, 100, 2, "BU/A", "TON/A")
 
 
 class TestValidation:
