@@ -25,10 +25,21 @@ Resolve all three open review threads on PR #55 by correcting sentinel and cover
 - [x] Assert independently calculated expected outputs rather than only SQL fingerprints or pre-aggregated rows.
 
 ### 5. Validate the review fixes
-- [ ] Run the focused SDV contract and strategy tests.
-- [ ] Run the repository lint, format, and offline test checks relevant to the changed files.
-- [ ] Create a separate Conventional Commit for each logically independent fix.
+- [x] Run the focused SDV contract and strategy tests.
+- [x] Run the repository lint, format, and offline test checks relevant to the changed files.
+- [x] Create a separate Conventional Commit for each logically independent fix.
 
 ## Notes
 - Scope is limited to the three open review threads on PR #55.
 - Preserve existing public response contracts, provenance, caveats, and unrelated worktree changes.
+
+## Discovered Tasks
+
+### 6. Update intentional SQL fingerprints
+- [x] Update the CPI rating and county-max golden hashes for sentinel filtering.
+- [x] Update the AWS rating golden hash for retained unrated components.
+- [x] Re-run the focused SDV tests and commit the fixture updates separately.
+
+### 7. Update coupled CPI SQL assertion
+- [x] Update the existing SDA client assertion to match sentinel-aware CPI weighting.
+- [x] Re-run the full offline suite and commit the assertion update separately.
