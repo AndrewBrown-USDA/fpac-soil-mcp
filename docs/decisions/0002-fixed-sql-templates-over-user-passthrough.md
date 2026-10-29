@@ -68,3 +68,22 @@ Enforced as a verbatim constraint in EXECUTION_PLAN_1 and propagated through
 all subsequent plans. Codified in AGENTS.md Operational Rules: "Do not add
 user-supplied SQL passthrough." Validated by SDA client hardening in EP21
 (commit `21.1.1`).
+
+### Amendment (2026-10-27, EP39)
+
+This amendment records how productivity SQL is now produced; the decision and
+status are unchanged.
+
+* The `SQL_PRODUCTIVITY_*` constants named above have been retired. Productivity
+  and SDV property SQL now comes from fixed per-strategy builder functions in
+  `sda_client.py` (`build_sdv_rating_query`, `build_sdv_county_max_query`), one
+  template per source table and SDV aggregation method
+  ([ADR 0014](0014-registry-validated-sdv-metadata-contract.md)). Parity tests
+  showed the new NCCPI, CSR2, and CPI SQL is equivalent to the retired
+  constants.
+* This is still Option 1, not Option 2. Table, column, and rule names in the SQL
+  come only from the frozen in-code registry (`SDV_RATING_REGISTRY`); a caller
+  cannot name a table or column, and unregistered `sdvattribute` records are
+  rejected before any SQL is built. Caller-supplied values interpolated into
+  the templates are limited to validated map unit keys, survey area symbols, and
+  a validated crop name.

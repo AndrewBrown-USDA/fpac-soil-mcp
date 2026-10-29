@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import httpx
 import pytest
 
@@ -16,6 +19,23 @@ from fpac_soil_mcp.sda_client import (
     build_dynamic_sdv_county_max_query,
     build_dynamic_sdv_query,
 )
+
+_SDV_RECORDS = {
+    r["attributename"]: r
+    for r in json.loads(
+        (Path(__file__).parent / "fixtures" / "sdv_attribute_records.json").read_text()
+    )["records"]
+}
+_NCCPI = "National Commodity Crop Productivity Index"
+_CSR2 = "Iowa Corn Suitability Rating CSR2 (IA)"
+_CPI = "Crop Productivity Index"
+_AWS = "Available Water Storage"
+_YIELD = "Yields of Non-Irrigated Crops (Component)"
+
+
+def _sdv(name: str, **extra: str) -> dict:
+    """Return a captured live sdvattribute record, optionally with extra keys."""
+    return {**_SDV_RECORDS[name], **extra}
 
 
 class TestSDAValidation:
@@ -643,8 +663,9 @@ class TestSDAClientExecution:
         meta = {
             "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
+            "attributecolumnname": "interphrc",
             "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_query(meta, "'1001', '1002'")
         assert "cointerp" in query
@@ -653,95 +674,90 @@ class TestSDAClientExecution:
 
     def test_build_dynamic_sdv_query_nccpi_excludes_negative_sentinels(self) -> None:
         meta = {
+            "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
+            "attributecolumnname": "interphrc",
             "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_query(meta, "'1001'")
         assert "rating IS NOT NULL AND rating NOT IN (-999, -99, 99, 999)" in query
 
     def test_build_dynamic_sdv_query_uses_exact_rule_name(self) -> None:
+        """Registry-validated records use the exact rule name from the spec."""
         meta = {
+            "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
-            "nasisrulename": "Future Validated Rule",
+            "attributecolumnname": "interphrc",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "ci.mrulename = 'Future Validated Rule'" in query
-        assert "LIKE '%Future Validated Rule%'" not in query
-        assert "NCCPI" not in query
+        assert (
+            "ci.mrulename = 'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'" in query
+        )
+        assert "LIKE" not in query
 
     def test_build_dynamic_sdv_county_max_uses_exact_rule_name(self) -> None:
+        """Registry-validated records use the exact rule name from the spec."""
         meta = {
+            "attributename": "National Commodity Crop Productivity Index",
             "attributetablename": "cointerp",
-            "attributecolumnname": "interphr",
-            "nasisrulename": "Future Validated Rule",
+            "attributecolumnname": "interphrc",
+            "nasisrulename": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+            "algorithmname": "Weighted Average",
         }
         query = build_dynamic_sdv_county_max_query(meta, "IA169")
-        assert "ci.mrulename = 'Future Validated Rule'" in query
-        assert "LIKE '%Future Validated Rule%'" not in query
-        assert "NCCPI" not in query
+        assert (
+            "ci.mrulename = 'NCCPI - National Commodity Crop Productivity Index (Ver 3.0)'" in query
+        )
+        assert "LIKE" not in query
 
     def test_build_dynamic_sdv_query_component(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+        """Registered component record (CPI) builds the component weighted average."""
+        query = build_dynamic_sdv_query(_sdv(_CPI), "'1001'")
+        assert "c.cropprodindex NOT IN (" in query
+        assert "CAST(c.cropprodindex AS float) * c.comppct_r" in query
+        assert "c.compkind != 'miscellaneous area'" in query
 
+    def test_build_dynamic_sdv_query_rejects_unregistered_component(self) -> None:
+        """Ad hoc component records are rejected before any SQL is built (D2)."""
         meta = {
             "attributename": "Corn Yield",
             "attributetablename": "component",
             "attributecolumnname": "cornyld",
         }
-        query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "c.cornyld" in query
-        assert "CAST(c.cornyld AS float) AS rating" in query
-        assert (
-            "ROUND(SUM(CASE WHEN rating IS NOT NULL AND rating NOT IN (-999, -99, 99, 999) THEN rating * comppct_r ELSE 0 END)"
-            in query
-        )
+        with pytest.raises(SDAValidationError, match="Unregistered SDV record"):
+            build_dynamic_sdv_query(meta, "'1001'")
 
-    def test_dynamic_sdv_query_chorizon_filters_sentinels_before_weighting(self) -> None:
-        query = build_dynamic_sdv_query(
-            {
-                "attributename": "NCCPI",
-                "attributetablename": "chorizon",
-                "attributecolumnname": "awc_r",
-            },
-            "'1001'",
-        )
-        assert "ch.awc_r IS NOT NULL AND ch.awc_r NOT IN (-999, -99, 99, 999)" in query
+    def test_dynamic_sdv_query_chorizon_excludes_null_horizons(self) -> None:
+        query = build_dynamic_sdv_query(_sdv(_AWS), "'1001'")
+        assert "ch.awc_r IS NOT NULL" in query
+        assert "ch.hzdepb_r > 0" in query
+        assert "ch.hzdept_r < 100" in query
 
-    def test_dynamic_sdv_query_cocropyld_filters_sentinels_before_weighting(self) -> None:
-        query = build_dynamic_sdv_query(
-            {
-                "attributename": "CPI",
-                "attributetablename": "cocropyld",
-                "attributecolumnname": "nonirryield_r",
-            },
-            "'1001'",
-        )
-        assert "cy.nonirryield_r IS NOT NULL AND cy.nonirryield_r NOT IN (-999, -99, 999)" in query
+    def test_dynamic_sdv_query_cocropyld_nulls_as_zero(self) -> None:
+        query = build_dynamic_sdv_query(_sdv(_YIELD, cropname="Corn"), "'1001'")
+        assert "COALESCE(CAST(cy.nonirryield_r AS float), 0)" in query
+        assert "cy.cropname = 'Corn'" in query
 
     def test_dynamic_sdv_query_preserves_valid_state_index_99(self) -> None:
-        query = build_dynamic_sdv_query(
-            {
-                "attributename": "CSR2",
-                "attributetablename": "mapunit",
-                "attributecolumnname": "iacornsr",
-            },
-            "'1001'",
-        )
-        assert "m.iacornsr IS NOT NULL AND m.iacornsr NOT IN (-999, -99, 999)" in query
-        assert "m.iacornsr NOT IN (-999, -99, 99, 999)" not in query
+        """CSR2 SQL does not screen 99 (a valid CSR2 value); 99 is not a CSR2 sentinel."""
+        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY
 
-    def test_build_dynamic_sdv_query_mapunit(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+        query = build_dynamic_sdv_query(_sdv(_CSR2), "'1001'")
+        assert "m.iacornsr IS NOT NULL" in query
+        assert "NOT IN (-999, -99, 99, 999)" not in query
+        assert 99.0 not in SDV_RATING_REGISTRY["csr2"].sentinels
 
+    def test_build_dynamic_sdv_query_mapunit_unregistered_rejected(self) -> None:
         meta = {
             "attributename": "Map Unit Farmland Class",
             "attributetablename": "mapunit",
             "attributecolumnname": "farmlndcl",
         }
-        query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "m.farmlndcl" in query
+        with pytest.raises(SDAValidationError, match="Unregistered SDV record"):
+            build_dynamic_sdv_query(meta, "'1001'")
 
     def test_build_dynamic_sdv_query_invalid_table(self) -> None:
         from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
@@ -754,76 +770,41 @@ class TestSDAClientExecution:
             build_dynamic_sdv_query(meta, "'1001'")
 
     def test_build_dynamic_sdv_query_chorizon(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
-
-        meta = {
-            "attributename": "Available Water Capacity",
-            "attributetablename": "chorizon",
-            "attributecolumnname": "awc_r",
-        }
-        query = build_dynamic_sdv_query(meta, "'1001', '1002'")
+        query = build_dynamic_sdv_query(_sdv(_AWS), "'1001', '1002'")
         assert "chorizon AS ch" in query
         assert "ch.awc_r" in query
-        assert "ch.hzdepb_r - ch.hzdept_r" in query  # depth weighting
+        assert "CASE WHEN ch.hzdepb_r > 100 THEN 100 ELSE ch.hzdepb_r END" in query  # clip
         assert "WHERE m.mukey IN ('1001', '1002')" in query
         assert "hz_weighted" in query  # CTE name
 
     def test_build_dynamic_sdv_query_cocropyld(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
-
-        meta = {
-            "attributename": "Yields of Non-Irrigated Crops",
-            "attributetablename": "cocropyld",
-            "attributecolumnname": "nonirryield_r",
-            "cropname": "Corn",
-        }
-        query = build_dynamic_sdv_query(meta, "'1001'")
+        query = build_dynamic_sdv_query(_sdv(_YIELD, cropname="Corn"), "'1001'")
         assert "cocropyld AS cy" in query
         assert "cy.nonirryield_r" in query
         assert "cy.cropname = 'Corn'" in query
         assert "WHERE m.mukey IN ('1001')" in query
+        assert "COUNT(DISTINCT yldunits) AS unit_count" in query
 
     def test_build_dynamic_sdv_query_cocropyld_no_cropname(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
-
-        meta = {
-            "attributetablename": "cocropyld",
-            "attributecolumnname": "nonirryield_r",
-        }
-        query = build_dynamic_sdv_query(meta, "'1001'")
-        assert "cocropyld AS cy" in query
-        assert "cropname =" not in query  # no crop filter when not specified
+        """Crop yields require a crop (D7); no default crop, no unfiltered SQL."""
+        with pytest.raises(SDAValidationError, match="Constraint 'cropname' is required"):
+            build_dynamic_sdv_query(_sdv(_YIELD), "'1001'")
 
     def test_build_dynamic_sdv_county_max_chorizon(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_county_max_query
-
-        meta = {
-            "attributetablename": "chorizon",
-            "attributecolumnname": "awc_r",
-        }
-        query = build_dynamic_sdv_county_max_query(meta, "IA169")
+        query = build_dynamic_sdv_county_max_query(_sdv(_AWS), "IA169")
         assert "chorizon AS ch" in query
         assert "ch.awc_r" in query
         assert "l.areasymbol = 'IA169'" in query
         assert "max_county_rating" in query.lower()
-        assert "ch.awc_r IS NOT NULL AND ch.awc_r NOT IN (-999, -99, 99, 999)" in query
+        assert "ch.awc_r IS NOT NULL" in query
 
     def test_build_dynamic_sdv_county_max_cocropyld(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_county_max_query
-
-        meta = {
-            "attributetablename": "cocropyld",
-            "attributecolumnname": "nonirryield_r",
-            "cropname": "Soybeans",
-        }
-        query = build_dynamic_sdv_county_max_query(meta, "IA169")
+        query = build_dynamic_sdv_county_max_query(_sdv(_YIELD, cropname="Soybeans"), "IA169")
         assert "cocropyld AS cy" in query
         assert "cy.nonirryield_r" in query
         assert "cy.cropname = 'Soybeans'" in query
         assert "l.areasymbol = 'IA169'" in query
-        assert (
-            "cy.nonirryield_r IS NOT NULL AND cy.nonirryield_r NOT IN (-999, -99, 99, 999)" in query
-        )
+        assert "cy.nonirryield_r IS NOT NULL" in query
 
     def test_get_productivity_ratings_with_attribute_meta(self) -> None:
         mock_resp = {
@@ -842,8 +823,21 @@ class TestSDAClientExecution:
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
-            assert b"c.cornyld" in request.content
+            assert b"c.cropprodindex" in request.content
             return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        results = client.get_productivity_ratings(["1001"], attribute_meta=_sdv(_CPI))
+        assert len(results) == 1
+        assert results[0]["numeric_rating"] == 91.0
+        assert results[0]["is_rated"] is True
+        assert results[0]["productivity_rating_source"] == "SDA:COMPONENT_CROPPRODINDEX"
+        assert results[0]["sdv_provenance"]["id"] == "SDA:COMPONENT_CROPPRODINDEX"
+        assert results[0]["sdv_provenance"]["registry_version"] == "1"
+
+    def test_get_productivity_ratings_unregistered_meta_rejected_without_sda_call(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise AssertionError("unregistered metadata must not reach SDA")
 
         meta = {
             "attributename": "Corn Yield",
@@ -851,46 +845,19 @@ class TestSDAClientExecution:
             "attributecolumnname": "cornyld",
         }
         client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
-        results = client.get_productivity_ratings(["1001"], attribute_meta=meta)
-        assert len(results) == 1
-        assert results[0]["numeric_rating"] == 91.0
-        assert results[0]["is_rated"] is True
+        with pytest.raises(SDAValidationError, match="Unregistered SDV record"):
+            client.get_productivity_ratings(["1001"], attribute_meta=meta)
+        with pytest.raises(SDAValidationError, match="Unregistered SDV record"):
+            client.get_county_max_productivity_rating("IA169", attribute_meta=meta)
 
     @pytest.mark.parametrize(
         ("meta", "raw_rating", "expected_rating", "expected_rated"),
         [
-            (
-                {
-                    "attributename": "CPI",
-                    "attributetablename": "component",
-                    "attributecolumnname": "cropprodindex",
-                },
-                99.0,
-                99.0,
-                True,
-            ),
-            (
-                {
-                    "attributename": "NCCPI",
-                    "attributetablename": "component",
-                    "attributecolumnname": "nccpi",
-                },
-                99.0,
-                None,
-                False,
-            ),
-            (
-                {
-                    "attributename": "Corn Yield",
-                    "attributetablename": "component",
-                    "attributecolumnname": "cornyld",
-                },
-                -999.0,
-                None,
-                False,
-            ),
+            (_sdv(_CPI), 99.0, 99.0, True),
+            (_sdv(_NCCPI), 99.0, None, False),
+            (_sdv(_CSR2), -999.0, None, False),
         ],
-        ids=["cpi-valid-99", "nccpi-sentinel-99", "custom-sentinel-negative"],
+        ids=["cpi-valid-99", "nccpi-sentinel-99", "csr2-sentinel-negative"],
     )
     def test_get_productivity_ratings_dynamic_sentinel_classification(
         self,
@@ -1003,10 +970,10 @@ class TestSDAClientExecution:
         assert val is None
 
     def test_csr2_sql_template_uses_mapunit_table(self) -> None:
-        """Verify SQL_PRODUCTIVITY_CSR2 queries mapunit.iacornsr directly."""
-        from fpac_soil_mcp.sda_client import SQL_PRODUCTIVITY_CSR2
+        """Verify the CSR2 registry builder queries mapunit.iacornsr directly."""
+        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY, build_sdv_rating_query
 
-        sql = SQL_PRODUCTIVITY_CSR2.format(mukeys_csv="'406439'")
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["csr2"], ["406439"])
         assert "m.iacornsr" in sql
         assert "mapunit AS m" in sql
         assert "legend AS l" in sql
@@ -1101,10 +1068,10 @@ class TestSDAClientExecution:
         assert val is None
 
     def test_cpi_sql_template_uses_component_table(self) -> None:
-        """Verify SQL_PRODUCTIVITY_CPI queries component.cropprodindex."""
-        from fpac_soil_mcp.sda_client import SQL_PRODUCTIVITY_CPI
+        """Verify the CPI registry builder queries component.cropprodindex."""
+        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY, build_sdv_rating_query
 
-        sql = SQL_PRODUCTIVITY_CPI.format(mukeys_csv="'660750'")
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["cpi"], ["660750"])
         assert "c.cropprodindex" in sql
         assert "component AS c" in sql
         assert "comppct_r" in sql
@@ -1199,17 +1166,16 @@ class TestSDAClientExecution:
         val = client.get_county_max_productivity_rating("IA169", index_type="storie")
         assert val is None
 
-    def test_storie_uses_nccpi_cointerp_template(self) -> None:
-        """Verify Storie routing reuses SQL_PRODUCTIVITY_NCCPI with Storie rule name."""
-        from fpac_soil_mcp.sda_client import SQL_PRODUCTIVITY_NCCPI
+    def test_storie_uses_dominant_condition_cointerp(self) -> None:
+        """Verify Storie routes to the cointerp Dominant Condition builder (D4/D5)."""
+        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY, build_sdv_rating_query
 
-        sql = SQL_PRODUCTIVITY_NCCPI.format(
-            mukeys_csv="'461792'",
-            rule_name="AGR - California Revised Storie Index (CA)",
-        )
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["storie"], ["461792"])
         assert "cointerp" in sql
         assert "AGR - California Revised Storie Index (CA)" in sql
         assert "461792" in sql
+        assert "ROW_NUMBER() OVER" in sql
+        assert "rating_val ASC" in sql  # tiebreakrule -1
 
     @pytest.mark.parametrize(
         "index_type,raw_value,expected",

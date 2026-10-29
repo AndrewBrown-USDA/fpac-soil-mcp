@@ -159,6 +159,7 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 - `server.json` - MCP server launch metadata.
 - `planning\MASTER_PLAN.md` - product mission, target architecture, governance, server roadmap, and delivery tracks.
 - `docs\decisions\` - architecture decision records.
+- `docs\sdv-metadata-contract.md` - SDV metadata rating contract: registry records, validation, per-table behavior, provenance IDs, caveats.
 - [FastMCP documentation](https://gofastmcp.com/)
 - [USDA NRCS Soil Data Access](https://sdmdataaccess.nrcs.usda.gov/)
 - [USDA Web Soil Survey](https://websoilsurvey.sc.egov.usda.gov/)
