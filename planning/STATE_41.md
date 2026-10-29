@@ -19,10 +19,10 @@
 |---|---|---|---|
 | 1 | Databricks | 41.1.1 | done (7a0c0c1) |
 | 1 | Databricks | 41.1.2 | done (69814cc) |
-| 2 | User | 41.2.1 | pending |
-| 3 | Local agent | 41.3.1 | pending |
-| 3 | Local agent | 41.3.2 | pending (STOP after) |
-| 3 | Local agent | 41.3.3 | pending |
+| 2 | User | 41.2.1 | done (pushed through 226f283) |
+| 3 | Local agent | 41.3.1 | done (6e1d381); file-mode fix in 41.3.2 rework |
+| 3 | Local agent -> Databricks | 41.3.2 | rework (45ed0be, 9c1567f; STOP review: corrections requested) |
+| 3 | Local agent -> Databricks | 41.3.3 | pending (after 41.3.2 rework) |
 | 4 | Databricks / user | 41.4.1 | pending |
 
 ## Task reports
@@ -61,9 +61,29 @@
 
 ## 41.2.1
 
+- **Status:** done. The user pushed `feature/agent-app-map1` (7c1f2b8, e430767, 7a0c0c1, 69814cc, 226f283); the local agent pulled and resumed at wave 3.
+- **Check:** wave 3 commits 6e1d381..9c1567f sit on top; Databricks clone and origin both at 9c1567f (`git status -sb` even).
+
 ## 41.3.1
 
+- **Status:** done, commit 6e1d381 `feat(agent-app): vendor full pinned chat template` (local agent). Scope: `frontend/**` plus `planning/tasks/41.3.1.todo.md` only.
+- **Parity (orchestrator review, `git ls-tree` vs upstream 0e57297 fetched to /tmp):**
+  - Equal hashes: `client` c7e05c07, `server` c9374ad3, `packages` 1a741bc8, `package.json` 89d5baa6, `package-lock.json` 664a2674 (byte-for-byte), `knip.json` bd613a55 (upstream file, kept), `biome.jsonc`, `tsconfig.json`, `drizzle.config.ts`, `.gitignore`, `.env.example`, `README.md`.
+  - `scripts/` tree fde463e2 != upstream d3160316: blobs identical, but 5 files lost +x (`cleanup-database.sh`, `get-pghost.sh`, `quickstart.sh`, `reset-database.ts`, `start-app.sh`). Fixed in the 41.3.2 rework.
+  - Excluded files absent (`.claude/`, `CLAUDE.md`, `tests/`, `playwright.config.ts`, `app.yaml`, `databricks.yml`, `manifest.yaml`). No shims.
+  - `node_modules` ignored by `frontend/.gitignore`; `dist/` by app `.gitignore` L17.
+- **Local checks (agent report):** `npm ci` and `npm run build` passed; ephemeral migration skip logged.
+- **Deviations:** todo file has no checkboxes or execution report.
+
 ## 41.3.2
+
+- **Status:** rework. Commits 45ed0be `fix(agent-app): run the full vendored chat template`, 9c1567f `fix(agent-app): narrow frontend validation gate` (local agent). STOP review by orchestrator: corrections requested; the user directed the Databricks orchestrator to do the rework and 41.3.3.
+- **Pass:** `start_app.py` uses `npm ci`; missing `frontend/package.json` sets `no_ui=True` before `API_PROXY`; `FRONTEND_READY` matches upstream `Backend server is running on http://localhost` (re.IGNORECASE); ports and `CHAT_APP_PORT` unchanged. CI on Node 22, cache on `frontend/package-lock.json`, separate Python and frontend steps, no `--write`. `app-check` = `app-lint app-test`.
+- **Fail, lint gate:** `npx biome lint --only=correctness/noUnusedVariables` cannot fail (`biome.jsonc` sets that rule to `warn`; biome exits 0 on warnings).
+- **Fail, typecheck:** root `npx tsc --noEmit` is the wrong project (root `tsconfig.json` has no `include` and no `@/*` alias; only `client/tsconfig.json` maps `@/*`). Upstream has no typecheck script; its CI runs only `npm ci` + `npm run lint`.
+- **Not met:** `make app-frontend-check` never ran end to end (`npm ci` stalled locally). Smoke test blocked (no credentials); chat and `/api/config` move to 41.4.1, `--no-ui` still required.
+- **Python (orchestrator, /tmp copy, `MLFLOW_TRACKING_URI=databricks`):** 61 passed. Ruff 0.17.1 check (`--extend-ignore EXE002`) and format check clean on app lint paths.
+- **Gotchas:** upstream `server` `start` script uses `NODE_ENV=production node ...` (POSIX); it fails under Windows cmd.exe. Commit messages conventional, no plan numbers.
 
 ## 41.3.3
 
