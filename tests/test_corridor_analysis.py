@@ -794,3 +794,36 @@ def test_corridor_all_validated_selectors_accepted(index):
         raise  # re-raise so test fails if it IS a ValueError
     except (AttributeError, TypeError, KeyError, IndexError, ZeroDivisionError):
         pass  # downstream mock errors (e.g. empty county list) are acceptable
+
+
+@pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
+def test_corridor_fallback_source_matches_registry_provenance(index):
+    """Corridor fallback provenance comes from the SDV registry (stable D8 IDs)."""
+    from fpac_soil_mcp import corridor_analysis
+    from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY
+
+    assert corridor_analysis._INDEX_SOURCES[index] == SDV_RATING_REGISTRY[index].provenance_id
+    assert corridor_analysis._INDEX_SENTINELS[index] == SDV_RATING_REGISTRY[index].sentinels
+
+
+def test_corridor_sentinels_and_rule_unchanged_by_registry_dedupe():
+    """Deduping onto the registry keeps the previous corridor sentinel values and NCCPI rule."""
+    from fpac_soil_mcp import corridor_analysis
+
+    assert corridor_analysis._INDEX_SOURCES == {
+        "nccpi": "SDA:NCCPI_V3",
+        "csr2": "SDA:MAPUNIT_IACORNSR",
+        "cpi": "SDA:COMPONENT_CROPPRODINDEX",
+        "storie": "SDA:COINTERP_STORIE_CA",
+    }
+    assert {k: set(v) for k, v in corridor_analysis._INDEX_SENTINELS.items()} == {
+        "nccpi": {99.0, 999.0, -99.0, -999.0},
+        "storie": {99.0, 999.0, -99.0, -999.0},
+        "csr2": {999.0, -99.0, -999.0},
+        "cpi": {999.0, -99.0, -999.0},
+    }
+    assert set(corridor_analysis._UNRATED_SENTINELS) == {99.0, 999.0, -99.0, -999.0}
+    assert (
+        corridor_analysis._NCCPI_RULE
+        == "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+    )

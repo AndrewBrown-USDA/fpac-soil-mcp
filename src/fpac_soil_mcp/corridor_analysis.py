@@ -50,26 +50,26 @@ from fpac_soil_mcp.models import (
 )
 from fpac_soil_mcp.nass_client import NassClient
 from fpac_soil_mcp.polygon_analysis import categorize_farmland_class
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.sda_client import (
+    PRODUCTIVITY_PROVENANCE,
+    PRODUCTIVITY_SEMANTICS,
+    SDV_RATING_REGISTRY,
+    SDAClient,
+    SDAClientError,
+)
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 logger = logging.getLogger(__name__)
 
 
-_UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
+# Sentinels, fallback provenance IDs, and the NCCPI rule come from the SDV
+# registry in sda_client (single source of truth, ADR 0014).
+_UNRATED_SENTINELS = PRODUCTIVITY_SEMANTICS["nccpi"]["sentinels"]
 _INDEX_SENTINELS = {
-    "nccpi": _UNRATED_SENTINELS,
-    "storie": _UNRATED_SENTINELS,
-    "csr2": {999.0, -99.0, -999.0},
-    "cpi": {999.0, -99.0, -999.0},
+    index: semantics["sentinels"] for index, semantics in PRODUCTIVITY_SEMANTICS.items()
 }
-_INDEX_SOURCES = {
-    "nccpi": "SDA:NCCPI_V3",
-    "csr2": "SDA:CSR2",
-    "cpi": "SDA:CPI",
-    "storie": "SDA:STORIE_CA",
-}
-_NCCPI_RULE = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+_INDEX_SOURCES = dict(PRODUCTIVITY_PROVENANCE)
+_NCCPI_RULE = SDV_RATING_REGISTRY["nccpi"].rule_name
 
 
 def _normalize_corridor_rating(value: Any, is_rated: Any, productivity_index: str) -> float | None:

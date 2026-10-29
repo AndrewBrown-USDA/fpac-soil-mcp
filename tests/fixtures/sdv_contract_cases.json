@@ -1,0 +1,569 @@
+{
+  "description": "Golden SDV contract cases: one per SDV_RATING_REGISTRY record. Mocked SDA rows; expected values hand-derived (round(raw, precision); sentinels/<=0/mixed units unrated). Fingerprints are SHA-256 of whitespace-collapsed SQL. legacy_* hashes are of origin/main fd0189f SQL_PRODUCTIVITY_* templates after canonicalisation (whitespace collapse + sorted NOT IN lists).",
+  "registry_version": "1",
+  "cases": [
+    {
+      "id": "nccpi",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27; branch engine re-confirmed in 39.5.1",
+        "selector": "nccpi",
+        "areasymbol": "IL019",
+        "county_max": 0.933,
+        "mukeys": {
+          "242959": 0.913,
+          "242960": 0.647,
+          "242961": 0.93
+        },
+        "tolerance": 0.003
+      },
+      "attributename": "National Commodity Crop Productivity Index",
+      "constraints": {},
+      "areasymbol": "IL019",
+      "mukeys": [
+        "242959",
+        "242960"
+      ],
+      "rating_sql_sha256": "fcfbf6df97a0c655884facbec4fc468119094a06bfc8a5ee7eb6615b8a453bce",
+      "county_max_sql_sha256": "13d6d39191ad79d2c84543968c84bf75460436af1839cf252b22b58c25335200",
+      "mock_header": [
+        "mukey",
+        "areasymbol",
+        "musym",
+        "muname",
+        "numeric_rating",
+        "rated_pct",
+        "total_pct"
+      ],
+      "mock_rows": [
+        [
+          "242959",
+          "IL019",
+          "152A",
+          "Drummer",
+          0.9127,
+          100.0,
+          100.0
+        ],
+        [
+          "242960",
+          "IL019",
+          "171B",
+          "Catlin",
+          0.647,
+          85.0,
+          100.0
+        ]
+      ],
+      "county_max_raw": 0.9334,
+      "expected_county_max": 0.933,
+      "legacy_rating_sql_canonical_sha256": "fcfbf6df97a0c655884facbec4fc468119094a06bfc8a5ee7eb6615b8a453bce",
+      "legacy_county_max_sql_canonical_sha256": "13d6d39191ad79d2c84543968c84bf75460436af1839cf252b22b58c25335200",
+      "expected_productivity_rating_source": "SDA:NCCPI_V3",
+      "expected_sdv_provenance": {
+        "id": "SDA:NCCPI_V3",
+        "registry_version": "1",
+        "spec_id": "nccpi",
+        "attributename": "National Commodity Crop Productivity Index",
+        "table": "cointerp",
+        "column": "interphrc",
+        "value_column": "interphr",
+        "rule_name": "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
+        "algorithm": "Weighted Average",
+        "horizon_method": "Weighted Average",
+        "depth_top_cm": null,
+        "depth_bottom_cm": null,
+        "tiebreak_rule": 1,
+        "nulls_as_zero": false,
+        "null_handling": "exclude_nulls",
+        "scale": "0-1",
+        "precision": 3
+      },
+      "expected": {
+        "242959": {
+          "numeric_rating": 0.913,
+          "is_rated": true,
+          "caveats": []
+        },
+        "242960": {
+          "numeric_rating": 0.647,
+          "is_rated": true,
+          "caveats": [
+            "Partially rated map unit: 85.0% rated out of 100.0% total component coverage."
+          ]
+        }
+      }
+    },
+    {
+      "id": "storie",
+      "live_benchmark": {
+        "source": "39.1.1 Dominant Condition benchmark; branch engine re-confirmed in 39.5.1 (STOP B approved 2026-10-27)",
+        "selector": "storie",
+        "areasymbol": "CA077",
+        "county_max": 0.995,
+        "mukeys": {
+          "462057": 0.294,
+          "462069": 0.375,
+          "462070": 0.255,
+          "461995": 0.261,
+          "461996": 0.194
+        },
+        "legacy_weighted_average": {
+          "462057": 0.241,
+          "462069": 0.275,
+          "462070": 0.187,
+          "461995": 0.234,
+          "461996": 0.158
+        },
+        "tolerance": 0.003
+      },
+      "attributename": "California Revised Storie Index (CA)",
+      "constraints": {},
+      "areasymbol": "CA077",
+      "mukeys": [
+        "462057",
+        "462069"
+      ],
+      "rating_sql_sha256": "965d83d2f25c51a9c00606d63025ba49256da798f0a104bb4ca9d97fd75b5582",
+      "county_max_sql_sha256": "db1526ed8ac971cba1da0e2471071cebfe4027c549793952cd7859761f3acceb",
+      "mock_header": [
+        "mukey",
+        "areasymbol",
+        "musym",
+        "muname",
+        "numeric_rating",
+        "dominant_pct",
+        "rated_pct",
+        "total_pct"
+      ],
+      "mock_rows": [
+        [
+          "462057",
+          "CA077",
+          "100",
+          "Honker-Vallecitos-Honker",
+          0.375,
+          50.0,
+          85.0,
+          95.0
+        ],
+        [
+          "462069",
+          "CA077",
+          "110",
+          "Rock outcrop-Honker",
+          null,
+          null,
+          0.0,
+          95.0
+        ]
+      ],
+      "county_max_raw": 0.995,
+      "expected_county_max": 0.995,
+      "expected_productivity_rating_source": "SDA:COINTERP_STORIE_CA",
+      "expected_sdv_provenance": {
+        "id": "SDA:COINTERP_STORIE_CA",
+        "registry_version": "1",
+        "spec_id": "storie",
+        "attributename": "California Revised Storie Index (CA)",
+        "table": "cointerp",
+        "column": "interphrc",
+        "value_column": "interphr",
+        "rule_name": "AGR - California Revised Storie Index (CA)",
+        "algorithm": "Dominant Condition",
+        "horizon_method": "Weighted Average",
+        "depth_top_cm": null,
+        "depth_bottom_cm": null,
+        "tiebreak_rule": -1,
+        "nulls_as_zero": false,
+        "null_handling": "exclude_nulls",
+        "scale": "0-1",
+        "precision": 3
+      },
+      "expected": {
+        "462057": {
+          "numeric_rating": 0.375,
+          "is_rated": true,
+          "caveats": [
+            "Partially rated map unit: 85.0% rated out of 95.0% total component coverage.",
+            "Rating uses Dominant Condition aggregation."
+          ]
+        },
+        "462069": {
+          "numeric_rating": null,
+          "is_rated": false,
+          "caveats": [
+            "Map unit has no numeric productivity rating.",
+            "Rating uses Dominant Condition aggregation."
+          ]
+        }
+      }
+    },
+    {
+      "id": "csr2",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27; branch engine re-confirmed in 39.5.1",
+        "selector": "csr2",
+        "areasymbol": "IA169",
+        "county_max": 96,
+        "mukeys": {
+          "411277": 96,
+          "411278": 36,
+          "411280": 72
+        },
+        "tolerance": 0
+      },
+      "attributename": "Iowa Corn Suitability Rating CSR2 (IA)",
+      "constraints": {},
+      "areasymbol": "IA169",
+      "mukeys": [
+        "411277",
+        "411278"
+      ],
+      "rating_sql_sha256": "01f087dd06db78d6964b2c30c0309e5deecde1f82c6968c98a04ba63aef628cd",
+      "county_max_sql_sha256": "b9f387837574ba8ea298a0c63e18a6c94261d014c15c90b5d8efe9d1389b93be",
+      "mock_header": [
+        "mukey",
+        "areasymbol",
+        "musym",
+        "muname",
+        "numeric_rating",
+        "rated_pct",
+        "total_pct"
+      ],
+      "mock_rows": [
+        [
+          "411277",
+          "IA169",
+          "138B",
+          "Clarion",
+          96.0,
+          100.0,
+          100.0
+        ],
+        [
+          "411278",
+          "IA169",
+          "507",
+          "Canisteo",
+          99.0,
+          100.0,
+          100.0
+        ]
+      ],
+      "county_max_raw": 96.0,
+      "expected_county_max": 96.0,
+      "legacy_rating_sql_canonical_sha256": "01f087dd06db78d6964b2c30c0309e5deecde1f82c6968c98a04ba63aef628cd",
+      "legacy_county_max_sql_canonical_sha256": "b9f387837574ba8ea298a0c63e18a6c94261d014c15c90b5d8efe9d1389b93be",
+      "expected_productivity_rating_source": "SDA:MAPUNIT_IACORNSR",
+      "expected_sdv_provenance": {
+        "id": "SDA:MAPUNIT_IACORNSR",
+        "registry_version": "1",
+        "spec_id": "csr2",
+        "attributename": "Iowa Corn Suitability Rating CSR2 (IA)",
+        "table": "mapunit",
+        "column": "iacornsr",
+        "value_column": "iacornsr",
+        "rule_name": "",
+        "algorithm": "No Aggregation Necessary",
+        "horizon_method": "Weighted Average",
+        "depth_top_cm": null,
+        "depth_bottom_cm": null,
+        "tiebreak_rule": 1,
+        "nulls_as_zero": false,
+        "null_handling": "exclude_nulls",
+        "scale": "5-100",
+        "precision": 0
+      },
+      "expected": {
+        "411277": {
+          "numeric_rating": 96.0,
+          "is_rated": true,
+          "caveats": []
+        },
+        "411278": {
+          "numeric_rating": 99.0,
+          "is_rated": true,
+          "caveats": []
+        }
+      }
+    },
+    {
+      "id": "cpi",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27 (raw 71.49, 82.9, 70.95); engine output at precision 0 re-confirmed in 39.5.1; 2800029 live 2026-10-28 with nulls-as-zero (was 83 with null exclusion)",
+        "selector": "cpi",
+        "areasymbol": "MN167",
+        "county_max": 100,
+        "mukeys": {
+          "357409": 71,
+          "357412": 83,
+          "357418": 71,
+          "2800029": 79
+        },
+        "tolerance": 0.01
+      },
+      "attributename": "Crop Productivity Index",
+      "constraints": {},
+      "areasymbol": "MN167",
+      "mukeys": [
+        "357409",
+        "357412"
+      ],
+      "rating_sql_sha256": "4f756846e54e3fcda688d815e78a8629b165a7bb4fe2059750601dea20948d83",
+      "county_max_sql_sha256": "e5202f25b9c17f5515013ab20fcc9b686bfe048a29f81a103579df748a14ef56",
+      "mock_header": [
+        "mukey",
+        "areasymbol",
+        "musym",
+        "muname",
+        "numeric_rating",
+        "rated_pct",
+        "total_pct"
+      ],
+      "mock_rows": [
+        [
+          "357409",
+          "MN167",
+          "I13A",
+          "Bearden",
+          71.49,
+          90.0,
+          100.0
+        ],
+        [
+          "357412",
+          "MN167",
+          "W",
+          "Water",
+          null,
+          0.0,
+          100.0
+        ]
+      ],
+      "county_max_raw": 100.0,
+      "expected_county_max": 100.0,
+      "legacy_county_max_sql_canonical_sha256": "e5202f25b9c17f5515013ab20fcc9b686bfe048a29f81a103579df748a14ef56",
+      "expected_productivity_rating_source": "SDA:COMPONENT_CROPPRODINDEX",
+      "expected_sdv_provenance": {
+        "id": "SDA:COMPONENT_CROPPRODINDEX",
+        "registry_version": "1",
+        "spec_id": "cpi",
+        "attributename": "Crop Productivity Index",
+        "table": "component",
+        "column": "cropprodindex",
+        "value_column": "cropprodindex",
+        "rule_name": "",
+        "algorithm": "Weighted Average",
+        "horizon_method": "Weighted Average",
+        "depth_top_cm": null,
+        "depth_bottom_cm": null,
+        "tiebreak_rule": 1,
+        "nulls_as_zero": true,
+        "null_handling": "nulls_as_zero",
+        "scale": "1-100",
+        "precision": 0
+      },
+      "expected": {
+        "357409": {
+          "numeric_rating": 71.0,
+          "is_rated": true,
+          "caveats": [
+            "Partially rated map unit: 90.0% rated out of 100.0% total component coverage."
+          ]
+        },
+        "357412": {
+          "numeric_rating": null,
+          "is_rated": false,
+          "caveats": [
+            "Map unit has no numeric productivity rating."
+          ]
+        }
+      }
+    },
+    {
+      "id": "aws_0_100",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27: 20 IL019 map units within 0.005 cm of muaggatt.aws0100wta",
+        "selector": null,
+        "areasymbol": "IL019",
+        "muaggatt_cross_check": {
+          "column": "aws0100wta",
+          "sample_size": 20,
+          "min_compared": 15,
+          "max_diff_cm": 0.01,
+          "max_mismatch_fraction": 0.05
+        }
+      },
+      "attributename": "Available Water Storage",
+      "constraints": {},
+      "areasymbol": "IL019",
+      "mukeys": [
+        "242959"
+      ],
+      "rating_sql_sha256": "a0ab79fa0fed915bf77d195d76caf338398e884d357301b4149eb91466b43b56",
+      "county_max_sql_sha256": "fe2716828abf95ab4456a7464042c12730ec72ca7fceefeb59a3c7bb2724d084",
+      "mock_header": [
+        "mukey",
+        "areasymbol",
+        "musym",
+        "muname",
+        "numeric_rating",
+        "rated_pct",
+        "total_pct"
+      ],
+      "mock_rows": [
+        [
+          "242959",
+          "IL019",
+          "152A",
+          "Drummer",
+          17.2346,
+          100.0,
+          100.0
+        ]
+      ],
+      "county_max_raw": 23.4567,
+      "expected_county_max": 23.457,
+      "expected_productivity_rating_source": "SDA:CHORIZON_AWC_R_0_100",
+      "expected_sdv_provenance": {
+        "id": "SDA:CHORIZON_AWC_R_0_100",
+        "registry_version": "1",
+        "spec_id": "aws_0_100",
+        "attributename": "Available Water Storage",
+        "table": "chorizon",
+        "column": "awc_r",
+        "value_column": "awc_r",
+        "rule_name": "",
+        "algorithm": "Weighted Average",
+        "horizon_method": "Weighted Sum",
+        "depth_top_cm": 0.0,
+        "depth_bottom_cm": 100.0,
+        "tiebreak_rule": 1,
+        "nulls_as_zero": false,
+        "null_handling": "exclude_nulls",
+        "scale": "0-100 cm",
+        "precision": 3
+      },
+      "expected": {
+        "242959": {
+          "numeric_rating": 17.235,
+          "is_rated": true,
+          "caveats": [
+            "Available water storage computed for fixed depth range 0-100 cm."
+          ]
+        }
+      }
+    },
+    {
+      "id": "nonirr_crop_yield",
+      "live_benchmark": {
+        "source": "39.1.1 live SDA 2026-10-27 (Corn, Bu): county max 195, 0/73 mixed-unit map units",
+        "selector": null,
+        "areasymbol": "IL019",
+        "county_max": 195,
+        "mukeys": {
+          "242955": 123.74,
+          "243008": 118.7,
+          "242969": 157.6,
+          "242972": 151.84,
+          "242968": 161.83
+        },
+        "tolerance": 0.1,
+        "expected_yldunits": "Bu",
+        "max_mixed_unit_fraction": 0.05
+      },
+      "attributename": "Yields of Non-Irrigated Crops (Component)",
+      "constraints": {
+        "cropname": "Corn"
+      },
+      "areasymbol": "IL019",
+      "mukeys": [
+        "242959",
+        "242960"
+      ],
+      "rating_sql_sha256": "b30bcdb7e820207775152fec398d2ac012a2f6906974442c6618258956d7f9ac",
+      "county_max_sql_sha256": "d1da52dd36528932a6e13813f65467d0429752332a3719c00b5c40292874cb4d",
+      "mock_header": [
+        "mukey",
+        "areasymbol",
+        "musym",
+        "muname",
+        "numeric_rating",
+        "rated_pct",
+        "total_pct",
+        "unit_count",
+        "yldunits_min",
+        "yldunits_max"
+      ],
+      "mock_rows": [
+        [
+          "242959",
+          "IL019",
+          "152A",
+          "Drummer",
+          182.456,
+          100.0,
+          100.0,
+          1,
+          "Bu",
+          "Bu"
+        ],
+        [
+          "242960",
+          "IL019",
+          "171B",
+          "Catlin",
+          150.0,
+          100.0,
+          100.0,
+          2,
+          "Bu",
+          "Tons"
+        ]
+      ],
+      "county_max_raw": 195.0,
+      "expected_county_max": 195.0,
+      "expected_productivity_rating_source": "SDA:COCROPYLD_NONIRRYIELD_R",
+      "expected_sdv_provenance": {
+        "id": "SDA:COCROPYLD_NONIRRYIELD_R",
+        "registry_version": "1",
+        "spec_id": "nonirr_crop_yield",
+        "attributename": "Yields of Non-Irrigated Crops (Component)",
+        "table": "cocropyld",
+        "column": "nonirryield_r",
+        "value_column": "nonirryield_r",
+        "rule_name": "",
+        "algorithm": "Weighted Average",
+        "horizon_method": "Weighted Average",
+        "depth_top_cm": null,
+        "depth_bottom_cm": null,
+        "tiebreak_rule": 1,
+        "nulls_as_zero": true,
+        "null_handling": "nulls_as_zero",
+        "scale": "varies",
+        "precision": 2,
+        "cropname": "Corn",
+        "yldunits": null
+      },
+      "expected": {
+        "242959": {
+          "numeric_rating": 182.46,
+          "is_rated": true,
+          "caveats": [
+            "Crop-specific yield for 'Corn'."
+          ],
+          "yldunits": "Bu"
+        },
+        "242960": {
+          "numeric_rating": null,
+          "is_rated": false,
+          "caveats": [
+            "Mixed yield units: Bu and Tons.",
+            "Crop-specific yield for 'Corn'."
+          ],
+          "yldunits": null
+        }
+      }
+    }
+  ]
+}
