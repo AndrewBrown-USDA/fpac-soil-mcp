@@ -52,8 +52,14 @@ app-lint: ## Ruff check + format check on the agent app files this repo owns
 	$(UV) run ruff check $(APP_LINT_PATHS)
 	$(UV) run ruff format --check $(APP_LINT_PATHS)
 
-app-frontend-check: ## Install and validate the vendored agent app frontend
-	cd $(APP_DIR)/frontend && npm ci && npx biome lint --only=correctness/noUnusedVariables && npm run build
+# Read-only lint with the upstream biome.jsonc. The two skipped rules are the only
+# error-level findings in unmodified upstream 0e57297 (upstream CI runs lint with
+# --write --unsafe, which autofixes them). There is no typecheck: upstream client
+# and server fail tsc at 0e57297 and upstream has no typecheck script (ADR 0015).
+APP_FRONTEND_LINT_SKIP := --skip=nursery/useSortedClasses --skip=style/useTemplate
+
+app-frontend-check: ## Install and validate the vendored agent app frontend (needs Node 22 + npm)
+	cd $(APP_DIR)/frontend && npm ci && npx biome lint $(APP_FRONTEND_LINT_SKIP) . && npm run build
 
 app-check: app-lint app-test ## Run Python-only agent app validation
 
