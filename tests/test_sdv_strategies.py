@@ -238,12 +238,40 @@ class TestChorizonWeightedSum:
     def test_rating_query_excludes_nulls(self) -> None:
         spec = SDV_RATING_REGISTRY["aws_0_100"]
         sql = build_sdv_rating_query(spec, ["1001"])
-        assert "awc_r IS NOT NULL" in sql
+        assert "LEFT JOIN hz_weighted" in sql
+        assert "attr_sum IS NOT NULL" in sql
 
     def test_rating_query_has_misc_area_filter(self) -> None:
         spec = SDV_RATING_REGISTRY["aws_0_100"]
         sql = build_sdv_rating_query(spec, ["1001"])
         assert "miscellaneous area" in sql
+
+    def test_rating_query_preserves_partial_and_all_null_coverage(self) -> None:
+        db = sqlite3.connect(":memory:")
+        db.executescript(
+            """
+            CREATE TABLE legend (lkey TEXT, areasymbol TEXT);
+            CREATE TABLE mapunit (mukey TEXT, lkey TEXT, musym TEXT, muname TEXT);
+            CREATE TABLE component (cokey TEXT, mukey TEXT, comppct_r INTEGER, compkind TEXT);
+            CREATE TABLE chorizon (cokey TEXT, hzdept_r INTEGER, hzdepb_r INTEGER, awc_r REAL);
+            INSERT INTO legend VALUES ('L1', 'IL019');
+            INSERT INTO mapunit VALUES
+                ('1', 'L1', 'A', 'Partly rated'),
+                ('2', 'L1', 'B', 'No ratings');
+            INSERT INTO component VALUES
+                ('c1', '1', 60, 'series'),
+                ('c2', '1', 40, 'series'),
+                ('c3', '2', 100, 'series');
+            INSERT INTO chorizon VALUES
+                ('c1', 0, 100, 0.2),
+                ('c2', 0, 100, NULL),
+                ('c3', 0, 100, NULL);
+            """
+        )
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["aws_0_100"], ["1", "2"])
+        rows = {r[0]: r[4:] for r in db.execute(sql)}
+        assert rows["1"] == (pytest.approx(20.0), 60, 100)
+        assert rows["2"] == (None, 0, 100)
 
     def test_county_max_query(self) -> None:
         spec = SDV_RATING_REGISTRY["aws_0_100"]

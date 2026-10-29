@@ -1027,33 +1027,40 @@ def _build_chorizon_ws_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
 WITH hz_weighted AS (
     SELECT
         c.cokey,
-        c.comppct_r,
+        SUM(CAST(ch.{col} AS float) * (CASE WHEN ch.hzdepb_r > {depth_bot} THEN {depth_bot} ELSE ch.hzdepb_r END - CASE WHEN ch.hzdept_r < {depth_top} THEN {depth_top} ELSE ch.hzdept_r END))
+            AS attr_sum
+    FROM component AS c
+    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
+    WHERE ch.{col} IS NOT NULL
+      AND ch.hzdepb_r > {depth_top}
+      AND ch.hzdept_r < {depth_bot}
+    GROUP BY c.cokey
+),
+component_values AS (
+    SELECT
         m.mukey,
         l.areasymbol,
         m.musym,
         m.muname,
-        SUM(CAST(ch.{col} AS float) * (CASE WHEN ch.hzdepb_r > {depth_bot} THEN {depth_bot} ELSE ch.hzdepb_r END - CASE WHEN ch.hzdept_r < {depth_top} THEN {depth_top} ELSE ch.hzdept_r END))
-            AS attr_sum
+        c.comppct_r,
+        h.attr_sum
     FROM legend AS l
     INNER JOIN mapunit AS m ON m.lkey = l.lkey
     INNER JOIN component AS c ON c.mukey = m.mukey
-    INNER JOIN chorizon AS ch ON ch.cokey = c.cokey
+    LEFT JOIN hz_weighted AS h ON h.cokey = c.cokey
     WHERE m.mukey IN ({mukeys_sql})
       AND c.compkind != 'miscellaneous area'
-      AND ch.{col} IS NOT NULL
-      AND ch.hzdepb_r > {depth_top}
-      AND ch.hzdept_r < {depth_bot}
-    GROUP BY c.cokey, c.comppct_r, m.mukey, l.areasymbol, m.musym, m.muname
 )
 SELECT
     mukey,
     areasymbol,
     musym,
     muname,
-    ROUND(SUM(attr_sum * comppct_r) / NULLIF(SUM(comppct_r), 0), {spec.precision}) AS numeric_rating,
+    ROUND(SUM(CASE WHEN attr_sum IS NOT NULL THEN attr_sum * comppct_r ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN attr_sum IS NOT NULL THEN comppct_r ELSE 0 END), 0), {spec.precision}) AS numeric_rating,
     SUM(CASE WHEN attr_sum IS NOT NULL THEN comppct_r ELSE 0 END) AS rated_pct,
     SUM(comppct_r) AS total_pct
-FROM hz_weighted
+FROM component_values
 GROUP BY mukey, areasymbol, musym, muname
 """
 

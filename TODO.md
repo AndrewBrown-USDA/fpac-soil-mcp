@@ -15,8 +15,8 @@ Resolve all three open review threads on PR #55 by correcting sentinel and cover
 - [x] Add an executable CPI fixture covering sentinel plus NULL components and verify the expected unrated/rated result.
 
 ### 3. Preserve AWS coverage arithmetic
-- [ ] Update AWS aggregation so NULL-valued components remain in total coverage while excluded from rated values.
-- [ ] Add executable fixtures for partially rated and all-null AWS map units with independently calculated expected coverage and rating results.
+- [x] Update AWS aggregation so NULL-valued components remain in total coverage while excluded from rated values.
+- [x] Add executable fixtures for partially rated and all-null AWS map units with independently calculated expected coverage and rating results.
 
 ### 4. Add raw-row strategy fixtures
 - [ ] Add executable raw-row fixtures for Storie grouping and tie handling.
