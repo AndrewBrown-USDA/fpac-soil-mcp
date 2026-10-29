@@ -22,8 +22,8 @@
 | 2 | User | 41.2.1 | done (pushed through 226f283) |
 | 3 | Local agent | 41.3.1 | done (6e1d381); file-mode fix in 41.3.2 rework |
 | 3 | Local agent -> Databricks | 41.3.2 | done (45ed0be, 9c1567f; rework 25796db, b53eda6) |
-| 3 | Databricks | 41.3.3 | done (b499d06); push pending user approval |
-| 4 | Databricks / user | 41.4.1 | pending |
+| 3 | Databricks | 41.3.3 | done (b499d06); pushed through ae65f05 |
+| 4 | Databricks / user | 41.4.1 | done (branch deploy 01f1d39981061f1f8089129a4d85bc2a; main restored 01f1d39d6ed31fbdaed6e32c35866591) |
 
 ## Task reports
 
@@ -108,6 +108,21 @@
   - Root check (/tmp copy): `ruff check --extend-ignore EXE002 .` clean (77 EXE002 only without the ignore: workspace file modes), `ruff format --check .` 493 files clean, `make test` 474 passed, 3 skipped, 24 deselected.
 - **Deviations:** executor changed from local agent to Databricks orchestrator at the user's direction; no 41.3.3 todo file.
 
-**Wave 3 complete (unpushed: fd8ec83, 25796db, b53eda6, b499d06).** Next: user approves push, then 41.4.1.
+**Wave 3 complete.** Pushed to origin with user approval: `9c1567f..ae65f05` (fd8ec83, 25796db, b53eda6, b499d06, ae65f05).
 
 ## 41.4.1
+
+- **Status:** done (Databricks orchestrator; UI steps by the user). All checks passed and `main` is restored.
+- **Branch deploy:** `01f1d39981061f1f8089129a4d85bc2a`, `feature/agent-app-map1` at ae65f05, SUCCEEDED, created 2026-10-29 13:06:07 UTC. Previous `main` deploy `01f1d398cc0815d3aa5aee04651d8ec7` (a06092a, 13:01 UTC).
+- **Checks (on the branch deploy):**
+  - App logs show `Running npm ci...`, `Running npm build...` and "Backend server is running" (user).
+  - `/` loads the chat UI; `/api/config` 200; `/api/geo/health` 200 `{"status":"ok"}` (user, browser session).
+  - Chat turn: POINT-01 prompt, full answer (user).
+  - Trace `tr-978e17d0f106e39949e2c8f1be697b48` in experiment 517983779529169: state OK, 7.9 s, 13:18:51 UTC; the only trace after the branch deploy. `mlflow.trace.session` = `bd55ca77-c14d-42bf-aea0-0ad532d79fa4` = request `context.conversation_id` (orchestrator, MLflow client).
+- **Restore:** default git source set to `main` at 13:24:09 UTC; changing the branch did not redeploy (no deployment created in 9 minutes, auto-deploy on). After a manual Deploy: `01f1d39d6ed31fbdaed6e32c35866591`, `main` at a06092a, SUCCEEDED 13:34:25 UTC. Branch build served users 13:06-13:34 UTC.
+- **Deviations / observations:**
+  - The chat ID was not visible in the URL: `/api/config` reports `chatHistory: false`, so the UI has no `/chat/<id>` route. The ID was taken from the trace request's `context.conversation_id`.
+  - Endpoint and log checks were done by the user: the app rejects workspace PAT auth (302 / 401) and `apps logs` needs OAuth.
+  - The trace info and request preview load, but `get_trace` reports missing span data (spans may still be uploading). Not a 41.4.1 criterion; re-check if span-level evidence is needed.
+
+**Plan 41 complete.**
