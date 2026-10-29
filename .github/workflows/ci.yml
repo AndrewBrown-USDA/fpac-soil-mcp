@@ -104,7 +104,7 @@ jobs:
       - name: Set up Node.js for the vendored frontend
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: apps/agent-fpac-soil-openai-sdk/frontend/package-lock.json
 

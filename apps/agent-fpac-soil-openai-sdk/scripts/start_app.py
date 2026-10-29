@@ -187,6 +187,11 @@ class ProcessManager:
         if not os.environ.get("DATABRICKS_APP_NAME"):
             self.check_ports()
 
+        frontend_dir = Path(__file__).parent.parent / "frontend"
+        if not self.no_ui and not (frontend_dir / "package.json").is_file():
+            print(f"WARNING: Frontend package not found at {frontend_dir}; running backend only.")
+            self.no_ui = True
+
         if not self.no_ui:
             os.environ["API_PROXY"] = f"http://localhost:{self.port}/invocations"
 
@@ -210,12 +215,11 @@ class ProcessManager:
 
             if not self.no_ui:
                 # Setup and start frontend
-                frontend_dir = Path(__file__).parent.parent / "frontend"
                 # npm is a .cmd shim on Windows, which can't be launched by bare
                 # name without a shell; resolve its full path (honors PATHEXT) so
                 # argument lists work on every platform.
                 npm = shutil.which("npm") or "npm"
-                for args, desc in [(["install"], "install"), (["run", "build"], "build")]:
+                for args, desc in [(["ci"], "ci"), (["run", "build"], "build")]:
                     print(f"Running npm {desc}...")
                     result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-audit
                         [npm, *args], cwd=frontend_dir, capture_output=True, text=True
