@@ -167,19 +167,22 @@ class TestComponentWeightedAverage:
             INSERT INTO mapunit VALUES
                 ('1', 'L1', 'A', 'All rated'),
                 ('2', 'L1', 'B', 'Partly rated'),
-                ('3', 'L1', 'C', 'No ratings');
+                ('3', 'L1', 'C', 'No ratings'),
+                ('4', 'L1', 'D', 'Sentinel and null');
             INSERT INTO component VALUES
                 ('1', 60, 'series', 80), ('1', 40, 'series', 60),
                 ('2', 80, 'series', 90), ('2', 20, 'inclusion', NULL),
                 ('2', 10, 'miscellaneous area', NULL),
-                ('3', 70, 'series', NULL), ('3', 30, 'series', NULL);
+                ('3', 70, 'series', NULL), ('3', 30, 'series', NULL),
+                ('4', 50, 'series', 999), ('4', 50, 'series', NULL);
             """
         )
-        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["cpi"], ["1", "2", "3"])
+        sql = build_sdv_rating_query(SDV_RATING_REGISTRY["cpi"], ["1", "2", "3", "4"])
         rows = {r[0]: r[4:] for r in db.execute(sql)}
         assert rows["1"] == (pytest.approx(72.0), 100, 100)
         assert rows["2"] == (pytest.approx(72.0), 80, 100)
         assert rows["3"] == (None, 0, 100)
+        assert rows["4"] == (None, 0, 100)
 
 
 class TestMapunitNoAggregation:

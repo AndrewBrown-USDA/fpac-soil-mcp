@@ -937,17 +937,19 @@ def _build_component_wa_rating(spec: SdvRatingSpec, mukeys_sql: str) -> str:
     components with a non-null value.
     """
     col = spec.value_column
+    valid_value = f"c.{col} IS NOT NULL AND {_spec_sentinel_predicate(spec, f'c.{col}')}"
     if spec.nulls_as_zero and spec.table in _NULLS_AS_ZERO_TABLES:
         rating_sql = f"""\
-    CASE WHEN SUM(CASE WHEN c.{col} IS NOT NULL THEN 1 ELSE 0 END) > 0
-        THEN SUM(COALESCE(CAST(c.{col} AS float), 0) * c.comppct_r)
+    CASE WHEN SUM(CASE WHEN {valid_value} THEN 1 ELSE 0 END) > 0
+        THEN SUM(CASE WHEN {valid_value}
+            THEN CAST(c.{col} AS float) * c.comppct_r ELSE 0 END)
             / NULLIF(SUM(c.comppct_r), 0)
     END AS numeric_rating,"""
     else:
         rating_sql = f"""\
-    SUM(CASE WHEN c.{col} IS NOT NULL
+    SUM(CASE WHEN {valid_value}
         THEN CAST(c.{col} AS float) * c.comppct_r ELSE 0 END)
-        / NULLIF(SUM(CASE WHEN c.{col} IS NOT NULL
+        / NULLIF(SUM(CASE WHEN {valid_value}
             THEN c.comppct_r ELSE 0 END), 0) AS numeric_rating,"""
     return f"""\
 SELECT
@@ -956,7 +958,7 @@ SELECT
     m.musym,
     m.muname,
 {rating_sql}
-    SUM(CASE WHEN c.{col} IS NOT NULL THEN c.comppct_r ELSE 0 END) AS rated_pct,
+    SUM(CASE WHEN {valid_value} THEN c.comppct_r ELSE 0 END) AS rated_pct,
     SUM(c.comppct_r) AS total_pct
 FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
@@ -970,6 +972,7 @@ GROUP BY m.mukey, l.areasymbol, m.musym, m.muname
 def _build_component_wa_county_max(spec: SdvRatingSpec, areasymbol: str) -> str:
     """component + Weighted Average county max (CPI-style)."""
     col = spec.value_column
+    valid_value = _spec_sentinel_predicate(spec, f"c.{col}")
     return f"""\
 SELECT
     MAX(CAST(c.{col} AS float)) AS max_county_rating
@@ -977,7 +980,7 @@ FROM legend AS l
 INNER JOIN mapunit AS m ON m.lkey = l.lkey
 INNER JOIN component AS c ON c.mukey = m.mukey
 WHERE l.areasymbol = '{areasymbol}'
-  AND c.{col} IS NOT NULL
+  AND {valid_value}
   AND c.compkind != 'miscellaneous area'
 """
 
