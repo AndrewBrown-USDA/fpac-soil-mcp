@@ -13,7 +13,9 @@ import os
 import secrets
 from typing import Any, Literal
 
+from agents.mcp.server import MCPServerStreamableHttp
 from databricks.sdk import WorkspaceClient
+from databricks_openai.agents import McpServer
 from pydantic import BaseModel, Field, ValidationError
 
 from agent_server.agent import init_fpac_mcp_server
@@ -291,17 +293,27 @@ def new_aoi_ref() -> str:
     return f"aoi-{secrets.token_hex(4)}"
 
 
+async def _call_tool_untraced(server: McpServer, name: str, arguments: dict[str, Any]) -> Any:
+    """Call an MCP tool without the ``@mlflow.trace`` wrapper on ``McpServer.call_tool``.
+
+    ``databricks_openai`` decorates ``McpServer.call_tool`` with ``@mlflow.trace``, which
+    records the full arguments (the AOI) and result (soil polygons) as a trace. The parent
+    implementation makes the same call without tracing (ADR 0016).
+    """
+    return await MCPServerStreamableHttp.call_tool(server, name, arguments)
+
+
 async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
     """Run both MCP tools for one AOI. Raises ``GeoRequestError(502)`` on MCP failure."""
     geometry = request.geometry.model_dump()
     aoi_ref = new_aoi_ref()
     try:
         async with init_fpac_mcp_server(WorkspaceClient()) as server:
-            analysis_result = await server.call_tool(
-                ANALYSIS_TOOL, {"geojson": geometry, "include_nccpi": True}
+            analysis_result = await _call_tool_untraced(
+                server, ANALYSIS_TOOL, {"geojson": geometry, "include_nccpi": True}
             )
-            polygons_result = await server.call_tool(
-                POLYGONS_TOOL, {"geojson": geometry, "clip": True}
+            polygons_result = await _call_tool_untraced(
+                server, POLYGONS_TOOL, {"geojson": geometry, "clip": True}
             )
     except Exception as exc:  # noqa: BLE001 - every MCP failure becomes a bounded 502
         # Exception text may echo tool arguments, so only the type is logged.

@@ -1,7 +1,9 @@
 """Offline tests for the out-of-band AOI screening route (ADR 0016).
 
-The MCP client is replaced with a fake async context manager, so no network call is
-made. Synthetic geometry only; the marker string stands in for anything that must
+The route runs against the real ``McpServer`` class with only its transport faked
+(``connect``, ``cleanup`` and the client session), so no network call is made but the
+``@mlflow.trace`` wrapper on ``McpServer.call_tool`` stays in reach of the trace tests.
+Synthetic geometry only; the marker string stands in for anything that must
 never reach ``chat_summary``, its text form, the error bodies or the logs.
 """
 
@@ -10,13 +12,17 @@ import importlib
 import json
 import logging
 import re
-from unittest.mock import AsyncMock
+from contextlib import contextmanager
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import mlflow
 import mlflow.genai.agent_server
 import pytest
 from agent_server import geo
+from agent_server.agent import init_fpac_mcp_server
+from agents.mcp.server import MCPServerStreamableHttp
+from databricks_openai.agents import McpServer
 from fastapi.testclient import TestClient
 from mcp.types import CallToolResult, TextContent
 
@@ -107,6 +113,14 @@ def _text(data: dict) -> CallToolResult:
 
 
 class FakeMcpServer:
+    """Scripted MCP behaviour behind a real ``McpServer`` (see ``_real_server``).
+
+    Only the transport is fake: ``connect``/``cleanup`` and the client session. The
+    ``databricks_openai`` ``McpServer`` class, including its ``@mlflow.trace`` wrapper
+    on ``call_tool``, and the Agents SDK ``call_tool`` path stay real, so a route that
+    goes through the traced method shows up in the trace tests.
+    """
+
     def __init__(self, results=None, error: Exception | None = None):
         self.results = results or {}
         self.error = error
@@ -114,29 +128,61 @@ class FakeMcpServer:
         self.entered = 0
         self.exited = 0
 
-    async def __aenter__(self):
-        self.entered += 1
-        if self.error:
-            raise self.error
-        return self
 
-    async def __aexit__(self, *exc):
-        self.exited += 1
-        return False
+class FakeSession:
+    def __init__(self, fake: FakeMcpServer):
+        self.fake = fake
 
-    async def call_tool(self, name, arguments, **kwargs):
-        self.calls.append((name, arguments))
-        return self.results[name]
+    async def call_tool(self, name, arguments=None, *args, **kwargs):
+        self.fake.calls.append((name, arguments))
+        return self.fake.results[name]
+
+
+def _real_server(fake: FakeMcpServer) -> McpServer:
+    server = init_fpac_mcp_server(MagicMock(name="WorkspaceClient"))
+
+    async def connect():
+        fake.entered += 1
+        if fake.error:
+            raise fake.error
+        server.session = FakeSession(fake)
+
+    async def cleanup():
+        fake.exited += 1
+        server.session = None
+
+    server.connect = connect
+    server.cleanup = cleanup
+    return server
 
 
 @pytest.fixture
 def fake_mcp(monkeypatch):
-    def install(server: FakeMcpServer) -> FakeMcpServer:
+    def install(fake: FakeMcpServer) -> FakeMcpServer:
         monkeypatch.setattr(geo, "WorkspaceClient", lambda: object())
-        monkeypatch.setattr(geo, "init_fpac_mcp_server", lambda client: server)
-        return server
+        monkeypatch.setattr(geo, "init_fpac_mcp_server", lambda client: _real_server(fake))
+        return fake
 
     return install
+
+
+@contextmanager
+def _local_experiment(tmp_path):
+    """Point MLflow at a temporary SQLite store; yields a function returning trace count."""
+    previous = mlflow.get_tracking_uri()
+    mlflow.set_tracking_uri(f"sqlite:///{tmp_path / 'mlflow.db'}")
+    try:
+        experiment_id = mlflow.create_experiment("geo-screen-traces")
+        mlflow.set_experiment(experiment_id=experiment_id)
+
+        def count() -> int:
+            if hasattr(mlflow, "flush_trace_async_logging"):
+                mlflow.flush_trace_async_logging()
+            return len(mlflow.MlflowClient().search_traces(locations=[experiment_id]))
+
+        yield count
+    finally:
+        mlflow.set_tracking_uri(previous)
 
 
 def _happy_server() -> FakeMcpServer:
@@ -351,23 +397,46 @@ def test_tool_error_returns_display_error(start_server, fake_mcp, failing):
     assert MARKER not in response.text
 
 
-def test_screening_creates_no_traces(start_server, fake_mcp, tmp_path):
-    fake_mcp(_happy_server())
-    previous = mlflow.get_tracking_uri()
-    mlflow.set_tracking_uri(f"sqlite:///{tmp_path / 'mlflow.db'}")
-    try:
-        experiment_id = mlflow.create_experiment("geo-screen-no-trace")
-        mlflow.set_experiment(experiment_id=experiment_id)
+def test_untraced_target_is_the_undecorated_parent():
+    # If databricks_openai or the Agents SDK change this layout, fail here rather than
+    # silently tracing AOI geometry again.
+    assert issubclass(McpServer, MCPServerStreamableHttp)
+    assert hasattr(McpServer.call_tool, "__wrapped__")
+    assert not hasattr(MCPServerStreamableHttp.call_tool, "__wrapped__")
 
+
+def test_fixture_uses_the_real_mcp_server_class():
+    server = _real_server(_happy_server())
+
+    assert type(server) is McpServer
+
+
+def test_screening_creates_no_traces(start_server, fake_mcp, tmp_path):
+    fake = fake_mcp(_happy_server())
+    with _local_experiment(tmp_path) as trace_count:
         response = _post(start_server, {"geometry": SQUARE})
-        if hasattr(mlflow, "flush_trace_async_logging"):
-            mlflow.flush_trace_async_logging()
-        traces = mlflow.MlflowClient().search_traces(locations=[experiment_id])
-    finally:
-        mlflow.set_tracking_uri(previous)
+        traces = trace_count()
 
     assert response.status_code == 200
-    assert len(traces) == 0
+    assert [name for name, _ in fake.calls] == [geo.ANALYSIS_TOOL, geo.POLYGONS_TOOL]
+    assert traces == 0
+
+
+def test_traced_call_tool_is_seen_by_the_trace_check(tmp_path):
+    """Control: the method the route avoids does create a trace in the same setup."""
+    fake = _happy_server()
+    server = _real_server(fake)
+
+    async def call_traced():
+        async with server as connected:
+            return await connected.call_tool(geo.ANALYSIS_TOOL, {"geojson": SQUARE})
+
+    with _local_experiment(tmp_path) as trace_count:
+        asyncio.run(call_traced())
+        traces = trace_count()
+
+    assert fake.calls == [(geo.ANALYSIS_TOOL, {"geojson": SQUARE})]
+    assert traces == 1
 
 
 def test_debug_logs_contain_no_marker(start_server, fake_mcp, caplog):

@@ -84,6 +84,12 @@ the agent invoke path at all, so there is nothing to redact before tracing.
 * **Privacy and lifecycle:** the route does not log request bodies or MCP
   payloads, creates no traces, and is stateless (no server-side AOI cache).
   The AOI lives only in browser session state.
+* **Untraced MCP calls:** `databricks_openai` decorates `McpServer.call_tool`
+  with `@mlflow.trace`, which records the full arguments and result. The route
+  calls the undecorated Agents SDK parent, `MCPServerStreamableHttp.call_tool`,
+  instead. The first deployed screening (Plan 42 task 42.2.3) went through the
+  decorated method and wrote AOI geometry into traces; the offline tests had
+  faked the whole MCP client and missed it.
 
 ### Consequences
 
@@ -113,7 +119,10 @@ Required before `Accepted`:
   geometry-like key appears; vertex, geometry-type and body-size limits return
   422 without the marker; MCP exceptions return 502 without the marker; a
   screening call creates zero traces in a local SQLite tracking store; DEBUG
-  logs contain no marker.
+  logs contain no marker. The trace tests run the real `McpServer` class with
+  only its transport faked, a control shows the decorated `call_tool` does
+  create a trace in the same setup, and a guard test fails if the decorator
+  layout changes.
 * Deployed trial (Plan 42 task 42.5.1): draw and paste flows work, the sent
   summary is answered with preliminary-screening language, traces from the
   trial window contain no coordinate objects or coordinate-like values, and the
