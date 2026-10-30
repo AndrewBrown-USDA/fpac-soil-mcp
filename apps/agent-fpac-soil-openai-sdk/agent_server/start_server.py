@@ -35,11 +35,11 @@ async def geo_screen(request: Request) -> JSONResponse:
     try:
         body = bytearray()
         async for chunk in request.stream():
-            body.extend(chunk)
-            if len(body) > geo.MAX_BODY_BYTES:
+            if len(body) + len(chunk) > geo.MAX_BODY_BYTES:
                 raise geo.GeoRequestError(
                     422, f"Request body exceeds {geo.MAX_BODY_BYTES // 1024} KB."
                 )
+            body.extend(chunk)
         screen_request = geo.parse_screen_request(bytes(body))
         return JSONResponse(await geo.screen_aoi(screen_request))
     except geo.GeoRequestError as exc:

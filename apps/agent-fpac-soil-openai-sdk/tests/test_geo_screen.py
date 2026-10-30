@@ -286,9 +286,16 @@ def test_oversize_stream_stops_before_later_chunks(start_server, fake_mcp):
     server = fake_mcp(_happy_server())
     consumed: list[str] = []
 
+    class OversizedChunk:
+        def __len__(self):
+            return geo.MAX_BODY_BYTES + 1
+
+        def __iter__(self):
+            raise AssertionError("oversized chunk must not be copied")
+
     class ChunkedRequest:
         async def stream(self):
-            yield b"x" * (geo.MAX_BODY_BYTES + 1)
+            yield OversizedChunk()
             consumed.append("later")
             yield MARKER.encode()
 
