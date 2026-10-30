@@ -32,7 +32,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "ruff>=0.4.0",
-    "zipp==4.1.1",
+    "zipp==4.1.2",
 ]
 eval-databricks = [
     "mlflow>=3.12,<4",
