@@ -18,6 +18,7 @@ export function SidebarToggle({ forceOpenIcon }: {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
+          aria-label="Toggle Sidebar"
           data-testid="sidebar-toggle-button"
           onClick={toggleSidebar}
           variant="outline"
