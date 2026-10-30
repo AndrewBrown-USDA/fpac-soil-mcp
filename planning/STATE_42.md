@@ -21,10 +21,10 @@
 | 1 | Databricks | 42.1.1 | done (4da95a2) |
 | 1 | Databricks | 42.1.2 | done (254910a) |
 | 1 | gate | app-check, root check | done (254910a) |
-| 2 | Databricks | 42.2.1 | pending |
-| 2 | Databricks | 42.2.2 | pending |
-| 2 | gate | app-check, app-frontend-check, root check | pending |
-| 2 | User + Databricks | 42.2.3 | pending |
+| 2 | Databricks | 42.2.1 | done (8dfb26c) |
+| 2 | Databricks | 42.2.2 | done (2a138df) |
+| 2 | gate | app-check, app-frontend-check, root check | done (2a138df) |
+| 2 | User + Databricks | 42.2.3 | awaiting push approval |
 | 3 | Databricks | 42.3.1 | pending |
 | 3 | Databricks | 42.3.2 | pending |
 | 3 | gate | app-check, app-frontend-check, root check | pending |
@@ -56,3 +56,26 @@
 ## Wave 1 gate
 
 - Fresh `/tmp/p42g` clone at 254910a: `make app-check` ruff clean, 11 files formatted, 61 passed; root `make check` ruff clean, 514 files formatted, 597 passed / 3 skipped / 44 deselected. `app-frontend-check` not required (no frontend change). Clone clean after checks.
+
+## 42.2.1
+
+- Status: done, commit 8dfb26c `feat(agent-app): add out-of-band AOI screening route`.
+- Changed: new `agent_server/geo.py` (raw-body parse: 256 KB cap, Polygon/MultiPolygon only, ring/position checks, `GEO_MAX_VERTICES` default 2000, fixed 422 messages; `async with init_fpac_mcp_server(WorkspaceClient())`; `parse_tool_result` structured -> `{"result": ...}` unwrap -> JSON text; allowlisted `build_chat_summary`; `render_chat_summary_text` <= 2,000 chars; `aoi-` + `secrets.token_hex(4)`); `agent_server/start_server.py` (+14, `POST /api/geo/screen`); root `Makefile` (`geo.py` in `APP_LINT_PATHS`); new `tests/test_geo_screen.py` (21 tests).
+- Checks: targeted `pytest tests/test_geo_screen.py tests/test_custom_routes.py` 24 passed; `make app-check` lint clean, 82 passed. Positive control (temporary, not committed): wrapping the route in `mlflow.start_span` gives 1 trace in the same SQLite setup; the real route gives 0.
+- Deviations: summary groups classes as `farmland_classes.<class>.{acres,pct}` and urban as `urban_screening.urban_intersected` (the server has no urban-acres field; a numeric `urban_acres` passes through if added). Tool errors (`isError` or an `error` key) return 200 with `display.error = "screening_failed"`; exceptions return 502 `{"error": "screening_unavailable"}`. Logs record the exception type only. `# noqa: BLE001` on the deliberate broad catch.
+- Gotchas: the fake MCP proves the route opens no trace; whether the real `McpServer` emits spans is checked in 42.2.3 step 5.
+
+## 42.2.2
+
+- Status: done, commit 2a138df `feat(agent-app): add map panel with AOI drawing and screening`.
+- Deps (exact, client workspace): `maplibre-gl` 5.24.0 (BSD-3-Clause), `terra-draw` 1.39.0 (MIT), `terra-draw-maplibre-gl-adapter` 1.5.0 (MIT). Lockfile: +27 packages; only other change is 4 `"dev": true` flags dropped (`@types/react`, `@types/react-dom`, `@types/prop-types`, `csstype`). `npm audit` unchanged (26 findings, all pre-existing).
+- Added: `frontend/client/src/components/map/{MapPanel.tsx,GeoJsonInput.tsx,useScreening.ts,MapSummaryContext.tsx,geojson.ts}`. Modified: `frontend/client/package.json`, `frontend/package-lock.json`, `frontend/client/src/layouts/ChatLayout.tsx` (provider wrap, `<aside>` panel column `md:w-[40%]`, toggle; open by default on md+). 42.4.1 lists these in ADR 0015.
+- Basemap: USGSTopo `.../MapServer/tile/{z}/{y}/{x}`, 256 px, maxzoom 16, CORS `*` (metadata checked 2026-10-30), attribution "USGS The National Map".
+- Checks: biome (two skips) on the 6 files: 0 diagnostics; `tsc -p client` only the 4 upstream errors, none in new files; `make app-frontend-check` green. Bundle: main JS 2,556.78 -> 3,737.51 kB (gzip 759.42 -> 1,065.78 kB); CSS 78.74 -> 149.14 kB.
+- Deviations: MapLibre 6.16.0 resolves its worker via `new URL(..., import.meta.url)`, which Vite does not emit without a `vite.config.ts` change (out of scope); 5.24.0 inlines the worker. MultiPolygon AOIs (paste only) show as an outline and are not editable.
+- Recovery: the first commit (ac9e1b3) and its STATE commit lived only in `/tmp/p42`; the workspace fast-forward was blocked by the execution safety check, then compute restarted and `/tmp` was lost. Rebuilt with the same versions and edits as 2a138df; per-file line counts and the content-hashed build assets (`index-BZyQY39P.js`, `index-B8uFTTaB.css`) match the original build. Fast-forwarded to the workspace clone right after the gate.
+- Gotchas: no browser run yet (42.2.3). A future CSP needs `worker-src blob:` and tile access to `basemap.nationalmap.gov`.
+
+## Wave 2 gate
+
+- Fresh `/tmp/p42g` clone of `/tmp/p42` at 2a138df: `make app-check` lint clean, 82 passed; `make app-frontend-check` `npm ci` 780 packages, biome 593 files 0 errors 10 warnings, builds complete; root `make check` ruff clean, 516 formatted, 597 passed / 3 skipped / 44 deselected. Clone clean after checks.
