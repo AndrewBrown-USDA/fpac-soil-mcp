@@ -26,7 +26,8 @@ and refined through `adr-distillation`.
 | [0012](0012-databricks-agent-app-as-separate-mcp-client.md) | Databricks Agent App as a Separate MCP Client Project | Accepted | 2026-10-22 | - | - | EXECUTION_PLAN_35 |
 | [0013](0013-pin-pypi-default-index-in-every-uv-project.md) | Pin PyPI as the Default uv Index in Every uv Project | Accepted | 2026-10-22 | - | - | Commits bcf6626, f27eb3b |
 | [0014](0014-registry-validated-sdv-metadata-contract.md) | Registry-Validated SDV Metadata Rating Contract | Accepted | 2026-10-27 | - | - | EXECUTION_PLAN_39 |
-| [0015](0015-vendored-agent-app-frontend.md) | Vendor the Full Pinned Chat Template for the Agent App Frontend | Accepted | 2026-10-28 | - | - | EXECUTION_PLAN_40, 41 |
+| [0015](0015-vendored-agent-app-frontend.md) | Vendor the Full Pinned Chat Template for the Agent App Frontend | Proposed | 2026-10-28 | - | - | EXECUTION_PLAN_40, 41, 42 |
+| [0016](0016-out-of-band-aoi-screening-handoff.md) | Out-of-Band AOI Screening with a User-Sent Chat Summary | Proposed | 2026-10-30 | - | - | EXECUTION_PLAN_40, 42 |
 
 ## Architectural Eras
 
@@ -50,7 +51,10 @@ that governed all 26 execution plans.
 **Databricks Delivery (2026-10-22)**: ADR 0012 set the boundary for the
 Databricks chat agent app as a separate MCP client project, and ADR 0013 made
 lock files portable off Databricks compute. ADR 0015 (2026-10-28) pinned the
-agent app's chat frontend to a vendored upstream template commit.
+agent app's chat frontend to a vendored upstream template commit. ADR 0016
+(2026-10-30, proposed) keeps AOI geometry out of the agent path: the map panel
+screens through a separate `/api/geo/screen` route and the user sends a
+geometry-free summary.
 
 **Rating Contract (2026-10-27)**: ADR 0014 limited SDV metadata ratings to a
 registry of validated records that follow the SDV aggregation method, and ran
