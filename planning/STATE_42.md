@@ -27,7 +27,7 @@
 | 2 | User + Databricks | 42.2.3 | done after fix 42.2.4 (first run failed step 5) |
 | 2 | Databricks | 42.2.4 (fix) | done (a576f14); deployed re-check passed |
 | 3 | Databricks | 42.3.1 | pending |
-| 3 | Databricks | 42.3.2 | done (5a56426); run before 42.3.1 by user decision |
+| 3 | Databricks | 42.3.2 | done (5a56426), deployed check passed; run before 42.3.1 by user decision |
 | 3 | gate | app-check, app-frontend-check, root check | pending |
 | 4 | Databricks | 42.4.1 | pending |
 | 4 | gate | app-check, app-frontend-check, root check | pending |
@@ -108,4 +108,4 @@
 - Changed: `map/MapPanel.tsx` (+16: "Add result to chat" outline button, shown only when status is `done` and `display.error` is unset, calls `offerSummary(chat_summary_text)`); `map/MapSummaryContext.tsx` (+5: `useOptionalMapSummary`, returns null outside the provider); `multimodal-input.tsx` (+13: effect prepends the summary and a blank line to any existing input, focuses the textarea, consumes the summary; no-op without the provider).
 - Only `chat_summary_text` reaches the input; `display` is read only for the error check. The input is still mirrored to localStorage key `input` by the existing template code, so the geometry-free summary is persisted like typed text until sent.
 - Checks: fresh `/tmp/p42g` clone at 5a56426, `make app-frontend-check` rc 0: `npm ci` 780 packages, biome 593 files 0 errors 10 warnings (baseline; the 2 in `multimodal-input.tsx` are existing unused imports), build OK. `tsc --noEmit -p client`: 4 existing errors in unrelated files, none in the changed files.
-- Not yet checked in a browser; the deployed flow is exercised in 42.5.1 or after the next push.
+- Deployed check: pass. User approved the push (97f144e..f33d707, 23:22 UTC); deployment 01f1d4b8b7f91cc5bf763f845e1d02b2 SUCCEEDED on f33d707. The user ran a screening, used "Add result to chat" and sent the turn; reported working. Experiment 517983779529169 after 23:22 UTC (checked 23:26): one `stream_handler` trace (id ends a09c58, 8 spans). Its request preview (2086 chars, not truncated, so the full user message) has the summary and notice, `aoi_ref` present, zero coordinate objects, polygon types, bbox, WKT, coordinate pairs or 5+-decimal numbers; the response preview has preliminary-screening wording and none of those patterns; no `call_tool` traces. Span data still unavailable (`get_trace` "missing span data"; signed download URL returns 404), so span-level content was not inspected.
