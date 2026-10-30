@@ -16,7 +16,7 @@ EVAL_ARTIFACT_ROOT ?= ../fpac-soil-mcp-eval-artifacts
 APP_DIR     ?= apps/agent-fpac-soil-openai-sdk
 APP_PYTHON  ?= 3.11
 # Files this repo owns in the app; the remaining template runtime files are not linted.
-APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/config.py agent_server/history.py tests)
+APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/config.py agent_server/geo.py agent_server/history.py tests)
 
 .PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check
 
