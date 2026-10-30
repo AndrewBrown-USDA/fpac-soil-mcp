@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -5,10 +6,16 @@ import { useSession } from '@/contexts/SessionContext';
 import { DatabricksLogo } from '@/components/DatabricksLogo';
 import { DbIcon } from '@/components/ui/db-icon';
 import { UserKeyIconIcon } from '@/components/icons';
+import { MapPanel } from '@/components/map/MapPanel';
+import { MapSummaryProvider } from '@/components/map/MapSummaryContext';
 
 export default function ChatLayout() {
   const { session, loading } = useSession();
   const isCollapsed = localStorage.getItem('sidebar:state') !== 'true';
+  // Open beside the chat on md+ screens; behind the toggle on narrow screens.
+  const [mapOpen, setMapOpen] = useState(
+    () => window.matchMedia?.('(min-width: 768px)').matches ?? false,
+  );
 
   // Wait for session to load
   if (loading) {
@@ -44,12 +51,35 @@ export default function ChatLayout() {
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session.user} preferredUsername={preferredUsername} />
-      <SidebarInset className="h-svh overflow-hidden bg-secondary">
-        <div className="flex flex-1 flex-col overflow-hidden bg-background md:my-2 md:mr-2 md:rounded-xl">
-          <Outlet />
-        </div>
-      </SidebarInset>
+      <MapSummaryProvider>
+        <AppSidebar user={session.user} preferredUsername={preferredUsername} />
+        <aside
+          aria-label="Map panel"
+          className={`relative h-svh shrink-0 bg-secondary ${mapOpen ? 'w-full md:w-[40%]' : 'w-10'}`}
+        >
+          <button
+            type="button"
+            onClick={() => setMapOpen((open) => !open)}
+            aria-expanded={mapOpen}
+            aria-controls="map-panel"
+            className="absolute top-2 right-1 z-10 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+          >
+            {mapOpen ? 'Hide map' : 'Map'}
+          </button>
+          <div
+            id="map-panel"
+            hidden={!mapOpen}
+            className="h-full pt-10 md:my-2 md:ml-2 md:rounded-xl md:bg-background"
+          >
+            <MapPanel />
+          </div>
+        </aside>
+        <SidebarInset className="h-svh overflow-hidden bg-secondary">
+          <div className="flex flex-1 flex-col overflow-hidden bg-background md:my-2 md:mr-2 md:rounded-xl">
+            <Outlet />
+          </div>
+        </SidebarInset>
+      </MapSummaryProvider>
     </SidebarProvider>
   );
 }
