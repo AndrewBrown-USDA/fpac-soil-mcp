@@ -1,13 +1,13 @@
 ---
 id: "0015"
 title: "Vendor the Full Pinned Chat Template for the Agent App Frontend"
-status: "Accepted"
+status: "Proposed"
 date: 2026-10-28
 authors:
   - "Andrew G. Brown"
 supersedes: null
 superseded_by: null
-source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_41"
+source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_41, EXECUTION_PLAN_42"
 ---
 
 # 15. Vendor the Full Pinned Chat Template for the Agent App Frontend
@@ -27,16 +27,20 @@ only valid lockfile is the upstream root `package-lock.json`.
 
 * Deploys must be reproducible and reviewable; nothing is fetched from GitHub at
   startup.
-* The copy must be provably identical to a named upstream commit, so updates are
-  a re-copy and a diff, not a merge of local edits.
+* The copy must start from a named upstream commit, and every difference from
+  it must be listed, so updates are a re-copy, a re-apply of the listed local
+  changes, and a diff.
 * Python checks must keep running where npm is unavailable (Databricks
   serverless compute).
 * Frontend checks must be read-only; they must not rewrite vendored files.
+* The repo must be able to build product features (the map panel) into the
+  frontend without forking a separate app.
 
 ## Considered Options
 
-1. **Vendor the whole `e2e-chatbot-app-next` folder at one upstream commit, with
-   its own root lockfile and no local edits.**
+1. **Vendor the whole `e2e-chatbot-app-next` folder at one upstream base commit,
+   with its own root lockfile, and own it from there with listed local
+   changes.**
 2. **Vendor `client/` only, with shims for the workspace packages** (the Plan 40
    layout) -- diverges from upstream and needs a hand-built lockfile.
 3. **Keep cloning upstream at startup** -- unpinned and not reviewable.
@@ -44,20 +48,26 @@ only valid lockfile is the upstream root `package-lock.json`.
 ## Decision Outcome
 
 Chosen option: "Vendor the whole folder at one commit", because it is the only
-layout that builds with the upstream lockfile and stays byte-comparable to
-upstream.
+layout that builds with a single workspace lockfile and stays hash-comparable
+to upstream for every file this repo has not changed.
 
-* **Pin:** upstream commit `0e572976459aafa3d41047067382cb9a6c015d52`.
-  `frontend/` equals the upstream folder at that commit, including file modes,
-  minus the excluded files below.
+* **Base commit:** upstream `0e572976459aafa3d41047067382cb9a6c015d52`.
+  `frontend/` is the upstream folder at that commit, including file modes,
+  minus the excluded files below, and this repo now owns it. Files not in the
+  local-changes list stay identical to the base.
 * **Kept:** root `package.json` (npm workspaces `client`, `server`,
-  `packages/*`), root `package-lock.json` byte-for-byte, `client/`, `server/`,
+  `packages/*`), root `package-lock.json`, `client/`, `server/`,
   `packages/`, `scripts/`, `biome.jsonc`, `tsconfig.json`, `drizzle.config.ts`,
   `knip.json`, `.gitignore`, `.env.example`, `README.md`. `client/`, `server/`
   and `packages/` stay siblings.
 * **Excluded:** `.claude/`, `CLAUDE.md`, `tests/`, `playwright.config.ts`,
   `app.yaml`, `databricks.yml`, `manifest.yaml`.
-* **No local edits:** no shims, no map or AOI behaviour.
+* **Lockfile:** npm regenerates the root `package-lock.json` when dependencies
+  change; it is committed together with the matching `package.json`. CI and
+  `make app-frontend-check` run `npm ci` against it.
+* **Local changes:** allowed. Every modified upstream file and every added path
+  is listed in `### Local changes` below, kept current by the task that makes
+  the change. No shims for the workspace packages.
 * **Launcher (`scripts/start_app.py`):** runs `npm ci`, `npm run build`,
   `npm run start` in `frontend/`, sets `API_PROXY`, and keeps the ports and
   readiness pattern. With `--no-ui`, or when `frontend/package.json` is missing,
@@ -73,33 +83,46 @@ upstream.
   `packages/*` projects. The Vite and tsdown builds do not typecheck.
 * **Runtime:** Node 22 (the Databricks Apps runtime is 22.16; CI uses 22).
 
+### Local changes
+
+None yet; Plan 42 adds the map panel.
+
 ### Update procedure
 
 1. Re-copy the upstream folder at the new commit, applying the same exclusions.
-2. Keep the upstream root `package-lock.json`; never regenerate it.
-3. Compare `git ls-tree` hashes of `frontend/` entries with upstream.
-4. Re-run `make app-frontend-check`. If new error-level lint rules appear in
-   upstream, update the skip list and this ADR; do not edit vendored files.
-5. Update the pinned commit here and in the app `README.md` and `AGENTS.md`.
+2. Re-apply the changes listed in `### Local changes`.
+3. Reconcile `client/package.json` and the other workspace `package.json` files
+   with the local dependency additions, then let npm regenerate the root
+   `package-lock.json`.
+4. Compare `git ls-tree` hashes with upstream only for `frontend/` entries not
+   in the local-changes list.
+5. Re-run `make app-frontend-check`. If new error-level lint rules appear in
+   upstream, update the skip list and this ADR rather than editing upstream
+   files to satisfy them.
+6. Update the base commit here and in the app `README.md` and `AGENTS.md`.
 
 ### Consequences
 
 * **Positive:** deploys are reproducible; parity with upstream is checkable by
-  hash; updates are mechanical.
-* **Negative:** about 600 vendored files; no typecheck gate; two upstream lint
+  hash for unchanged files; product features live in the same app.
+* **Negative:** owning local changes turns upstream updates into a re-apply
+  step, and the lockfile drifts from upstream once dependencies are added;
+  about 600 vendored files; no typecheck gate; two upstream lint
   rules are skipped; frontend checks need Node 22 and npm, which Databricks
   serverless compute does not provide by default.
 
 ### Scope boundary
 
-This decision vendors the existing chat UI only. Map rendering, AOI drawing,
-map routes, and `custom_inputs`/`custom_outputs` handling stay deferred to later
-plan work.
+This decision covers how the chat UI is vendored and changed. The map panel and
+AOI handoff are local changes made under Plan 42 (map code lives under
+`client/src/components/map/`); the handoff contract is ADR 0016.
+`custom_inputs`/`custom_outputs` handling stays out of scope.
 
 ## Validation & Compliance
 
 * Parity: `git ls-tree HEAD apps/agent-fpac-soil-openai-sdk/frontend/` hashes
-  equal upstream 0e57297 for every kept entry.
+  equal upstream 0e57297 for every kept entry not in `### Local changes`.
 * `make app-frontend-check` passes (CI `agent-app` job, Node 22).
 * `make app-check` passes without npm.
-* Deployed check: Plan 41 task 41.4.1.
+* Deployed check: Plan 41 task 41.4.1; Plan 42 deployed trial before
+  `Accepted`.

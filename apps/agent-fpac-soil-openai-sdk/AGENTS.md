@@ -36,7 +36,7 @@ uv run start-server       # agent server only
 - `app.yaml` - command and env vars used by the deployed app.
 - `databricks.yml` - declared app resources (`llm-endpoint`, `mcp_server`, `experiment`); reference only.
 - `README.md` - configuration, required grants, deploy path, and API usage.
-- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) at upstream commit `0e572976459aafa3d41047067382cb9a6c015d52`; no local edits, no map behavior ([ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md)).
+- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) from upstream base commit `0e572976459aafa3d41047067382cb9a6c015d52`, owned by this repo; local changes are listed in [ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md). Map code lives under `frontend/client/src/components/map/`.
 
 ## Workflows
 
@@ -59,11 +59,11 @@ Deploy from the app's git source in the Databricks Apps UI and redeploy. Do not 
 
 ### Frontend
 
-1. Do not edit files under `frontend/`. To update, re-copy the upstream folder at the new commit with the ADR 0015 exclusions and keep the upstream root `package-lock.json` byte-for-byte.
-2. Compare `git ls-tree` hashes of the `frontend/` entries with upstream (file modes included).
-3. Run `make app-frontend-check` (Node 22). Never run the upstream `npm run lint` or `lint:fix`; they use `--write`. There is no typecheck target; upstream fails `tsc` at the pinned commit.
-4. Update the pinned commit in ADR 0015, `README.md`, and this file.
-5. Do not add map or AOI behavior as part of frontend maintenance.
+1. Local changes are allowed. List every modified upstream file and every added path in the `### Local changes` section of ADR 0015 in the same change. Map and AOI code goes under `client/src/components/map/`.
+2. Add dependencies with `npm install <pkg> --workspace @databricks/chatbot-client --save-exact` in `frontend/`; commit `client/package.json` and the regenerated root `package-lock.json` together; `npm ci` must pass from clean.
+3. Run `make app-frontend-check` (Node 22). Never run the upstream `npm run lint` or `lint:fix`; they use `--write`. There is no typecheck target; upstream fails `tsc` at the base commit.
+4. To update upstream, follow the ADR 0015 update procedure: re-copy with the exclusions, re-apply the listed local changes, regenerate the lockfile, and compare `git ls-tree` hashes (file modes included) for unchanged upstream files.
+5. Update the base commit in ADR 0015, `README.md`, and this file.
 
 ## Infrastructure
 
