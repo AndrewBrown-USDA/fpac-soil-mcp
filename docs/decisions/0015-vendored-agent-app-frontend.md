@@ -85,7 +85,14 @@ to upstream for every file this repo has not changed.
 
 ### Local changes
 
-None yet; Plan 42 adds the map panel.
+* `packages/db/migrations/0001_add_trace_id.sql` and
+  `packages/db/migrations/meta/_journal.json`: add the MLflow trace ID column
+  with replay-safe SQL and an execution-order timestamp.
+* `client/index.html`: permit browser page zoom.
+* `client/src/components/sidebar-toggle.tsx`: give the icon-only sidebar
+  toggle an accessible name.
+
+Plan 42 adds the map panel.
 
 ### Update procedure
 
