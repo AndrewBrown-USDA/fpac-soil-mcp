@@ -10,10 +10,29 @@ export type SoilFeatureCollection = {
   }>;
 };
 
+export type DisplayMapUnit = {
+  mukey?: string | null;
+  musym?: string | null;
+  muname?: string | null;
+  farmlndcl?: string | null;
+  acres?: number | null;
+  pct?: number | null;
+};
+
+// Shape of `display.analysis` from `geo.select_display_analysis` (browser-only).
+export type DisplayAnalysis = {
+  total_aoi_acres?: number | null;
+  coverage_status?: string | null;
+  farmland_summary?: Record<string, unknown>;
+  urban_intersected?: boolean | null;
+  map_units?: DisplayMapUnit[];
+  source?: { service_name?: string | null; timestamp_utc?: string | null };
+};
+
 export type ScreeningResponse = {
   aoi_ref: string;
   display: {
-    analysis?: Record<string, unknown>;
+    analysis?: DisplayAnalysis;
     soil_polygons?: SoilFeatureCollection;
     regulatory_notice?: string | null;
     error?: string;
@@ -44,12 +63,27 @@ export function useScreening() {
       });
       if (id !== requestId.current) return;
       if (!response.ok) {
+        // The server's 422 messages are fixed, bounded strings that never echo input.
+        let detail: string | null = null;
+        if (response.status === 422) {
+          try {
+            const body = (await response.json()) as { detail?: unknown };
+            if (typeof body.detail === 'string' && body.detail.length <= 200) {
+              detail = body.detail;
+            }
+          } catch {
+            detail = null;
+          }
+        }
+        if (id !== requestId.current) return;
         setResult(null);
         setStatus('error');
         setError(
           response.status === 422
-            ? 'The AOI was rejected (check the type and size).'
-            : 'Screening is unavailable right now. Try again later.',
+            ? `The AOI was rejected: ${detail ?? 'check the type and size.'}`
+            : response.status === 502
+              ? 'Screening unavailable: the soil service could not be reached. Try again later.'
+              : 'Screening is unavailable right now. Try again later.',
         );
         return;
       }

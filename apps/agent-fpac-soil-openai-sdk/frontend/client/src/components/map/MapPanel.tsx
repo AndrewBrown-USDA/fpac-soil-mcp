@@ -10,10 +10,12 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import { Button } from '@/components/ui/button';
+import { FARMLAND_FILL_COLOR, withFarmlandClass } from './farmlandClasses';
 import { GeoJsonInput } from './GeoJsonInput';
 import { featureCollection, geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
 import { useMapSummary } from './MapSummaryContext';
+import { ScreeningResults } from './ScreeningResults';
 import { useScreening } from './useScreening';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
@@ -35,24 +37,6 @@ const BASE_STYLE: StyleSpecification = {
   layers: [{ id: 'usgs-topo', type: 'raster', source: 'usgsTopo' }],
 };
 
-// Simple class colours; the full legend arrives with the results view.
-const FARMLAND_FILL = [
-  'case',
-  ['==', ['get', 'farmlndcl'], 'All areas are prime farmland'],
-  '#1a9641',
-  ['in', 'Prime farmland if', ['coalesce', ['get', 'farmlndcl'], '']],
-  '#a6d96a',
-  ['in', 'statewide importance', ['coalesce', ['get', 'farmlndcl'], '']],
-  '#fdae61',
-  ['in', 'local importance', ['coalesce', ['get', 'farmlndcl'], '']],
-  '#fee08b',
-  ['in', 'unique importance', ['coalesce', ['get', 'farmlndcl'], '']],
-  '#d7191c',
-  ['==', ['get', 'farmlndcl'], 'Not prime farmland'],
-  '#bababa',
-  '#7b3294',
-] as unknown as string;
-
 type DrawMode = 'polygon' | 'rectangle' | 'select' | 'static';
 
 const emptyCollection = { type: 'FeatureCollection' as const, features: [] };
@@ -65,13 +49,18 @@ export function MapPanel() {
   const [mode, setMode] = useState<DrawMode>('static');
   const [aoi, setAoi] = useState<PolygonGeometry | null>(null);
   const [previousAoi, setPreviousAoi] = useState<PolygonGeometry | null>(null);
+  const [aoiError, setAoiError] = useState<string | null>(null);
+  const [tileError, setTileError] = useState(false);
   const aoiRef = useRef<PolygonGeometry | null>(null);
   const screening = useScreening();
   const { reset: resetScreening } = screening;
   const { offerSummary } = useMapSummary();
   // Only the server-built, geometry-free text goes to chat (ADR 0016); never `display`.
+  // A result without its regulatory notice is invalid (ADR 0003), so it is not offered.
   const summaryText =
-    screening.status === 'done' && !screening.result?.display?.error
+    screening.status === 'done' &&
+    !screening.result?.display?.error &&
+    screening.result?.display?.regulatory_notice
       ? screening.result?.chat_summary_text
       : undefined;
 
@@ -81,6 +70,7 @@ export function MapPanel() {
       setPreviousAoi(aoiRef.current);
       aoiRef.current = next;
       setAoi(next);
+      setAoiError(null);
       resetScreening();
     },
     [resetScreening],
@@ -111,13 +101,20 @@ export function MapPanel() {
     });
     mapRef.current = map;
 
+    // Basemap tile failures are shown in the panel, never as a silent blank map.
+    map.on('error', (event) => {
+      if ((event as { sourceId?: string }).sourceId === 'usgsTopo') {
+        setTileError(true);
+      }
+    });
+
     map.on('load', () => {
       map.addSource('soil', { type: 'geojson', data: emptyCollection });
       map.addLayer({
         id: 'soil-fill',
         type: 'fill',
         source: 'soil',
-        paint: { 'fill-color': FARMLAND_FILL, 'fill-opacity': 0.55 },
+        paint: { 'fill-color': FARMLAND_FILL_COLOR, 'fill-opacity': 0.55 },
       });
       map.addLayer({
         id: 'soil-line',
@@ -159,7 +156,10 @@ export function MapPanel() {
       draw.on('finish', (id) => {
         const feature = draw.getSnapshot().find((f) => f.id === id);
         const geometry = toPolygonGeometry(feature?.geometry);
-        if (!geometry) return;
+        if (!geometry) {
+          setAoiError('The drawn shape is not a valid polygon. Draw it again.');
+          return;
+        }
         for (const other of draw.getSnapshot()) {
           if (other.id !== id && other.id !== undefined) {
             draw.removeFeatures([other.id]);
@@ -190,7 +190,9 @@ export function MapPanel() {
     const source = mapRef.current?.getSource('soil') as GeoJSONSource | undefined;
     const polygons = screening.result?.display?.soil_polygons;
     source?.setData(
-      (polygons ?? emptyCollection) as Parameters<GeoJSONSource['setData']>[0],
+      (polygons ? withFarmlandClass(polygons) : emptyCollection) as Parameters<
+        GeoJSONSource['setData']
+      >[0],
     );
     if (screening.status === 'done' && aoiRef.current) {
       const bounds = geometryBounds(aoiRef.current);
@@ -244,6 +246,9 @@ export function MapPanel() {
       aria-label="Map screening"
       className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3"
     >
+      <p className="rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-medium text-xs">
+        Preliminary screening view. Not an official NRCS determination.
+      </p>
       <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Draw AOI">
         {toolButton('Polygon', 'polygon')}
         {toolButton('Rectangle', 'rectangle')}
@@ -295,9 +300,23 @@ export function MapPanel() {
           {screening.status === 'running' && 'Running preliminary screening.'}
           {screening.status === 'done' &&
             `Preliminary screening done (${screening.result?.display?.soil_polygons?.features.length ?? 0} soil polygons).`}
-          {screening.status === 'error' && screening.error}
         </p>
       </div>
+      {(aoiError || tileError || screening.status === 'error') && (
+        <div role="alert" className="flex flex-col gap-1 text-destructive text-sm">
+          {aoiError && <p>{aoiError}</p>}
+          {screening.status === 'error' && screening.error && <p>{screening.error}</p>}
+          {tileError && (
+            <p>
+              Basemap tiles failed to load. Drawing, screening and the results table
+              still work.
+            </p>
+          )}
+        </div>
+      )}
+      {screening.status === 'done' && screening.result && (
+        <ScreeningResults result={screening.result} />
+      )}
     </section>
   );
 }
