@@ -33,7 +33,14 @@ def geo_health() -> dict[str, str]:
 async def geo_screen(request: Request) -> JSONResponse:
     """Screen one AOI out of band (ADR 0016). Never logs the body; no model, no trace."""
     try:
-        screen_request = geo.parse_screen_request(await request.body())
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > geo.MAX_BODY_BYTES:
+                raise geo.GeoRequestError(
+                    422, f"Request body exceeds {geo.MAX_BODY_BYTES // 1024} KB."
+                )
+        screen_request = geo.parse_screen_request(bytes(body))
         return JSONResponse(await geo.screen_aoi(screen_request))
     except geo.GeoRequestError as exc:
         key = "error" if exc.status_code == 502 else "detail"

@@ -5,6 +5,7 @@ made. Synthetic geometry only; the marker string stands in for anything that mus
 never reach ``chat_summary``, its text form, the error bodies or the logs.
 """
 
+import asyncio
 import importlib
 import json
 import logging
@@ -278,6 +279,24 @@ def test_oversize_body_returns_422(start_server, fake_mcp):
 
     assert response.status_code == 422
     assert MARKER not in response.text
+    assert server.calls == []
+
+
+def test_oversize_stream_stops_before_later_chunks(start_server, fake_mcp):
+    server = fake_mcp(_happy_server())
+    consumed: list[str] = []
+
+    class ChunkedRequest:
+        async def stream(self):
+            yield b"x" * (geo.MAX_BODY_BYTES + 1)
+            consumed.append("later")
+            yield MARKER.encode()
+
+    response = asyncio.run(start_server.geo_screen(ChunkedRequest()))
+
+    assert response.status_code == 422
+    assert json.loads(response.body) == {"detail": "Request body exceeds 256 KB."}
+    assert consumed == []
     assert server.calls == []
 
 
