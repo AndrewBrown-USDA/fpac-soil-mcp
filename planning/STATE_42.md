@@ -24,7 +24,8 @@
 | 2 | Databricks | 42.2.1 | done (8dfb26c) |
 | 2 | Databricks | 42.2.2 | done (2a138df) |
 | 2 | gate | app-check, app-frontend-check, root check | done (2a138df) |
-| 2 | User + Databricks | 42.2.3 | awaiting push approval |
+| 2 | User + Databricks | 42.2.3 | failed step 5 (traces); fix 42.2.4 |
+| 2 | Databricks | 42.2.4 (fix) | done (a576f14); deployed re-check pending |
 | 3 | Databricks | 42.3.1 | pending |
 | 3 | Databricks | 42.3.2 | pending |
 | 3 | gate | app-check, app-frontend-check, root check | pending |
@@ -79,3 +80,21 @@
 ## Wave 2 gate
 
 - Fresh `/tmp/p42g` clone of `/tmp/p42` at 2a138df: `make app-check` lint clean, 82 passed; `make app-frontend-check` `npm ci` 780 packages, biome 593 files 0 errors 10 warnings, builds complete; root `make check` ruff clean, 516 formatted, 597 passed / 3 skipped / 44 deselected. Clone clean after checks.
+
+## 42.2.3
+
+- Status: failed at step 5; fix task 42.2.4 added.
+- Step 1-2: user approved; pushed 0823c7f..e49975f from the workspace clone.
+- Step 3: pass. Deployment 01f1d49639b11a74ab79a9f90fbade8e SUCCEEDED 19:15 UTC, `resolved_commit` e49975f. An earlier deployment at 17:36 UTC (01f1d488757d...) had failed "unexpectedly" with no resolved commit.
+- Step 4: pass per the user (map panel, tiles, draw, Run screening returned soil polygons).
+- Step 5: fail. Experiment 517983779529169 had 7 traces after 19:15 UTC: 6 `call_tool` traces (19:34:30-19:35:39, three screenings x two tools; ids end 33fd86, c8e049, c4504a, 5de929, 819476, 4ecd8a) whose request previews and inputs contain the AOI geometry, and whose `get_soil_polygons_by_geometry` responses contain clipped soil polygons. Checked by pattern counts only; no values were printed. The 7th trace (`stream_handler`, a chat turn, id ends 32e424) had no matches. Span data could not be loaded ("missing span data", as in 41.4.1).
+- Cause: `databricks_openai` decorates `McpServer.call_tool` with `@mlflow.trace(span_type=TOOL)`. The 42.2.1 tests replaced the whole MCP client with a fake, so the decorated method never ran offline.
+- Open: the 6 traces with AOI geometry remain in the experiment pending the user's decision on deletion.
+- Between 42.2.3 and 42.2.4 the workspace clone fast-forwarded e49975f..9ea80da (PR #54 review fixes: trace-id migration order, chunked body limit in `geo_screen`, page zoom, sidebar toggle label, ADR 0015 local-changes inventory, `planning/TODO_PR54.md`). `make app-check` on 9ea80da: 83 passed.
+
+## 42.2.4
+
+- Status: done, commit a576f14 `fix(agent-app): keep AOI screening MCP calls out of traces`; edited and committed in the workspace clone. Not pushed.
+- Changed: `agent_server/geo.py` (`_call_tool_untraced` calls the undecorated Agents SDK parent `MCPServerStreamableHttp.call_tool`); `tests/test_geo_screen.py` (fixture now a real `McpServer` from `init_fpac_mcp_server` with only `connect`, `cleanup` and the session faked; new guard, class and control tests; no-trace test also asserts both tools ran); ADR 0016 (untraced-call bullet, test description); `planning/tasks/42.2.4.todo.md`.
+- Checks: targeted `pytest tests/test_geo_screen.py tests/test_custom_routes.py` 28 passed; full app tests 86 passed; ruff check and format clean on `APP_LINT_PATHS`. Negative control: the new tests against the old `geo.py` (HEAD, loaded from `git show` in memory) fail with `assert 2 == 0`, two traces per screening as in production. Control test: the decorated `call_tool` creates 1 trace in the same SQLite setup.
+- Next: push (user approval), confirm a SUCCEEDED deployment on the head, one screening by the user, then confirm no `call_tool` traces in that window. Frontend and root checks not re-run (no frontend or root change since the wave 2 gate apart from the PR #54 fixes, which their author validated).
