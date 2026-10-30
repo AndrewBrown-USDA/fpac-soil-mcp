@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { GeoJsonInput } from './GeoJsonInput';
 import { featureCollection, geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
+import { useMapSummary } from './MapSummaryContext';
 import { useScreening } from './useScreening';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
@@ -67,6 +68,12 @@ export function MapPanel() {
   const aoiRef = useRef<PolygonGeometry | null>(null);
   const screening = useScreening();
   const { reset: resetScreening } = screening;
+  const { offerSummary } = useMapSummary();
+  // Only the server-built, geometry-free text goes to chat (ADR 0016); never `display`.
+  const summaryText =
+    screening.status === 'done' && !screening.result?.display?.error
+      ? screening.result?.chat_summary_text
+      : undefined;
 
   // One AOI at a time: a new AOI replaces the old and becomes undoable.
   const replaceAoi = useCallback(
@@ -273,6 +280,15 @@ export function MapPanel() {
         >
           {screening.status === 'running' ? 'Screening...' : 'Run screening'}
         </Button>
+        {summaryText && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => offerSummary(summaryText)}
+          >
+            Add result to chat
+          </Button>
+        )}
         <p className="text-muted-foreground text-sm" aria-live="polite">
           {!aoi && 'Draw or paste one AOI.'}
           {aoi && screening.status === 'idle' && 'AOI ready.'}

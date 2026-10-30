@@ -36,6 +36,11 @@ export function MapSummaryProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// For components that may render outside the provider: null means no map panel.
+export function useOptionalMapSummary(): MapSummaryContextValue | null {
+  return useContext(MapSummaryContext);
+}
+
 export function useMapSummary(): MapSummaryContextValue {
   const context = useContext(MapSummaryContext);
   if (!context) {
