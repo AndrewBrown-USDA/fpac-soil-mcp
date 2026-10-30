@@ -27,7 +27,7 @@
 | 2 | User + Databricks | 42.2.3 | done after fix 42.2.4 (first run failed step 5) |
 | 2 | Databricks | 42.2.4 (fix) | done (a576f14); deployed re-check passed |
 | 3 | Databricks | 42.3.1 | pending |
-| 3 | Databricks | 42.3.2 | pending |
+| 3 | Databricks | 42.3.2 | done (5a56426); run before 42.3.1 by user decision |
 | 3 | gate | app-check, app-frontend-check, root check | pending |
 | 4 | Databricks | 42.4.1 | pending |
 | 4 | gate | app-check, app-frontend-check, root check | pending |
@@ -100,3 +100,12 @@
 - Deployed re-check: pass. User approved the push (9ea80da..97f144e, 22:56 UTC); deployment 01f1d4b5323a1fefaa0b073b7fe8106d SUCCEEDED on 97f144e. The user ran a screening and reported everything working. Experiment 517983779529169 after 22:57 UTC (checked 23:10): one trace, a `stream_handler` chat turn with no geometry pattern matches; no `call_tool` traces.
 - Leak extent before the fix: 22 `call_tool` traces with AOI geometry (the 6 above plus 16 from 8 screenings 19:52-22:34 UTC on pre-fix deployments). The user chose not to delete them.
 - Frontend and root checks not re-run (no frontend or root change since the wave 2 gate apart from the PR #54 fixes, which their author validated).
+
+## 42.3.2
+
+- Status: done, commit 5a56426 `feat(agent-app): add map screening summary to the chat input`; edited and committed in the workspace clone. Not pushed.
+- Deviation: run before 42.3.1 (user decision 2026-10-30, to connect map and chat first); the files do not overlap.
+- Changed: `map/MapPanel.tsx` (+16: "Add result to chat" outline button, shown only when status is `done` and `display.error` is unset, calls `offerSummary(chat_summary_text)`); `map/MapSummaryContext.tsx` (+5: `useOptionalMapSummary`, returns null outside the provider); `multimodal-input.tsx` (+13: effect prepends the summary and a blank line to any existing input, focuses the textarea, consumes the summary; no-op without the provider).
+- Only `chat_summary_text` reaches the input; `display` is read only for the error check. The input is still mirrored to localStorage key `input` by the existing template code, so the geometry-free summary is persisted like typed text until sent.
+- Checks: fresh `/tmp/p42g` clone at 5a56426, `make app-frontend-check` rc 0: `npm ci` 780 packages, biome 593 files 0 errors 10 warnings (baseline; the 2 in `multimodal-input.tsx` are existing unused imports), build OK. `tsc --noEmit -p client`: 4 existing errors in unrelated files, none in the changed files.
+- Not yet checked in a browser; the deployed flow is exercised in 42.5.1 or after the next push.
