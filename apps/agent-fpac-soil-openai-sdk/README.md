@@ -58,8 +58,14 @@ make app-check            # Python lint and tests only; no npm needed
 Do not run the upstream `npm run lint`; it rewrites files (`--write --unsafe`).
 There is no typecheck target (see ADR 0015).
 
-Only the existing chat UI is vendored. Map behavior, AOI drawing, and
-map-specific routes remain explicitly deferred.
+The UI adds a map panel next to the chat
+([ADR 0016](../../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)):
+draw a polygon or rectangle, or paste or upload GeoJSON, then run a
+preliminary screening through `POST /api/geo/screen`. The route calls the MCP
+tools directly, without the model or a trace, and returns map layers for the
+browser plus a geometry-free summary. "Add result to chat" puts that summary
+in the chat input for you to review and send. The AOI stays in the browser
+session only.
 
 ### MCP timeout
 

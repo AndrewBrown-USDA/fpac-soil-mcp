@@ -31,12 +31,13 @@ uv run start-server       # agent server only
 - `agent_server/config.py` - env-var getters and defaults (`AGENT_MODEL`, `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS`); stdlib only.
 - `agent_server/prompts/system_prompt.txt` - chat system prompt.
 - `agent_server/history.py` - multi-turn history normalization for the chat UI.
+- `agent_server/geo.py` - `POST /api/geo/screen` (out-of-band AOI screening for the map panel, [ADR 0016](../../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): request limits, the two MCP calls, the browser-only `display` part and the allowlisted `chat_summary`; route registered in `start_server.py`; tests in `tests/test_geo_screen.py`.
 - `agent_server/start_server.py`, `agent_server/utils.py`, `scripts/` - template runtime (server startup, stream processing, diagnostics, `start-app` launcher).
 - `tests/` - offline tests; `conftest.py` sets dummy Databricks credentials.
 - `app.yaml` - command and env vars used by the deployed app.
 - `databricks.yml` - declared app resources (`llm-endpoint`, `mcp_server`, `experiment`); reference only.
 - `README.md` - configuration, required grants, deploy path, and API usage.
-- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) from upstream base commit `0e572976459aafa3d41047067382cb9a6c015d52`, owned by this repo; local changes are listed in [ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md). Map code lives under `frontend/client/src/components/map/`.
+- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) from upstream base commit `0e572976459aafa3d41047067382cb9a6c015d52`, owned by this repo; local changes are listed in [ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md). Map panel code lives under `frontend/client/src/components/map/` (`MapPanel.tsx` entry, `useScreening.ts` calls `/api/geo/screen`, `farmlandClasses.ts` is the one class mapping, `MapSummaryContext.tsx` hands the summary to `multimodal-input.tsx`); the panel column is in `client/src/layouts/ChatLayout.tsx`.
 
 ## Workflows
 
@@ -52,6 +53,13 @@ uv run start-server       # agent server only
 1. Edit `pyproject.toml`, then run `uv lock` in this directory.
 2. Keep the PyPI `[[tool.uv.index]]` block ([ADR 0013](../../docs/decisions/0013-pin-pypi-default-index-in-every-uv-project.md)); `test_lockfile_uses_public_pypi` fails if proxy URLs reach `uv.lock`.
 3. Commit `pyproject.toml` and `uv.lock` together.
+
+### Change AOI Screening
+
+1. `geo.py` must never log request bodies, MCP arguments or MCP results (log only exception types), keep no server-side AOI state, and create no traces: call MCP tools through `_call_tool_untraced`, never `McpServer.call_tool`, which `databricks_openai` wraps in `@mlflow.trace`.
+2. Anything that can reach chat goes through the `build_chat_summary` allowlist; geometry, hashes, CSV, manifests and limitations stay out. Geometry may appear only in `display`, which the browser keeps in React state.
+3. The browser puts only `chat_summary_text` into the chat input, never `display`.
+4. Cover changes in `tests/test_geo_screen.py` (marker, limit, no-trace and log tests run against the real `McpServer` class); run `make app-check`.
 
 ### Deploy
 
