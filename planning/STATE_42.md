@@ -31,8 +31,14 @@
 | 3 | gate | app-check, app-frontend-check, root check | done (b351386) |
 | 4 | Databricks | 42.4.1 | done (cba02f3) |
 | 4 | gate | app-check, app-frontend-check, root check | done (cba02f3) |
-| 5 | User + Databricks | 42.5.1 | pending |
-| 5 | Databricks | 42.5.2 | pending |
+| 5 | Databricks | 42.5.1 | pending (amend ADR 0016: AOI as session context) |
+| 5 | Databricks | 42.5.2 | pending (agent: `custom_inputs.active_aoi`, note, substitution) |
+| 5 | Databricks | 42.5.3 | pending (frontend: sessionStorage AOI per chat, sent each turn, chip; button removed) |
+| 5 | gate | app-check, app-frontend-check, root check | pending |
+| 6 | User + Databricks | 42.6.1 | pending (deployed trial) |
+| 6 | Databricks | 42.6.2 | pending (close-out) |
+
+Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not run LESA from the pasted summary (only `aoi_ref` was available). The map AOI becomes chat session context; geometry is allowed in traces and logs. The old 42.5.1 trial and 42.5.2 close-out became 42.6.1 and 42.6.2. The 42.3.2 button is replaced in 42.5.3.
 
 ## Task reports
 

@@ -10,15 +10,16 @@
 - Draft ADR 0016 (AOI handoff, the Track A M1 exit item). Status `Proposed`.
 - Backend `POST /api/geo/screen`: calls the deployed MCP tools directly (no model), returns a browser-only `display` part and a server-built, geometry-free `chat_summary`.
 - Frontend map panel (MapLibre GL JS + Terra Draw) left of the chat: one public USGS basemap, polygon and rectangle drawing with edit/delete/undo, GeoJSON paste/upload, one session-only AOI, Run screening, AOI outline plus clipped soil polygons coloured by farmland class, legend, results table, `regulatory_notice`, preliminary-screening label.
-- Summary to chat: the panel puts `chat_summary` into the chat input; the user reviews and sends it.
+- Summary to chat: the panel puts `chat_summary` into the chat input; the user reviews and sends it. Superseded by D9-D12 (2026-10-31): the active AOI is session context sent with every chat turn, and the agent can run tools on it.
 - Offline privacy tests, per-wave check gates, a deployed trial, and close-out (ADRs to `Accepted`, master plan Track A status).
 
 **Out of scope (explicit deferrals):**
 
 - M3 server `map` envelope and any MCP server change (D3). Likely the next plan if this goes well.
 - Lines/corridors, points, freehand, WKT/KML/SHP/other formats, AOI list or alternatives, custom basemap URLs, overlay catalog, `/api/geo/proxy`, `/api/geo/convert` (D4).
-- AOI persistence, Lakebase, server-side AOI store (Plan 40 D5).
-- `custom_inputs`/`custom_outputs` through `/invocations`, span-processor redaction (option 2, rejected; D2).
+- AOI persistence beyond the browser tab session, Lakebase, server-side AOI store (Plan 40 D5; D10).
+- `custom_outputs`, span-processor redaction (D11). (`custom_inputs` is now in scope: D9.)
+- Multiple or labelled AOIs; needs a drawing interface for several shapes (D12).
 - A frontend unit-test framework; full Section 508 review (M7).
 - Eval workbench integration (D1); agent-app eval against `/invocations`; per-user attribution.
 - Guarding against a user typing coordinates into the chat themselves.
@@ -35,6 +36,11 @@
 - "set both to proposed"
 - "we will just redirect the existing app rather than create another one"
 - "we should check after each wave"
+- "it seems to be untenable to completely hide the geometry from the traces or provide no way for the chat to look up aoi info as user requests may require that info" (2026-10-31)
+- "fine for proof of concept but this needs to be more directly integrated into the session context" (2026-10-31)
+- "per session/conversation is fine for now. multiple AOIs would be good but we would need an interface that could draw multiple and tag/label them which is future work" (2026-10-31)
+- "I think geometry should generally be allowed ... ultimately there will have to be limits on the environments this is deployed in and guidelines for the user to not submit PII" (2026-10-31)
+- "we will fold this all into plan 42" (2026-10-31)
 
 ## Reconnaissance Log
 
@@ -55,9 +61,13 @@
 3. **D3, 2026-10-30, map results:** Use existing MCP tools only (`analyze_farmland_by_polygon` for the authoritative summary and notice; `get_soil_polygons_by_geometry` with `clip=True` for the layer). Label the view preliminary. No MCP server changes; M3 deferred and likely next.
 4. **D4, 2026-10-30, MVP scope:** MapLibre GL JS + Terra Draw; polygon and rectangle with edit/delete/undo; GeoJSON paste/upload; one session-only AOI; one public USGS basemap; results table and keyboard path; app-side size limits. Regenerating `package-lock.json` when dependencies change is expected; ADR 0015's "never regenerate" was an oversight.
 5. **D5, 2026-10-30, branch:** Plan 42 runs on `feature/agent-app-map1`. ADR 0015 is clarified on this branch. The PR merges only after a working, tried-out map + agent example.
-6. **D6, 2026-10-30, ADR status:** ADR 0015 -> `Proposed`; ADR 0016 drafted `Proposed`. Task 42.5.2 sets both to `Accepted` after the deployed trial passes.
+6. **D6, 2026-10-30, ADR status:** ADR 0015 -> `Proposed`; ADR 0016 drafted `Proposed`. Task 42.6.2 (was 42.5.2 before D9) sets both to `Accepted` after the deployed trial passes.
 7. **D7, 2026-10-30, trial target:** No dev app. The existing `agent-fpac-soil-openai-sdk` (main version was only a vanilla SDK test; teammates not using it) points at `feature/agent-app-map1` for the trial, same experiment. Goal: merge the PoC today.
-8. **D8, 2026-10-30, execution model:** One Databricks agent executes all tasks serially (no sub-workers). Each wave ends with a check gate. Work and commit in a `/tmp` clone, then fast-forward the personal workspace clone from it with git after every task. The user owns Apps deploys, browser checks, app logs, PR CI status, and push approvals. `PROMPT_TEMPLATE_42.md` is still written so a tool with workers could run the plan.
+8. **D8, 2026-10-30, execution model:** One Databricks agent executes all tasks serially (no sub-workers). Each wave ends with a check gate. Work and commit in a `/tmp` clone, then fast-forward the personal workspace clone from it with git after every task. The user owns Apps deploys, browser checks, app logs, PR CI status, and push approvals. `PROMPT_TEMPLATE_42.md` is still written so a tool with workers could run the plan. Amended by the user 2026-10-30: edit and commit directly in the workspace clone; `/tmp` only for throwaway gate clones and caches.
+9. **D9, 2026-10-31, AOI as session context (supersedes D2's handoff):** After the deployed check, the agent could not run LESA from the pasted summary: it had only `aoi_ref` and passed that string as the LESA `geometry` argument. The active AOI now goes with every chat turn as `custom_inputs.active_aoi` (`aoi_ref`, geometry, latest screening summary). The agent server adds a short note to the model's instructions (reference and summary, no geometry) and swaps the real geometry in when a tool's `geojson`/`geometry` argument equals the active `aoi_ref`. The MCP tools already accept a string there. The "Add result to chat" button and input prefill are removed; an AOI chip in the chat input shows what is attached and can detach it. `/api/geo/screen` stays for the map display.
+10. **D10, 2026-10-31, where the AOI lives:** Browser `sessionStorage`, keyed by chat id (the conversation id), one active AOI per conversation. The server stays stateless. A new chat starts without an AOI; reloading the tab keeps it; closing the tab drops it.
+11. **D11, 2026-10-31, geometry handling:** Geometry is operational project data (as ADR 0010's context already says; the Plan 42 recon note over-read ADR 0010) and may appear in traces, tool spans, request bodies and app logs. No redaction. The controls are where the app is deployed and user guidance not to submit PII or producer-supplied data covered by Section 1619 outside authorised environments. ADR 0016 is amended (still `Proposed`), not replaced.
+12. **D12, 2026-10-31, AOI count:** One active AOI per conversation. Several labelled AOIs need a multi-shape drawing and labelling interface; future work.
 
 ## Wave & Dependency Table
 
@@ -71,8 +81,11 @@
 | 3 | Databricks | 42.3.1 | Legend, results table, notice, preliminary label, error states | `frontend/client/src/components/map/**` | 42.2.3 |
 | 3 | Databricks | 42.3.2 | Summary to chat input | `frontend/client/src/components/multimodal-input.tsx`, `frontend/client/src/components/map/**` | 42.3.1 |
 | 4 | Databricks | 42.4.1 | Update local-changes list and frontend docs | `docs/decisions/0015-vendored-agent-app-frontend.md`, app `AGENTS.md` | 42.3.2 |
-| 5 | User + Databricks | 42.5.1 | Deployed trial and trace privacy check | `planning/STATE_42.md`, `planning/evidence/42.5.1-trial.md` (new) | 42.4.1 |
-| 5 | Databricks | 42.5.2 | Close-out: ADRs Accepted, master plan Track A | ADRs 0015 and 0016, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/STATE_42.md` | 42.5.1 |
+| 5 | Databricks | 42.5.1 | Amend ADR 0016: AOI as session context | `docs/decisions/0016-out-of-band-aoi-screening-handoff.md`, `docs/decisions/README.md`, root and app `AGENTS.md` | 42.4.1 |
+| 5 | Databricks | 42.5.2 | Agent: active AOI from `custom_inputs`, instruction note, argument substitution | `agent_server/agent.py`, `agent_server/aoi_context.py` (new), `agent_server/geo.py`, `tests/test_aoi_context.py` (new), root `Makefile` | 42.5.1 |
+| 5 | Databricks | 42.5.3 | Frontend: per-conversation AOI in sessionStorage, sent with each turn, AOI chip; remove the button | `frontend/client/src/components/chat.tsx`, `frontend/packages/core/src/schemas/chat.ts`, `frontend/server/src/routes/chat.ts`, `frontend/packages/ai-sdk-providers/src/providers-server.ts`, `frontend/client/src/components/multimodal-input.tsx`, `frontend/client/src/components/map/**`, ADR 0015 | 42.5.2 |
+| 6 | User + Databricks | 42.6.1 | Deployed trial: chat uses the map AOI | `planning/STATE_42.md`, `planning/evidence/42.6.1-trial.md` (new) | 42.5.3 |
+| 6 | Databricks | 42.6.2 | Close-out: ADRs Accepted, master plan Track A | ADRs 0015 and 0016, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/STATE_42.md` | 42.6.1 |
 
 Paths under `frontend/`, `agent_server/` and `tests/` are relative to `apps/agent-fpac-soil-openai-sdk/`. 42.3.1 and 42.3.2 both touch `components/map/**` and therefore run in sequence. Execution is serial in this environment anyway (D8); file scopes are listed so a worker-capable tool could parallelize waves 1 and 2.
 
@@ -80,9 +93,9 @@ Paths under `frontend/`, `agent_server/` and `tests/` are relative to `apps/agen
 
 ## Hazards
 
-- **Auto-deploy on push:** the app tracks this branch with auto-deploy on, so every approved push redeploys the app. Push only at gates (42.2.3, 42.5.1) unless the user asks otherwise.
+- **Auto-deploy on push:** the app tracks this branch with auto-deploy on, so every approved push redeploys the app. Push only at gates (42.2.3, 42.6.1) unless the user asks otherwise.
 - **Privacy (ADR 0010):** never write real coordinates, WKT/GeoJSON, bounding boxes or parcel properties into commits, tests, planning or evidence files. Tests use a synthetic geometry built around a marker string (for example the property value `R6-MARKER`) and tiny synthetic coordinates like `[[0,0],[1,0],[1,1],[0,0]]`. The `/api/geo/screen` handler must not log request bodies or MCP payloads.
-- **Tracing:** `mlflow.openai.autolog()` is global. `/api/geo/screen` must not run `Runner` or call the model, and must not use `@mlflow.trace`. 42.2.1 proves with a local SQLite tracking store that a screening call creates zero traces. If the MCP client turns out to emit spans outside a trace, stop and report.
+- **Tracing:** (D11 relaxes this for chat turns: geometry in chat traces is allowed; the rule below still holds for `/api/geo/screen`, to avoid session-less traces.) `mlflow.openai.autolog()` is global. `/api/geo/screen` must not run `Runner` or call the model, and must not use `@mlflow.trace`. 42.2.1 proves with a local SQLite tracking store that a screening call creates zero traces. If the MCP client turns out to emit spans outside a trace, stop and report.
 - **Workers:** the agent server may run more than one worker process. Keep `/api/geo/screen` stateless; no server-side AOI cache.
 - **MCP client lifecycle:** open the `McpServer` per request with `async with` (or an `AsyncExitStack`) and close it; reuse `init_fpac_mcp_server`. Do not modify `agent.py` beyond importing from it.
 - **Tool result shape:** `McpServer.call_tool` returns an MCP `CallToolResult`. Parse structured content first, then JSON text content. Treat `error` keys and `isError` as failures. Never forward raw MCP exceptions (they may echo arguments) to the browser.
@@ -93,6 +106,10 @@ Paths under `frontend/`, `agent_server/` and `tests/` are relative to `apps/agen
 - **Large files:** `multimodal-input.tsx` (381 lines) and `chat.tsx` (342 lines): enter via grep anchors; do not restructure.
 - **Transfer:** after each task, commit in `/tmp`, then in the workspace clone run `git fetch /tmp/<clone> feature/agent-app-map1` and `git merge --ff-only FETCH_HEAD`; confirm `git status -sb` and `git log -1` match. Never push from `/tmp`.
 - **Compute restarts:** `/tmp` disappears. Re-clone from the workspace clone (`git clone /Workspace/.../fpac-soil-mcp /tmp/p42`), recreate `/tmp/nbin` and venvs, and resume from `STATE_42.md`.
+- **Repository hygiene still applies (D11):** geometry may appear in traces and logs, but commits, tests, planning and evidence files keep synthetic coordinates only.
+- **Request size and logs:** the active AOI (up to 256 KB) goes with every chat turn. Vendored `databricksFetch` logs the full `/invocations` body to the app console, so app logs will contain geometry (accepted, D11); check that the body limits on `/api/chat` and the agent server accept the size.
+- **Model copying coordinates:** the instruction note never contains geometry; substitution keeps the model from copying shapes. A tool result that returns geometry can still reach the model; that is accepted.
+- **Chat id:** with `chatHistory` off the chat id is generated in the browser and sent as `context.conversation_id`; the sessionStorage key must use the same id the server sends.
 
 ## Task Specifications
 
@@ -307,38 +324,92 @@ Paths under `frontend/`, `agent_server/` and `tests/` are relative to `apps/agen
 
 **Acceptance:** the listed files equal the diff; parity count recorded in the task report. Commit: `docs(agent-app): record map panel local frontend changes`.
 
-### 42.5.1 -- Deployed trial and trace privacy check
+### 42.5.1 -- Amend ADR 0016: AOI as session context
+
+**Executor:** Databricks.
+
+**Files in scope:** ADR 0016 (same file name; new title "Map AOI as chat session context"), `docs/decisions/README.md` (row title), app `AGENTS.md` ("Change AOI Screening" workflow), root `AGENTS.md` (coordinate-privacy operational rule, if it conflicts with D11), `planning/tasks/42.5.1.todo.md`.
+
+**Depends on:** 42.4.1 and the wave 4 gate.
+
+**Specification:**
+
+1. Status stays `Proposed`; add `2026-10-31` amendment note and keep the history: the out-of-band handoff (option 1) was built and tried; the deployed LESA turn showed the model needs the geometry (D9).
+2. Decision: D9-D12. Request field `custom_inputs.active_aoi = {aoi_ref, geometry, summary}`; same parse limits as `/api/geo/screen` (Polygon/MultiPolygon, 256 KB, `GEO_MAX_VERTICES`); invalid or absent means no AOI note and no substitution, never an error to the user. Instruction note carries `aoi_ref`, acres and the latest screening summary only. Substitution applies to the `geojson` and `geometry` arguments of MCP tools when the value equals the active `aoi_ref`.
+3. Geometry handling per D11: allowed in traces, request bodies and logs; deployment-environment limits and user guidance on PII and Section 1619 producer data. The `/api/geo/screen` route keeps its untraced MCP calls so map-only screenings do not create session-less traces (noise, not privacy).
+4. Options considered: keep the button handoff (rejected after the trial); server-side AOI store (rejected: state, D10); full geometry in the prompt (rejected: token cost and coordinate copying by the model); session context with server-side substitution (chosen).
+5. Update the app `AGENTS.md` workflow to match; reword the root `AGENTS.md` coordinate rule only if it contradicts D11.
+
+**Acceptance:** `status: "Proposed"` still matches; no text says geometry must be kept out of traces; README row title matches. Commit: `docs(decisions): amend ADR 0016 to make the map AOI chat session context`.
+
+### 42.5.2 -- Agent: active AOI from `custom_inputs`
+
+**Executor:** Databricks.
+
+**Files in scope:** `agent_server/aoi_context.py` (new), `agent_server/agent.py`, `agent_server/geo.py` (reuse the parser only), `tests/test_aoi_context.py` (new), root `Makefile` (`APP_LINT_PATHS`), `planning/tasks/42.5.2.todo.md`.
+
+**Depends on:** 42.5.1.
+
+**Specification:**
+
+1. `aoi_context.py`: `read_active_aoi(request) -> ActiveAoi | None` from `request.custom_inputs["active_aoi"]`, validated with the `geo.py` parser and limits; `aoi_ref` must match `aoi-[0-9a-f]{8}`; summary is the allowlisted `chat_summary` shape, rendered with `render_chat_summary_text`.
+2. `instruction_note(aoi)`: a short paragraph appended to the agent instructions for that request: the AOI reference, acres, the latest summary text, and "to run a tool on this AOI, pass `<aoi_ref>` as the `geojson` or `geometry` argument; the app substitutes the shape". No coordinates in the note.
+3. Substitution: wrap the per-request `McpServer` so `call_tool` replaces a `geojson`/`geometry` argument equal to the active `aoi_ref` with the geometry before the call, and leaves every other argument unchanged. Keep the normal (traced) `call_tool` path for chat turns.
+4. `agent.py`: both handlers read the AOI, build the agent with the note, and pass the wrapper. No AOI means today's behaviour exactly.
+5. Tests: valid/absent/invalid/oversize AOI; bad `aoi_ref`; note content and no coordinates in it; substitution on `geojson` and `geometry`; no substitution for other values or other argument names; handlers without `custom_inputs` unchanged; a LESA-shaped call with `geometry="aoi-..."` reaches the fake MCP session with the real geometry.
+
+**Acceptance:** `make app-check` green; new tests fail with the substitution removed (negative control). Commit: `feat(agent-app): give the agent the map AOI as session context`.
+
+### 42.5.3 -- Frontend: AOI in sessionStorage, sent with each turn
+
+**Executor:** Databricks.
+
+**Files in scope:** `frontend/client/src/components/map/**`, `frontend/client/src/components/chat.tsx`, `frontend/client/src/components/multimodal-input.tsx`, `frontend/packages/core/src/schemas/chat.ts`, `frontend/server/src/routes/chat.ts`, `frontend/packages/ai-sdk-providers/src/providers-server.ts`, ADR 0015 `### Local changes`, `planning/tasks/42.5.3.todo.md`.
+
+**Depends on:** 42.5.2.
+
+**Specification:**
+
+1. Map state per conversation: `MapSummaryContext` becomes an active-AOI context keyed by chat id; geometry, `aoi_ref` and the latest `chat_summary` persist in `sessionStorage` under one key per chat id; new chat starts empty; switching chats switches the AOI.
+2. Request path: `chat.tsx` `prepareSendMessagesRequest` adds `activeAoi` when one is attached; `postRequestBodySchema` accepts it (optional, bounded); `routes/chat.ts` hands it to the provider; `databricksFetch` adds it to the `/invocations` body as `custom_inputs.active_aoi`. Headers are too small for 256 KB, so pick the per-request mechanism in recon (for example a request-scoped value read by `databricksFetch`) and record it.
+3. Chat input: an AOI chip ("Map AOI <ref>, <acres> ac") above the textarea when an AOI is attached, with a detach control; remove the "Add result to chat" button and the summary prefill effect from 42.3.2, restoring `multimodal-input.tsx` as close to upstream as the chip allows.
+4. Drawing a new AOI or rerunning the screening updates the attached AOI and summary; deleting the AOI detaches it.
+5. ADR 0015 `### Local changes`: add the newly modified upstream files with one line each; re-run the 42.4.1 parity check.
+
+**Acceptance:** `make app-frontend-check` green; `tsc` shows no new errors; parity check matches the ADR list. Commit: `feat(agent-app): send the map AOI with each chat turn`.
+
+### 42.6.1 -- Deployed trial: chat uses the map AOI
 
 **Executor:** user + Databricks.
 
-**Files in scope:** `planning/STATE_42.md`, `planning/evidence/42.5.1-trial.md` (new; no coordinates).
+**Files in scope:** `planning/STATE_42.md`, `planning/evidence/42.6.1-trial.md` (new; no coordinates).
 
-**Depends on:** 42.4.1 and the wave 4 gate; push approved and deployment SUCCEEDED on the head commit.
+**Depends on:** 42.5.3 and the wave 5 gate; push approved and deployment SUCCEEDED on the head commit.
 
 **Specification (user in browser, agent verifying):**
 
-1. Draw a polygon; Run screening; map shows soil polygons coloured by class, legend, table, notice, preliminary label.
-2. Paste a GeoJSON polygon instead of drawing; screening works.
-3. Add result to chat; edit and send with a question (for example, "What share of this AOI is prime farmland and what does that mean for FPPA?"); the answer uses the summary and keeps the preliminary-screening language.
-4. POINT-01 still works in a fresh chat.
-5. Agent: list traces created in the trial window (`search_traces`, `include_spans=False` first, then span data where it loads). For each, check request previews and available span inputs/outputs for a `"coordinates"` key, `"type": "Polygon"`/`"MultiPolygon"` objects, `bbox`, `POLYGON (` and coordinate-pair patterns (two signed decimals with 4+ places); expect no matches. Tool schemas in model spans mention "Polygon or MultiPolygon" in prose; that is not a finding. Confirm the trace session equals `context.conversation_id`. Note whether the "missing span data" issue from 41.4.1 recurs.
-6. Agent: confirm no trace was created by the screening calls themselves (traces correspond to chat turns only).
-7. Record pass/fail per step in the evidence file and STATE_42, with deployment ID and commit, without coordinates.
+1. Draw a polygon; Run screening; map shows soil polygons coloured by class, legend, table, notice, preliminary label; the chip shows the AOI.
+2. Without pasting anything, ask about the AOI (for example, "What share of this AOI is prime farmland?") and then ask for a preliminary LESA; both answers use the AOI and keep the preliminary-screening language.
+3. Paste a GeoJSON polygon instead of drawing; the chip updates; a question uses the new AOI.
+4. Reload the tab: the AOI is still attached to that chat. New chat: no AOI. Detach: the next turn has no AOI.
+5. POINT-01 still works in a fresh chat.
+6. Agent: for the trial traces, confirm the session equals `context.conversation_id`, `custom_inputs.active_aoi` is present on AOI turns, and the LESA tool call received a geometry object rather than the `aoi_ref` string (span data where it loads; otherwise tool result shape). Geometry in traces is expected (D11).
+7. Record pass/fail per step in the evidence file and STATE_42, with deployment ID and commit; the evidence file itself contains no coordinates.
 
 **Acceptance:** all steps pass, or failures become fix tasks and the trial is repeated.
 
-### 42.5.2 -- Close-out
+### 42.6.2 -- Close-out
 
 **Executor:** Databricks.
 
 **Files in scope:** ADR 0015, ADR 0016, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/STATE_42.md`.
 
-**Depends on:** 42.5.1 passed.
+**Depends on:** 42.6.1 passed.
 
 **Specification:**
 
-1. ADR 0015 and 0016: `status: "Accepted"`, add an acceptance note with the date and a pointer to `planning/evidence/42.5.1-trial.md`. README rows updated.
-2. `MASTER_PLAN.md` Track A: Status (vendored, owned frontend with a map panel MVP and out-of-band screening); Delivered (Plans 35, 40, 41, 42; ADRs 0012, 0015, 0016); Backlog: M0 delivered; M1 resolved by ADR 0016 for the out-of-band path; M2 MVP delivered (polygon/rectangle, GeoJSON); M3 next; remaining M2 items (lines, WKT, AOI list, custom basemaps) listed as backlog. Follow Plan 37 D4: link plans and ADRs, no run IDs or counts.
+1. ADR 0015 and 0016: `status: "Accepted"`, add an acceptance note with the date and a pointer to `planning/evidence/42.6.1-trial.md`. README rows updated.
+2. `MASTER_PLAN.md` Track A: Status (vendored, owned frontend with a map panel MVP; the map AOI is chat session context); Delivered (Plans 35, 40, 41, 42; ADRs 0012, 0015, 0016); Backlog: M0 delivered; M1 resolved by ADR 0016 (single AOI per conversation; multiple labelled AOIs backlog); M2 MVP delivered (polygon/rectangle, GeoJSON); M3 next; remaining M2 items (lines, WKT, AOI list, custom basemaps) listed as backlog. Follow Plan 37 D4: link plans and ADRs, no run IDs or counts.
 3. STATE_42: final summary; note the user merges the PR and points the app back at `main` afterwards.
 
 **Acceptance:** `grep -n 'status: "Accepted"'` matches in both ADRs; README rows match. Commit: `docs(planning): record map panel trial and accept frontend and AOI ADRs`.
