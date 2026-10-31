@@ -29,8 +29,8 @@
 | 3 | Databricks | 42.3.1 | done (b351386); browser check pending |
 | 3 | Databricks | 42.3.2 | done (5a56426), deployed check passed; run before 42.3.1 by user decision |
 | 3 | gate | app-check, app-frontend-check, root check | done (b351386) |
-| 4 | Databricks | 42.4.1 | pending |
-| 4 | gate | app-check, app-frontend-check, root check | pending |
+| 4 | Databricks | 42.4.1 | done (cba02f3) |
+| 4 | gate | app-check, app-frontend-check, root check | done (cba02f3) |
 | 5 | User + Databricks | 42.5.1 | pending |
 | 5 | Databricks | 42.5.2 | pending |
 
@@ -121,3 +121,15 @@
 ## Wave 3 gate
 
 - Fresh `/tmp/p42g` clone of the workspace clone at b351386: `make app-frontend-check` rc 0 (`npm ci` 780 packages, biome 597 files 0 errors 10 warnings, build OK); `tsc --noEmit -p client` only the 4 existing errors outside `components/map/**`; `make app-check` lint clean, 86 passed; root `make check` ruff clean, 518 formatted, 597 passed / 3 skipped / 44 deselected. Clone clean after checks.
+
+## 42.4.1
+
+- Status: done, commit cba02f3 `docs(agent-app): record map panel local frontend changes`; edited and committed in the workspace clone. Not pushed.
+- Parity: blob-less fetch of `databricks/app-templates` at 0e57297 into a throwaway `/tmp` repo; `git ls-tree -r` (blob and mode) of `e2e-chatbot-app-next` vs `HEAD` `frontend/`: 640 upstream files, 36 excluded, 604 kept; 596 identical, 8 modified, 0 missing, 9 added (all under `client/src/components/map/`), no excluded file present. No mode-only differences.
+- Changed: ADR 0015 `### Local changes` (modified: the 4 PR #54 files plus `client/package.json`, `package-lock.json`, `client/src/layouts/ChatLayout.tsx`, `client/src/components/multimodal-input.tsx`; added: `client/src/components/map/**`; one line each on why); app `AGENTS.md` (`geo.py` in Find Things, map file roles, new "Change AOI Screening" workflow); app `README.md` (stale "map deferred" paragraph replaced); `planning/tasks/42.4.1.todo.md`.
+- Deviation: app `README.md` was not in the task's file list; no later task updates it and the old text said the map was deferred.
+- Check: paths parsed from the ADR section equal the modified set exactly, and the `map/**` entry covers all 9 added files. (A first parse matched the inline mention of the heading in the Decision text; re-run anchored on the heading line.)
+
+## Wave 4 gate
+
+- Fresh `/tmp/p42g` clone of the workspace clone at cba02f3: `make app-check` lint clean, 86 passed; root `make check` ruff clean, 597 passed / 3 skipped / 44 deselected; `make app-frontend-check` `npm ci` 780 packages, biome 597 files 0 errors 10 warnings, build OK.
