@@ -185,7 +185,7 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 
 ## Final summary
 
-Plan 42 delivered the owned agent-app frontend with a map panel MVP: draw or paste one AOI, run a preliminary screening shown on the map, and use that AOI as chat session context, so the agent runs the FPPA tools and LESA on it without pasted geometry. The AOI is ephemeral like the chat. ADRs 0015 and 0016 are accepted. Next (user): merge the PR into `main`, then point the app's git source back at `main`. Follow-ups are in the MASTER_PLAN Track A backlog (M3 `map` envelope next).
+Plan 42 delivered the owned agent-app frontend with a map panel MVP: draw or paste one AOI, run a preliminary screening shown on the map, and use that AOI as chat session context, so the agent runs the FPPA tools and LESA on it without pasted geometry. The AOI is ephemeral like the chat. ADRs 0015 and 0016 are accepted. Next (user): merge the PR into `main`, then point the app's git source back at `main`. Follow-ups are in the MASTER_PLAN Track A backlog (M3 `map` envelope next). The guided Site Assessment in the trial, its findings (model-chosen points, Part V/VI labels, missing per-criterion breakdown) and follow-ups for tools, system instructions and evals are in `planning/RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md`.
 
 ## Wave 5 gate
 

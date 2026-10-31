@@ -479,6 +479,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
   - Proposed: M4-M7, scoped after M3.
   - Proposed: opt-in chat history and stored sessions (template chat database, for example Lakebase) for users who opt in or deployments in approved secure environments, including whether the AOI is stored with the chat ([Plan 42](EXECUTION_PLAN_42.md) deferral).
   - Proposed: one AOI reference for the map screening and the chat (the screening route and the browser currently assign separate references; cosmetic, see the [42.6.1 evidence](evidence/42.6.1-trial.md)).
+  - Proposed: an agent-guided Site Assessment with formalized, rule-based scoring for consistent LESA results: server-side § 658.5(b) scoring from facts, a shared question schema, system-instruction and prompt updates, prefill from NASS and TIGERweb, a multi-turn consistency eval ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md)). The server work belongs on the server roadmap.
   - Proposed: a separate agent-app evaluation against `/invocations` (not MCP T2).
   - Proposed: per-user attribution (service principal auth does not identify the requesting user).
 - **Exit criteria:** DISC-01, POINT-01, and LESA-01 are answered in the chat UI with an fpac tool call in the trace, the server-provided `regulatory_notice` rendered, and a response within 180 s; map phases meet the M2 and M4 exit criteria in the map research, section 10.
