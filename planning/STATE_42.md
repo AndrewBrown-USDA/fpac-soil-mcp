@@ -34,7 +34,7 @@
 | 5 | Databricks | 42.5.1 | done (see report) |
 | 5 | Databricks | 42.5.2 | done (see report) |
 | 5 | Databricks | 42.5.3 | done (see report) |
-| 5 | gate | app-check, app-frontend-check, root check | pending |
+| 5 | gate | app-check, app-frontend-check, root check | done (f4d1578) |
 | 6 | User + Databricks | 42.6.1 | pending (deployed trial) |
 | 6 | Databricks | 42.6.2 | pending (close-out) |
 
@@ -168,3 +168,7 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 - Checks: `make app-frontend-check` rc 0 (780 packages, biome 598 files 0 errors 10 warnings, build OK); `tsc -p client` 4 existing errors, `tsc -p server` same 2 as HEAD; tsx smoke of schema and `databricksFetch` passed; parity 640/36/591 identical/13 modified/10 added, ADR list equals the modified set.
 - Deviation: `packages/core/src/ai/providers.ts` (re-export) was not in the task's file list.
 - Gotcha for 42.6.1: the deployed app runs without a chat database, so a reload starts a new chat id and the AOI is not restored (messages are not either). Not yet checked in a browser.
+
+## Wave 5 gate
+
+- Fresh `/tmp/p42g` clone of the workspace clone at f4d1578: `make app-frontend-check` (`npm ci` 780 packages, biome 598 files 0 errors 10 warnings, build OK); `make app-check` lint clean, 131 passed; root `make check` ruff clean, 522 formatted, 597 passed / 3 skipped / 44 deselected. Clone clean after checks.
