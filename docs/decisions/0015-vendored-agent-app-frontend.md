@@ -1,7 +1,7 @@
 ---
 id: "0015"
 title: "Vendor the Full Pinned Chat Template for the Agent App Frontend"
-status: "Proposed"
+status: "Accepted"
 date: 2026-10-28
 authors:
   - "Andrew G. Brown"
@@ -11,6 +11,10 @@ source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_41, EXECUTION_PLAN_42"
 ---
 
 # 15. Vendor the Full Pinned Chat Template for the Agent App Frontend
+
+> **Accepted 2026-10-31 (Plan 42).** The owned frontend with its listed local
+> changes passed the parity check and the deployed trial; see
+> [`planning/evidence/42.6.1-trial.md`](../../planning/evidence/42.6.1-trial.md).
 
 ## Context and Problem Statement
 

@@ -1,7 +1,7 @@
 ---
 id: "0016"
 title: "Map AOI as Chat Session Context"
-status: "Proposed"
+status: "Accepted"
 date: 2026-10-30
 authors:
   - "Andrew G. Brown"
@@ -21,6 +21,11 @@ source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_42"
 > of the chat entirely makes AOI follow-up questions impossible, and the button
 > handoff is awkward. The decision below replaces the handoff; the screening
 > route stays for the map display.
+
+> **Accepted 2026-10-31 (Plan 42).** In the deployed trial the agent ran the
+> preliminary FPPA workflow and LESA on drawn and pasted AOIs without any
+> pasted geometry, and new chats had no AOI; see
+> [`planning/evidence/42.6.1-trial.md`](../../planning/evidence/42.6.1-trial.md).
 
 ## Context and Problem Statement
 

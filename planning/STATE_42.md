@@ -35,8 +35,8 @@
 | 5 | Databricks | 42.5.2 | done (see report) |
 | 5 | Databricks | 42.5.3 | done (see report) |
 | 5 | gate | app-check, app-frontend-check, root check | done (f4d1578) |
-| 6 | User + Databricks | 42.6.1 | in progress (deployed on 171b470; browser trial pending) |
-| 6 | Databricks | 42.6.2 | pending (close-out) |
+| 6 | User + Databricks | 42.6.1 | done (see report) |
+| 6 | Databricks | 42.6.2 | done (see report) |
 
 Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not run LESA from the pasted summary (only `aoi_ref` was available). The map AOI becomes chat session context; geometry is allowed in traces and logs. The old 42.5.1 trial and 42.5.2 close-out became 42.6.1 and 42.6.2. The 42.3.2 button is replaced in 42.5.3.
 
@@ -176,6 +176,16 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 - Deployment 01f1d4fd835d1105a6edb990112c5f5b SUCCEEDED (auto-deploy), `resolved_commit` 171b470; app RUNNING.
 - Trial (user, browser): reported working well; ran a full preliminary FPPA workflow, 12 site-assessment questions and a refined LESA on one drawn AOI. Traces: 19 OK, one session = `context.conversation_id`, `custom_inputs.active_aoi` on turn 1 (later previews truncated), tool results AOI-specific (LE 73.89, refined LESA 194.89 / 260). Span data does not load; tool arguments checked by result shape.
 - Steps 1, 2, 6 pass; steps 3-5 (paste, reload/new chat/detach, POINT-01) not shown in the traces; asked the user. Evidence: `planning/evidence/42.6.1-trial.md`.
+- Steps 3-5 (user, second run): 3 more traces, all OK, separate sessions. Pasted AOI sent with a new reference and summary, answered on it (pass); a new session had no `active_aoi` and the agent asked for geometry (pass); the user ran PROMPT-01 (point screening) in a fresh chat instead of POINT-01 (pass, equivalent). Finding: the summary keeps the screening route's own `aoi_ref`, different from the browser's; the model never sees it (agent server renders the active ref); backlog item. Status: done.
+
+## 42.6.2
+
+- Status: done. ADR 0015 and 0016 `status: "Accepted"` with acceptance notes pointing to the 42.6.1 evidence; README rows `Accepted (2026-10-31, EP42)`. MASTER_PLAN Track A: status, delivered (Plans 35, 40, 41, 42; ADRs 0012, 0015, 0016), backlog (M0 delivered, M1 resolved by ADR 0016, M2 MVP delivered, M3 next, remaining M2 items, opt-in chat history, one AOI reference), open decisions 1 and 4 decided; Phase 8 M2 exit criterion aligned with ADR 0016.
+- Acceptance: `grep -n 'status: "Accepted"'` matches both ADRs; both README rows match.
+
+## Final summary
+
+Plan 42 delivered the owned agent-app frontend with a map panel MVP: draw or paste one AOI, run a preliminary screening shown on the map, and use that AOI as chat session context, so the agent runs the FPPA tools and LESA on it without pasted geometry. The AOI is ephemeral like the chat. ADRs 0015 and 0016 are accepted. Next (user): merge the PR into `main`, then point the app's git source back at `main`. Follow-ups are in the MASTER_PLAN Track A backlog (M3 `map` envelope next).
 
 ## Wave 5 gate
 
