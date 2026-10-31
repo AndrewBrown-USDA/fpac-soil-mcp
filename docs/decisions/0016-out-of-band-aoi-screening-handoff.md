@@ -82,8 +82,10 @@ the server stays stateless.
 
 * **Where the AOI lives:** browser `sessionStorage`, one active AOI per
   conversation, keyed by the chat id that the server sends as
-  `context.conversation_id`. Reloading the tab keeps it; a new chat starts
-  without one; closing the tab drops it. The user can detach it.
+  `context.conversation_id`. The tab also remembers the open chat's AOI, so
+  a reload keeps it even when the reload starts a new chat id (no chat
+  history database); a new chat started from the app has none; closing the
+  tab drops it. The user can detach it.
 * **Chat request:** each turn with an attached AOI carries
   `custom_inputs.active_aoi = {aoi_ref, geometry, summary}` in the
   `/invocations` body. The agent server validates it with the same limits as

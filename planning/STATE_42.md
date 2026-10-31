@@ -167,7 +167,7 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 - Request mechanism (recon): the chat route registers the validated `activeAoi` in a request-scoped map and passes only a random key header; `databricksFetch` strips it and adds `custom_inputs.active_aoi`. Released on response close. Invalid AOIs are dropped by the schema (`.catch`), never a 400.
 - Checks: `make app-frontend-check` rc 0 (780 packages, biome 598 files 0 errors 10 warnings, build OK); `tsc -p client` 4 existing errors, `tsc -p server` same 2 as HEAD; tsx smoke of schema and `databricksFetch` passed; parity 640/36/591 identical/13 modified/10 added, ADR list equals the modified set.
 - Deviation: `packages/core/src/ai/providers.ts` (re-export) was not in the task's file list.
-- Gotcha for 42.6.1: the deployed app runs without a chat database, so a reload starts a new chat id and the AOI is not restored (messages are not either). Not yet checked in a browser.
+- Gotcha for 42.6.1: the deployed app runs without a chat database, so a reload starts a new chat id (messages are lost). Follow-up (user decision, 2026-10-31): the tab keeps the open chat's AOI and the first chat after a page load adopts it; D10, ADR 0016 and the 42.6.1 reload step updated. Checked with a throwaway happy-dom + tsx script (not committed): 9/9 pass (reload adopts the AOI with its ref and summary; in-app new chat empty; reload while on an empty chat empty; detach then reload empty; same-id reload restores; invalid tab entry ignored); controls: no adoption -> 3 fail, adopt on every switch -> 2 fail. Not yet checked in a browser.
 
 ## Wave 5 gate
 
