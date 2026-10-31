@@ -32,7 +32,7 @@
 | 4 | Databricks | 42.4.1 | done (cba02f3) |
 | 4 | gate | app-check, app-frontend-check, root check | done (cba02f3) |
 | 5 | Databricks | 42.5.1 | done (see report) |
-| 5 | Databricks | 42.5.2 | pending (agent: `custom_inputs.active_aoi`, note, substitution) |
+| 5 | Databricks | 42.5.2 | done (see report) |
 | 5 | Databricks | 42.5.3 | pending (frontend: sessionStorage AOI per chat, sent each turn, chip; button removed) |
 | 5 | gate | app-check, app-frontend-check, root check | pending |
 | 6 | User + Databricks | 42.6.1 | pending (deployed trial) |
@@ -151,3 +151,11 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 - Root `AGENTS.md` unchanged: its coordinate rule is scoped to `privacy.py` for producer data and sensitive locations; no conflict with D11.
 - Checks: `status: "Proposed"` matches; remaining "geometry-free"/"never enters" wording is history or the route summary; README title equals the ADR title; no coordinate-like values in the diff.
 - Gotchas: app `README.md` still describes "Add result to chat" (42.5.3 updates it); app `AGENTS.md` now describes behaviour that 42.5.2/42.5.3 implement.
+
+## 42.5.2
+
+- Status: done; edited in the workspace clone, tested in a `/tmp` copy, committed in the workspace clone. Not pushed. Commit `feat(agent-app): give the agent the map AOI as session context`.
+- Changed: new `agent_server/aoi_context.py` (read/validate `custom_inputs.active_aoi` with geo.py limits, coordinate-free instruction note, `geojson`/`geometry` substitution bound on the per-request `McpServer`); `agent_server/agent.py` (`create_agent(aoi_note=...)`, `_connect_fpac_agent(stack, aoi)`, both handlers read the AOI); new `tests/test_aoi_context.py` (45 tests); root `Makefile` lint paths; `planning/tasks/42.5.2.todo.md`.
+- Behaviour: no or invalid AOI gives exactly the old `create_agent(mcp_servers=..., tools_unavailable=...)` call and an unbound server; tools unavailable keeps the unavailable note without the AOI note; the bound call stays on the traced `McpServer.call_tool` (1 trace in the SQLite check).
+- Commands: `make app-check` in `/tmp/p42w` -> ruff clean, 131 passed (86 + 45). Negative controls: substitution removed -> 4 failed; binding in `agent.py` removed -> 2 failed.
+- Gotchas: `geo` imports `agent`, so `aoi_context` imports `geo` lazily; `import agent_server.start_server` outside pytest fails on HEAD too (MLflow experiment id env), unrelated; new workspace files commit with `--chmod=-x`.
