@@ -26,9 +26,9 @@
 | 2 | gate | app-check, app-frontend-check, root check | done (2a138df) |
 | 2 | User + Databricks | 42.2.3 | done after fix 42.2.4 (first run failed step 5) |
 | 2 | Databricks | 42.2.4 (fix) | done (a576f14); deployed re-check passed |
-| 3 | Databricks | 42.3.1 | pending |
+| 3 | Databricks | 42.3.1 | done (b351386); browser check pending |
 | 3 | Databricks | 42.3.2 | done (5a56426), deployed check passed; run before 42.3.1 by user decision |
-| 3 | gate | app-check, app-frontend-check, root check | pending |
+| 3 | gate | app-check, app-frontend-check, root check | done (b351386) |
 | 4 | Databricks | 42.4.1 | pending |
 | 4 | gate | app-check, app-frontend-check, root check | pending |
 | 5 | User + Databricks | 42.5.1 | pending |
@@ -109,3 +109,15 @@
 - Only `chat_summary_text` reaches the input; `display` is read only for the error check. The input is still mirrored to localStorage key `input` by the existing template code, so the geometry-free summary is persisted like typed text until sent.
 - Checks: fresh `/tmp/p42g` clone at 5a56426, `make app-frontend-check` rc 0: `npm ci` 780 packages, biome 593 files 0 errors 10 warnings (baseline; the 2 in `multimodal-input.tsx` are existing unused imports), build OK. `tsc --noEmit -p client`: 4 existing errors in unrelated files, none in the changed files.
 - Deployed check: pass. User approved the push (97f144e..f33d707, 23:22 UTC); deployment 01f1d4b8b7f91cc5bf763f845e1d02b2 SUCCEEDED on f33d707. The user ran a screening, used "Add result to chat" and sent the turn; reported working. Experiment 517983779529169 after 23:22 UTC (checked 23:26): one `stream_handler` trace (id ends a09c58, 8 spans). Its request preview (2086 chars, not truncated, so the full user message) has the summary and notice, `aoi_ref` present, zero coordinate objects, polygon types, bbox, WKT, coordinate pairs or 5+-decimal numbers; the response preview has preliminary-screening wording and none of those patterns; no `call_tool` traces. Span data still unavailable (`get_trace` "missing span data"; signed download URL returns 404), so span-level content was not inspected.
+
+## 42.3.1
+
+- Status: done, commit b351386 `feat(agent-app): show screening legend, table and notice on the map panel`; edited and committed in the workspace clone. Not pushed. Run after 42.3.2 (user decision).
+- Changed (all under `frontend/client/src/components/map/`): new `farmlandClasses.ts` (one mapping: colour, solid/hatched hint, text code, label, `farmland_summary` key for prime, conditional prime, statewide, local, unique, not prime, unmapped; MapLibre `match` expression; `withFarmlandClass` adds `farmland_class` to soil features), `Legend.tsx`, `ResultsTable.tsx` (class acres/% plus total FPPA-protected; map units sortable by acres with `aria-sort`), `ScreeningResults.tsx` (notice verbatim or "Regulatory notice missing - treat this result as invalid."); `MapPanel.tsx` (persistent preliminary label, `role="alert"` area for invalid drawn shape, screening errors and basemap tile failure, shared class colours, "Add result to chat" hidden without a notice); `useScreening.ts` (`DisplayAnalysis` type, 422 shows the server's bounded `detail`, 502 "Screening unavailable"). Plus `planning/tasks/42.3.1.todo.md`.
+- Class colours changed from the 42.2.2 placeholders to the Phase 8 symbology (P `#2E7D32`, S `#F9A825`, U `#6A1B9A`, L `#0288D1`, NP `#9E9E9E`); conditional prime `#81C784` and unmapped white are hatched in the legend. The map fill is colour only.
+- Checks: client `classifyFarmland` vs server `categorize_farmland_class` on 16 SSURGO strings (incl. empty, null, padded and unknown): 0 mismatches, all 7 classes seen. Client `summaryKey`s equal the server's `geo.FARMLAND_CLASSES` keys. No coordinate-like values or browser storage in the changed files.
+- Not yet checked in a browser.
+
+## Wave 3 gate
+
+- Fresh `/tmp/p42g` clone of the workspace clone at b351386: `make app-frontend-check` rc 0 (`npm ci` 780 packages, biome 597 files 0 errors 10 warnings, build OK); `tsc --noEmit -p client` only the 4 existing errors outside `components/map/**`; `make app-check` lint clean, 86 passed; root `make check` ruff clean, 518 formatted, 597 passed / 3 skipped / 44 deselected. Clone clean after checks.
