@@ -174,7 +174,8 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 
 - Push: user approved; f33d707..171b470 pushed from the workspace clone at 07:34 UTC 2026-10-31.
 - Deployment 01f1d4fd835d1105a6edb990112c5f5b SUCCEEDED (auto-deploy), `resolved_commit` 171b470; app RUNNING.
-- Browser steps 1-5 and trace check (step 6): pending.
+- Trial (user, browser): reported working well; ran a full preliminary FPPA workflow, 12 site-assessment questions and a refined LESA on one drawn AOI. Traces: 19 OK, one session = `context.conversation_id`, `custom_inputs.active_aoi` on turn 1 (later previews truncated), tool results AOI-specific (LE 73.89, refined LESA 194.89 / 260). Span data does not load; tool arguments checked by result shape.
+- Steps 1, 2, 6 pass; steps 3-5 (paste, reload/new chat/detach, POINT-01) not shown in the traces; asked the user. Evidence: `planning/evidence/42.6.1-trial.md`.
 
 ## Wave 5 gate
 
