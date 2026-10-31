@@ -35,7 +35,7 @@
 | 5 | Databricks | 42.5.2 | done (see report) |
 | 5 | Databricks | 42.5.3 | done (see report) |
 | 5 | gate | app-check, app-frontend-check, root check | done (f4d1578) |
-| 6 | User + Databricks | 42.6.1 | pending (deployed trial) |
+| 6 | User + Databricks | 42.6.1 | in progress (deployed on 171b470; browser trial pending) |
 | 6 | Databricks | 42.6.2 | pending (close-out) |
 
 Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not run LESA from the pasted summary (only `aoi_ref` was available). The map AOI becomes chat session context; geometry is allowed in traces and logs. The old 42.5.1 trial and 42.5.2 close-out became 42.6.1 and 42.6.2. The 42.3.2 button is replaced in 42.5.3.
@@ -169,6 +169,12 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 - Deviation: `packages/core/src/ai/providers.ts` (re-export) was not in the task's file list.
 - Gotcha for 42.6.1: the deployed app runs without a chat database, so a reload starts a new chat id and the AOI is not restored (messages are not either). Not yet checked in a browser.
 - Follow-up (2026-10-31): a tab-level carry-over of the AOI across reloads (488c2be) was reverted by user decision; the AOI stays as ephemeral as the chat. D10, ADR 0016 (decision, validation, scope) and the 42.6.1 reload step now say a reload starts a new chat with no AOI. Deferred in Plan 42 and ADR 0016: opt-in chat history and stored sessions for users who opt in or approved secure deployments.
+
+## 42.6.1
+
+- Push: user approved; f33d707..171b470 pushed from the workspace clone at 07:34 UTC 2026-10-31.
+- Deployment 01f1d4fd835d1105a6edb990112c5f5b SUCCEEDED (auto-deploy), `resolved_commit` 171b470; app RUNNING.
+- Browser steps 1-5 and trace check (step 6): pending.
 
 ## Wave 5 gate
 
