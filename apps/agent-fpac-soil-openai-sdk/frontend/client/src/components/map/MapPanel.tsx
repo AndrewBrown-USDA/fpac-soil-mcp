@@ -14,7 +14,7 @@ import { FARMLAND_FILL_COLOR, withFarmlandClass } from './farmlandClasses';
 import { GeoJsonInput } from './GeoJsonInput';
 import { featureCollection, geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
-import { useMapSummary } from './MapSummaryContext';
+import { useActiveAoi } from './ActiveAoiContext';
 import { ScreeningResults } from './ScreeningResults';
 import { useScreening } from './useScreening';
 
@@ -47,33 +47,28 @@ export function MapPanel() {
   const drawRef = useRef<TerraDraw | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mode, setMode] = useState<DrawMode>('static');
-  const [aoi, setAoi] = useState<PolygonGeometry | null>(null);
   const [previousAoi, setPreviousAoi] = useState<PolygonGeometry | null>(null);
   const [aoiError, setAoiError] = useState<string | null>(null);
   const [tileError, setTileError] = useState(false);
+  // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
+  // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
+  const { activeAoi, setGeometry, setSummary } = useActiveAoi();
+  const aoi = activeAoi?.geometry ?? null;
   const aoiRef = useRef<PolygonGeometry | null>(null);
+  const screenedRef = useRef<string | null>(null);
   const screening = useScreening();
   const { reset: resetScreening } = screening;
-  const { offerSummary } = useMapSummary();
-  // Only the server-built, geometry-free text goes to chat (ADR 0016); never `display`.
-  // A result without its regulatory notice is invalid (ADR 0003), so it is not offered.
-  const summaryText =
-    screening.status === 'done' &&
-    !screening.result?.display?.error &&
-    screening.result?.display?.regulatory_notice
-      ? screening.result?.chat_summary_text
-      : undefined;
 
   // One AOI at a time: a new AOI replaces the old and becomes undoable.
   const replaceAoi = useCallback(
     (next: PolygonGeometry | null) => {
       setPreviousAoi(aoiRef.current);
       aoiRef.current = next;
-      setAoi(next);
+      setGeometry(next);
       setAoiError(null);
       resetScreening();
     },
-    [resetScreening],
+    [resetScreening, setGeometry],
   );
 
   // Keep Terra Draw holding at most the current AOI (Polygon only; MultiPolygon
@@ -179,11 +174,44 @@ export function MapPanel() {
     };
   }, [replaceAoi]);
 
+  // Switching chats loads that chat's AOI (or none): redraw it and drop old results.
+  useEffect(() => {
+    if (!mapReady || aoi === aoiRef.current) return;
+    aoiRef.current = aoi;
+    setPreviousAoi(null);
+    setAoiError(null);
+    syncDraw(aoi);
+    resetScreening();
+    const bounds = aoi ? geometryBounds(aoi) : null;
+    if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+  }, [aoi, mapReady, syncDraw, resetScreening]);
+
   useEffect(() => {
     if (!mapReady) return;
     const source = mapRef.current?.getSource('aoi') as GeoJSONSource | undefined;
     source?.setData(featureCollection(aoi));
   }, [aoi, mapReady]);
+
+  // The latest valid screening becomes the AOI's chat summary. A result without its
+  // regulatory notice is invalid (ADR 0003) and is not attached.
+  useEffect(() => {
+    const result = screening.result;
+    if (
+      screening.status === 'done' &&
+      result &&
+      !result.display?.error &&
+      result.display?.regulatory_notice &&
+      screenedRef.current
+    ) {
+      setSummary(screenedRef.current, result.chat_summary);
+    }
+  }, [screening.status, screening.result, setSummary]);
+
+  const runScreening = () => {
+    if (!aoi || !activeAoi) return;
+    screenedRef.current = activeAoi.aoi_ref;
+    screening.run(aoi);
+  };
 
   useEffect(() => {
     if (!mapReady) return;
@@ -217,7 +245,7 @@ export function MapPanel() {
     const restored = previousAoi;
     setPreviousAoi(null);
     aoiRef.current = restored;
-    setAoi(restored);
+    setGeometry(restored);
     syncDraw(restored);
     resetScreening();
   };
@@ -280,23 +308,15 @@ export function MapPanel() {
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
-          onClick={() => aoi && screening.run(aoi)}
+          onClick={runScreening}
           disabled={!aoi || screening.status === 'running'}
         >
           {screening.status === 'running' ? 'Screening...' : 'Run screening'}
         </Button>
-        {summaryText && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => offerSummary(summaryText)}
-          >
-            Add result to chat
-          </Button>
-        )}
         <p className="text-muted-foreground text-sm" aria-live="polite">
-          {!aoi && 'Draw or paste one AOI.'}
-          {aoi && screening.status === 'idle' && 'AOI ready.'}
+          {!aoi && 'Draw or paste one AOI for this chat.'}
+          {aoi && activeAoi && screening.status === 'idle' &&
+            `AOI ${activeAoi.aoi_ref} is attached to this chat.`}
           {screening.status === 'running' && 'Running preliminary screening.'}
           {screening.status === 'done' &&
             `Preliminary screening done (${screening.result?.display?.soil_polygons?.features.length ?? 0} soil polygons).`}

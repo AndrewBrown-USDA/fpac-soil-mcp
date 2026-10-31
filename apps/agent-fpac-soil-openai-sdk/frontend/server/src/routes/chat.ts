@@ -58,6 +58,9 @@ import {
   type VisibilityType,
   CONTEXT_HEADER_CONVERSATION_ID,
   CONTEXT_HEADER_USER_ID,
+  CONTEXT_HEADER_ACTIVE_AOI_KEY,
+  registerActiveAoi,
+  releaseActiveAoi,
 } from '@databricks/chatbot-core';
 import { ChatSDKError } from '@databricks/chatbot-core/errors';
 import { storeMessageMeta } from '../lib/message-meta-store';
@@ -249,9 +252,18 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
     const model = await myProvider.languageModel(selectedChatModel);
     const modelMessages = await convertToModelMessages(uiMessages);
+    // Map AOI (ADR 0016): registered for this request only; the provider adds it to
+    // the agent request as custom_inputs.active_aoi.
+    const activeAoiKey = requestBody.activeAoi
+      ? registerActiveAoi(requestBody.activeAoi)
+      : null;
+    if (activeAoiKey) {
+      res.on('close', () => releaseActiveAoi(activeAoiKey));
+    }
     const requestHeaders = {
       [CONTEXT_HEADER_CONVERSATION_ID]: id,
       [CONTEXT_HEADER_USER_ID]: session.user.email ?? session.user.id,
+      ...(activeAoiKey ? { [CONTEXT_HEADER_ACTIVE_AOI_KEY]: activeAoiKey } : {}),
       // Forward OBO user token to the backend/serving endpoint
       ...(req.headers['x-forwarded-access-token']
         ? { 'x-forwarded-access-token': req.headers['x-forwarded-access-token'] as string }

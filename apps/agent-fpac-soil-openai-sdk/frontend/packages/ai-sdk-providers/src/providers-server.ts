@@ -16,6 +16,21 @@ import { shouldInjectContextForEndpoint } from './request-context';
 export const CONTEXT_HEADER_CONVERSATION_ID = 'x-databricks-conversation-id';
 export const CONTEXT_HEADER_USER_ID = 'x-databricks-user-id';
 
+// Map AOI (ADR 0016): up to 256 KB, too large for a header, so the chat route
+// registers it for the life of one request and passes only this random key.
+export const CONTEXT_HEADER_ACTIVE_AOI_KEY = 'x-databricks-active-aoi-key';
+const activeAoiByKey = new Map<string, unknown>();
+
+export function registerActiveAoi(activeAoi: unknown): string {
+  const key = crypto.randomUUID();
+  activeAoiByKey.set(key, activeAoi);
+  return key;
+}
+
+export function releaseActiveAoi(key: string): void {
+  activeAoiByKey.delete(key);
+}
+
 // Use centralized authentication - only on server side
 async function getProviderToken(): Promise<string> {
   // First, check if we have a PAT token
@@ -105,9 +120,12 @@ export const databricksFetch: typeof fetch = async (input, init) => {
   const headers = new Headers(requestInit?.headers);
   const conversationId = headers.get(CONTEXT_HEADER_CONVERSATION_ID);
   const userId = headers.get(CONTEXT_HEADER_USER_ID);
+  const activeAoiKey = headers.get(CONTEXT_HEADER_ACTIVE_AOI_KEY);
+  const activeAoi = activeAoiKey ? activeAoiByKey.get(activeAoiKey) : undefined;
   // Remove context headers so they don't get sent to the API
   headers.delete(CONTEXT_HEADER_CONVERSATION_ID);
   headers.delete(CONTEXT_HEADER_USER_ID);
+  headers.delete(CONTEXT_HEADER_ACTIVE_AOI_KEY);
   requestInit = { ...requestInit, headers };
 
   // Inject context into request body if appropriate
@@ -127,6 +145,9 @@ export const databricksFetch: typeof fetch = async (input, init) => {
             conversation_id: conversationId,
             user_id: userId,
           },
+          ...(activeAoi
+            ? { custom_inputs: { ...body.custom_inputs, active_aoi: activeAoi } }
+            : {}),
         };
         requestInit = { ...requestInit, body: JSON.stringify(enhancedBody) };
       } catch {

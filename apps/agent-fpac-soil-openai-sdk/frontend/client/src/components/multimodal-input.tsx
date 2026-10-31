@@ -33,7 +33,7 @@ import { softNavigateToChatId } from '@/lib/navigation';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { DbIcon } from './ui/db-icon';
 import { ChevronDownIcon, ArrowUpIcon, StopIcon } from './icons';
-import { useOptionalMapSummary } from './map/MapSummaryContext';
+import { ActiveAoiChip } from './map/ActiveAoiChip';
 
 function PureMultimodalInput({
   chatId,
@@ -101,18 +101,6 @@ function PureMultimodalInput({
   useEffect(() => {
     setLocalStorageInput(input);
   }, [input, setLocalStorageInput]);
-
-  // Map panel (ADR 0016): prepend the geometry-free screening summary for review.
-  const mapSummary = useOptionalMapSummary();
-  const pendingSummary = mapSummary?.pendingSummary ?? null;
-  const consumeSummary = mapSummary?.consumeSummary;
-  useEffect(() => {
-    if (!pendingSummary || !consumeSummary) return;
-    const summary = consumeSummary();
-    if (!summary) return;
-    setInput((current) => (current ? `${summary}\n\n${current}` : summary));
-    textareaRef.current?.focus();
-  }, [pendingSummary, consumeSummary, setInput]);
 
   const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value);
@@ -303,6 +291,7 @@ function PureMultimodalInput({
               ))}
             </div>
           )}
+          <ActiveAoiChip />
           <div className="flex flex-row items-start gap-1 sm:gap-2">
             <PromptInputTextarea
               data-testid="multimodal-input"

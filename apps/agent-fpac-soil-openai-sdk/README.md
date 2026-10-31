@@ -63,9 +63,15 @@ The UI adds a map panel next to the chat
 draw a polygon or rectangle, or paste or upload GeoJSON, then run a
 preliminary screening through `POST /api/geo/screen`. The route calls the MCP
 tools directly, without the model or a trace, and returns map layers for the
-browser plus a geometry-free summary. "Add result to chat" puts that summary
-in the chat input for you to review and send. The AOI stays in the browser
-session only.
+browser plus a summary. The AOI is attached to the current chat (one per
+chat, shown as a chip above the input, with a Detach control) and kept in
+browser session storage. Every chat turn sends it as
+`custom_inputs.active_aoi`; the agent sees the AOI reference and summary, and
+the agent server swaps the geometry into tool calls that name the reference,
+so you can ask follow-up questions (for example a preliminary LESA) without
+pasting GeoJSON. Geometry appears in chat traces and app logs; do not draw or
+paste personal data or Section 1619 producer data outside an environment
+approved for it.
 
 ### MCP timeout
 

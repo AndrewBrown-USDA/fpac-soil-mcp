@@ -7,7 +7,7 @@ import { DatabricksLogo } from '@/components/DatabricksLogo';
 import { DbIcon } from '@/components/ui/db-icon';
 import { UserKeyIconIcon } from '@/components/icons';
 import { MapPanel } from '@/components/map/MapPanel';
-import { MapSummaryProvider } from '@/components/map/MapSummaryContext';
+import { ActiveAoiProvider } from '@/components/map/ActiveAoiContext';
 
 export default function ChatLayout() {
   const { session, loading } = useSession();
@@ -51,7 +51,7 @@ export default function ChatLayout() {
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <MapSummaryProvider>
+      <ActiveAoiProvider>
         <AppSidebar user={session.user} preferredUsername={preferredUsername} />
         <aside
           aria-label="Map panel"
@@ -79,7 +79,7 @@ export default function ChatLayout() {
             <Outlet />
           </div>
         </SidebarInset>
-      </MapSummaryProvider>
+      </ActiveAoiProvider>
     </SidebarProvider>
   );
 }

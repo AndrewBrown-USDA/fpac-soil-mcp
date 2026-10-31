@@ -26,6 +26,7 @@ import type { ClientSession } from '@databricks/chatbot-auth';
 import { softNavigateToChatId } from '@/lib/navigation';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Greeting } from './greeting';
+import { useOptionalActiveAoi } from './map/ActiveAoiContext';
 
 export function Chat({
   id,
@@ -55,6 +56,17 @@ export function Chat({
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
   const { chatHistoryEnabled } = useAppConfig();
+
+  // Map AOI (ADR 0016): tell the map panel which chat is open and send that chat's
+  // AOI with every turn. A ref, because the transport below is created once.
+  const activeAoiContext = useOptionalActiveAoi();
+  const setAoiChatId = activeAoiContext?.setChatId;
+  useEffect(() => {
+    setAoiChatId?.(id);
+  }, [id, setAoiChatId]);
+  const activeAoiRef = useRef(activeAoiContext?.activeAoi ?? null);
+  activeAoiRef.current =
+    activeAoiContext?.chatId === id ? activeAoiContext.activeAoi : null;
 
   const [input, setInput] = useState<string>('');
   const [_usage, setUsage] = useState<LanguageModelUsage | undefined>(
@@ -158,6 +170,7 @@ export function Chat({
                     : messages,
                 }
               : {}),
+            ...(activeAoiRef.current ? { activeAoi: activeAoiRef.current } : {}),
             ...body,
           },
         };

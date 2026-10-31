@@ -24,6 +24,22 @@ const previousMessageSchema = z.object({
   parts: z.array(z.any()), // Permissive to handle text, tool calls, tool results
 });
 
+// Map AOI attached to the conversation (ADR 0016), sent with each turn. Bounded like
+// the agent's own check; an invalid value is dropped so the chat turn still runs.
+const MAX_ACTIVE_AOI_GEOMETRY_CHARS = 256 * 1024;
+const activeAoiSchema = z
+  .object({
+    aoi_ref: z.string().regex(/^aoi-[0-9a-f]{8}$/),
+    geometry: z.object({
+      type: z.enum(['Polygon', 'MultiPolygon']),
+      coordinates: z.array(z.any()),
+    }),
+    summary: z.record(z.string(), z.unknown()).nullable().optional(),
+  })
+  .refine(
+    (aoi) => JSON.stringify(aoi.geometry).length <= MAX_ACTIVE_AOI_GEOMETRY_CHARS,
+  );
+
 export const postRequestBodySchema = z.object({
   id: z.string().uuid(),
   // Optional for continuation/regeneration scenarios (no new user message)
@@ -38,6 +54,7 @@ export const postRequestBodySchema = z.object({
   selectedVisibilityType: z.enum(['public', 'private']),
   // Optional field for ephemeral mode: frontend sends previous conversation history
   previousMessages: z.array(previousMessageSchema).optional(),
+  activeAoi: activeAoiSchema.optional().catch(undefined),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

@@ -37,7 +37,7 @@ uv run start-server       # agent server only
 - `app.yaml` - command and env vars used by the deployed app.
 - `databricks.yml` - declared app resources (`llm-endpoint`, `mcp_server`, `experiment`); reference only.
 - `README.md` - configuration, required grants, deploy path, and API usage.
-- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) from upstream base commit `0e572976459aafa3d41047067382cb9a6c015d52`, owned by this repo; local changes are listed in [ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md). Map panel code lives under `frontend/client/src/components/map/` (`MapPanel.tsx` entry, `useScreening.ts` calls `/api/geo/screen`, `farmlandClasses.ts` is the one class mapping, `MapSummaryContext.tsx` hands the summary to `multimodal-input.tsx`); the panel column is in `client/src/layouts/ChatLayout.tsx`.
+- `frontend/` - vendored `e2e-chatbot-app-next` npm workspace (`client/`, `server/`, `packages/*`, root `package-lock.json`) from upstream base commit `0e572976459aafa3d41047067382cb9a6c015d52`, owned by this repo; local changes are listed in [ADR 0015](../../docs/decisions/0015-vendored-agent-app-frontend.md). Map panel code lives under `frontend/client/src/components/map/` (`MapPanel.tsx` entry, `useScreening.ts` calls `/api/geo/screen`, `farmlandClasses.ts` is the one class mapping, `ActiveAoiContext.tsx` keeps the chat's AOI in sessionStorage, `ActiveAoiChip.tsx` shows it in `multimodal-input.tsx`); the panel column is in `client/src/layouts/ChatLayout.tsx`; `chat.tsx` sends `activeAoi`, which `server/src/routes/chat.ts` and `databricksFetch` turn into `custom_inputs.active_aoi`.
 
 ## Workflows
 

@@ -33,7 +33,7 @@
 | 4 | gate | app-check, app-frontend-check, root check | done (cba02f3) |
 | 5 | Databricks | 42.5.1 | done (see report) |
 | 5 | Databricks | 42.5.2 | done (see report) |
-| 5 | Databricks | 42.5.3 | pending (frontend: sessionStorage AOI per chat, sent each turn, chip; button removed) |
+| 5 | Databricks | 42.5.3 | done (see report) |
 | 5 | gate | app-check, app-frontend-check, root check | pending |
 | 6 | User + Databricks | 42.6.1 | pending (deployed trial) |
 | 6 | Databricks | 42.6.2 | pending (close-out) |
@@ -159,3 +159,12 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 - Behaviour: no or invalid AOI gives exactly the old `create_agent(mcp_servers=..., tools_unavailable=...)` call and an unbound server; tools unavailable keeps the unavailable note without the AOI note; the bound call stays on the traced `McpServer.call_tool` (1 trace in the SQLite check).
 - Commands: `make app-check` in `/tmp/p42w` -> ruff clean, 131 passed (86 + 45). Negative controls: substitution removed -> 4 failed; binding in `agent.py` removed -> 2 failed.
 - Gotchas: `geo` imports `agent`, so `aoi_context` imports `geo` lazily; `import agent_server.start_server` outside pytest fails on HEAD too (MLflow experiment id env), unrelated; new workspace files commit with `--chmod=-x`.
+
+## 42.5.3
+
+- Status: done; edited in the workspace clone, checked in a `/tmp` copy, committed in the workspace clone. Not pushed. Commit `feat(agent-app): send the map AOI with each chat turn`.
+- Changed: `map/ActiveAoiContext.tsx` (new; replaces deleted `MapSummaryContext.tsx`), `map/ActiveAoiChip.tsx` (new), `map/MapPanel.tsx`; `chat.tsx`, `multimodal-input.tsx` (2 lines from upstream), `layouts/ChatLayout.tsx`; `packages/core/src/schemas/chat.ts`, `packages/core/src/ai/providers.ts`, `server/src/routes/chat.ts`, `packages/ai-sdk-providers/src/providers-server.ts`; ADR 0015 Local changes; app README and `AGENTS.md`; `planning/tasks/42.5.3.todo.md`.
+- Request mechanism (recon): the chat route registers the validated `activeAoi` in a request-scoped map and passes only a random key header; `databricksFetch` strips it and adds `custom_inputs.active_aoi`. Released on response close. Invalid AOIs are dropped by the schema (`.catch`), never a 400.
+- Checks: `make app-frontend-check` rc 0 (780 packages, biome 598 files 0 errors 10 warnings, build OK); `tsc -p client` 4 existing errors, `tsc -p server` same 2 as HEAD; tsx smoke of schema and `databricksFetch` passed; parity 640/36/591 identical/13 modified/10 added, ADR list equals the modified set.
+- Deviation: `packages/core/src/ai/providers.ts` (re-export) was not in the task's file list.
+- Gotcha for 42.6.1: the deployed app runs without a chat database, so a reload starts a new chat id and the AOI is not restored (messages are not either). Not yet checked in a browser.

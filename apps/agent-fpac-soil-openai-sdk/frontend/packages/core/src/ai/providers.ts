@@ -8,6 +8,9 @@ import type { OAuthAwareProvider } from '@databricks/chatbot-ai-sdk-providers';
 export {
   CONTEXT_HEADER_CONVERSATION_ID,
   CONTEXT_HEADER_USER_ID,
+  CONTEXT_HEADER_ACTIVE_AOI_KEY,
+  registerActiveAoi,
+  releaseActiveAoi,
 } from '@databricks/chatbot-ai-sdk-providers';
 
 // For server-side usage, get the authenticated provider
