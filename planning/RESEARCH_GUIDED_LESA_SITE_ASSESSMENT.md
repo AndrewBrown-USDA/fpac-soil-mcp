@@ -1,7 +1,7 @@
 # Guided LESA Site Assessment: Trial Notes and Follow-ups
 
 - **Date:** 2026-10-31.
-- **Source:** Plan 42 task 42.6.1 deployed trial, experiment `517983779529169`, one chat session of 19 traces on deployment `01f1d4fd835d1105a6edb990112c5f5b` (commit 171b470). See [`evidence/42.6.1-trial.md`](evidence/42.6.1-trial.md). The AOI and test answers were the user's; no coordinates here.
+- **Source:** Plan 42 task 42.6.1 deployed trial and one later trace (section 3, items 12-14), experiment `517983779529169`, one chat session of 19 traces on deployment `01f1d4fd835d1105a6edb990112c5f5b` (commit 171b470). See [`evidence/42.6.1-trial.md`](evidence/42.6.1-trial.md). The AOI and test answers were the user's; no coordinates here.
 - **Goal (user):** the agent should guide users through processes like the Form AD-1006 Site Assessment, and the scoring decisions should be formalized so that scoring is consistent.
 - **Limits of this record:** MLflow span data does not load from the client, so the tool arguments of the final LESA call (the points awarded per criterion) were not read. Only the total is known.
 
@@ -45,6 +45,16 @@ Total SA 121.00 / 160. How the 121 points were split across criteria is not visi
 10. **Observability.** In later turns the request previews are cut at 10,000 characters, so `custom_inputs` is not visible; span data does not load. The tool arguments and per-criterion points cannot be audited from the client today.
 11. **Cost of the guided flow.** 18 turns for 12 criteria (about 10-12k input tokens each, 27k for the final turn). Asking for several closely related criteria in one turn, or a structured form, would cut it.
 
+### Later trace: the agent proposed a siting alternative (2026-10-31)
+
+Trace `tr-c5f8b34c27b` (same deployment, about 624-acre AOI, user: "use the fppa assistant prompt on the selected aoi and guide me thru ranking").
+
+12. **The agent suggested where to build.** Its "preliminary siting preference" was to place the facility on the about 31 acres mapped as not prime farmland and avoid the about 592 acres of prime farmland if irrigated. It then wrote a general ranking scheme for project alternatives. The not-prime acres in that AOI are mostly water, riverwash and loamy alluvial land.
+    - **Why this is unsafe (user):** farmland class alone does not make land suitable. Other soil interpretations that keep a map unit out of prime farmland (flooding, wetness, wetlands, riverwash and similar) can preclude development outside FPPA, and the standard FPPA tools do not have the information to evaluate them. Adding that context is possible but long tail.
+    - **Rule (user):** the FPPA agent does not suggest alternatives, sites or footprints. It compares alternatives only when the user provides them, and it reports the FPPA consequence of a score (for example, that alternatives must be considered at 160 points or more) without proposing what they should be.
+13. **The prompt and tool text push towards alternatives.** `fppa_site_assessment_assistant` adds score bands (160-220 "consider alternative sites if available", over 220 "must consider alternative sites"); 7 CFR § 658.4(c) sets the 160-point line and asks for increasing consideration above it, so the bands need checking against the regulation. `LESA_ACTION_*` texts in `constants.py` and the LESA action list name "alternative project designs", "avoidance of prime/unique farmlands" and reduced footprints. These are regulatory consequences, but the model turned them into a specific siting suggestion.
+14. **Chat context from another place.** The AOI was attached in the chat where PROMPT-01 had described a Boone County, Iowa project; the AOI's soil survey areas were in California. The agent noticed and flagged the mismatch, which is the right behaviour. A new AOI in a chat with an earlier project description is a case to cover in instructions and evals.
+
 ## 4. Follow-ups
 
 ### MCP server tools (owner: server roadmap)
@@ -53,6 +63,8 @@ Total SA 121.00 / 160. How the 121 points were split across criteria is not visi
 - **Question schema.** A resource or tool (for example `fppa://site-assessment-criteria` or `get_site_assessment_questions(project_type)`) with, per criterion, the regulation's question, the accepted answer form (percent, distance, yes/no, category), the scoring rule and the citation, so every client asks the same questions. Cover the corridor variant (NRCS-CPA-106; criteria 5 and 6 are zero under § 658.5(c)).
 - **Threshold when SA is missing.** Report `threshold_status: "not_evaluated"` and the maximum possible total when no SA inputs are given, instead of "not triggered".
 - **Prefill with provenance.** Criterion 7 county average from NASS; criteria 1 and 5 estimates from TIGERweb urban areas; returned as proposed answers the user confirms.
+- **No siting recommendations in tool output.** Keep the LESA action texts as statements of what the regulation requires ("alternatives must be considered"), not suggestions of which land to use; the tools do not rank land within an AOI as a siting preference.
+- **Long tail (optional):** soil interpretations that can preclude development outside FPPA (flooding, ponding, hydric soils, wetlands), only as context with clear limits and never as a siting recommendation.
 - **Text fixes.** Use "Part VI" for the Site Assessment in `constants.py`, `fppa.py`, `models.py` and the `lesa_tools.py` docstring; align `SITE_CRITERIA_NAMES` with § 658.5(b) wording; review criterion 7's 10/5/0 steps against the regulation.
 
 ### Agent system instructions (owner: agent app)
@@ -63,10 +75,13 @@ Total SA 121.00 / 160. How the 121 points were split across criteria is not visi
 - Say that a LESA without Site Assessment inputs has not evaluated the threshold.
 - With no AOI attached, suggest drawing or pasting one on the map before asking for GeoJSON.
 - Keep the preliminary-screening language (held in every trial answer).
+- Do not suggest alternatives, sites, footprints or which farmland classes to build on. Farmland class alone does not show land is suitable; other soil and site factors outside the FPPA tools can preclude development. Compare alternatives only when the user provides them, and state the regulatory consequence of a score without proposing alternatives.
+- If an attached AOI does not match the project described earlier in the chat (place, size, type), say so and ask before screening.
 
 ### Agent app and prompts
 
 - An MCP prompt (or an update of `fppa_site_assessment_assistant`) for the guided flow, using the question schema, so the agent app and other MCP clients run the same process.
+- Review the FPPA prompts in `fppa_prompts.py` for alternative-siting language and the 160-220 / over-220 bands; apply the no-suggested-alternatives rule there too, so every MCP client gets it.
 - Optional later: a structured form in the chat UI for the 12 criteria instead of 12 turns.
 - One AOI reference for the map screening and the chat (see the evidence file).
 
@@ -74,4 +89,5 @@ Total SA 121.00 / 160. How the 121 points were split across criteria is not visi
 
 - A multi-turn eval case: a fixed AOI fixture (synthetic geometry) and a fixed set of 12 answers, expecting the same per-criterion points and total on every run, the per-criterion table, the threshold result and preliminary language.
 - A case for LESA without SA inputs expecting "not evaluated".
+- A negative case: screening or ranking an AOI with mixed farmland classes must not recommend building on the non-prime part or propose alternatives; a paired case where the user supplies two alternatives expects a comparison.
 - Record per-turn trace tags from the agent server (for example the active `aoi_ref` and the LESA tool's SA total and per-criterion points) so they can be audited without span data. Geometry may appear in traces (ADR 0016), but tags should stay small.
