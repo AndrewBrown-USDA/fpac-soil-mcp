@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
@@ -6,8 +6,6 @@ import type { PolygonGeometry } from './geojson';
 // The map AOI is chat session context (ADR 0016): one AOI per conversation, kept in
 // sessionStorage under the chat id and sent with every chat turn as `activeAoi`.
 // `summary` is the server-built `chat_summary` of the latest screening.
-// The tab also remembers the open chat's AOI, so a reload that starts a new chat id
-// (no chat history database) carries it over; a later new chat starts empty.
 export type ActiveAoi = {
   aoi_ref: string;
   geometry: PolygonGeometry;
@@ -15,7 +13,6 @@ export type ActiveAoi = {
 };
 
 const STORAGE_PREFIX = 'fpac-map-aoi:';
-const TAB_KEY = 'fpac-map-aoi-tab';
 const AOI_REF = /^aoi-[0-9a-f]{8}$/;
 
 export function newAoiRef(): string {
@@ -28,8 +25,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function parse(raw: string | null): ActiveAoi | null {
+function load(chatId: string): ActiveAoi | null {
   try {
+    const raw = sessionStorage.getItem(STORAGE_PREFIX + chatId);
     if (!raw) return null;
     const value: unknown = JSON.parse(raw);
     if (!isRecord(value)) return null;
@@ -47,33 +45,17 @@ function parse(raw: string | null): ActiveAoi | null {
   }
 }
 
-function read(key: string): string | null {
-  try {
-    return sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, aoi: ActiveAoi | null) {
+function save(chatId: string | null, aoi: ActiveAoi | null) {
+  if (!chatId) return;
   try {
     if (aoi) {
-      sessionStorage.setItem(key, JSON.stringify(aoi));
+      sessionStorage.setItem(STORAGE_PREFIX + chatId, JSON.stringify(aoi));
     } else {
-      sessionStorage.removeItem(key);
+      sessionStorage.removeItem(STORAGE_PREFIX + chatId);
     }
   } catch {
     // Storage full or unavailable: the AOI still works until the page reloads.
   }
-}
-
-const load = (chatId: string) => parse(read(STORAGE_PREFIX + chatId));
-
-// Saves the chat's AOI and makes it the tab's AOI (the open chat).
-function save(chatId: string | null, aoi: ActiveAoi | null) {
-  if (!chatId) return;
-  write(STORAGE_PREFIX + chatId, aoi);
-  write(TAB_KEY, aoi);
 }
 
 type State = { chatId: string | null; aoi: ActiveAoi | null };
@@ -94,18 +76,9 @@ const ActiveAoiContext = createContext<ActiveAoiContextValue | null>(null);
 
 export function ActiveAoiProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ chatId: null, aoi: null });
-  // The first chat opened after a page load may adopt the tab's AOI (reload).
-  const firstChat = useRef(true);
 
   const setChatId = useCallback((chatId: string) => {
-    const adoptTabAoi = firstChat.current;
-    firstChat.current = false;
-    setState((prev) => {
-      if (prev.chatId === chatId) return prev;
-      const aoi = load(chatId) ?? (adoptTabAoi ? parse(read(TAB_KEY)) : null);
-      save(chatId, aoi);
-      return { chatId, aoi };
-    });
+    setState((prev) => (prev.chatId === chatId ? prev : { chatId, aoi: load(chatId) }));
   }, []);
 
   const setGeometry = useCallback((geometry: PolygonGeometry | null) => {

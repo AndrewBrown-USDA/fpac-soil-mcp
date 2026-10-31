@@ -82,10 +82,11 @@ the server stays stateless.
 
 * **Where the AOI lives:** browser `sessionStorage`, one active AOI per
   conversation, keyed by the chat id that the server sends as
-  `context.conversation_id`. The tab also remembers the open chat's AOI, so
-  a reload keeps it even when the reload starts a new chat id (no chat
-  history database); a new chat started from the app has none; closing the
-  tab drops it. The user can detach it.
+  `context.conversation_id`. The AOI is as ephemeral as the chat: without a
+  chat history database (the default deployment) a reload starts a new chat
+  with no AOI; with chat history on, reloading `/chat/:id` restores that
+  chat's AOI from the tab. A new chat starts without one; closing the tab
+  drops it. The user can detach it.
 * **Chat request:** each turn with an attached AOI carries
   `custom_inputs.active_aoi = {aoi_ref, geometry, summary}` in the
   `/invocations` body. The agent server validates it with the same limits as
@@ -159,7 +160,10 @@ carried in `active_aoi`.
 Lines and corridors, points, other input formats, multiple or labelled AOIs
 (needs a multi-shape drawing and labelling interface), AOI persistence beyond
 the browser tab session, overlays, the M3 `map` envelope and `custom_outputs`
-are out of scope.
+are out of scope. Opt-in chat history and stored sessions (the template's chat
+database, for example Lakebase), for users who choose it or for deployments in
+approved secure environments, are deferred; that work decides whether the AOI
+is stored with the chat.
 
 ## Validation & Compliance
 
@@ -181,6 +185,6 @@ Required before `Accepted`:
   `custom_inputs` behave as before; the tests fail with substitution removed.
 * Deployed trial (Plan 42 task 42.6.1): draw and paste flows work; without
   pasting, a question and a preliminary LESA on the AOI are answered with
-  preliminary-screening language; reload keeps the AOI, a new chat has none,
-  detach removes it; the LESA tool call received a geometry, not the
-  reference string.
+  preliminary-screening language; a reload starts a new chat with no AOI, a
+  new chat has none, detach removes it; the LESA tool call received a
+  geometry, not the reference string.
