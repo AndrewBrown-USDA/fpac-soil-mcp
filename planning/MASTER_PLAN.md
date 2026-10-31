@@ -478,7 +478,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
   - Proposed: remaining M2 items: lines and corridors, points, WKT and other formats, an AOI list, custom basemaps.
   - Proposed: M4-M7, scoped after M3.
   - Proposed: opt-in chat history and stored sessions (template chat database, for example Lakebase) for users who opt in or deployments in approved secure environments, including whether the AOI is stored with the chat ([Plan 42](EXECUTION_PLAN_42.md) deferral).
-  - Proposed: one AOI reference for the map screening and the chat (the screening route and the browser currently assign separate references; cosmetic, see the [42.6.1 evidence](evidence/42.6.1-trial.md)).
+  - Delivered: one AOI reference for the map screening and the chat (the map panel sends the chat's reference to the screening route; [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md), [42.6.1 evidence](evidence/42.6.1-trial.md)).
   - Proposed: an agent-guided Site Assessment with formalized, rule-based scoring for consistent LESA results: server-side § 658.5(b) scoring from facts, a shared question schema, system-instruction and prompt updates, prefill from NASS and TIGERweb, a multi-turn consistency eval ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md)). The server work belongs on the server roadmap.
   - Proposed: the agent and the FPPA prompts do not suggest alternatives or siting (farmland class alone does not show land is suitable); alternatives are compared only when the user provides them ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md), finding 12).
   - Proposed: a separate agent-app evaluation against `/invocations` (not MCP T2).

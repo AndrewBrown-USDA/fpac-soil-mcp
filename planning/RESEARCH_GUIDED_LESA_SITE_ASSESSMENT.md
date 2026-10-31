@@ -83,7 +83,7 @@ Trace `tr-c5f8b34c27b` (same deployment, about 624-acre AOI, user: "use the fppa
 - An MCP prompt (or an update of `fppa_site_assessment_assistant`) for the guided flow, using the question schema, so the agent app and other MCP clients run the same process.
 - Review the FPPA prompts in `fppa_prompts.py` for alternative-siting language and the 160-220 / over-220 bands; apply the no-suggested-alternatives rule there too, so every MCP client gets it.
 - Optional later: a structured form in the chat UI for the 12 criteria instead of 12 turns.
-- One AOI reference for the map screening and the chat (see the evidence file).
+- One AOI reference for the map screening and the chat: done after the Plan 42 close-out (see `STATE_42.md`).
 
 ### Evaluation and observability
 

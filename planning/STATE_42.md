@@ -187,6 +187,13 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 
 Plan 42 delivered the owned agent-app frontend with a map panel MVP: draw or paste one AOI, run a preliminary screening shown on the map, and use that AOI as chat session context, so the agent runs the FPPA tools and LESA on it without pasted geometry. The AOI is ephemeral like the chat. ADRs 0015 and 0016 are accepted. Next (user): merge the PR into `main`, then point the app's git source back at `main`. Follow-ups are in the MASTER_PLAN Track A backlog (M3 `map` envelope next). The guided Site Assessment in the trial, its findings (model-chosen points, Part V/VI labels, missing per-criterion breakdown) and follow-ups for tools, system instructions and evals are in `planning/RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md`.
 
+## Post-close fix: one AOI reference
+
+- The 42.6.1 cosmetic finding: `active_aoi.summary.aoi_ref` (minted by the screening route) differed from `active_aoi.aoi_ref` (the browser's). Fix: `ScreenRequest` takes an optional `aoi_ref` (`^aoi-[0-9a-f]{8}$`, else 422); `screen_aoi` uses it or mints one; `useScreening.run(geometry, aoiRef)` sends it; `MapPanel.runScreening` passes the active reference. ADR 0016 route request bullet updated.
+- Tests: `test_supplied_aoi_ref_is_used_in_response_and_summary`; three new 422 cases (marker, uppercase hex, number).
+- Gate (/tmp clone of the workspace clone plus the diff): `make app-check` all checks passed, 135 passed; `make app-frontend-check` exit 0, 780 packages, biome 598 files 0 errors 10 warnings, client and server builds complete.
+- Deployed check (user, optional): draw an AOI, screen it, ask a question; in the trace `active_aoi.aoi_ref` = `active_aoi.summary.aoi_ref`.
+
 ## Wave 5 gate
 
 - Fresh `/tmp/p42g` clone of the workspace clone at f4d1578: `make app-frontend-check` (`npm ci` 780 packages, biome 598 files 0 errors 10 warnings, build OK); `make app-check` lint clean, 131 passed; root `make check` ruff clean, 522 formatted, 597 passed / 3 skipped / 44 deselected. Clone clean after checks.

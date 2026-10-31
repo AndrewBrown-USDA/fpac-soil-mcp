@@ -117,8 +117,11 @@ the server stays stateless.
 `POST /api/geo/screen` stays for the map display and produces the summary
 carried in `active_aoi`.
 
-* **Request:** one GeoJSON geometry of type `Polygon` or `MultiPolygon` and an
-  optional short `name` (never echoed into the summary). App-side limits:
+* **Request:** one GeoJSON geometry of type `Polygon` or `MultiPolygon`, an
+  optional short `name` (never echoed into the summary) and an optional
+  `aoi_ref` (`aoi-` plus 8 lowercase hex characters). The map panel sends the
+  chat's active reference so the summary in `active_aoi` carries the same
+  reference; without it the route mints one. App-side limits:
   total vertices at most `GEO_MAX_VERTICES` (default 2000) and a raw body of at
   most 256 KB. Other types or oversize input return 422 with a bounded message
   that contains no coordinates.

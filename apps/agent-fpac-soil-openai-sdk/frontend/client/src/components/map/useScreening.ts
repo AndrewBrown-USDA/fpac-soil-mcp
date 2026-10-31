@@ -51,7 +51,8 @@ export function useScreening() {
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
 
-  const run = useCallback(async (geometry: PolygonGeometry) => {
+  // aoiRef is the chat's active AOI reference; the route reuses it in its summary.
+  const run = useCallback(async (geometry: PolygonGeometry, aoiRef?: string) => {
     const id = ++requestId.current;
     setStatus('running');
     setError(null);
@@ -59,7 +60,7 @@ export function useScreening() {
       const response = await fetch('/api/geo/screen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ geometry }),
+        body: JSON.stringify(aoiRef ? { geometry, aoi_ref: aoiRef } : { geometry }),
       });
       if (id !== requestId.current) return;
       if (!response.ok) {

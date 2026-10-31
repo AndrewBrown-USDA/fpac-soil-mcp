@@ -258,6 +258,16 @@ def test_aoi_ref_is_random_per_request(start_server, fake_mcp):
     assert first != second
 
 
+def test_supplied_aoi_ref_is_used_in_response_and_summary(start_server, fake_mcp):
+    fake_mcp(_happy_server())
+
+    body = _post(start_server, {"geometry": SQUARE, "aoi_ref": "aoi-0123abcd"}).json()
+
+    assert body["aoi_ref"] == "aoi-0123abcd"
+    assert body["chat_summary"]["aoi_ref"] == "aoi-0123abcd"
+    assert "AOI: aoi-0123abcd" in body["chat_summary_text"]
+
+
 def test_marker_never_reaches_chat_summary(start_server, fake_mcp):
     fake_mcp(_happy_server())
     marked = {
@@ -280,6 +290,9 @@ def test_marker_never_reaches_chat_summary(start_server, fake_mcp):
         {"geometry": {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [0, 0]]]}, "x": MARKER},
         {"geometry": {"type": "Polygon", "coordinates": MARKER}},
         {"geometry": SQUARE, "name": MARKER * 20},
+        {"geometry": SQUARE, "aoi_ref": MARKER},
+        {"geometry": SQUARE, "aoi_ref": "aoi-0123ABCD"},
+        {"geometry": SQUARE, "aoi_ref": 12345678},
         {"geometry": MARKER},
         f"not json {MARKER}",
     ],

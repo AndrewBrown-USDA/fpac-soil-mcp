@@ -210,7 +210,7 @@ export function MapPanel() {
   const runScreening = () => {
     if (!aoi || !activeAoi) return;
     screenedRef.current = activeAoi.aoi_ref;
-    screening.run(aoi);
+    screening.run(aoi, activeAoi.aoi_ref);
   };
 
   useEffect(() => {

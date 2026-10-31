@@ -58,6 +58,8 @@ class PolygonGeometry(BaseModel):
 class ScreenRequest(BaseModel):
     geometry: PolygonGeometry
     name: str | None = Field(default=None, max_length=80)
+    # The browser's active AOI reference, so the map summary and the chat use one reference.
+    aoi_ref: str | None = Field(default=None, pattern=r"^aoi-[0-9a-f]{8}$")
 
 
 def max_vertices() -> int:
@@ -306,7 +308,7 @@ async def _call_tool_untraced(server: McpServer, name: str, arguments: dict[str,
 async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
     """Run both MCP tools for one AOI. Raises ``GeoRequestError(502)`` on MCP failure."""
     geometry = request.geometry.model_dump()
-    aoi_ref = new_aoi_ref()
+    aoi_ref = request.aoi_ref or new_aoi_ref()
     try:
         async with init_fpac_mcp_server(WorkspaceClient()) as server:
             analysis_result = await _call_tool_untraced(
