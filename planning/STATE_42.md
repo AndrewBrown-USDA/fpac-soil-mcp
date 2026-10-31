@@ -31,7 +31,7 @@
 | 3 | gate | app-check, app-frontend-check, root check | done (b351386) |
 | 4 | Databricks | 42.4.1 | done (cba02f3) |
 | 4 | gate | app-check, app-frontend-check, root check | done (cba02f3) |
-| 5 | Databricks | 42.5.1 | pending (amend ADR 0016: AOI as session context) |
+| 5 | Databricks | 42.5.1 | done (see report) |
 | 5 | Databricks | 42.5.2 | pending (agent: `custom_inputs.active_aoi`, note, substitution) |
 | 5 | Databricks | 42.5.3 | pending (frontend: sessionStorage AOI per chat, sent each turn, chip; button removed) |
 | 5 | gate | app-check, app-frontend-check, root check | pending |
@@ -139,3 +139,15 @@ Plan amended 2026-10-31 (D9-D12): after the deployed check, the agent could not 
 ## Wave 4 gate
 
 - Fresh `/tmp/p42g` clone of the workspace clone at cba02f3: `make app-check` lint clean, 86 passed; root `make check` ruff clean, 597 passed / 3 skipped / 44 deselected; `make app-frontend-check` `npm ci` 780 packages, biome 597 files 0 errors 10 warnings, build OK.
+
+## Plan amendment (2026-10-31)
+
+- Commit 117e86e `docs(planning): make the map AOI chat session context in plan 42`: D9-D12, waves 5 and 6, hazards, renumbered trial and close-out (42.6.1, 42.6.2). User decisions: amend ADR 0016 (only on this branch); browser sessionStorage per conversation; one AOI per conversation; geometry generally allowed with deployment limits and user guidance; fold into Plan 42.
+
+## 42.5.1
+
+- Status: done; edited and committed in the workspace clone. Not pushed. Commit `docs(decisions): amend ADR 0016 to make the map AOI chat session context`.
+- Changed: ADR 0016 (title "Map AOI as Chat Session Context", same file name, `Proposed`, dated amendment note with the LESA finding, corrected ADR 0010 reading, new drivers/options/decision, "Map screening route" subsection for `/api/geo/screen`, consequences, scope, validation); `docs/decisions/README.md` (row title, Databricks Delivery sentence); app `AGENTS.md` ("Change AOI Screening" workflow, `geo.py` line); `planning/tasks/42.5.1.todo.md`.
+- Root `AGENTS.md` unchanged: its coordinate rule is scoped to `privacy.py` for producer data and sensitive locations; no conflict with D11.
+- Checks: `status: "Proposed"` matches; remaining "geometry-free"/"never enters" wording is history or the route summary; README title equals the ADR title; no coordinate-like values in the diff.
+- Gotchas: app `README.md` still describes "Add result to chat" (42.5.3 updates it); app `AGENTS.md` now describes behaviour that 42.5.2/42.5.3 implement.
