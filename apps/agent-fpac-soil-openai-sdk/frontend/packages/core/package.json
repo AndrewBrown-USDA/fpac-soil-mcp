@@ -48,6 +48,6 @@
     "@databricks/chatbot-db": "*",
     "@databricks/chatbot-utils": "*",
     "date-fns": "4.1.0",
-    "zod": "4.3.6"
+    "zod": "4.6.7"
   }
 }
