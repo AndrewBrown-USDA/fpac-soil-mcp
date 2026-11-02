@@ -74,6 +74,7 @@ uv run pytest -m live_network
 - `requirements.txt` - generated pinned requirements export; update with `make requirements`.
 - `.env.example` - supported environment variables and defaults.
 - `Dockerfile` - production container build.
+- `databricks\serverless-environment.yaml` - shared, cached Databricks serverless notebook environment (Node/npm, Databricks MCP libraries); see `QUICKSTART.md`.
 - `server.json` and `manifest.yaml` - MCP registry and capability metadata.
 - `README.md` and `QUICKSTART.md` - user-facing setup, client configuration, API behavior, and regulatory scope.
 
