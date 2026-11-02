@@ -23,6 +23,12 @@ from mlflow.types.responses import (
 )
 from openai.types.shared import Reasoning
 
+from agent_server.aoi_context import (
+    ActiveAoi,
+    bind_active_aoi,
+    instruction_note,
+    read_active_aoi,
+)
 from agent_server.config import (
     agent_model,
     fpac_mcp_timeout_seconds,
@@ -99,18 +105,24 @@ async def connect_healthy_mcp_servers(
 
 
 def create_agent(
-    mcp_servers: list[McpServer] | None = None, *, tools_unavailable: bool = False
+    mcp_servers: list[McpServer] | None = None,
+    *,
+    tools_unavailable: bool = False,
+    aoi_note: str | None = None,
 ) -> Agent:
     """Build the FPAC Soil agent.
 
     The model comes from ``AGENT_MODEL``. GPT-5 models get ``reasoning_effort="none"``,
     which they need for tool calling. When ``tools_unavailable`` is set, the instructions
-    tell the model to say so instead of answering from memory.
+    tell the model to say so instead of answering from memory. ``aoi_note`` describes the
+    map AOI attached to the conversation (ADR 0016).
     """
     model = agent_model()
     instructions = load_system_prompt()
     if tools_unavailable:
         instructions = f"{instructions}\n\n{TOOLS_UNAVAILABLE_NOTE}"
+    elif aoi_note:
+        instructions = f"{instructions}\n\n{aoi_note}"
     if uses_reasoning_effort_none(model):
         model_settings = ModelSettings(reasoning=Reasoning(effort="none"))
     else:
@@ -125,15 +137,18 @@ def create_agent(
     )
 
 
-async def _connect_fpac_agent(stack: AsyncExitStack) -> Agent:
+async def _connect_fpac_agent(stack: AsyncExitStack, aoi: ActiveAoi | None = None) -> Agent:
     # WorkspaceClient() authenticates as the app's service principal, not the user.
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
     # traceback), so the request still runs.
-    servers, unavailable = await connect_healthy_mcp_servers(
-        stack, [init_fpac_mcp_server(WorkspaceClient())]
-    )
+    server = init_fpac_mcp_server(WorkspaceClient())
+    if aoi is not None:
+        bind_active_aoi(server, aoi)
+    servers, unavailable = await connect_healthy_mcp_servers(stack, [server])
     if unavailable:
         logger.info("MCP servers unavailable for this request: %s", ", ".join(unavailable))
+    if aoi is not None and not unavailable:
+        return create_agent(mcp_servers=servers, aoi_note=instruction_note(aoi))
     return create_agent(mcp_servers=servers, tools_unavailable=bool(unavailable))
 
 
@@ -144,7 +159,7 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
     configure_openai_client()
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = await _connect_fpac_agent(stack)
+        agent = await _connect_fpac_agent(stack, read_active_aoi(request))
         messages = normalize_history_items([i.model_dump() for i in request.input])
         result = await Runner.run(agent, messages)
         return ResponsesAgentResponse(output=[item.to_input_item() for item in result.new_items])
@@ -159,7 +174,7 @@ async def stream_handler(
     configure_openai_client()
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = await _connect_fpac_agent(stack)
+        agent = await _connect_fpac_agent(stack, read_active_aoi(request))
         messages = normalize_history_items([i.model_dump() for i in request.input])
         result = Runner.run_streamed(agent, input=messages)
 

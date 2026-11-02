@@ -16,9 +16,9 @@ EVAL_ARTIFACT_ROOT ?= ../fpac-soil-mcp-eval-artifacts
 APP_DIR     ?= apps/agent-fpac-soil-openai-sdk
 APP_PYTHON  ?= 3.11
 # Files this repo owns in the app; the remaining template runtime files are not linted.
-APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/config.py agent_server/history.py tests)
+APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/aoi_context.py agent_server/config.py agent_server/geo.py agent_server/history.py tests)
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-check
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -52,7 +52,16 @@ app-lint: ## Ruff check + format check on the agent app files this repo owns
 	$(UV) run ruff check $(APP_LINT_PATHS)
 	$(UV) run ruff format --check $(APP_LINT_PATHS)
 
-app-check: app-lint app-test ## Run agent app lint and tests
+# Read-only lint with the upstream biome.jsonc. The two skipped rules are the only
+# error-level findings in unmodified upstream 0e57297 (upstream CI runs lint with
+# --write --unsafe, which autofixes them). There is no typecheck: upstream client
+# and server fail tsc at 0e57297 and upstream has no typecheck script (ADR 0015).
+APP_FRONTEND_LINT_SKIP := --skip=nursery/useSortedClasses --skip=style/useTemplate
+
+app-frontend-check: ## Install and validate the vendored agent app frontend (needs Node 22 + npm)
+	cd $(APP_DIR)/frontend && npm ci && npx biome lint $(APP_FRONTEND_LINT_SKIP) . && npm run build
+
+app-check: app-lint app-test ## Run Python-only agent app validation
 
 test-live: ## Run live network integration tests (requires network)
 	$(UV) run --group dev pytest -m live_network

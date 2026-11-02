@@ -144,40 +144,6 @@ class ProcessManager:
             print(f"Error monitoring {name}: {e}")
             self.failed.set()
 
-    def clone_frontend_if_needed(self):
-        if Path("e2e-chatbot-app-next").exists():
-            return True
-
-        print("Cloning e2e-chatbot-app-next...")
-        for url in [
-            "https://github.com/databricks/app-templates.git",
-            "git@github.com:databricks/app-templates.git",
-        ]:
-            try:
-                subprocess.run(
-                    ["git", "clone", "--filter=blob:none", "--sparse", url, "temp-app-templates"],
-                    check=True,
-                    capture_output=True,
-                )
-                break
-            except subprocess.CalledProcessError:
-                continue
-        else:
-            print("ERROR: Failed to clone repository.")
-            print(
-                "Manually download from: https://download-directory.github.io/?url=https://github.com/databricks/app-templates/tree/main/e2e-chatbot-app-next"
-            )
-            return False
-
-        subprocess.run(
-            ["git", "sparse-checkout", "set", "e2e-chatbot-app-next"],
-            cwd="temp-app-templates",
-            check=True,
-        )
-        Path("temp-app-templates/e2e-chatbot-app-next").rename("e2e-chatbot-app-next")
-        shutil.rmtree("temp-app-templates", ignore_errors=True)
-        return True
-
     def start_process(self, cmd, name, log_file, patterns, cwd=None):
         print(f"Starting {name}...")
         # cmd is always an argument list built by this script (never shell=True)
@@ -221,13 +187,13 @@ class ProcessManager:
         if not os.environ.get("DATABRICKS_APP_NAME"):
             self.check_ports()
 
+        frontend_dir = Path(__file__).parent.parent / "frontend"
+        if not self.no_ui and not (frontend_dir / "package.json").is_file():
+            print(f"WARNING: Frontend package not found at {frontend_dir}; running backend only.")
+            self.no_ui = True
+
         if not self.no_ui:
-            if not self.clone_frontend_if_needed():
-                print("WARNING: Failed to clone frontend. Continuing with backend only.")
-                self.no_ui = True
-            else:
-                # Set API_PROXY environment variable for frontend to connect to backend
-                os.environ["API_PROXY"] = f"http://localhost:{self.port}/invocations"
+            os.environ["API_PROXY"] = f"http://localhost:{self.port}/invocations"
 
         # Open log files
         self.backend_log = self.log_files.enter_context(open("backend.log", "w", buffering=1))
@@ -249,12 +215,11 @@ class ProcessManager:
 
             if not self.no_ui:
                 # Setup and start frontend
-                frontend_dir = Path("e2e-chatbot-app-next")
                 # npm is a .cmd shim on Windows, which can't be launched by bare
                 # name without a shell; resolve its full path (honors PATHEXT) so
                 # argument lists work on every platform.
                 npm = shutil.which("npm") or "npm"
-                for args, desc in [(["install"], "install"), (["run", "build"], "build")]:
+                for args, desc in [(["ci"], "ci"), (["run", "build"], "build")]:
                     print(f"Running npm {desc}...")
                     result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-audit
                         [npm, *args], cwd=frontend_dir, capture_output=True, text=True

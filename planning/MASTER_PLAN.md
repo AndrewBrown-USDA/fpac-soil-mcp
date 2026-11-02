@@ -413,7 +413,7 @@ flowchart TD
 
 **Exit Criteria**:
 - MCP spatial tools return schema-validated visualization envelopes consumed cleanly by both headless LLM callers and map clients.
-- The interactive client meets the Track A map exit criteria for M2 (a user draws or uploads an AOI and receives a screening result without coordinates entering the prompt, model context, trace, or chat history) and M4 (results render from the server `map` envelope with legends and table views).
+- The interactive client meets the Track A map exit criteria for M2 (a user draws or uploads an AOI and receives a screening result; per [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md) the AOI is chat session context, its reference and summary reach the model and its geometry may appear in traces, not in the prompt text) and M4 (results render from the server `map` envelope with legends and table views).
 - Map layers render styled farmland categories and buffer footprints matching server-calculated acreages and table values within 0.1% tolerance.
 - Offline demonstration mode runs seamlessly against `demo_testbeds.gpkg` with explicit `"data_mode": "fixture"` provenance banners.
 - All visualization outputs display preliminary screening notices and explicit authority levels.
@@ -468,16 +468,23 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track A: Agent App
 
 - **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and keeps the preliminary-screening boundary ([ADR 0003](../docs/decisions/0003-preliminary-screening-authority-boundary.md)).
-- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. It has no map; its chat UI is cloned unpinned at app start.
-- **Delivered:** Plan 35; [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment.
+- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat.
+- **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md) and [42](EXECUTION_PLAN_42.md); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md).
 - **Backlog:**
-  - Proposed: M0, vendor and pin the chat UI (first standalone orchestration; exit item: an ADR on the vendored frontend).
-  - Proposed: M1 spikes R2, R3, R4, and R6 (second orchestration; exit item: an ADR on AOI handoff).
-  - Proposed: M2-M7, scoped after M1 findings. M3 (server `map` envelope) is tracked in [Phase 8](#phase-8-spatial-visualization--interactive-client-demo) and must precede M4. AOI integration stays blocked until R6 proves pre-trace redaction and history exclusion ([ADR 0010](../docs/decisions/0010-public-payload-pii-detection-and-sanitization.md)).
+  - Delivered: M0, vendor and pin the chat UI (ADR 0015).
+  - Resolved: M1 AOI handoff, by ADR 0016 (a single AOI per conversation as session context, not pre-trace redaction). Multiple or labelled AOIs stay in the backlog.
+  - Delivered (MVP): M2, polygon and rectangle drawing and GeoJSON paste or upload ([Plan 42](EXECUTION_PLAN_42.md)).
+  - Next: M3, the server `map` envelope, tracked in [Phase 8](#phase-8-spatial-visualization--interactive-client-demo); it must precede M4.
+  - Proposed: remaining M2 items: lines and corridors, points, WKT and other formats, an AOI list, custom basemaps.
+  - Proposed: M4-M7, scoped after M3.
+  - Proposed: opt-in chat history and stored sessions (template chat database, for example Lakebase) for users who opt in or deployments in approved secure environments, including whether the AOI is stored with the chat ([Plan 42](EXECUTION_PLAN_42.md) deferral).
+  - Delivered: one AOI reference for the map screening and the chat (the map panel sends the chat's reference to the screening route; [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md), [42.6.1 evidence](evidence/42.6.1-trial.md)).
+  - Proposed: an agent-guided Site Assessment with formalized, rule-based scoring for consistent LESA results: server-side § 658.5(b) scoring from facts, a shared question schema, system-instruction and prompt updates, prefill from NASS and TIGERweb, a multi-turn consistency eval ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md)). The server work belongs on the server roadmap.
+  - Proposed: the agent and the FPPA prompts do not suggest alternatives or siting (farmland class alone does not show land is suitable); alternatives are compared only when the user provides them ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md), finding 12).
   - Proposed: a separate agent-app evaluation against `/invocations` (not MCP T2).
   - Proposed: per-user attribution (service principal auth does not identify the requesting user).
 - **Exit criteria:** DISC-01, POINT-01, and LESA-01 are answered in the chat UI with an fpac tool call in the trace, the server-provided `regulatory_notice` rendered, and a response within 180 s; map phases meet the M2 and M4 exit criteria in the map research, section 10.
-- **Open decisions:** map research section 11 items 1-5: fork the template or build a separate SPA; user-supplied basemap URLs in production; backend Tier 3 formats in the first release; AOI persistence across sessions or session-only; whether M3 is its own orchestration before M4.
+- **Open decisions:** map research section 11 items 2, 3 and 5: user-supplied basemap URLs in production; backend Tier 3 formats in the first release; whether M3 is its own orchestration before M4. Items 1 (owned template copy, ADR 0015) and 4 (session-only AOI, ADR 0016; opt-in history in the backlog) are decided.
 - **Source:** [Tracks research, 4.3](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#43-track-a-agent-app); [map research, sections 10](RESEARCH_MAP_WIDGET_AGENT_APP.md#10-suggested-phasing-for-the-master-plan) and [11](RESEARCH_MAP_WIDGET_AGENT_APP.md#11-open-decisions-for-the-user).
 
 ### Track W: MCP Workbench
