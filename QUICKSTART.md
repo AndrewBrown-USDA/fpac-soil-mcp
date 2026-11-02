@@ -155,6 +155,11 @@ compute restarts, open the notebook's Environment pane, choose **Custom** under
 Databricks caches that environment. Packages installed ad hoc (`%pip`, uv venvs in
 `/tmp`) are lost on restart. Change pins in that file by pull request only.
 
+Without a notebook (for example, Genie Code shell commands), run
+`source databricks/bootstrap-serverless.sh` from the repository root before using
+`node`, `npm`, or `npx`. It installs the same pins in about 20 seconds after a restart
+and is an instant no-op otherwise.
+
 ### Local Browser Harness
 
 The repository also provides a local browser workbench for inspecting tools, resources,

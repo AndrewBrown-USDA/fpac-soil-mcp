@@ -4,7 +4,8 @@
 #   /Workspace/Users/Groups/team-03/fpac-soil-mcp/databricks/serverless-environment.yaml
 # Databricks caches the environment, so it is not reinstalled after an idle
 # disconnect. Packages installed ad hoc (%pip, uv venvs in /tmp) are lost on
-# every compute restart.
+# every compute restart. Without a notebook (for example Genie Code), use
+# `source databricks/bootstrap-serverless.sh`, which installs these same pins.
 #
 # Keep this list small: only tools that are slow or fragile to set up per
 # session. Pin exact versions so the cache stays valid; bump deliberately

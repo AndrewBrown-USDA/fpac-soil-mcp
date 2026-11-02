@@ -75,6 +75,7 @@ uv run pytest -m live_network
 - `.env.example` - supported environment variables and defaults.
 - `Dockerfile` - production container build.
 - `databricks\serverless-environment.yaml` - shared, cached Databricks serverless notebook environment (Node/npm, Databricks MCP libraries); see `QUICKSTART.md`.
+- `databricks\bootstrap-serverless.sh` - idempotent install of the same pins for serverless shells without a notebook environment (for example Genie Code).
 - `server.json` and `manifest.yaml` - MCP registry and capability metadata.
 - `README.md` and `QUICKSTART.md` - user-facing setup, client configuration, API behavior, and regulatory scope.
 
@@ -139,6 +140,7 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 - HTTP routes: `/health` and `/meta` are registered on the FastMCP application for network transports.
 - Tests use mocked `httpx` transports by default. Tests marked `live_network` contact external services (USDA SDA, Census TIGERweb) and are opt-in.
 - SDA responses use `JSON+COLUMNNAME`, where the first table row contains column names; parsing is centralized in `SDAClient`.
+- Databricks serverless shells (for example Genie Code) restart often and wipe `/tmp`. Start every shell command that needs `node`, `npm`, `npx`, or the Databricks MCP libraries with `source databricks/bootstrap-serverless.sh` (fast no-op when installed; puts the wrappers on `PATH` and sets `FPAC_SERVERLESS_PYTHON`). Do not install Node from nodejs.org; change versions only in `databricks\serverless-environment.yaml`.
 - Databricks Apps deployment uses `app.yaml` and Streamable HTTP on `/mcp`; container defaults are defined in `Dockerfile`.
 
 ### Operational Rules
