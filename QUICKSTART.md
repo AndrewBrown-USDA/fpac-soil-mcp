@@ -146,6 +146,20 @@ Once connected, test the server tools, resources, and prompt templates using the
 
 ## 5. Development & Testing
 
+### Databricks Serverless Notebooks
+
+To avoid reinstalling Node/npm and the Databricks MCP libraries every time serverless
+compute restarts, open the notebook's Environment pane, choose **Custom** under
+**Base environment**, and select
+`/Workspace/Users/Groups/team-03/fpac-soil-mcp/databricks/serverless-environment.yaml`.
+Databricks caches that environment. Packages installed ad hoc (`%pip`, uv venvs in
+`/tmp`) are lost on restart. Change pins in that file by pull request only.
+
+Without a notebook (for example, Genie Code shell commands), run
+`source databricks/bootstrap-serverless.sh` from the repository root before using
+`node`, `npm`, or `npx`. It installs the same pins in about 20 seconds after a restart
+and is an instant no-op otherwise.
+
 ### Local Browser Harness
 
 The repository also provides a local browser workbench for inspecting tools, resources,

@@ -1,0 +1,22 @@
+# Shared Databricks serverless notebook environment for fpac-soil-mcp work.
+#
+# Use: notebook Environment pane > Base environment > Custom > select
+#   /Workspace/Users/Groups/team-03/fpac-soil-mcp/databricks/serverless-environment.yaml
+# Databricks caches the environment, so it is not reinstalled after an idle
+# disconnect. Packages installed ad hoc (%pip, uv venvs in /tmp) are lost on
+# every compute restart. Without a notebook (for example Genie Code), use
+# `source databricks/bootstrap-serverless.sh`, which installs these same pins.
+#
+# Keep this list small: only tools that are slow or fragile to set up per
+# session. Pin exact versions so the cache stays valid; bump deliberately
+# (one rebuild per bump).
+#
+# Node: nodejs-wheel-binaries ships node and npm. Its bin/npm shim is broken,
+# so run npm through node:
+#   NW=$(python -c "import nodejs_wheel,os;print(os.path.dirname(nodejs_wheel.__file__))")
+#   node "$NW/lib/node_modules/npm/bin/npm-cli.js" --version
+environment_version: '6'
+dependencies:
+  - nodejs-wheel-binaries==22.20.0
+  - databricks-mcp==0.9.2
+  - databricks-sdk==0.158.0
