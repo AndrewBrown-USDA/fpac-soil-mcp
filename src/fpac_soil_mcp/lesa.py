@@ -20,6 +20,8 @@ from typing import Any, Literal, overload
 from fpac_soil_mcp.constants import (
     CORRIDOR_CRITERIA_MAX_POINTS,
     CORRIDOR_CRITERIA_NAMES,
+    CRITERION_2_HIGH_RATIO,
+    CRITERION_2_LOW_RATIO,
     LESA_ACTION_AVOID_MINIMIZE_CONVERSION,
     LESA_ACTION_REDUCE_FOOTPRINT,
     LESA_THRESHOLD_SCORE,
@@ -501,6 +503,20 @@ class ZeroedCriterionStrategy(BaseCriterionEvaluator):
             is_automated=True,
             justification="Statutorily set to 0 points for corridor projects under 7 CFR § 658.5(c).",
         )
+
+
+def calculate_criterion_2_score(normalized_ratio: float | None) -> tuple[float, str]:
+    """Map a measured non-urban perimeter ratio to Criterion 2 points."""
+    if normalized_ratio is None:
+        return 0.0, "Criterion 2 evidence is unavailable; no points awarded."
+    if not 0.0 <= normalized_ratio <= 1.0:
+        raise ValueError(f"normalized_ratio must be between 0.0 and 1.0, got {normalized_ratio}")
+    if normalized_ratio < CRITERION_2_LOW_RATIO:
+        return 0.0, "Less than 20% of the perimeter borders non-urban land: 0 points."
+    if normalized_ratio > CRITERION_2_HIGH_RATIO:
+        return 10.0, "More than 90% of the perimeter borders non-urban land: 10 points."
+    points = round(1.0 + ((normalized_ratio - 0.2) / 0.7) * 8.0)
+    return float(max(1, min(9, points))), "Intermediate 20%-90% perimeter band: 1-9 points."
 
 
 class FarmSizeCriterionStrategy(BaseCriterionEvaluator):

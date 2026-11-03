@@ -358,6 +358,38 @@ class TestSiteAssessmentRules:
         assert sum(e.max_points for e in site_evals.values()) == 160
         assert sum(e.max_points for e in corridor_evals.values()) == 160
 
+    def test_criterion_2_verified_mapping_and_bounds(self) -> None:
+        from fpac_soil_mcp.lesa import calculate_criterion_2_score
+
+        assert calculate_criterion_2_score(0.0)[0] == 0.0
+        assert calculate_criterion_2_score(0.2)[0] == 1.0
+        assert calculate_criterion_2_score(0.9)[0] == 9.0
+        assert calculate_criterion_2_score(0.9001)[0] == 10.0
+        assert calculate_criterion_2_score(None)[0] == 0.0
+        with pytest.raises(ValueError, match="between 0.0 and 1.0"):
+            calculate_criterion_2_score(1.01)
+
+    def test_criterion_2_evidence_fields_serialize(self) -> None:
+        from fpac_soil_mcp.constants import CRITERION_2_RULE_REFERENCE, CRITERION_2_RULE_VERSION
+        from fpac_soil_mcp.models import SiteAssessmentCriterion
+
+        criterion = SiteAssessmentCriterion(
+            criterion_number=2,
+            name="Perimeter",
+            max_points=10,
+            awarded_points=9,
+            normalized_ratio=0.9,
+            evidence_status="measured",
+            rule_reference=CRITERION_2_RULE_REFERENCE,
+            rule_version=CRITERION_2_RULE_VERSION,
+            source_provenance=["TIGERweb Layer 6"],
+            is_verified=True,
+        )
+        data = criterion.model_dump()
+        assert data["normalized_ratio"] == 0.9
+        assert data["evidence_status"] == "measured"
+        assert data["is_verified"] is True
+
     def test_corridor_zeroed_criteria_evaluation(self) -> None:
         # Attempting to assign points to criteria 5 or 6 in a corridor project must be clamped to 0
         inputs = {

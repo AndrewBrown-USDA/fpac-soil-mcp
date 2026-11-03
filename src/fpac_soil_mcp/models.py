@@ -461,6 +461,30 @@ class SiteAssessmentCriterion(BaseModel):
         default=False,
         description="Whether points are zeroed due to corridor/linear project statutory rules",
     )
+    normalized_ratio: float | None = Field(
+        default=None,
+        description="Normalized evidence ratio in the inclusive range 0.0 to 1.0",
+    )
+    evidence_status: str = Field(
+        default="not_provided",
+        description="Evidence state: measured, unavailable, or not_provided",
+    )
+    rule_reference: str | None = Field(
+        default=None,
+        description="Regulatory or scoring rule reference used for this criterion",
+    )
+    rule_version: str | None = Field(
+        default=None,
+        description="Version identifier for the scoring rule",
+    )
+    source_provenance: list[str] = Field(
+        default_factory=list,
+        description="Sources supporting the criterion evidence",
+    )
+    is_verified: bool = Field(
+        default=False,
+        description="Whether the evidence and point mapping were verified",
+    )
 
     @field_validator("criterion_number")
     @classmethod
@@ -481,6 +505,13 @@ class SiteAssessmentCriterion(BaseModel):
     def validate_awarded_points(cls, v: float) -> float:
         if v < 0.0:
             raise ValueError(f"awarded_points cannot be negative, got {v}")
+        return v
+
+    @field_validator("normalized_ratio")
+    @classmethod
+    def validate_normalized_ratio(cls, v: float | None) -> float | None:
+        if v is not None and (v < 0.0 or v > 1.0):
+            raise ValueError(f"normalized_ratio must be between 0.0 and 1.0, got {v}")
         return v
 
     @model_validator(mode="after")

@@ -172,6 +172,17 @@ SITE_CRITERIA_NAMES: Final[dict[int, str]] = {
     12: "Compatibility of site project with existing agricultural uses",
 }
 
+# Criterion 2 perimeter scoring under 7 CFR § 658.5(b) and (c). The
+# regulation defines top, intermediate, and bottom bands; the intermediate
+# band is normalized to the inclusive integer scores 1-9.
+CRITERION_2_RULE_REFERENCE: Final[str] = "7 CFR § 658.5(b)(2) and § 658.5(c)"
+CRITERION_2_RULE_VERSION: Final[str] = "2026-11-03"
+CRITERION_2_MAX_POINTS: Final[int] = 10
+CRITERION_2_MIN_RATIO: Final[float] = 0.0
+CRITERION_2_LOW_RATIO: Final[float] = 0.2
+CRITERION_2_HIGH_RATIO: Final[float] = 0.9
+CRITERION_2_MAX_RATIO: Final[float] = 1.0
+
 # Cited LESA action guidance under 7 CFR § 658.4(c)(3)-(4)
 LESA_ACTION_AVOID_MINIMIZE_CONVERSION: Final[str] = (
     "Assess alternative project designs and configurations that avoid or minimize conversion "
