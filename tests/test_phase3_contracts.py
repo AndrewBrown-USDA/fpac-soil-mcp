@@ -420,6 +420,7 @@ def test_criterion_2_contract_preserves_zero_unavailable_and_override() -> None:
                     "normalized_ratio": 0.0,
                     "evidence_status": "measured",
                     "is_agricultural": True,
+                    "is_verified": True,
                 }
             }
         }

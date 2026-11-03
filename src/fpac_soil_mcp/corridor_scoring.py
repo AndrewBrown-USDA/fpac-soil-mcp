@@ -34,6 +34,7 @@ from fpac_soil_mcp.constants import (
     STATUTORY_DETERMINATIONS,
 )
 from fpac_soil_mcp.lesa import (
+    PerimeterCriterionStrategy,
     calculate_composite_le,
     calculate_criterion_7_score,
 )
@@ -124,6 +125,12 @@ class CriterionEvaluation(BaseModel):
     justification: str = Field(
         default="", description="Detailed factual or legal justification for awarded score"
     )
+    normalized_ratio: float | None = Field(default=None)
+    evidence_status: str = Field(default="not_provided")
+    rule_reference: str | None = Field(default=None)
+    rule_version: str | None = Field(default=None)
+    source_provenance: list[str] = Field(default_factory=list)
+    is_verified: bool = Field(default=False)
 
     @field_validator("awarded_points")
     @classmethod
@@ -310,10 +317,45 @@ class StandardCriterionEvaluator(CriterionEvaluator):
         )
 
 
+class PerimeterCriterionEvaluator(CriterionEvaluator):
+    """Adapt the shared Criterion 2 evaluator to the corridor response model."""
+
+    def evaluate(
+        self,
+        crit_input: dict[str, Any] | None = None,
+        project_farm_acres: float | None = None,
+        county_average_farm_acres: float | None = None,
+    ) -> CriterionEvaluation:
+        result = PerimeterCriterionStrategy(
+            criterion_number=self.criterion_number,
+            max_points=self.max_points,
+            name=self.name,
+        ).evaluate(
+            crit_input=crit_input,
+            project_farm_acres=project_farm_acres,
+            county_average_farm_acres=county_average_farm_acres,
+        )
+        return CriterionEvaluation(
+            criterion_number=result.criterion_number,
+            name=result.name,
+            max_points=int(result.max_points),
+            awarded_points=result.awarded_points,
+            is_statutorily_zeroed=result.is_statutorily_zeroed,
+            is_automated=result.is_automated,
+            justification=result.justification,
+            normalized_ratio=result.normalized_ratio,
+            evidence_status=result.evidence_status,
+            rule_reference=result.rule_reference,
+            rule_version=result.rule_version,
+            source_provenance=result.source_provenance,
+            is_verified=result.is_verified,
+        )
+
+
 # Strategy registry mapping criterion numbers 1-12 to evaluators
 CRITERION_EVALUATORS: dict[int, CriterionEvaluator] = {
     1: StandardCriterionEvaluator(1),
-    2: StandardCriterionEvaluator(2),
+    2: PerimeterCriterionEvaluator(2),
     3: StandardCriterionEvaluator(3),
     4: StandardCriterionEvaluator(4),
     5: ZeroedCriterionEvaluator(5),

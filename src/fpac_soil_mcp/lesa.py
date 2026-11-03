@@ -549,12 +549,13 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
         else:
             ratio = evidence.get("normalized_ratio")
             has_agricultural_source = evidence.get("is_agricultural", False) is True
-            if status == "measured" and not has_agricultural_source:
+            is_verified = evidence.get("is_verified", False) is True
+            if status == "measured" and (not has_agricultural_source or not is_verified):
                 status = "unavailable"
                 awarded = 0.0
                 justification = (
-                    "Criterion 2 requires agricultural adjacency evidence; "
-                    "non-urban screening evidence is unavailable for scoring."
+                    "Criterion 2 requires verified agricultural adjacency evidence; "
+                    "unverified or non-agricultural screening evidence is unavailable for scoring."
                 )
             else:
                 awarded, justification = calculate_criterion_2_score(ratio)

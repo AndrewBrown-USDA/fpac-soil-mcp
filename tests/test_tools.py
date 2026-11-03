@@ -243,6 +243,42 @@ class TestFPPATools:
                 productivity_index="NCCPI",
             )
 
+    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    def test_analyze_corridor_fppa_exposes_shared_criterion_2_evidence(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.model_dump.return_value = {"manifest": {}}
+        mock_response.manifest = {
+            "criterion_2_perimeter_evidence": {
+                "normalized_ratio": 0.9,
+                "evidence_status": "measured",
+                "is_agricultural": True,
+                "is_verified": True,
+                "source_provenance": ["Agricultural land-use source"],
+            }
+        }
+        mock_response.county_segments = []
+        mock_response.composite_relative_rating = 55.0
+        mock_analyzer_cls.return_value.analyze_corridor.return_value = mock_response
+
+        result = analyze_corridor_fppa(
+            centerline={"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+            buffer_distance=100.0,
+            site_assessment_inputs={"criteria_inputs": {}},
+        )
+
+        criterion = next(
+            item
+            for item in result["lesa_evaluation"]["site_assessment"]["criteria"]
+            if item["criterion_number"] == 2
+        )
+        assert criterion["awarded_points"] == 9.0
+        assert criterion["normalized_ratio"] == 0.9
+        assert criterion["evidence_status"] == "measured"
+        assert criterion["is_verified"] is True
+        assert criterion["source_provenance"] == ["Agricultural land-use source"]
+
     @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_calculate_preliminary_lesa_accepts_wkt_polygon(
         self, mock_analyzer_cls: MagicMock

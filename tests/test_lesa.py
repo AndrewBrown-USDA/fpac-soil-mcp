@@ -473,6 +473,25 @@ class TestSiteAssessmentRules:
         assert criterion.evidence_status == "unavailable"
         assert criterion.is_verified is False
 
+    def test_criterion_2_unverified_agricultural_evidence_is_not_scored(self) -> None:
+        summary = evaluate_site_assessment(
+            {
+                2: {
+                    "perimeter_evidence": {
+                        "normalized_ratio": 0.9,
+                        "evidence_status": "measured",
+                        "is_agricultural": True,
+                        "is_verified": False,
+                    }
+                }
+            }
+        )
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+        assert criterion.is_verified is False
+
     def test_criterion_2_omitted_evidence_is_not_provided(self) -> None:
         summary = evaluate_site_assessment({2: {}})
         criterion = next(c for c in summary.criteria if c.criterion_number == 2)
