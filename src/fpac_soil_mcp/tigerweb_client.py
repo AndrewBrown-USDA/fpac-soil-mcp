@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypedDict
 
 import httpx
 from shapely.errors import GEOSException
@@ -22,6 +22,7 @@ from fpac_soil_mcp.config import settings
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     calculate_acreage,
+    calculate_geodesic_length,
     compute_geometry_hash,
     parse_geojson_geometry,
 )
@@ -214,6 +215,21 @@ class TigerwebClientError(Exception):
     """Base exception for Census TIGERweb client errors."""
 
 
+class PerimeterEvidence(TypedDict):
+    """Preliminary Criterion 2 perimeter evidence from TIGERweb."""
+
+    normalized_ratio: float | None
+    evidence_status: str
+    rule_reference: str
+    rule_version: str
+    source_provenance: list[str]
+    is_verified: bool
+    geometry_hash: str
+    total_perimeter_meters: float | None
+    urban_adjacent_perimeter_meters: float | None
+    error_message: str | None
+
+
 class TigerwebClient:
     """Client for US Census Bureau TIGERweb 2020 Urban Areas MapServer."""
 
@@ -355,6 +371,113 @@ class TigerwebClient:
                 provenance=provenance,
                 error_message=f"Urban screening failed: {exc}",
             )
+
+    def get_perimeter_evidence(
+        self,
+        geometry_input: dict[str, Any] | str | Polygon | MultiPolygon,
+    ) -> PerimeterEvidence:
+        """Return preliminary non-urban perimeter evidence for Criterion 2."""
+        from fpac_soil_mcp.constants import CRITERION_2_RULE_REFERENCE, CRITERION_2_RULE_VERSION
+
+        provenance = [f"US Census Bureau TIGERweb 2020 Urban Areas MapServer: {self.base_url}"]
+        fallback_hash = "sha256:" + "0" * 64
+        try:
+            if isinstance(geometry_input, (Polygon, MultiPolygon)):
+                geom = geometry_input
+            else:
+                geom = parse_geojson_geometry(geometry_input)
+            geom_hash = compute_geometry_hash(geom)
+            total = calculate_geodesic_length(geom.boundary)
+            if total <= 0.0:
+                raise GeometryValidationError("Geometry perimeter must be positive.")
+
+            params = {
+                "geometry": json.dumps({"rings": _polygon_to_esri_rings(geom)}),
+                "geometryType": "esriGeometryPolygon",
+                "inSR": "4326",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "GEOID,NAME,BASENAME",
+                "returnGeometry": "true",
+                "outSR": "4326",
+                "f": "json",
+            }
+            query_url = (
+                f"{self.base_url}/query" if not self.base_url.endswith("/query") else self.base_url
+            )
+            resp = execute_http_request_with_retry(
+                "POST", query_url, data=params, timeout=self.timeout, client=self._http_client
+            )
+            data = resp.json()
+            if "error" in data:
+                return {
+                    "normalized_ratio": None,
+                    "evidence_status": "error",
+                    "rule_reference": CRITERION_2_RULE_REFERENCE,
+                    "rule_version": CRITERION_2_RULE_VERSION,
+                    "source_provenance": provenance,
+                    "is_verified": False,
+                    "geometry_hash": geom_hash,
+                    "total_perimeter_meters": total,
+                    "urban_adjacent_perimeter_meters": None,
+                    "error_message": f"TIGERweb MapServer error: {data['error'].get('message', 'Unknown error')}",
+                }
+
+            features = data.get("features", [])
+            urban_geometries = []
+            for feature in features:
+                rings = feature.get("geometry", {}).get("rings", [])
+                parsed = _esri_rings_to_geometry(rings)
+                if parsed is not None and not parsed.is_empty:
+                    urban_geometries.append(parsed)
+            if features and not urban_geometries:
+                status = "unavailable"
+                error = "TIGERweb returned intersecting features without usable geometry."
+                ratio = None
+                adjacent = None
+            else:
+                urban_union = unary_union(urban_geometries) if urban_geometries else None
+                adjacent_geom = geom.boundary.intersection(urban_union) if urban_union else None
+                adjacent = (
+                    calculate_geodesic_length(adjacent_geom)
+                    if adjacent_geom is not None and not adjacent_geom.is_empty
+                    else 0.0
+                )
+                ratio = max(0.0, min(1.0, 1.0 - (adjacent / total)))
+                status = "measured"
+                error = None
+            return {
+                "normalized_ratio": ratio,
+                "evidence_status": status,
+                "rule_reference": CRITERION_2_RULE_REFERENCE,
+                "rule_version": CRITERION_2_RULE_VERSION,
+                "source_provenance": provenance,
+                "is_verified": status == "measured",
+                "geometry_hash": geom_hash,
+                "total_perimeter_meters": total,
+                "urban_adjacent_perimeter_meters": adjacent,
+                "error_message": error,
+            }
+        except (
+            HttpRequestError,
+            HttpStatusError,
+            GeometryValidationError,
+            ValueError,
+            KeyError,
+        ) as exc:
+            return {
+                "normalized_ratio": None,
+                "evidence_status": "error",
+                "rule_reference": CRITERION_2_RULE_REFERENCE,
+                "rule_version": CRITERION_2_RULE_VERSION,
+                "source_provenance": provenance,
+                "is_verified": False,
+                "geometry_hash": compute_geometry_hash(geometry_input)
+                if isinstance(geometry_input, (Polygon, MultiPolygon))
+                else fallback_hash,
+                "total_perimeter_meters": None,
+                "urban_adjacent_perimeter_meters": None,
+                "error_message": f"Perimeter evidence failed: {exc}",
+            }
 
     def get_intersecting_counties(
         self,

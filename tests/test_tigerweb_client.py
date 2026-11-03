@@ -204,6 +204,109 @@ def test_tigerweb_non_intersected_rural(sample_geojson):
     assert record.screened_acreage == 0.0
 
 
+def test_tigerweb_perimeter_evidence_measures_non_urban_share(sample_geojson):
+    response = {
+        "features": [
+            {
+                "attributes": {"NAME": "Urban"},
+                "geometry": {
+                    "rings": [
+                        [
+                            [-86.155, 39.76],
+                            [-86.15, 39.76],
+                            [-86.15, 39.77],
+                            [-86.155, 39.77],
+                            [-86.155, 39.76],
+                        ]
+                    ]
+                },
+            }
+        ]
+    }
+
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "measured"
+    assert 0.0 <= evidence["normalized_ratio"] <= 1.0
+    assert evidence["is_verified"] is True
+    assert evidence["rule_reference"]
+
+
+def test_tigerweb_perimeter_evidence_supports_multipart_and_boundary_touch(sample_geojson):
+    response = {
+        "features": [
+            {
+                "geometry": {
+                    "rings": [
+                        [
+                            [-86.16, 39.76],
+                            [-86.155, 39.76],
+                            [-86.155, 39.765],
+                            [-86.16, 39.765],
+                            [-86.16, 39.76],
+                        ],
+                        [
+                            [-86.15, 39.77],
+                            [-86.145, 39.77],
+                            [-86.145, 39.775],
+                            [-86.15, 39.775],
+                            [-86.15, 39.77],
+                        ],
+                    ]
+                }
+            }
+        ]
+    }
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+    evidence = client.get_perimeter_evidence(sample_geojson)
+    assert evidence["evidence_status"] == "measured"
+    assert 0.0 < evidence["normalized_ratio"] < 1.0
+
+
+def test_tigerweb_perimeter_evidence_distinguishes_unavailable_and_upstream_error(sample_geojson):
+    unavailable = {"features": [{"attributes": {"NAME": "Urban"}, "geometry": {}}]}
+    unavailable_client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=unavailable))
+        )
+    )
+    unavailable_result = unavailable_client.get_perimeter_evidence(sample_geojson)
+    assert unavailable_result["evidence_status"] == "unavailable"
+    assert unavailable_result["normalized_ratio"] is None
+
+    error_http_client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(200, json={"error": {"message": "service unavailable"}})
+        )
+    )
+    error_result = TigerwebClient(http_client=error_http_client).get_perimeter_evidence(
+        sample_geojson
+    )
+    assert error_result["evidence_status"] == "error"
+    assert error_result["normalized_ratio"] is None
+
+
+def test_tigerweb_perimeter_evidence_empty_response_is_measured_zero_adjacency(sample_geojson):
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"features": []}))
+        )
+    )
+    evidence = client.get_perimeter_evidence(sample_geojson)
+    assert evidence["evidence_status"] == "measured"
+    assert evidence["normalized_ratio"] == pytest.approx(1.0)
+    assert evidence["urban_adjacent_perimeter_meters"] == 0.0
+
+
 def test_tigerweb_point_geometry_success():
     point_geojson = {
         "type": "Point",

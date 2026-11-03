@@ -11,6 +11,7 @@ from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     buffer_centerline,
     calculate_acreage,
+    calculate_geodesic_length,
     compute_geometry_hash,
     erase_geometries,
     geometry_to_wkt,
@@ -174,6 +175,21 @@ def test_calculate_acreage_accuracy():
     geom = parse_geojson_geometry(geojson)
     acres = calculate_acreage(geom)
     assert 220.0 <= acres <= 235.0
+
+
+def test_calculate_geodesic_length_supports_empty_and_multipart():
+    from shapely.geometry import LineString, MultiLineString
+
+    assert calculate_geodesic_length(LineString()) == 0.0
+    length = calculate_geodesic_length(
+        MultiLineString(
+            [
+                [(-93.5, 42.0), (-93.4, 42.0)],
+                [(-93.5, 42.0), (-93.5, 42.1)],
+            ]
+        )
+    )
+    assert length > 0.0
 
 
 def test_geometry_to_wkt_and_hash():
