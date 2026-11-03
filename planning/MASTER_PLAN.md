@@ -238,13 +238,20 @@ flowchart TD
 
 ---
 
-### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (Partially Complete)
+### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (Criterion 2 delivered; remaining work open)
 
 **Goal**: Calculate reproducible candidate Land Evaluation (LE) and Site Assessment (SA) estimates integrating state productivity ratings, relative county baselines, and objective physical measurements.
 
 **Delivered**: Plans 17-26 (LE scoring, SDV routing, unified LESA, and PR #9 remediation), Plan 27 (state productivity indexes), Plans 31 and 32 (review remediation); see `planning/EXECUTION_PLAN_N.md` and [ADR 0008](../docs/decisions/0008-nccpi-validated-public-index-with-extensible-sdv-routing.md).
 
-**Open**: Criterion 2 perimeter agricultural adjacency (next server plan; data source decision pending).
+**Delivered**: Criterion 2 perimeter agricultural adjacency for site and
+corridor workflows, using existing TIGERweb and geometry abstractions with
+bounded ratio scoring, explicit unavailable/error states, provenance, and
+verification fields. This remains preliminary screening evidence only.
+
+**Remaining**: Criterion 7 farm-size comparison and other Phase 4 work remain
+open; the next server roadmap item is the Phase 8 map envelope, tracked as
+Track A M3 and required before Track A M4.
 
 **Scope & Deliverables** (referencing `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`):
 1. **Relative Land Evaluation (LE) Normalization & Scoring (0–100 Scale)**:
