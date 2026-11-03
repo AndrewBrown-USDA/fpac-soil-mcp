@@ -244,10 +244,17 @@ flowchart TD
 
 **Delivered**: Plans 17-26 (LE scoring, SDV routing, unified LESA, and PR #9 remediation), Plan 27 (state productivity indexes), Plans 31 and 32 (review remediation); see `planning/EXECUTION_PLAN_N.md` and [ADR 0008](../docs/decisions/0008-nccpi-validated-public-index-with-extensible-sdv-routing.md).
 
-**Delivered**: Criterion 2 perimeter agricultural adjacency for site and
-corridor workflows, using existing TIGERweb and geometry abstractions with
-bounded ratio scoring, explicit unavailable/error states, provenance, and
-verification fields. This remains preliminary screening evidence only.
+**Delivered**: Criterion 2 perimeter non-urban screening for site and corridor
+workflows, using existing TIGERweb and geometry abstractions with bounded ratio
+measurement, explicit unavailable/error states, provenance, and verification
+fields. This is a screening scaffold only; TIGERweb non-urban status, SSURGO
+farmland classifications, and soil productivity ratings do not establish
+current agricultural land use.
+
+**Remaining**: An authoritative spatial current-agricultural-land-use source
+must be integrated before the server can award verified agricultural-adjacency
+Criterion 2 points. The existing preliminary-screening and regulatory
+limitations remain in force.
 
 **Remaining**: Criterion 7 farm-size comparison and other Phase 4 work remain
 open; the next server roadmap item is the Phase 8 map envelope, tracked as

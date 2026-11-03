@@ -1,36 +1,31 @@
 # TODO
 
 ## Goal
-Correct the eight issues raised in review on PR #74 while preserving the intended Criterion 2 perimeter-adjacency behavior and updating the planning state to match the delivered implementation.
+Resolve the three remaining PR #74 review issues by enforcing verified Criterion 2 evidence, integrating corridor evidence through the shared LESA evaluator, and correcting the Phase 4 roadmap wording.
 
 ## Tasks
 
-### 1. Correct TIGERweb response-shape handling
-- [x] Require a present, list-valued `features` field before treating a TIGERweb response as a valid empty result.
-- [x] Treat explicit `geometry: null` values as unusable geometry and return the established unavailable evidence result.
-- [x] Handle point-only and geometry-collection boundary contacts by extracting lineal components and treating point-only contacts as zero-length adjacency.
-- [x] Add focused regression tests for missing `features`, null geometry, point contacts, and mixed geometry contacts.
+### 1. Gate automated Criterion 2 scoring
+- [x] Require both `is_agricultural=True` and `is_verified=True` before automated Criterion 2 points can be awarded.
+- [x] Preserve the explicit manual `awarded_points` override path without applying the automated evidence gate.
+- [x] Add regression tests for measured agricultural evidence with and without verification.
 
-### 2. Correct LESA Criterion 2 evidence semantics
-- [x] Distinguish omitted perimeter evidence (`not_provided`) from explicitly unavailable evidence (`unavailable`).
-- [x] Prevent non-urban TIGERweb screening evidence from being passed directly into verified agricultural Criterion 2 scoring.
-- [x] Preserve measured-zero behavior and explicit agricultural/manual evidence overrides.
-- [x] Add focused LESA regression tests covering evidence status and scoring behavior.
+### 2. Route corridor LESA through the shared evaluator
+- [x] Change the public corridor LESA path to use the shared perimeter-aware evaluator selected by the user.
+- [x] Ensure computed `criterion_2_perimeter_evidence` is consumed and exposed in the public corridor response.
+- [x] Add focused corridor tests covering ratio, provenance, evidence status, and awarded points.
 
-### 3. Integrate corridor perimeter evidence
-- [x] Read `criterion_2_perimeter_evidence` from the corridor result manifest when processing a LineString input.
-- [x] Add or update a corridor LESA regression test proving computed perimeter evidence reaches Criterion 2 inputs.
+### 3. Correct Phase 4 roadmap documentation
+- [x] Revise `planning/MASTER_PLAN.md` to describe Criterion 2 as a preliminary non-urban screening scaffold.
+- [x] State that authoritative current agricultural-land-use integration remains required before verified agricultural-adjacency points can be awarded.
+- [x] Preserve the existing regulatory limitation that the server does not produce official FPPA or LESA determinations.
 
-### 4. Synchronize planning artifacts
-- [x] Update `planning/GOALS.md` to reference `planning/STATE_43.md`.
-- [x] Replace the stale pre-implementation active-goal wording with the delivered Criterion 2 status and correct next dependency.
-
-### 5. Validate the corrections
-- [x] Run focused tests for TIGERweb, LESA, polygon, and corridor behavior.
-- [x] Run Ruff lint and format checks.
-- [x] Run the offline repository validation target and record any relevant result.
+### 4. Validate and prepare review responses
+- [x] Run focused LESA, corridor, and planning-related tests.
+- [x] Run Ruff lint and format checks plus the offline repository validation target.
+- [x] Review the final diff and prepare response text for all three open PR threads.
 
 ## Notes
-- Scope is limited to the eight review comments on PR #74.
-- Preserve explicit unavailable/error states and the project's preliminary-screening and regulatory-boundary language.
-- Do not infer agricultural use from non-urban status; agricultural evidence must remain distinct from urban exemption screening.
+- Scope is limited to the three currently open PR #74 review issues.
+- Do not add a new agricultural data source in this change; the goal is to enforce the evidence boundary and correct the public corridor integration.
+- Do not push or modify remote PR review state unless explicitly requested.
