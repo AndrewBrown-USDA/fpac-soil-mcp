@@ -100,6 +100,13 @@ def test_corridor_analysis_two_counties():
     # Mock TIGERweb Client
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.get_perimeter_evidence.return_value = {
+        "evidence_status": "measured",
+        "normalized_ratio": 0.9,
+        "is_agricultural": True,
+        "is_verified": True,
+        "source_provenance": ["test perimeter source"],
+    }
 
     # Simulate TIGERweb county discovery and partitioning
     mock_tiger.get_intersecting_counties.return_value = [
@@ -164,6 +171,8 @@ def test_corridor_analysis_two_counties():
     assert response.tabular_csv != ""
     assert "Story" in response.tabular_csv
     assert "Boone" in response.tabular_csv
+    assert response.manifest["criterion_2_perimeter_evidence"]["evidence_status"] == "measured"
+    assert response.manifest["criterion_2_perimeter_evidence"]["normalized_ratio"] == 0.9
 
 
 @pytest.mark.parametrize("alternative_rating", [75.0, 99.0, 999.0, -99.0, -999.0])

@@ -29,3 +29,39 @@ Resolve the three remaining PR #74 review issues by enforcing verified Criterion
 - Scope is limited to the three currently open PR #74 review issues.
 - Do not add a new agricultural data source in this change; the goal is to enforce the evidence boundary and correct the public corridor integration.
 - Do not push or modify remote PR review state unless explicitly requested.
+
+---
+
+# Follow-up TODO: Criterion 2 Test Hardening
+
+## Goal
+Add non-tautological regression coverage for the four remaining Criterion 2 test gaps without changing production behavior unless a test exposes a directly related defect.
+
+## Tasks
+
+### 1. Testing upstream request failures
+- [x] Add focused tests for HTTP status failures and request exceptions through `TigerwebClient.get_perimeter_evidence`.
+- [x] Assert explicit `error` status, unavailable ratio, verification state, and safe error metadata.
+
+### 2. Testing invalid perimeter inputs
+- [x] Add tests for invalid geometry input and zero-perimeter geometry.
+- [x] Assert deterministic error-state behavior without uncaught failures or fabricated measurements.
+
+### 3. Testing end-to-end evidence propagation
+- [x] Add polygon analyzer coverage from mocked perimeter evidence through the final analysis response.
+- [x] Add corridor analyzer coverage from mocked perimeter evidence through the final analysis response.
+- [x] Assert measured, unavailable, and error states remain distinct at the public response boundary.
+
+### 4. Testing boundary-contact geometry
+- [x] Add non-tautological tests for boundary-only contacts and geometry collections containing lineal and point components.
+- [x] Assert point-only contacts do not contribute perimeter length and lineal contacts do.
+
+### 5. Validating and documenting the change
+- [x] Run targeted Criterion 2 tests and the complete offline test suite.
+- [x] Run Ruff checks, formatting checks, and `git diff --check`.
+- [x] Review the final diff and summarize any production fix that was required.
+
+## Notes
+- ImageServer/CDL implementation is explicitly future work and is out of scope.
+- Prefer existing `httpx.MockTransport` fixtures and current analyzer test patterns.
+- Small production fixes are allowed only when directly exposed by the new tests.
