@@ -415,7 +415,8 @@ class TestSiteAssessmentRules:
             "evidence_status": "measured",
             "rule_reference": "7 CFR § 658.5(b)/(c)",
             "rule_version": "criterion-2-v1",
-            "source_provenance": ["TIGERweb"],
+            "source_provenance": ["USDA agricultural land-use survey"],
+            "is_agricultural": True,
             "is_verified": True,
         }
         for project_type in ("site", "corridor"):
@@ -427,7 +428,7 @@ class TestSiteAssessmentRules:
             assert criterion.awarded_points == 9.0
             assert criterion.normalized_ratio == 0.9
             assert criterion.evidence_status == "measured"
-            assert criterion.source_provenance == ["TIGERweb"]
+            assert criterion.source_provenance == ["USDA agricultural land-use survey"]
             assert criterion.is_verified is True
 
     def test_criterion_2_unavailable_and_explicit_override(self) -> None:
@@ -452,7 +453,33 @@ class TestSiteAssessmentRules:
         )
         criterion = next(c for c in overridden.criteria if c.criterion_number == 2)
         assert criterion.awarded_points == 4.0
-        assert criterion.normalized_ratio == 0.0
+
+    def test_criterion_2_non_urban_screening_is_not_agricultural_evidence(self) -> None:
+        summary = evaluate_site_assessment(
+            {
+                2: {
+                    "perimeter_evidence": {
+                        "normalized_ratio": 0.9,
+                        "evidence_status": "measured",
+                        "is_verified": True,
+                        "source_provenance": ["US Census Bureau TIGERweb"],
+                    }
+                }
+            }
+        )
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+        assert criterion.is_verified is False
+
+    def test_criterion_2_omitted_evidence_is_not_provided(self) -> None:
+        summary = evaluate_site_assessment({2: {}})
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.evidence_status == "not_provided"
+        assert criterion.awarded_points == 0.0
+        assert criterion.normalized_ratio is None
 
 
 class TestLESAThresholdEvaluation:

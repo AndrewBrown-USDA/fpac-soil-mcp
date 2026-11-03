@@ -5,12 +5,20 @@ from urllib.parse import parse_qs
 
 import httpx
 import pytest
-from shapely.geometry import GeometryCollection, LinearRing, LineString, MultiPolygon, Polygon
+from shapely.geometry import (
+    GeometryCollection,
+    LinearRing,
+    LineString,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
 
 from fpac_soil_mcp.integration_models import CountyPartitionGeometry, IntegrationStatus
 from fpac_soil_mcp.tigerweb_client import (
     TigerwebClient,
     _esri_rings_to_geometry,
+    _lineal_parts,
     _normalize_ring_winding,
     _polygon_to_esri_rings,
     _polygonal_parts,
@@ -235,6 +243,40 @@ def test_tigerweb_perimeter_evidence_measures_non_urban_share(sample_geojson):
     assert 0.0 <= evidence["normalized_ratio"] <= 1.0
     assert evidence["is_verified"] is True
     assert evidence["rule_reference"]
+
+
+def test_tigerweb_perimeter_evidence_rejects_missing_features(sample_geojson):
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json={}))
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "unavailable"
+    assert evidence["is_verified"] is False
+    assert "features list" in evidence["error_message"]
+
+
+def test_tigerweb_perimeter_evidence_handles_null_geometry(sample_geojson):
+    response = {"features": [{"geometry": None}]}
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "unavailable"
+    assert evidence["is_verified"] is False
+
+
+def test_lineal_parts_ignores_point_only_contacts():
+    parts = _lineal_parts(GeometryCollection([Point(0, 0)]))
+
+    assert parts == []
 
 
 def test_tigerweb_perimeter_evidence_supports_multipart_and_boundary_touch(sample_geojson):

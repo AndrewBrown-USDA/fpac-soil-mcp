@@ -394,7 +394,8 @@ def test_criterion_2_contract_surface_for_site_and_corridor(project_type: str) -
         "evidence_status": "measured",
         "rule_reference": "7 CFR § 658.5(b)/(c)",
         "rule_version": "criterion-2-v1",
-        "source_provenance": ["TIGERweb"],
+        "source_provenance": ["USDA agricultural land-use survey"],
+        "is_agricultural": True,
         "is_verified": True,
     }
     summary = evaluate_site_assessment(
@@ -406,7 +407,7 @@ def test_criterion_2_contract_surface_for_site_and_corridor(project_type: str) -
     assert criterion.normalized_ratio == 0.9
     assert criterion.evidence_status == "measured"
     assert criterion.rule_version == "criterion-2-v1"
-    assert criterion.source_provenance == ["TIGERweb"]
+    assert criterion.source_provenance == ["USDA agricultural land-use survey"]
     assert criterion.is_verified is True
 
 
@@ -418,6 +419,7 @@ def test_criterion_2_contract_preserves_zero_unavailable_and_override() -> None:
                 "perimeter_evidence": {
                     "normalized_ratio": 0.0,
                     "evidence_status": "measured",
+                    "is_agricultural": True,
                 }
             }
         }

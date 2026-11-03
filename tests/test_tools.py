@@ -215,6 +215,14 @@ class TestFPPATools:
             mock_corridor.return_value = {
                 "composite_relative_rating": 55.0,
                 "reconciliation_summary": {"buffered_footprint_acres": 2.0},
+                "manifest": {
+                    "criterion_2_perimeter_evidence": {
+                        "normalized_ratio": 0.9,
+                        "evidence_status": "measured",
+                        "is_agricultural": True,
+                        "is_verified": True,
+                    }
+                },
             }
             geometry = LineString([(0, 0), (1, 1)])
             response = calculate_preliminary_lesa(
@@ -223,6 +231,10 @@ class TestFPPATools:
                 project_type="corridor",
             )
             assert response.project_name == "corridor"
+            criterion = next(
+                item for item in response.site_assessment.criteria if item.criterion_number == 2
+            )
+            assert criterion.normalized_ratio == 0.9
             mock_corridor.assert_called_once_with(
                 centerline=geometry,
                 buffer_distance=100.0,

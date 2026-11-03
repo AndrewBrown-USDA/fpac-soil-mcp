@@ -142,11 +142,12 @@ def calculate_preliminary_lesa(
     # Extract farm acres and criteria inputs if present
     sa_inputs = site_assessment_inputs or {}
     criteria_inputs = sa_inputs.get("criteria_inputs", sa_inputs)
-    perimeter_evidence = (
-        polygon_response.manifest.get("criterion_2_perimeter_evidence")
+    result_manifest = (
+        polygon_response.manifest
         if polygon_response is not None
-        else None
+        else corridor_result.get("manifest", {})
     )
+    perimeter_evidence = result_manifest.get("criterion_2_perimeter_evidence")
     if perimeter_evidence:
         criteria_inputs = dict(criteria_inputs) if isinstance(criteria_inputs, dict) else {}
         criterion_two = dict(criteria_inputs.get(2, criteria_inputs.get("2", {})) or {})

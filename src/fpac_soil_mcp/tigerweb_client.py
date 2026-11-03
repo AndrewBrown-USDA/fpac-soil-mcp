@@ -13,7 +13,15 @@ from typing import Any, TypedDict
 
 import httpx
 from shapely.errors import GEOSException
-from shapely.geometry import GeometryCollection, LinearRing, MultiPolygon, Point, Polygon
+from shapely.geometry import (
+    GeometryCollection,
+    LinearRing,
+    LineString,
+    MultiLineString,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
@@ -85,6 +93,18 @@ def _polygon_to_esri_rings(geom: Polygon | MultiPolygon) -> list[list[list[float
             rings.append(_normalize_ring_winding(interior, clockwise=False))
 
     return rings
+
+
+def _lineal_parts(geom: Any) -> list[LineString | MultiLineString]:
+    """Extract lineal components from a boundary intersection."""
+    if isinstance(geom, (LineString, MultiLineString)):
+        return [geom]
+    if isinstance(geom, GeometryCollection):
+        parts: list[LineString | MultiLineString] = []
+        for component in geom.geoms:
+            parts.extend(_lineal_parts(component))
+        return parts
+    return []
 
 
 def _esri_rings_to_geometry(
@@ -422,10 +442,28 @@ class TigerwebClient:
                     "error_message": f"TIGERweb MapServer error: {data['error'].get('message', 'Unknown error')}",
                 }
 
-            features = data.get("features", [])
+            features = data.get("features")
+            if not isinstance(features, list):
+                return {
+                    "normalized_ratio": None,
+                    "evidence_status": "unavailable",
+                    "rule_reference": CRITERION_2_RULE_REFERENCE,
+                    "rule_version": CRITERION_2_RULE_VERSION,
+                    "source_provenance": provenance,
+                    "is_verified": False,
+                    "geometry_hash": geom_hash,
+                    "total_perimeter_meters": total,
+                    "urban_adjacent_perimeter_meters": None,
+                    "error_message": "TIGERweb response omitted a valid features list.",
+                }
             urban_geometries = []
             for feature in features:
-                rings = feature.get("geometry", {}).get("rings", [])
+                if not isinstance(feature, dict):
+                    continue
+                feature_geometry = feature.get("geometry")
+                if not isinstance(feature_geometry, dict):
+                    continue
+                rings = feature_geometry.get("rings", [])
                 parsed = _esri_rings_to_geometry(rings)
                 if parsed is not None and not parsed.is_empty:
                     urban_geometries.append(parsed)
@@ -437,10 +475,10 @@ class TigerwebClient:
             else:
                 urban_union = unary_union(urban_geometries) if urban_geometries else None
                 adjacent_geom = geom.boundary.intersection(urban_union) if urban_union else None
-                adjacent = (
-                    calculate_geodesic_length(adjacent_geom)
-                    if adjacent_geom is not None and not adjacent_geom.is_empty
-                    else 0.0
+                adjacent = sum(
+                    calculate_geodesic_length(part)
+                    for part in _lineal_parts(adjacent_geom)
+                    if not part.is_empty
                 )
                 ratio = max(0.0, min(1.0, 1.0 - (adjacent / total)))
                 status = "measured"

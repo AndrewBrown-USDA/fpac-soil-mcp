@@ -534,6 +534,7 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
         evidence = input_data.get("perimeter_evidence")
         if not isinstance(evidence, dict):
             evidence = input_data
+        status = evidence.get("evidence_status", "not_provided")
 
         explicit_override = "awarded_points" in input_data and not isinstance(
             input_data.get("awarded_points"), dict
@@ -547,8 +548,16 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
             is_automated = bool(input_data.get("is_automated", False))
         else:
             ratio = evidence.get("normalized_ratio")
-            awarded, justification = calculate_criterion_2_score(ratio)
-            status = evidence.get("evidence_status", "unavailable")
+            has_agricultural_source = evidence.get("is_agricultural", False) is True
+            if status == "measured" and not has_agricultural_source:
+                status = "unavailable"
+                awarded = 0.0
+                justification = (
+                    "Criterion 2 requires agricultural adjacency evidence; "
+                    "non-urban screening evidence is unavailable for scoring."
+                )
+            else:
+                awarded, justification = calculate_criterion_2_score(ratio)
             if status != "measured":
                 awarded = 0.0
                 justification = evidence.get("error_message") or justification
@@ -560,11 +569,11 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
             max_points=self.max_points,
             awarded_points=awarded,
             normalized_ratio=evidence.get("normalized_ratio"),
-            evidence_status=evidence.get("evidence_status", "unavailable"),
+            evidence_status=status,
             rule_reference=evidence.get("rule_reference", CRITERION_2_RULE_REFERENCE),
             rule_version=evidence.get("rule_version", CRITERION_2_RULE_VERSION),
             source_provenance=evidence.get("source_provenance", []),
-            is_verified=bool(evidence.get("is_verified", False)),
+            is_verified=bool(evidence.get("is_verified", False)) and status == "measured",
             is_statutorily_zeroed=False,
             is_automated=is_automated,
             justification=justification,
