@@ -28,6 +28,7 @@ from fpac_soil_mcp.integration_models import (
     IntegrationStatus,
     UrbanExemptionRecord,
 )
+from fpac_soil_mcp.lesa import evaluate_site_assessment
 from fpac_soil_mcp.models import (
     CorridorCountySegment,
     CorridorFarmlandAnalysisResponse,
@@ -383,6 +384,82 @@ def test_statutory_7_cfr_658_5_c_rules_enforcement():
     assert lesa_res.total_lesa_score == 85.0 + lesa_res.site_assessment.total_sa_points
     assert lesa_res.total_lesa_score <= 260.0
     assert lesa_res.threshold_exceeded == (lesa_res.total_lesa_score >= 160.0)
+
+
+@pytest.mark.parametrize("project_type", ["site", "corridor"])
+def test_criterion_2_contract_surface_for_site_and_corridor(project_type: str) -> None:
+    """Verify Criterion 2 fields and threshold-adjacent point mapping."""
+    measured = {
+        "normalized_ratio": 0.9,
+        "evidence_status": "measured",
+        "rule_reference": "7 CFR § 658.5(b)/(c)",
+        "rule_version": "criterion-2-v1",
+        "source_provenance": ["TIGERweb"],
+        "is_verified": True,
+    }
+    summary = evaluate_site_assessment(
+        {2: {"perimeter_evidence": measured}},
+        project_type=project_type,
+    )
+    criterion = next(item for item in summary.criteria if item.criterion_number == 2)
+    assert criterion.awarded_points == 9.0
+    assert criterion.normalized_ratio == 0.9
+    assert criterion.evidence_status == "measured"
+    assert criterion.rule_version == "criterion-2-v1"
+    assert criterion.source_provenance == ["TIGERweb"]
+    assert criterion.is_verified is True
+
+
+def test_criterion_2_contract_preserves_zero_unavailable_and_override() -> None:
+    """Measured zero, unavailable evidence, and overrides remain distinct."""
+    measured_zero = evaluate_site_assessment(
+        {
+            2: {
+                "perimeter_evidence": {
+                    "normalized_ratio": 0.0,
+                    "evidence_status": "measured",
+                }
+            }
+        }
+    )
+    zero = next(item for item in measured_zero.criteria if item.criterion_number == 2)
+    assert zero.awarded_points == 0.0
+    assert zero.evidence_status == "measured"
+
+    unavailable = evaluate_site_assessment(
+        {2: {"perimeter_evidence": {"evidence_status": "unavailable"}}}
+    )
+    missing = next(item for item in unavailable.criteria if item.criterion_number == 2)
+    assert missing.awarded_points == 0.0
+    assert missing.normalized_ratio is None
+    assert missing.evidence_status == "unavailable"
+    assert missing.is_verified is False
+
+    overridden = evaluate_site_assessment(
+        {
+            2: {
+                "awarded_points": 4.0,
+                "perimeter_evidence": {
+                    "normalized_ratio": 0.0,
+                    "evidence_status": "measured",
+                },
+            }
+        }
+    )
+    override = next(item for item in overridden.criteria if item.criterion_number == 2)
+    assert override.awarded_points == 4.0
+    assert override.normalized_ratio == 0.0
+
+
+def test_criterion_2_contract_boundary_point_mapping() -> None:
+    """Verify lower/upper ratio boundaries and threshold-adjacent values."""
+    from fpac_soil_mcp.lesa import calculate_criterion_2_score
+
+    assert calculate_criterion_2_score(0.0)[0] == 0.0
+    assert calculate_criterion_2_score(0.2)[0] == 1.0
+    assert calculate_criterion_2_score(0.9)[0] == 9.0
+    assert calculate_criterion_2_score(0.9001)[0] == 10.0
+    assert calculate_criterion_2_score(1.0)[0] == 10.0
 
 
 def test_nass_graceful_fallback_contract(monkeypatch: pytest.MonkeyPatch):
