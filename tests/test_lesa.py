@@ -409,6 +409,51 @@ class TestSiteAssessmentRules:
         assert c8.awarded_points == 20.0
         assert c8.max_points == 25
 
+    def test_criterion_2_evidence_propagates_for_site_and_corridor(self) -> None:
+        evidence = {
+            "normalized_ratio": 0.9,
+            "evidence_status": "measured",
+            "rule_reference": "7 CFR § 658.5(b)/(c)",
+            "rule_version": "criterion-2-v1",
+            "source_provenance": ["TIGERweb"],
+            "is_verified": True,
+        }
+        for project_type in ("site", "corridor"):
+            summary = evaluate_site_assessment(
+                {2: {"perimeter_evidence": evidence}},
+                project_type=project_type,
+            )
+            criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+            assert criterion.awarded_points == 9.0
+            assert criterion.normalized_ratio == 0.9
+            assert criterion.evidence_status == "measured"
+            assert criterion.source_provenance == ["TIGERweb"]
+            assert criterion.is_verified is True
+
+    def test_criterion_2_unavailable_and_explicit_override(self) -> None:
+        unavailable = evaluate_site_assessment(
+            {2: {"perimeter_evidence": {"evidence_status": "unavailable"}}}
+        )
+        criterion = next(c for c in unavailable.criteria if c.criterion_number == 2)
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+
+        overridden = evaluate_site_assessment(
+            {
+                2: {
+                    "awarded_points": 4,
+                    "justification": "Documented project-specific override.",
+                    "perimeter_evidence": {
+                        "normalized_ratio": 0.0,
+                        "evidence_status": "measured",
+                    },
+                }
+            }
+        )
+        criterion = next(c for c in overridden.criteria if c.criterion_number == 2)
+        assert criterion.awarded_points == 4.0
+        assert criterion.normalized_ratio == 0.0
+
 
 class TestLESAThresholdEvaluation:
     """Test 160-point statutory threshold triggers and determinations."""

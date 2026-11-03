@@ -123,6 +123,11 @@ def analyze_corridor_fppa(
                 parsed_crit_inputs[int(k)] = v
             except (ValueError, TypeError):
                 continue
+        perimeter_evidence = corridor_response.manifest.get("criterion_2_perimeter_evidence")
+        if perimeter_evidence:
+            criterion_two = dict(parsed_crit_inputs.get(2, {}) or {})
+            criterion_two["perimeter_evidence"] = perimeter_evidence
+            parsed_crit_inputs[2] = criterion_two
 
         project_farm_acres = site_assessment_inputs.get("project_farm_acres")
         county_avg_acres = site_assessment_inputs.get("county_average_farm_acres")

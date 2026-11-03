@@ -145,6 +145,7 @@ class PolygonAnalyzer:
         # 2. Census Urban Area Pre-Screening
         urban_rec = self.tigerweb_client.check_urban_exemption(geom)
         urban_dict = urban_rec.model_dump(mode="json")
+        perimeter_evidence = self.tigerweb_client.get_perimeter_evidence(geom)
 
         # 3. SDA Spatial Intersection Query with Exact Clipping
         raw_units: list[dict[str, Any]] = []
@@ -432,6 +433,7 @@ class PolygonAnalyzer:
             "county_max_rating": county_max,
             "candidate_le_score": le_summary.candidate_le_score,
             "urban_screening_layer": "Census 2020 Urban Areas Layer 0",
+            "criterion_2_perimeter_evidence": perimeter_evidence,
             "statutory_authority": "Farmland Protection Policy Act (7 U.S.C. 4201 et seq., 7 CFR Part 658)",
             "land_evaluation": le_summary.model_dump(mode="json"),
         }

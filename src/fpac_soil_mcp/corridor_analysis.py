@@ -203,6 +203,7 @@ class CorridorAnalyzer:
                 distance_unit=buffer_units,
             )
             direct_acres = calculate_acreage(direct_poly)
+            perimeter_evidence = self.tigerweb_client.get_perimeter_evidence(direct_poly)
         except (GeometryValidationError, ValueError) as exc:
             logger.error("Centerline buffering failed: %s", exc)
             return CorridorFarmlandAnalysisResponse(
@@ -903,6 +904,7 @@ class CorridorAnalyzer:
             "county_partitions_count": len(county_segment_models),
             "reconciliation": reconciliation_summary,
             "alternatives_count": len(alternative_comparisons),
+            "criterion_2_perimeter_evidence": perimeter_evidence,
             "generated_at_utc": timestamp_str,
         }
 
