@@ -547,7 +547,9 @@
       "expected_keywords": [
         "AD-1006",
         "land evaluation",
-        "threshold"
+        "threshold",
+        "alternative",
+        "non-farmland"
       ],
       "sample_geometry": {
         "type": "Polygon",

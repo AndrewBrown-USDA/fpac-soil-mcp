@@ -9,11 +9,19 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypedDict
 
 import httpx
 from shapely.errors import GEOSException
-from shapely.geometry import GeometryCollection, LinearRing, MultiPolygon, Point, Polygon
+from shapely.geometry import (
+    GeometryCollection,
+    LinearRing,
+    LineString,
+    MultiLineString,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
@@ -22,6 +30,7 @@ from fpac_soil_mcp.config import settings
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     calculate_acreage,
+    calculate_geodesic_length,
     compute_geometry_hash,
     parse_geojson_geometry,
 )
@@ -84,6 +93,18 @@ def _polygon_to_esri_rings(geom: Polygon | MultiPolygon) -> list[list[list[float
             rings.append(_normalize_ring_winding(interior, clockwise=False))
 
     return rings
+
+
+def _lineal_parts(geom: Any) -> list[LineString | MultiLineString]:
+    """Extract lineal components from a boundary intersection."""
+    if isinstance(geom, (LineString, MultiLineString)):
+        return [geom]
+    if isinstance(geom, GeometryCollection):
+        parts: list[LineString | MultiLineString] = []
+        for component in geom.geoms:
+            parts.extend(_lineal_parts(component))
+        return parts
+    return []
 
 
 def _esri_rings_to_geometry(
@@ -212,6 +233,21 @@ def _polygonal_parts(geometry: Any) -> list[Polygon]:
 
 class TigerwebClientError(Exception):
     """Base exception for Census TIGERweb client errors."""
+
+
+class PerimeterEvidence(TypedDict):
+    """Preliminary Criterion 2 perimeter evidence from TIGERweb."""
+
+    normalized_ratio: float | None
+    evidence_status: str
+    rule_reference: str
+    rule_version: str
+    source_provenance: list[str]
+    is_verified: bool
+    geometry_hash: str
+    total_perimeter_meters: float | None
+    urban_adjacent_perimeter_meters: float | None
+    error_message: str | None
 
 
 class TigerwebClient:
@@ -355,6 +391,131 @@ class TigerwebClient:
                 provenance=provenance,
                 error_message=f"Urban screening failed: {exc}",
             )
+
+    def get_perimeter_evidence(
+        self,
+        geometry_input: dict[str, Any] | str | Polygon | MultiPolygon,
+    ) -> PerimeterEvidence:
+        """Return preliminary non-urban perimeter evidence for Criterion 2."""
+        from fpac_soil_mcp.constants import CRITERION_2_RULE_REFERENCE, CRITERION_2_RULE_VERSION
+
+        provenance = [f"US Census Bureau TIGERweb 2020 Urban Areas MapServer: {self.base_url}"]
+        fallback_hash = "sha256:" + "0" * 64
+        try:
+            if isinstance(geometry_input, (Polygon, MultiPolygon)):
+                geom = geometry_input
+            else:
+                geom = parse_geojson_geometry(geometry_input)
+            geom_hash = compute_geometry_hash(geom)
+            total = calculate_geodesic_length(geom.boundary)
+            if total <= 0.0:
+                raise GeometryValidationError("Geometry perimeter must be positive.")
+
+            params = {
+                "geometry": json.dumps({"rings": _polygon_to_esri_rings(geom)}),
+                "geometryType": "esriGeometryPolygon",
+                "inSR": "4326",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "GEOID,NAME,BASENAME",
+                "returnGeometry": "true",
+                "outSR": "4326",
+                "f": "json",
+            }
+            query_url = (
+                f"{self.base_url}/query" if not self.base_url.endswith("/query") else self.base_url
+            )
+            resp = execute_http_request_with_retry(
+                "POST", query_url, data=params, timeout=self.timeout, client=self._http_client
+            )
+            data = resp.json()
+            if "error" in data:
+                return {
+                    "normalized_ratio": None,
+                    "evidence_status": "error",
+                    "rule_reference": CRITERION_2_RULE_REFERENCE,
+                    "rule_version": CRITERION_2_RULE_VERSION,
+                    "source_provenance": provenance,
+                    "is_verified": False,
+                    "geometry_hash": geom_hash,
+                    "total_perimeter_meters": total,
+                    "urban_adjacent_perimeter_meters": None,
+                    "error_message": f"TIGERweb MapServer error: {data['error'].get('message', 'Unknown error')}",
+                }
+
+            features = data.get("features")
+            if not isinstance(features, list):
+                return {
+                    "normalized_ratio": None,
+                    "evidence_status": "unavailable",
+                    "rule_reference": CRITERION_2_RULE_REFERENCE,
+                    "rule_version": CRITERION_2_RULE_VERSION,
+                    "source_provenance": provenance,
+                    "is_verified": False,
+                    "geometry_hash": geom_hash,
+                    "total_perimeter_meters": total,
+                    "urban_adjacent_perimeter_meters": None,
+                    "error_message": "TIGERweb response omitted a valid features list.",
+                }
+            urban_geometries = []
+            for feature in features:
+                if not isinstance(feature, dict):
+                    continue
+                feature_geometry = feature.get("geometry")
+                if not isinstance(feature_geometry, dict):
+                    continue
+                rings = feature_geometry.get("rings", [])
+                parsed = _esri_rings_to_geometry(rings)
+                if parsed is not None and not parsed.is_empty:
+                    urban_geometries.append(parsed)
+            if features and not urban_geometries:
+                status = "unavailable"
+                error = "TIGERweb returned intersecting features without usable geometry."
+                ratio = None
+                adjacent = None
+            else:
+                urban_union = unary_union(urban_geometries) if urban_geometries else None
+                adjacent_geom = geom.boundary.intersection(urban_union) if urban_union else None
+                adjacent = sum(
+                    calculate_geodesic_length(part)
+                    for part in _lineal_parts(adjacent_geom)
+                    if not part.is_empty
+                )
+                ratio = max(0.0, min(1.0, 1.0 - (adjacent / total)))
+                status = "measured"
+                error = None
+            return {
+                "normalized_ratio": ratio,
+                "evidence_status": status,
+                "rule_reference": CRITERION_2_RULE_REFERENCE,
+                "rule_version": CRITERION_2_RULE_VERSION,
+                "source_provenance": provenance,
+                "is_verified": status == "measured",
+                "geometry_hash": geom_hash,
+                "total_perimeter_meters": total,
+                "urban_adjacent_perimeter_meters": adjacent,
+                "error_message": error,
+            }
+        except (
+            HttpRequestError,
+            HttpStatusError,
+            GeometryValidationError,
+            ValueError,
+            KeyError,
+        ) as exc:
+            return {
+                "normalized_ratio": None,
+                "evidence_status": "error",
+                "rule_reference": CRITERION_2_RULE_REFERENCE,
+                "rule_version": CRITERION_2_RULE_VERSION,
+                "source_provenance": provenance,
+                "is_verified": False,
+                "geometry_hash": compute_geometry_hash(geometry_input)
+                if isinstance(geometry_input, (Polygon, MultiPolygon))
+                else fallback_hash,
+                "total_perimeter_meters": None,
+                "urban_adjacent_perimeter_meters": None,
+                "error_message": f"Perimeter evidence failed: {exc}",
+            }
 
     def get_intersecting_counties(
         self,

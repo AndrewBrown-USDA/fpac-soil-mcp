@@ -110,6 +110,38 @@ def test_analyze_polygon_success():
     assert res.geometry_hash.startswith("sha256:")
     assert res.urban_screening.get("status") == "success"
     assert res.manifest["spatial_clipping_engine"] == "USDA NRCS SDA STIntersection / STArea"
+    assert res.manifest["criterion_2_perimeter_evidence"]["evidence_status"] == "measured"
+    assert res.manifest["criterion_2_perimeter_evidence"]["is_verified"] is True
+
+
+@pytest.mark.parametrize(
+    ("evidence_status", "is_verified"),
+    [("measured", True), ("unavailable", False), ("error", False)],
+)
+def test_analyze_polygon_preserves_perimeter_evidence_status(evidence_status, is_verified):
+    spatial = {
+        "Table": [
+            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
+            ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", 10.0],
+        ]
+    }
+    sda = SDAClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda req: httpx.Response(200, json=spatial))
+        )
+    )
+    analyzer = _analyzer(sda)
+    analyzer.tigerweb_client.get_perimeter_evidence = lambda geometry: {
+        "evidence_status": evidence_status,
+        "is_verified": is_verified,
+        "normalized_ratio": 1.0 if evidence_status == "measured" else None,
+    }
+
+    result = analyzer.analyze_polygon(GEOJSON, include_nccpi=False)
+
+    evidence = result.manifest["criterion_2_perimeter_evidence"]
+    assert evidence["evidence_status"] == evidence_status
+    assert evidence["is_verified"] is is_verified
 
 
 def test_analyze_polygon_include_nccpi_false_skips_rating_query():

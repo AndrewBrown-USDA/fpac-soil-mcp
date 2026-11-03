@@ -358,6 +358,38 @@ class TestSiteAssessmentRules:
         assert sum(e.max_points for e in site_evals.values()) == 160
         assert sum(e.max_points for e in corridor_evals.values()) == 160
 
+    def test_criterion_2_verified_mapping_and_bounds(self) -> None:
+        from fpac_soil_mcp.lesa import calculate_criterion_2_score
+
+        assert calculate_criterion_2_score(0.0)[0] == 0.0
+        assert calculate_criterion_2_score(0.2)[0] == 1.0
+        assert calculate_criterion_2_score(0.9)[0] == 9.0
+        assert calculate_criterion_2_score(0.9001)[0] == 10.0
+        assert calculate_criterion_2_score(None)[0] == 0.0
+        with pytest.raises(ValueError, match="between 0.0 and 1.0"):
+            calculate_criterion_2_score(1.01)
+
+    def test_criterion_2_evidence_fields_serialize(self) -> None:
+        from fpac_soil_mcp.constants import CRITERION_2_RULE_REFERENCE, CRITERION_2_RULE_VERSION
+        from fpac_soil_mcp.models import SiteAssessmentCriterion
+
+        criterion = SiteAssessmentCriterion(
+            criterion_number=2,
+            name="Perimeter",
+            max_points=10,
+            awarded_points=9,
+            normalized_ratio=0.9,
+            evidence_status="measured",
+            rule_reference=CRITERION_2_RULE_REFERENCE,
+            rule_version=CRITERION_2_RULE_VERSION,
+            source_provenance=["TIGERweb Layer 6"],
+            is_verified=True,
+        )
+        data = criterion.model_dump()
+        assert data["normalized_ratio"] == 0.9
+        assert data["evidence_status"] == "measured"
+        assert data["is_verified"] is True
+
     def test_corridor_zeroed_criteria_evaluation(self) -> None:
         # Attempting to assign points to criteria 5 or 6 in a corridor project must be clamped to 0
         inputs = {
@@ -376,6 +408,97 @@ class TestSiteAssessmentRules:
         assert c6.is_statutorily_zeroed is True
         assert c8.awarded_points == 20.0
         assert c8.max_points == 25
+
+    def test_criterion_2_evidence_propagates_for_site_and_corridor(self) -> None:
+        evidence = {
+            "normalized_ratio": 0.9,
+            "evidence_status": "measured",
+            "rule_reference": "7 CFR § 658.5(b)/(c)",
+            "rule_version": "criterion-2-v1",
+            "source_provenance": ["USDA agricultural land-use survey"],
+            "is_agricultural": True,
+            "is_verified": True,
+        }
+        for project_type in ("site", "corridor"):
+            summary = evaluate_site_assessment(
+                {2: {"perimeter_evidence": evidence}},
+                project_type=project_type,
+            )
+            criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+            assert criterion.awarded_points == 9.0
+            assert criterion.normalized_ratio == 0.9
+            assert criterion.evidence_status == "measured"
+            assert criterion.source_provenance == ["USDA agricultural land-use survey"]
+            assert criterion.is_verified is True
+
+    def test_criterion_2_unavailable_and_explicit_override(self) -> None:
+        unavailable = evaluate_site_assessment(
+            {2: {"perimeter_evidence": {"evidence_status": "unavailable"}}}
+        )
+        criterion = next(c for c in unavailable.criteria if c.criterion_number == 2)
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+
+        overridden = evaluate_site_assessment(
+            {
+                2: {
+                    "awarded_points": 4,
+                    "justification": "Documented project-specific override.",
+                    "perimeter_evidence": {
+                        "normalized_ratio": 0.0,
+                        "evidence_status": "measured",
+                    },
+                }
+            }
+        )
+        criterion = next(c for c in overridden.criteria if c.criterion_number == 2)
+        assert criterion.awarded_points == 4.0
+
+    def test_criterion_2_non_urban_screening_is_not_agricultural_evidence(self) -> None:
+        summary = evaluate_site_assessment(
+            {
+                2: {
+                    "perimeter_evidence": {
+                        "normalized_ratio": 0.9,
+                        "evidence_status": "measured",
+                        "is_verified": True,
+                        "source_provenance": ["US Census Bureau TIGERweb"],
+                    }
+                }
+            }
+        )
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+        assert criterion.is_verified is False
+
+    def test_criterion_2_unverified_agricultural_evidence_is_not_scored(self) -> None:
+        summary = evaluate_site_assessment(
+            {
+                2: {
+                    "perimeter_evidence": {
+                        "normalized_ratio": 0.9,
+                        "evidence_status": "measured",
+                        "is_agricultural": True,
+                        "is_verified": False,
+                    }
+                }
+            }
+        )
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+        assert criterion.is_verified is False
+
+    def test_criterion_2_omitted_evidence_is_not_provided(self) -> None:
+        summary = evaluate_site_assessment({2: {}})
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.evidence_status == "not_provided"
+        assert criterion.awarded_points == 0.0
+        assert criterion.normalized_ratio is None
 
 
 class TestLESAThresholdEvaluation:

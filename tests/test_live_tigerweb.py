@@ -85,3 +85,32 @@ class TestLiveTigerweb:
         assert res.status == IntegrationStatus.SUCCESS
         assert res.is_urban_intersected is False
         assert len(res.urban_area_names) == 0
+
+    def test_live_perimeter_evidence_rural(self) -> None:
+        """Measure Criterion 2 perimeter evidence for a known rural footprint."""
+        client = TigerwebClient()
+        geom = {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-94.200, 42.100],
+                    [-94.190, 42.100],
+                    [-94.190, 42.110],
+                    [-94.200, 42.110],
+                    [-94.200, 42.100],
+                ]
+            ],
+        }
+        try:
+            res = client.get_perimeter_evidence(geom)
+        except httpx.HTTPError as exc:
+            pytest.skip(f"Live TIGERweb endpoint unavailable or timed out: {exc}")
+
+        if res["evidence_status"] in {"error", "unavailable"}:
+            pytest.skip(f"Live TIGERweb returned error: {res['error_message']}")
+
+        assert res["evidence_status"] == "measured"
+        assert 0.0 <= res["normalized_ratio"] <= 1.0
+        assert res["is_verified"] is True
+        assert res["source_provenance"]
+        assert res["geometry_hash"].startswith("sha256:")

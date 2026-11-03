@@ -20,6 +20,10 @@ from typing import Any, Literal, overload
 from fpac_soil_mcp.constants import (
     CORRIDOR_CRITERIA_MAX_POINTS,
     CORRIDOR_CRITERIA_NAMES,
+    CRITERION_2_HIGH_RATIO,
+    CRITERION_2_LOW_RATIO,
+    CRITERION_2_RULE_REFERENCE,
+    CRITERION_2_RULE_VERSION,
     LESA_ACTION_AVOID_MINIMIZE_CONVERSION,
     LESA_ACTION_REDUCE_FOOTPRINT,
     LESA_THRESHOLD_SCORE,
@@ -503,6 +507,80 @@ class ZeroedCriterionStrategy(BaseCriterionEvaluator):
         )
 
 
+def calculate_criterion_2_score(normalized_ratio: float | None) -> tuple[float, str]:
+    """Map a measured non-urban perimeter ratio to Criterion 2 points."""
+    if normalized_ratio is None:
+        return 0.0, "Criterion 2 evidence is unavailable; no points awarded."
+    if not 0.0 <= normalized_ratio <= 1.0:
+        raise ValueError(f"normalized_ratio must be between 0.0 and 1.0, got {normalized_ratio}")
+    if normalized_ratio < CRITERION_2_LOW_RATIO:
+        return 0.0, "Less than 20% of the perimeter borders non-urban land: 0 points."
+    if normalized_ratio > CRITERION_2_HIGH_RATIO:
+        return 10.0, "More than 90% of the perimeter borders non-urban land: 10 points."
+    points = round(1.0 + ((normalized_ratio - 0.2) / 0.7) * 8.0)
+    return float(max(1, min(9, points))), "Intermediate 20%-90% perimeter band: 1-9 points."
+
+
+class PerimeterCriterionStrategy(BaseCriterionEvaluator):
+    """Evaluator for Criterion 2 using TIGERweb perimeter evidence."""
+
+    def evaluate(
+        self,
+        crit_input: dict[str, Any] | None = None,
+        project_farm_acres: float | None = None,
+        county_average_farm_acres: float | None = None,
+    ) -> SiteAssessmentCriterion:
+        input_data = crit_input or {}
+        evidence = input_data.get("perimeter_evidence")
+        if not isinstance(evidence, dict):
+            evidence = input_data
+        status = evidence.get("evidence_status", "not_provided")
+
+        explicit_override = "awarded_points" in input_data and not isinstance(
+            input_data.get("awarded_points"), dict
+        )
+        if explicit_override:
+            try:
+                awarded = max(0.0, min(float(self.max_points), float(input_data["awarded_points"])))
+            except (TypeError, ValueError):
+                awarded = 0.0
+            justification = input_data.get("justification", "")
+            is_automated = bool(input_data.get("is_automated", False))
+        else:
+            ratio = evidence.get("normalized_ratio")
+            has_agricultural_source = evidence.get("is_agricultural", False) is True
+            is_verified = evidence.get("is_verified", False) is True
+            if status == "measured" and (not has_agricultural_source or not is_verified):
+                status = "unavailable"
+                awarded = 0.0
+                justification = (
+                    "Criterion 2 requires verified agricultural adjacency evidence; "
+                    "unverified or non-agricultural screening evidence is unavailable for scoring."
+                )
+            else:
+                awarded, justification = calculate_criterion_2_score(ratio)
+            if status != "measured":
+                awarded = 0.0
+                justification = evidence.get("error_message") or justification
+            is_automated = status == "measured"
+
+        return SiteAssessmentCriterion(
+            criterion_number=self.criterion_number,
+            name=self.name,
+            max_points=self.max_points,
+            awarded_points=awarded,
+            normalized_ratio=evidence.get("normalized_ratio"),
+            evidence_status=status,
+            rule_reference=evidence.get("rule_reference", CRITERION_2_RULE_REFERENCE),
+            rule_version=evidence.get("rule_version", CRITERION_2_RULE_VERSION),
+            source_provenance=evidence.get("source_provenance", []),
+            is_verified=bool(evidence.get("is_verified", False)) and status == "measured",
+            is_statutorily_zeroed=False,
+            is_automated=is_automated,
+            justification=justification,
+        )
+
+
 class FarmSizeCriterionStrategy(BaseCriterionEvaluator):
     """Evaluator for Criterion 7 (farm size compared to county average)."""
 
@@ -592,6 +670,8 @@ def get_criterion_evaluators(
 
         if is_corridor and crit_num in (5, 6):
             evaluators[crit_num] = ZeroedCriterionStrategy(crit_num, limit, name)
+        elif crit_num == 2:
+            evaluators[crit_num] = PerimeterCriterionStrategy(crit_num, limit, name)
         elif crit_num == 7:
             evaluators[crit_num] = FarmSizeCriterionStrategy(crit_num, limit, name)
         else:

@@ -258,6 +258,18 @@ def calculate_acreage(geom: Polygon | MultiPolygon) -> float:
     return round(acres, 2)
 
 
+def calculate_geodesic_length(geom: LineString | MultiLineString) -> float:
+    """Calculate geodesic perimeter length in meters for line geometry."""
+    if geom.is_empty:
+        return 0.0
+    lines = [geom] if isinstance(geom, LineString) else list(geom.geoms)
+    total_meters = 0.0
+    for line in lines:
+        lons, lats = line.coords.xy
+        total_meters += _GEOD.line_length(lons, lats)
+    return total_meters
+
+
 def geometry_to_wkt(geom: Polygon | MultiPolygon) -> str:
     """Convert a Shapely Polygon or MultiPolygon to a validated WKT string.
 

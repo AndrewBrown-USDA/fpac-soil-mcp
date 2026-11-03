@@ -5,12 +5,20 @@ from urllib.parse import parse_qs
 
 import httpx
 import pytest
-from shapely.geometry import GeometryCollection, LinearRing, LineString, MultiPolygon, Polygon
+from shapely.geometry import (
+    GeometryCollection,
+    LinearRing,
+    LineString,
+    MultiPolygon,
+    Point,
+    Polygon,
+)
 
 from fpac_soil_mcp.integration_models import CountyPartitionGeometry, IntegrationStatus
 from fpac_soil_mcp.tigerweb_client import (
     TigerwebClient,
     _esri_rings_to_geometry,
+    _lineal_parts,
     _normalize_ring_winding,
     _polygon_to_esri_rings,
     _polygonal_parts,
@@ -202,6 +210,250 @@ def test_tigerweb_non_intersected_rural(sample_geojson):
     assert record.is_urban_intersected is False
     assert record.urban_area_names == []
     assert record.screened_acreage == 0.0
+
+
+def test_tigerweb_perimeter_evidence_measures_non_urban_share(sample_geojson):
+    response = {
+        "features": [
+            {
+                "attributes": {"NAME": "Urban"},
+                "geometry": {
+                    "rings": [
+                        [
+                            [-86.155, 39.76],
+                            [-86.15, 39.76],
+                            [-86.15, 39.77],
+                            [-86.155, 39.77],
+                            [-86.155, 39.76],
+                        ]
+                    ]
+                },
+            }
+        ]
+    }
+
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "measured"
+    assert 0.0 <= evidence["normalized_ratio"] <= 1.0
+    assert evidence["is_verified"] is True
+    assert evidence["rule_reference"]
+
+
+def test_tigerweb_perimeter_evidence_rejects_missing_features(sample_geojson):
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json={}))
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "unavailable"
+    assert evidence["is_verified"] is False
+    assert "features list" in evidence["error_message"]
+
+
+def test_tigerweb_perimeter_evidence_handles_null_geometry(sample_geojson):
+    response = {"features": [{"geometry": None}]}
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "unavailable"
+    assert evidence["is_verified"] is False
+
+
+def test_lineal_parts_ignores_point_only_contacts():
+    parts = _lineal_parts(GeometryCollection([Point(0, 0)]))
+
+    assert parts == []
+
+
+def test_lineal_parts_keeps_lines_and_ignores_points_in_mixed_contact():
+    line = LineString([(0, 0), (1, 0)])
+
+    parts = _lineal_parts(GeometryCollection([Point(0, 0), line]))
+
+    assert parts == [line]
+
+
+def test_tigerweb_perimeter_evidence_counts_shared_boundary_contact(sample_geojson):
+    response = {
+        "features": [
+            {
+                "geometry": {
+                    "rings": [
+                        [
+                            [-86.17, 39.76],
+                            [-86.16, 39.76],
+                            [-86.16, 39.77],
+                            [-86.17, 39.77],
+                            [-86.17, 39.76],
+                        ]
+                    ]
+                }
+            }
+        ]
+    }
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "measured"
+    assert evidence["urban_adjacent_perimeter_meters"] > 0.0
+    assert evidence["normalized_ratio"] < 1.0
+
+
+def test_tigerweb_perimeter_evidence_supports_multipart_and_boundary_touch(sample_geojson):
+    response = {
+        "features": [
+            {
+                "geometry": {
+                    "rings": [
+                        [
+                            [-86.16, 39.76],
+                            [-86.155, 39.76],
+                            [-86.155, 39.765],
+                            [-86.16, 39.765],
+                            [-86.16, 39.76],
+                        ],
+                        [
+                            [-86.15, 39.77],
+                            [-86.145, 39.77],
+                            [-86.145, 39.775],
+                            [-86.15, 39.775],
+                            [-86.15, 39.77],
+                        ],
+                    ]
+                }
+            }
+        ]
+    }
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+        )
+    )
+    evidence = client.get_perimeter_evidence(sample_geojson)
+    assert evidence["evidence_status"] == "measured"
+    assert 0.0 < evidence["normalized_ratio"] < 1.0
+
+
+def test_tigerweb_perimeter_evidence_distinguishes_unavailable_and_upstream_error(sample_geojson):
+    unavailable = {"features": [{"attributes": {"NAME": "Urban"}, "geometry": {}}]}
+    unavailable_client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=unavailable))
+        )
+    )
+    unavailable_result = unavailable_client.get_perimeter_evidence(sample_geojson)
+    assert unavailable_result["evidence_status"] == "unavailable"
+    assert unavailable_result["normalized_ratio"] is None
+
+    error_http_client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(200, json={"error": {"message": "service unavailable"}})
+        )
+    )
+    error_result = TigerwebClient(http_client=error_http_client).get_perimeter_evidence(
+        sample_geojson
+    )
+    assert error_result["evidence_status"] == "error"
+    assert error_result["normalized_ratio"] is None
+
+
+def test_tigerweb_perimeter_evidence_empty_response_is_measured_zero_adjacency(sample_geojson):
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"features": []}))
+        )
+    )
+    evidence = client.get_perimeter_evidence(sample_geojson)
+    assert evidence["evidence_status"] == "measured"
+    assert evidence["normalized_ratio"] == pytest.approx(1.0)
+    assert evidence["urban_adjacent_perimeter_meters"] == 0.0
+
+
+def test_tigerweb_perimeter_evidence_http_failure_is_explicit_error(sample_geojson):
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(503, request=request, text="unavailable")
+            )
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "error"
+    assert evidence["normalized_ratio"] is None
+    assert evidence["is_verified"] is False
+    assert "HTTP 503" in evidence["error_message"]
+
+
+def test_tigerweb_perimeter_evidence_request_exception_is_explicit_error(
+    sample_geojson, monkeypatch
+):
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    monkeypatch.setattr("fpac_soil_mcp.http_client.sleep", lambda _: None)
+    client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+    evidence = client.get_perimeter_evidence(sample_geojson)
+
+    assert evidence["evidence_status"] == "error"
+    assert evidence["normalized_ratio"] is None
+    assert evidence["is_verified"] is False
+    assert "HTTP request failed" in evidence["error_message"]
+
+
+def test_tigerweb_perimeter_evidence_invalid_input_is_explicit_error():
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"features": []})
+            )
+        )
+    )
+
+    evidence = client.get_perimeter_evidence({"type": "Point", "coordinates": [1, 2]})
+
+    assert evidence["evidence_status"] == "error"
+    assert evidence["normalized_ratio"] is None
+    assert evidence["is_verified"] is False
+    assert "Perimeter evidence failed" in evidence["error_message"]
+
+
+def test_tigerweb_perimeter_evidence_zero_perimeter_is_explicit_error():
+    client = TigerwebClient(
+        http_client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"features": []})
+            )
+        )
+    )
+
+    evidence = client.get_perimeter_evidence(Polygon())
+
+    assert evidence["evidence_status"] == "error"
+    assert evidence["normalized_ratio"] is None
+    assert evidence["is_verified"] is False
+    assert "perimeter must be positive" in evidence["error_message"].lower()
 
 
 def test_tigerweb_point_geometry_success():
