@@ -1017,7 +1017,11 @@ def _corridor_map(
             legend=single_legend(layer_id, title, color, pattern),
         )
 
-    layers = [footprint("corridor_direct", "Direct corridor footprint", direct_poly, CORRIDOR_DIRECT_COLOR)]
+    layers = [
+        footprint(
+            "corridor_direct", "Direct corridor footprint", direct_poly, CORRIDOR_DIRECT_COLOR
+        )
+    ]
     if indirect_poly is not None and not indirect_poly.is_empty:
         layers.append(
             footprint(
@@ -1089,4 +1093,3 @@ def _corridor_map(
         )
     )
     return build_map_block(layers, map_settings.map_max_geojson_bytes)
-

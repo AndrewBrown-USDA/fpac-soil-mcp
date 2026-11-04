@@ -123,7 +123,9 @@ def _clients(urban_names=(f"{MARKER} Urban",)):
 
 def _run(include_map: bool, *, alternatives=None, indirect=None, urban_names=None):
     sda, tiger, nass = _clients() if urban_names is None else _clients(urban_names)
-    result = CorridorAnalyzer(sda_client=sda, tigerweb_client=tiger, nass_client=nass).analyze_corridor(
+    result = CorridorAnalyzer(
+        sda_client=sda, tigerweb_client=tiger, nass_client=nass
+    ).analyze_corridor(
         centerline_input=CENTERLINE,
         buffer_distance=50.0,
         buffer_units="meters",
@@ -203,7 +205,10 @@ def test_inline_layers_when_requested():
 
     indirect = layers["corridor_indirect"]
     assert indirect.feature_count == 1
-    assert shape(indirect.feature_collection["features"][0]["geometry"]).intersection(direct).area < 1e-12
+    assert (
+        shape(indirect.feature_collection["features"][0]["geometry"]).intersection(direct).area
+        < 1e-12
+    )
 
     alt = layers["corridor_alternative_b_2"]
     assert alt.title == "Alternative B-2 footprint"
@@ -217,8 +222,18 @@ def test_inline_layers_when_requested():
     counties = layers["county_segments"]
     props = [f["properties"] for f in counties.feature_collection["features"]]
     assert props == [
-        {"county_name": f"{MARKER} West", "geoid": "99001", "state_fips": "99", "county_fips": "001"},
-        {"county_name": f"{MARKER} East", "geoid": "99003", "state_fips": "99", "county_fips": "003"},
+        {
+            "county_name": f"{MARKER} West",
+            "geoid": "99001",
+            "state_fips": "99",
+            "county_fips": "001",
+        },
+        {
+            "county_name": f"{MARKER} East",
+            "geoid": "99003",
+            "state_fips": "99",
+            "county_fips": "003",
+        },
     ]
 
     urban = layers["urban_context"]
@@ -256,9 +271,9 @@ def test_size_cap_drops_context_layers_first(monkeypatch):
 
 def test_centerline_error_returns_descriptor_map():
     sda, tiger, nass = _clients()
-    result = CorridorAnalyzer(sda_client=sda, tigerweb_client=tiger, nass_client=nass).analyze_corridor(
-        centerline_input="LINESTRING(0 0)", buffer_distance=50.0, include_map=True
-    )
+    result = CorridorAnalyzer(
+        sda_client=sda, tigerweb_client=tiger, nass_client=nass
+    ).analyze_corridor(centerline_input="LINESTRING(0 0)", buffer_distance=50.0, include_map=True)
     assert result.reconciliation_summary["status"] == "error"
     assert [layer.id for layer in result.map.layers] == [
         "corridor_direct",
