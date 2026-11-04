@@ -20,8 +20,8 @@
 | Wave | Executor | Task | Status |
 |---|---|---|---|
 | 1 | Genie Code | 44.1.1 | done |
-| 1 | User + Genie Code | 44.1.2 | waiting for user browser check |
-| 1 | gate | root check, app-check | passed on 09f42e6 (626 passed / 3 skipped; app 135); 44.1.2 browser result pending |
+| 1 | User + Genie Code | 44.1.2 | done |
+| 1 | gate | root check, app-check | passed on 09f42e6 (626 passed / 3 skipped; app 135); wave 1 done |
 | 2 | Genie Code | 44.2.1 | pending |
 | 2 | Genie Code | 44.2.2 | pending |
 | 2 | gate | root check, app-check, test-live | pending |
@@ -62,7 +62,7 @@
 
 ## 44.1.2
 
-- **Status:** part 1-2 done (serverless metadata and requests with the app `Origin`); part 3 waiting for the user's browser-console run from the deployed app.
+- **Status:** done. Parts 1-2 by Genie Code; part 3 browser-console run from the deployed app by the user 2026-11-04: all 4 rows ok (GetMap image loads untainted, GetFeatureInfo 270 B, counties 43 KB, urban 232 KB). Outcome pass: D5 option A holds, no proxy. URL templates for `overlays.ts` are in the evidence file.
 - **Files:** `planning/evidence/44.1.2-overlays.md` (new).
 - **Findings so far:** all four requests succeed with CORS for the app origin (SSURGO `*`; TIGERweb echoes the origin). SSURGO GetFeatureInfo supports only `text/plain`/`text/html`/`gml2` and returns `mukey`/`musym`, not farmland class. Sample urban area 5694 vertices (over the 2000 cap); sample county 1050.
 - **Gotchas:** TIGERweb CORS needs simple GETs (preflight gets no CORS headers). Browser CSP of the app is not covered by the server-side probe; the browser run checks it.
