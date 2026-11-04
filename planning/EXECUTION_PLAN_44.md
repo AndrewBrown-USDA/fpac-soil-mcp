@@ -60,6 +60,8 @@
 
 10. **A1, 2026-11-04, amendment (user direction):** both analyzers always call `check_urban_exemption_with_geometries` (with and without `include_map`) instead of branching to the old method; existing tests are amended or added rather than kept on `check_urban_exemption` mocks. `check_urban_exemption` stays for `exemption_tools.py` and the live tests. Polygon tests use a real `TigerwebClient` over `httpx.MockTransport`, so 44.3.1 needs no scope change; corridor tests use `MagicMock(spec=TigerwebClient)`, so 44.3.2 also edits the urban mocks in `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py`.
 
+11. **A2, 2026-11-04, amendment (user direction):** the 44.4.1 contract test file is `tests/test_map_tool_contracts.py`, not `tests/test_phase8_contracts.py` (name says what it covers). 44.4.1 also adds `map_simplify_tolerance_m` and `map_max_geojson_bytes` to the README configuration reference, since 44.2.1 added them without docs. The tool layer always passes `include_map` to the analyzers; existing call assertions in `tests/test_tools.py` are amended.
+
 ## Wave & Dependency Table
 
 Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `apps/agent-fpac-soil-openai-sdk/`; `src/` and root `tests/` are the MCP server.
@@ -72,7 +74,7 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 2 | Genie Code | 44.2.2 | TIGERweb urban geometries on request | `src/fpac_soil_mcp/tigerweb_client.py`, root `tests/test_tigerweb_client.py` | none |
 | 3 | Genie Code | 44.3.1 | Polygon analyzer map layers | `src/fpac_soil_mcp/polygon_analysis.py`, root `tests/test_polygon_map.py` (new) | 44.2.1, 44.2.2 |
 | 3 | Genie Code | 44.3.2 | Corridor analyzer map layers | `src/fpac_soil_mcp/corridor_analysis.py`, root `tests/test_corridor_map.py` (new), root `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py` (urban mocks only, amendment A1) | 44.2.1, 44.2.2 |
-| 4 | Genie Code | 44.4.1 | Tool parameters, MCP contract tests, tool docs | `src/fpac_soil_mcp/tools/spatial_analysis_tools.py`, root `tests/test_tools.py`, root `tests/test_phase8_contracts.py` (new), root `README.md` (`## Tool Reference`, L260) | 44.3.1, 44.3.2 |
+| 4 | Genie Code | 44.4.1 | Tool parameters, MCP contract tests, tool docs | `src/fpac_soil_mcp/tools/spatial_analysis_tools.py`, root `tests/test_tools.py`, root `tests/test_map_tool_contracts.py` (new), root `README.md` (`## Tool Reference`, L260, and the two map settings in `## Configuration Reference`, A2) | 44.3.1, 44.3.2 |
 | 5 | Genie Code | 44.5.1 | App routes: screening from `map`, `/api/geo/map` | `agent_server/geo.py`, `agent_server/start_server.py`, app `tests/test_geo_screen.py`, app `tests/test_geo_map.py` (new) | 44.4.1 |
 | 5 | User + Genie Code | 44.5.2 | Dev MCP server and trial wiring | app `app.yaml`, app `databricks.yml`, app `tests/test_deploy_config.py`, `planning/STATE_44.md` | 44.4.1 |
 | 6 | Genie Code | 44.6.1 | Generic map layer renderer | `frontend/client/src/components/map/mapLayers.ts` (new), `MapPanel.tsx`, `Legend.tsx`, `useScreening.ts`, `ScreeningResults.tsx`, `ResultsTable.tsx` (all under `components/map/`); `agent_server/geo.py` and app `tests/test_geo_screen.py` (remove `soil_polygons` only) | 44.5.1, 44.5.2 |
@@ -163,7 +165,7 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 ### 44.4.1 -- Tool parameters, MCP contract tests, tool docs
 
 - **Executor:** Genie Code. **Depends on:** 44.3.1, 44.3.2.
-- **Files in scope:** must edit `src/fpac_soil_mcp/tools/spatial_analysis_tools.py`, `tests/test_tools.py`, root `README.md` (tool reference section only); can create `tests/test_phase8_contracts.py`.
+- **Files in scope:** must edit `src/fpac_soil_mcp/tools/spatial_analysis_tools.py`, `tests/test_tools.py`, root `README.md` (tool reference section and the two map settings in the configuration reference, A2); can create `tests/test_map_tool_contracts.py`.
 - **Spec:** Add `include_map: bool = False` to both tools with docstrings telling the model to leave it false. Contract tests through the MCP tool layer: descriptor-only by default; inline layers when true; `lesa_evaluation` still attached for corridor; default response JSON size within 10% (or a fixed small byte margin) of the pre-change fixture; strategy section 4 parity table from ADR 0017 asserted field by field. The M3 exit item "soil" fixtures is met by the `farmland_classes` layer (D3 keeps the soil lookup tools unchanged); say so in the test docstring.
 - **Anchors:** `spatial_analysis_tools.py` L21, L57, L115, L179; `tests/test_phase3_contracts.py` for fixture style.
 - **Acceptance:** root `make check` passes; then wave gate with `make test-live`.
