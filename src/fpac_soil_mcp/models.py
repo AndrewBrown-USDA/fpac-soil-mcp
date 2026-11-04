@@ -11,6 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from fpac_soil_mcp.map_contract import MAP_SCHEMA_VERSION, MapBlock, ResultAuthority
+
 
 class SoilMapUnit(BaseModel):
     """SSURGO Soil Map Unit data structure."""
@@ -189,6 +191,20 @@ class PolygonFarmlandAnalysisResponse(BaseModel):
     regulatory_notice: str = Field(
         description="Official regulatory disclaimer regarding FPPA screening"
     )
+    schema_version: str = Field(
+        default=MAP_SCHEMA_VERSION, description="Map result contract version (ADR 0017)"
+    )
+    data_mode: Literal["live"] = Field(
+        default="live", description="Data mode: live upstream services"
+    )
+    authority: ResultAuthority = Field(
+        default_factory=ResultAuthority,
+        description="Result authority: preliminary machine estimate, not an official filing",
+    )
+    map: MapBlock = Field(
+        default_factory=MapBlock,
+        description="Map layers; geometry only when include_map is true (ADR 0017)",
+    )
 
 
 class CorridorImpactBreakdown(BaseModel):
@@ -312,6 +328,20 @@ class CorridorFarmlandAnalysisResponse(BaseModel):
     )
     regulatory_notice: str = Field(
         description="Official regulatory disclaimer regarding FPPA screening"
+    )
+    schema_version: str = Field(
+        default=MAP_SCHEMA_VERSION, description="Map result contract version (ADR 0017)"
+    )
+    data_mode: Literal["live"] = Field(
+        default="live", description="Data mode: live upstream services"
+    )
+    authority: ResultAuthority = Field(
+        default_factory=ResultAuthority,
+        description="Result authority: preliminary machine estimate, not an official filing",
+    )
+    map: MapBlock = Field(
+        default_factory=MapBlock,
+        description="Map layers; geometry only when include_map is true (ADR 0017)",
     )
 
 
