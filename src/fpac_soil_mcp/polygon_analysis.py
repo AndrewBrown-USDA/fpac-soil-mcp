@@ -14,6 +14,7 @@ from typing import Any
 
 from shapely.geometry import MultiPolygon, Polygon
 
+from fpac_soil_mcp.config import settings
 from fpac_soil_mcp.constants import (
     REGULATORY_LIMITATIONS,
     REGULATORY_NOTICE,
@@ -26,6 +27,16 @@ from fpac_soil_mcp.geometry import (
     parse_geojson_geometry,
 )
 from fpac_soil_mcp.lesa import _normalize_productivity_index
+from fpac_soil_mcp.map_contract import (
+    NEUTRAL_OUTLINE_COLOR,
+    URBAN_CONTEXT_COLOR,
+    MapBlock,
+    build_layer,
+    build_map_block,
+    farmland_legend,
+    features_from_sda_rows,
+    single_legend,
+)
 from fpac_soil_mcp.models import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
@@ -92,6 +103,7 @@ class PolygonAnalyzer:
         include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
+        include_map: bool = False,
     ) -> PolygonFarmlandAnalysisResponse:
         """Execute full farmland screening on a polygon or multipolygon AOI.
 
@@ -100,6 +112,8 @@ class PolygonAnalyzer:
             include_nccpi: Whether to retrieve component-weighted interpretations.
             productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
             max_county_rating_override: Optional user-supplied maximum county rating benchmark.
+            include_map: Include display geometry in the ``map`` layers (ADR 0017).
+                Numbers are computed from exact geometry either way.
 
         Returns:
             PolygonFarmlandAnalysisResponse with complete acreage breakdowns, urban screening, LE summary, and provenance.
@@ -136,6 +150,7 @@ class PolygonAnalyzer:
                 ),
                 limitations=[*REGULATORY_LIMITATIONS, f"Geometry validation error: {exc}"],
                 regulatory_notice=REGULATORY_NOTICE,
+                map=self._polygon_map(False, None, [], []),
             )
 
         geom_hash = compute_geometry_hash(geom)
@@ -143,7 +158,9 @@ class PolygonAnalyzer:
         wkt_str = geometry_to_wkt(geom)
 
         # 2. Census Urban Area Pre-Screening
-        urban_rec = self.tigerweb_client.check_urban_exemption(geom)
+        urban_rec, urban_geometries = self.tigerweb_client.check_urban_exemption_with_geometries(
+            geom
+        )
         urban_dict = urban_rec.model_dump(mode="json")
         perimeter_evidence = self.tigerweb_client.get_perimeter_evidence(geom)
 
@@ -155,7 +172,7 @@ class PolygonAnalyzer:
                 wkt_str,
                 clip=True,
                 geom_acres=True,
-                return_geom=False,
+                return_geom=include_map,
             )
         except SDAClientError as exc:
             logger.error("SDA spatial query failed: %s", exc)
@@ -454,7 +471,66 @@ class PolygonAnalyzer:
             ),
             limitations=limitations,
             regulatory_notice=REGULATORY_NOTICE,
+            map=self._polygon_map(include_map, geom, raw_units, urban_geometries),
         )
+
+    @staticmethod
+    def _polygon_map(
+        include_map: bool,
+        geom: Polygon | MultiPolygon | None,
+        raw_units: list[dict[str, Any]],
+        urban_geometries: list[tuple[str, Polygon | MultiPolygon]],
+    ) -> MapBlock:
+        """Build the ADR 0017 map block; geometry only when ``include_map`` is true.
+
+        Layer order is the size-cap drop priority: urban context first, then
+        farmland classes; the AOI outline is kept.
+        """
+        include = include_map and geom is not None
+        tolerance = settings.map_simplify_tolerance_m
+        layers = [
+            build_layer(
+                layer_id="aoi",
+                title="Area of interest",
+                kind="polygon",
+                authority="user_input",
+                source="User-supplied area of interest",
+                features=[(geom, {})] if include else None,
+                include_map=include,
+                legend=single_legend("aoi", "Area of interest", NEUTRAL_OUTLINE_COLOR),
+            ),
+            build_layer(
+                layer_id="farmland_classes",
+                title="Farmland classification",
+                kind="polygon",
+                authority="machine_estimate",
+                source="USDA NRCS Soil Data Access (SDA)",
+                features=features_from_sda_rows(raw_units) if include else None,
+                include_map=include,
+                style_key="farmland_class",
+                legend=farmland_legend(),
+                simplify_tolerance_m=tolerance,
+            ),
+            build_layer(
+                layer_id="urban_context",
+                title="Census 2020 urban areas",
+                kind="polygon",
+                authority="reference_data",
+                source="US Census Bureau TIGERweb",
+                features=(
+                    [(urban, {"name": name}) for name, urban in urban_geometries]
+                    if include
+                    else None
+                ),
+                include_map=include,
+                data_vintage="Census 2020 Urban Areas",
+                legend=single_legend(
+                    "urban", "Census 2020 urban area", URBAN_CONTEXT_COLOR, "dashed_outline"
+                ),
+                simplify_tolerance_m=tolerance,
+            ),
+        ]
+        return build_map_block(layers, settings.map_max_geojson_bytes)
 
     def analyze_polygon_sync(
         self,
@@ -462,6 +538,7 @@ class PolygonAnalyzer:
         include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
+        include_map: bool = False,
     ) -> PolygonFarmlandAnalysisResponse:
         """Synchronous wrapper for analyze_polygon."""
         return self.analyze_polygon(
@@ -469,6 +546,7 @@ class PolygonAnalyzer:
             include_nccpi=include_nccpi,
             productivity_index=productivity_index,
             max_county_rating_override=max_county_rating_override,
+            include_map=include_map,
         )
 
     async def analyze_polygon_async(
@@ -477,6 +555,7 @@ class PolygonAnalyzer:
         include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
+        include_map: bool = False,
     ) -> PolygonFarmlandAnalysisResponse:
         """Asynchronous wrapper for analyze_polygon."""
         return self.analyze_polygon(
@@ -484,4 +563,5 @@ class PolygonAnalyzer:
             include_nccpi=include_nccpi,
             productivity_index=productivity_index,
             max_county_rating_override=max_county_rating_override,
+            include_map=include_map,
         )
