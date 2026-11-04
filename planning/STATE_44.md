@@ -21,7 +21,7 @@
 |---|---|---|---|
 | 1 | Genie Code | 44.1.1 | done |
 | 1 | User + Genie Code | 44.1.2 | waiting for user browser check |
-| 1 | gate | root check, app-check | pending |
+| 1 | gate | root check, app-check | passed on 09f42e6 (626 passed / 3 skipped; app 135); 44.1.2 browser result pending |
 | 2 | Genie Code | 44.2.1 | pending |
 | 2 | Genie Code | 44.2.2 | pending |
 | 2 | gate | root check, app-check, test-live | pending |
