@@ -28,8 +28,8 @@
 | 3 | Genie Code | 44.3.1 | done |
 | 3 | Genie Code | 44.3.2 | done |
 | 3 | gate | root check, app-check, test-live | passed on 5dd084a (666 passed / 3 skipped; app 135; live 43 / 3 skipped) |
-| 4 | Genie Code | 44.4.1 | pending |
-| 4 | gate | root check, app-check, test-live | pending |
+| 4 | Genie Code | 44.4.1 | done |
+| 4 | gate | root check, app-check, test-live | passed on 18d76dd (688 passed / 3 skipped; app 135; live 43 / 3 skipped) |
 | 5 | Genie Code | 44.5.1 | pending |
 | 5 | User + Genie Code | 44.5.2 | pending |
 | 5 | gate | root check, app-check | pending |
@@ -107,4 +107,21 @@
 ## Process incident (wave 2 and 3)
 
 - Python `open(t, "w").write(open(t).read()...)` truncates before reading, so the 44.2.1, 44.2.2 and 44.3.1 checklists were committed empty (44.2.2 already pushed). Restored in 5dd084a from the STATE reports. Python writes to workspace files can also lag shell reads, which left 34633df unformatted (fixed in ce6c190). From here: copy-backs and edits that are committed in the same step go through the shell.
+
+## Wave 3 follow-up and push
+
+- 1156bba (`fix(map): give each corridor alternative a unique map layer id`): `_alternative_layer_ids` adds `_2`, `_3`, ... for ids that clean up to the same suffix; 5 new tests; root 671 / 3. Wave 3 pushed 57b627d..1156bba with user approval.
+
+## Amendment A2 (2026-11-04)
+
+- User direction: contract test file named `tests/test_map_tool_contracts.py` (not `test_phase8_contracts.py`). 44.4.1 also documents the two map settings in the README configuration reference. Recorded in EXECUTION_PLAN_44 (bcbd7b2).
+
+## 44.4.1
+
+- **Status:** done. Commit 18d76dd (`feat(map): add include_map to the polygon and corridor tools`).
+- **Files:** `src/fpac_soil_mcp/tools/spatial_analysis_tools.py` (`include_map: Annotated[bool, Field(description="Leave false. ...")] = False` on both tools, always passed to the analyzer); `tests/test_tools.py` (3 call assertions amended with `include_map=False`, 4 pass-through tests); `tests/test_map_tool_contracts.py` (new, 13 tests through `FastMCP` + `register_tools` on synthetic clients); `README.md` (both tool rows, `MAP_SIMPLIFY_TOLERANCE_M`, `MAP_MAX_GEOJSON_BYTES`).
+- **Checks:** contract + tools + phase 3 tests 13 / 30 / 13 passed; root 688 passed / 3 skipped.
+- **Deviations:** size check uses a fixed 4,000-byte margin, not 10%: the additive keys measured 2,163 bytes (polygon, +43%) and 2,657 bytes (corridor, +47%) on the small fixtures, mostly the farmland legend. The pre-change response is the same call with the four additive keys removed (no stored fixture). The section 4 table in the test is checked against the ADR table text, so ADR edits that add or drop a row fail the test.
+- **Gotchas for 44.5.x:** the MCP JSON schema shows `include_map` with `default: false` and the "Leave false." description; the tool-level `description` strings in `tools/__init__.py` do not mention it. Default responses grow by about 2-3 KB per call (descriptor layers and legend), which reaches the model context; if that matters for agent token budgets, a later task could trim descriptors when `include_map` is false. `.env.example` still lacks the map settings.
+- **Process:** shell writes to workspace files can also lag `git` reads; edits now land via `/tmp` clone + `cat >` and a `cmp` check before commit.
 
