@@ -102,7 +102,7 @@
 - **Files:** `src/fpac_soil_mcp/corridor_analysis.py` (`include_map`; per-segment new urban method; segment SDA `return_geom=include_map`, alternative SDA calls unchanged; module-level `_corridor_map`, `_alternative_layer_suffix`; `map_settings` alias because `analyze_corridor` has a local `settings = Settings()`); `tests/test_corridor_map.py` (new, 12 tests); urban mocks amended in `tests/test_corridor_analysis.py` (11) and `tests/test_phase3_contracts.py` (4).
 - **Checks:** `uv run pytest tests/test_corridor_map.py tests/test_corridor_analysis.py tests/test_phase3_contracts.py -q` 57 passed; mutation check (forcing `return_geom=True`, breaking urban de-duplication) failed 2 tests as expected; root 666 passed / 3 skipped.
 - **Deviations:** layer order `corridor_direct`, `corridor_indirect` (only with indirect input), `corridor_alternative_<id>`, `farmland_classes`, `county_segments`, `urban_context`; `farmland_classes` covers the whole footprint (direct plus indirect) because the segment SDA query runs on the footprint segment; county properties `county_name`, `geoid`, `state_fips`, `county_fips`.
-- **Gotchas:** alternative ids map to `[a-z0-9_]` (`Route 9/East` -> `route_9_east`, empty -> `alt`); duplicate suffixes are not disambiguated.
+- **Gotchas:** alternative ids map to `[a-z0-9_]` (`Route 9/East` -> `route_9_east`, empty -> `alt`); duplicate suffixes get `_2`, `_3`, ... in input order (`_alternative_layer_ids`, follow-up commit after the wave 3 gate; 5 new tests).
 
 ## Process incident (wave 2 and 3)
 

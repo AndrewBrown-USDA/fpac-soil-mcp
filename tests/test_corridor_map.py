@@ -290,3 +290,45 @@ def test_centerline_error_returns_descriptor_map():
 )
 def test_alternative_layer_suffix(alt_id, suffix):
     assert corridor_analysis._alternative_layer_suffix(alt_id) == suffix
+
+
+@pytest.mark.parametrize(
+    ("alt_ids", "expected"),
+    [
+        (["B-2", "B 2"], ["corridor_alternative_b_2", "corridor_alternative_b_2_2"]),
+        (
+            ["B", "b", "B"],
+            ["corridor_alternative_b", "corridor_alternative_b_2", "corridor_alternative_b_3"],
+        ),
+        (
+            ["A", "A", "A 2"],
+            ["corridor_alternative_a", "corridor_alternative_a_2", "corridor_alternative_a_2_2"],
+        ),
+        (["", "?"], ["corridor_alternative_alt", "corridor_alternative__"]),
+    ],
+)
+def test_alternative_layer_ids_are_unique(alt_ids, expected):
+    ids = corridor_analysis._alternative_layer_ids(alt_ids)
+    assert ids == expected
+    assert len(set(ids)) == len(ids)
+
+
+def test_duplicate_alternative_ids_get_distinct_layers():
+    alternatives = [
+        {"alternative_id": "B-2", "centerline": ALT_CENTERLINE},
+        {"alternative_id": "B 2", "centerline": "LINESTRING(0.0 0.003, 0.01 0.003)"},
+    ]
+    result, _, _ = _run(True, alternatives=alternatives)
+    alt_layers = [
+        layer for layer in result.map.layers if layer.id.startswith("corridor_alternative_")
+    ]
+    assert [layer.id for layer in alt_layers] == [
+        "corridor_alternative_b_2",
+        "corridor_alternative_b_2_2",
+    ]
+    assert [layer.title for layer in alt_layers] == [
+        "Alternative B-2 footprint",
+        "Alternative B 2 footprint",
+    ]
+    assert alt_layers[0].legend[0].color != alt_layers[1].legend[0].color
+    assert len({layer.id for layer in result.map.layers}) == len(result.map.layers)

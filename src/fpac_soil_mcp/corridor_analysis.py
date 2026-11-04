@@ -985,6 +985,25 @@ def _alternative_layer_suffix(alt_id: str) -> str:
     return suffix or "alt"
 
 
+def _alternative_layer_ids(alt_ids: list[str]) -> list[str]:
+    """Return one unique ``corridor_alternative_<suffix>`` layer id per alternative.
+
+    Ids that clean up to the same suffix get ``_2``, ``_3``, ... in input order,
+    skipping any suffix already taken.
+    """
+    used: set[str] = set()
+    out: list[str] = []
+    for alt_id in alt_ids:
+        base = _alternative_layer_suffix(alt_id)
+        suffix, n = base, 1
+        while suffix in used:
+            n += 1
+            suffix = f"{base}_{n}"
+        used.add(suffix)
+        out.append(f"corridor_alternative_{suffix}")
+    return out
+
+
 def _corridor_map(
     *,
     include_map: bool,
@@ -1032,10 +1051,14 @@ def _corridor_map(
                 "dashed_outline",
             )
         )
-    for index, (alt_id, alt_geom) in enumerate(alternatives or []):
+    alt_list = alternatives or []
+    alt_layer_ids = _alternative_layer_ids([alt_id for alt_id, _ in alt_list])
+    for index, ((alt_id, alt_geom), alt_layer_id) in enumerate(
+        zip(alt_list, alt_layer_ids, strict=True)
+    ):
         layers.append(
             footprint(
-                f"corridor_alternative_{_alternative_layer_suffix(alt_id)}",
+                alt_layer_id,
                 f"Alternative {alt_id} footprint",
                 alt_geom,
                 ALTERNATIVE_COLORS[index % len(ALTERNATIVE_COLORS)],
