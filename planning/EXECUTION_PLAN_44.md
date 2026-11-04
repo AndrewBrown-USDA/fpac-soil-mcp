@@ -58,6 +58,8 @@
 8. **D8, 2026-11-04, execution and acceptance:** Option C. One Genie Code session runs tasks serially in the workspace clone, one commit per task. Gates per wave as in the wave table. Push and deploy need user approval. Deployed overlay probe (44.1.2) and deployed trials (44.8.1, 44.10.1). A two-axis code review (standards and spec) of the branch runs before close-out.
 9. **D9, 2026-11-04, trial targets:** Option A. A new `mcp-fpac-soil-dev` app is deployed from the personal workspace clone on this branch. For trials the agent app tracks `feature/agent-app-map2` and points at the dev server. After merge both go back to `main` and `mcp-fpac-soil`. Refreshing the team-03 clone and redeploying `mcp-fpac-soil` after merge is part of close-out, each step with user approval (confirmed when the user approved this plan, 2026-11-04).
 
+10. **A1, 2026-11-04, amendment (user direction):** both analyzers always call `check_urban_exemption_with_geometries` (with and without `include_map`) instead of branching to the old method; existing tests are amended or added rather than kept on `check_urban_exemption` mocks. `check_urban_exemption` stays for `exemption_tools.py` and the live tests. Polygon tests use a real `TigerwebClient` over `httpx.MockTransport`, so 44.3.1 needs no scope change; corridor tests use `MagicMock(spec=TigerwebClient)`, so 44.3.2 also edits the urban mocks in `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py`.
+
 ## Wave & Dependency Table
 
 Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `apps/agent-fpac-soil-openai-sdk/`; `src/` and root `tests/` are the MCP server.
@@ -69,7 +71,7 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 2 | Genie Code | 44.2.1 | Map contract module, settings and response fields | `src/fpac_soil_mcp/map_contract.py` (new), `src/fpac_soil_mcp/config.py`, `src/fpac_soil_mcp/models.py`, root `tests/test_map_contract.py` (new) | 44.1.1 |
 | 2 | Genie Code | 44.2.2 | TIGERweb urban geometries on request | `src/fpac_soil_mcp/tigerweb_client.py`, root `tests/test_tigerweb_client.py` | none |
 | 3 | Genie Code | 44.3.1 | Polygon analyzer map layers | `src/fpac_soil_mcp/polygon_analysis.py`, root `tests/test_polygon_map.py` (new) | 44.2.1, 44.2.2 |
-| 3 | Genie Code | 44.3.2 | Corridor analyzer map layers | `src/fpac_soil_mcp/corridor_analysis.py`, root `tests/test_corridor_map.py` (new) | 44.2.1, 44.2.2 |
+| 3 | Genie Code | 44.3.2 | Corridor analyzer map layers | `src/fpac_soil_mcp/corridor_analysis.py`, root `tests/test_corridor_map.py` (new), root `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py` (urban mocks only, amendment A1) | 44.2.1, 44.2.2 |
 | 4 | Genie Code | 44.4.1 | Tool parameters, MCP contract tests, tool docs | `src/fpac_soil_mcp/tools/spatial_analysis_tools.py`, root `tests/test_tools.py`, root `tests/test_phase8_contracts.py` (new), root `README.md` (`## Tool Reference`, L260) | 44.3.1, 44.3.2 |
 | 5 | Genie Code | 44.5.1 | App routes: screening from `map`, `/api/geo/map` | `agent_server/geo.py`, `agent_server/start_server.py`, app `tests/test_geo_screen.py`, app `tests/test_geo_map.py` (new) | 44.4.1 |
 | 5 | User + Genie Code | 44.5.2 | Dev MCP server and trial wiring | app `app.yaml`, app `databricks.yml`, app `tests/test_deploy_config.py`, `planning/STATE_44.md` | 44.4.1 |
@@ -153,7 +155,7 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 ### 44.3.2 -- Corridor analyzer map layers
 
 - **Executor:** Genie Code. **Depends on:** 44.2.1, 44.2.2.
-- **Files in scope:** must edit `src/fpac_soil_mcp/corridor_analysis.py`; can create `tests/test_corridor_map.py`.
+- **Files in scope:** must edit `src/fpac_soil_mcp/corridor_analysis.py`, `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py` (urban mocks only, A1); can create `tests/test_corridor_map.py`.
 - **Spec:** `analyze_corridor(..., include_map: bool = False)`. Layers: `corridor_direct`, `corridor_indirect` (if any), `corridor_alternative_<id>` per alternative, `county_segments` (county name/GEOID per segment), `farmland_classes` (direct footprint segments; `return_geom=True` on the existing per-segment SDA calls), `urban_context` (union of per-segment urban geometries from 44.2.2, de-duplicated by name). Simplify and cap. Same always-present fields as 44.3.1.
 - **Anchors:** `analyze_corridor` L140; `direct_poly` L200; footprint L256; counties L268-285; per-segment urban L367 and SDA L374-378; alternatives L649-735; final response L911.
 - **Acceptance:** `uv run pytest tests/test_corridor_map.py tests/test_corridor_analysis.py tests/test_phase3_contracts.py -q` passes; same invariants as 44.3.1 including call counts.
