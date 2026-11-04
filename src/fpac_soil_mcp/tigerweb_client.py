@@ -277,6 +277,24 @@ class TigerwebClient:
         Returns:
             UrbanExemptionRecord containing screening status and intersected urban areas.
         """
+        record, _ = self.check_urban_exemption_with_geometries(geometry_input)
+        return record
+
+    def check_urban_exemption_with_geometries(
+        self,
+        geometry_input: dict[str, Any] | str | Polygon | MultiPolygon,
+    ) -> tuple[UrbanExemptionRecord, list[tuple[str, Polygon | MultiPolygon]]]:
+        """Screen like ``check_urban_exemption`` and also return urban-area geometries.
+
+        The geometries come from the same TIGERweb request; no extra call is made.
+        Point inputs request no geometry and return an empty list, as do error paths.
+
+        Args:
+            geometry_input: GeoJSON dict/string or Shapely geometry.
+
+        Returns:
+            The screening record and ``(urban area name, geometry)`` pairs in WGS84.
+        """
         now = datetime.now(UTC)
         provenance = Provenance(
             source_name="US Census Bureau TIGERweb 2020 Urban Areas MapServer",
@@ -330,7 +348,7 @@ class TigerwebClient:
                     geometry_hash=geom_hash,
                     provenance=provenance,
                     error_message=f"TIGERweb MapServer error: {error_msg}",
-                )
+                ), []
 
             features = data.get("features", [])
             is_intersected = len(features) > 0
@@ -341,6 +359,7 @@ class TigerwebClient:
                 if f.get("attributes")
             ]
             screened_acreage: float | None = None
+            named_geometries: list[tuple[str, Polygon | MultiPolygon]] = []
             if not isinstance(geom, Point):
                 urban_geometries: list[Polygon | MultiPolygon] = []
                 for feature in features:
@@ -348,6 +367,13 @@ class TigerwebClient:
                     urban_geometry = _esri_rings_to_geometry(feature_rings)
                     if urban_geometry is not None and not urban_geometry.is_empty:
                         urban_geometries.append(urban_geometry)
+                        attributes = feature.get("attributes") or {}
+                        name = (
+                            attributes.get("NAME")
+                            or attributes.get("BASENAME")
+                            or "Unknown Urban Area"
+                        )
+                        named_geometries.append((name, urban_geometry))
 
                 if urban_geometries:
                     urban_union = unary_union(urban_geometries)
@@ -370,7 +396,7 @@ class TigerwebClient:
                 is_urban_intersected=is_intersected,
                 urban_area_names=urban_names,
                 screened_acreage=screened_acreage,
-            )
+            ), named_geometries
 
         except (
             HttpRequestError,
@@ -390,7 +416,7 @@ class TigerwebClient:
                 geometry_hash=fallback_hash,
                 provenance=provenance,
                 error_message=f"Urban screening failed: {exc}",
-            )
+            ), []
 
     def get_perimeter_evidence(
         self,
