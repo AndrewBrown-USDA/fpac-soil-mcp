@@ -3,12 +3,17 @@
 ## Baseline
 
 - **Repository:** workspace clone `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp`; edits and commits happen there; gates run in `/tmp` clones (D8).
-- **Branch:** `feature/agent-app-map2` off `origin/main` 06525de (PR #75 and PR #74 merged); not pushed.
+- **Branch:** `feature/agent-app-map2` off `origin/main` 06525de (PR #75 and PR #74 merged); plan commits 5b5ed9a, 3ca93a1 are on `origin/feature/agent-app-map2` (in sync at baseline).
 - **Plan date:** 2026-11-04; approved by the user 2026-11-04.
 - **Agent app:** `agent-fpac-soil-openai-sdk` RUNNING, git `main`, `auto_deploy: true`, active deployment 06525de.
 - **MCP server app:** `mcp-fpac-soil` RUNNING, deployed 2026-10-21 from `/Workspace/Users/Groups/team-03/fpac-soil-mcp` (predates Plan 43).
 - **Last known suite results (from STATE_43 and the PR #75 gate; not yet re-run on 06525de):** root offline 599+ passed / 3 skipped; live 41 passed / 1 pre-existing SDA "kill state" failure / 3 skipped; frontend biome 0 errors / 10 warnings, client build OK with the MapLibre worker asset.
-- [ ] **Pre-wave-1 baseline on 06525de** (fresh `/tmp/p44`): root `make check`, `make test-live`, `make app-check`, `make app-frontend-check`. Record counts here before 44.1.1.
+- [x] **Pre-wave-1 baseline on 06525de** (fresh `/tmp/p44`, 2026-11-04):
+  - root `make check`: rc 0; ruff + format clean; 626 passed / 3 skipped / 45 deselected.
+  - `make test-live`: rc 0; 43 passed / 3 skipped (the STATE_43 SDA "kill state" failure did not recur).
+  - `make app-check`: rc 0; ruff clean; 135 passed.
+  - `make app-frontend-check`: rc 0; `npm ci` 573 packages; biome 0 errors / 10 warnings; build OK, emits `maplibre-gl-worker-*.js`.
+  - Node v22.20.0, npm 10.9.3 via `databricks/bootstrap-serverless.sh`.
 
 ## Wave board
 
