@@ -25,9 +25,9 @@
 | 2 | Genie Code | 44.2.1 | done |
 | 2 | Genie Code | 44.2.2 | done |
 | 2 | gate | root check, app-check, test-live | passed on 0767fa2 (645 passed / 3 skipped; app 135; live 43 / 3 skipped) |
-| 3 | Genie Code | 44.3.1 | pending |
-| 3 | Genie Code | 44.3.2 | pending |
-| 3 | gate | root check, app-check, test-live | pending |
+| 3 | Genie Code | 44.3.1 | done |
+| 3 | Genie Code | 44.3.2 | done |
+| 3 | gate | root check, app-check, test-live | passed on 5dd084a (666 passed / 3 skipped; app 135; live 43 / 3 skipped) |
 | 4 | Genie Code | 44.4.1 | pending |
 | 4 | gate | root check, app-check, test-live | pending |
 | 5 | Genie Code | 44.5.1 | pending |
@@ -83,4 +83,28 @@
 - **Deviations:** `features_from_sda_rows` returns `(Shapely geometry, properties)` pairs, not GeoJSON dicts, so `build_layer` can simplify before writing GeoJSON. Settings validator tests live in `test_map_contract.py` (`test_config.py` not in scope).
 - **API for 44.3.x:** `build_layer(layer_id=, title=, kind=, authority=, source=, features=[(geom, props)], include_map=, data_vintage=, style_key=, legend=, simplify_tolerance_m=)`; `build_map_block(layers, max_bytes)` applies the cap and bounds; `farmland_legend()`, `single_legend(value, label, color, pattern)`; colour constants `URBAN_CONTEXT_COLOR`, `CORRIDOR_DIRECT_COLOR`, `ALTERNATIVE_COLORS`, `NEUTRAL_OUTLINE_COLOR`.
 - **Gotchas:** `map_contract` must not import `models`/analyzers at module level (cycle); `features_from_sda_rows` imports `categorize_farmland_class` lazily. Simplification is per geometry (`preserve_topology=True`), not coverage simplify. Every response now dumps `schema_version`, `data_mode`, `authority` and an empty `map` (no layers) until 44.3.x fill descriptors; no existing test needed changes.
+
+## Amendment A1 (2026-11-04)
+
+- User direction: analyzers always use `check_urban_exemption_with_geometries`; amend tests instead of keeping old-method mocks. Recorded in EXECUTION_PLAN_44 (3cbd426); 44.3.2 scope gained the urban mocks in `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py`.
+
+## 44.3.1
+
+- **Status:** done. Commit a555940 (`feat(map): add map layers to the polygon farmland analysis`).
+- **Files:** `src/fpac_soil_mcp/polygon_analysis.py` (`include_map` on `analyze_polygon` and both wrappers; new urban method; `return_geom=include_map`; `_polygon_map`); `tests/test_polygon_map.py` (new, 8 tests).
+- **Checks:** `uv run pytest tests/test_polygon_map.py tests/test_polygon_analysis.py -q` 37 passed; root 654 passed / 3 skipped.
+- **Deviations:** none. Layers `aoi`, `farmland_classes`, `urban_context` in drop-priority order; AOI not simplified; geometry-error path returns descriptors.
+- **Gotchas:** layer order is drop priority, not draw order: 44.6.1 should draw outline-pattern layers above filled ones. `urban_context` is the full intersecting urban areas, not clipped.
+
+## 44.3.2
+
+- **Status:** done. Commits 34633df (`feat(map): add map layers to the corridor farmland analysis`), ce6c190 (format fix).
+- **Files:** `src/fpac_soil_mcp/corridor_analysis.py` (`include_map`; per-segment new urban method; segment SDA `return_geom=include_map`, alternative SDA calls unchanged; module-level `_corridor_map`, `_alternative_layer_suffix`; `map_settings` alias because `analyze_corridor` has a local `settings = Settings()`); `tests/test_corridor_map.py` (new, 12 tests); urban mocks amended in `tests/test_corridor_analysis.py` (11) and `tests/test_phase3_contracts.py` (4).
+- **Checks:** `uv run pytest tests/test_corridor_map.py tests/test_corridor_analysis.py tests/test_phase3_contracts.py -q` 57 passed; mutation check (forcing `return_geom=True`, breaking urban de-duplication) failed 2 tests as expected; root 666 passed / 3 skipped.
+- **Deviations:** layer order `corridor_direct`, `corridor_indirect` (only with indirect input), `corridor_alternative_<id>`, `farmland_classes`, `county_segments`, `urban_context`; `farmland_classes` covers the whole footprint (direct plus indirect) because the segment SDA query runs on the footprint segment; county properties `county_name`, `geoid`, `state_fips`, `county_fips`.
+- **Gotchas:** alternative ids map to `[a-z0-9_]` (`Route 9/East` -> `route_9_east`, empty -> `alt`); duplicate suffixes are not disambiguated.
+
+## Process incident (wave 2 and 3)
+
+- Python `open(t, "w").write(open(t).read()...)` truncates before reading, so the 44.2.1, 44.2.2 and 44.3.1 checklists were committed empty (44.2.2 already pushed). Restored in 5dd084a from the STATE reports. Python writes to workspace files can also lag shell reads, which left 34633df unformatted (fixed in ce6c190). From here: copy-backs and edits that are committed in the same step go through the shell.
 
