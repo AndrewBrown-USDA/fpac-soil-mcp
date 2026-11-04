@@ -1,5 +1,7 @@
 # EXECUTION PLAN 44: Server Map Results, Map Rendering and Context Overlays (Phase 8 M3-M5)
 
+**Status:** Approved by the user 2026-11-04. Not started; begin with the pre-wave-1 baseline in `STATE_44.md`.
+
 ## Goal & Scope
 
 **Goal:** Carry Phase 8 forward in the agent app. The two `analyze_*` MCP tools return a structured `map` result (Track A M3); the map panel and chat tool cards draw that result with server legends, sources and the regulatory notice (M4); and the map gains a fixed set of context overlays with click-to-identify and "Use as AOI" (M5). Build it on `feature/agent-app-map2`, try it on the deployed app against a dev MCP server, review it, then merge.
@@ -54,7 +56,7 @@
 6. **D6, 2026-11-04, identify and Use as AOI:** Identify popups for all three overlays. "Use as AOI" for counties and urban areas loads the exact outline; above the existing 2000-vertex cap it shows a clear message and does not simplify.
 7. **D7, 2026-11-04, payload bounds:** Option A. Acreage and scoring always use exact geometry. The display copy is simplified with topology preserved at about 1 m in EPSG:6933; each layer records `simplified` and `simplify_tolerance_m`. A per-response GeoJSON cap (default 2 MB) cuts layers with `truncated: true` and a warning. Both are settings.
 8. **D8, 2026-11-04, execution and acceptance:** Option C. One Genie Code session runs tasks serially in the workspace clone, one commit per task. Gates per wave as in the wave table. Push and deploy need user approval. Deployed overlay probe (44.1.2) and deployed trials (44.8.1, 44.10.1). A two-axis code review (standards and spec) of the branch runs before close-out.
-9. **D9, 2026-11-04, trial targets:** Option A. A new `mcp-fpac-soil-dev` app is deployed from the personal workspace clone on this branch. For trials the agent app tracks `feature/agent-app-map2` and points at the dev server. After merge both go back to `main` and `mcp-fpac-soil`. Refreshing the team-03 clone and redeploying `mcp-fpac-soil` after merge is drafted into close-out as a user-approved step (not yet confirmed by the user).
+9. **D9, 2026-11-04, trial targets:** Option A. A new `mcp-fpac-soil-dev` app is deployed from the personal workspace clone on this branch. For trials the agent app tracks `feature/agent-app-map2` and points at the dev server. After merge both go back to `main` and `mcp-fpac-soil`. Refreshing the team-03 clone and redeploying `mcp-fpac-soil` after merge is part of close-out, each step with user approval (confirmed when the user approved this plan, 2026-11-04).
 
 ## Wave & Dependency Table
 
