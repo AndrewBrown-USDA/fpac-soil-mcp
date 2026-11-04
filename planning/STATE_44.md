@@ -19,8 +19,8 @@
 
 | Wave | Executor | Task | Status |
 |---|---|---|---|
-| 1 | Genie Code | 44.1.1 | pending |
-| 1 | User + Genie Code | 44.1.2 | pending |
+| 1 | Genie Code | 44.1.1 | done |
+| 1 | User + Genie Code | 44.1.2 | waiting for user browser check |
 | 1 | gate | root check, app-check | pending |
 | 2 | Genie Code | 44.2.1 | pending |
 | 2 | Genie Code | 44.2.2 | pending |
@@ -51,3 +51,19 @@
 ## Task Reports
 
 <!-- Append one report per task (<=15 lines): status, files, commands/results, deviations, gotchas, commit. -->
+
+## 44.1.1
+
+- **Status:** done. Commit 3d9d9b6 (`docs(decisions): propose the server map result contract for the analyze tools`).
+- **Files:** `docs/decisions/0017-server-map-result-contract.md` (new, 223 lines, `Proposed`); `docs/decisions/README.md` (index row, Databricks Delivery era sentence); `planning/tasks/44.1.1.todo.md`.
+- **Checks:** `grep -n 0017 docs/decisions/README.md` shows the row and link; link target exists; no coordinate-like numbers in the ADR. Root `make check` does not read `docs/` (wave gate below).
+- **Deviations:** none.
+- **Gotchas for 44.2.1:** legend values follow `categorize_farmland_class` (7 values incl. `conditional_prime`, `unmapped`); those two take the deployed `farmlandClasses.ts` colours. Patterns enum: `solid`, `diagonal_hatch`, `cross_hatch`, `dot_stipple`, `outline`, `dashed_outline`. `bounds` is null when no layer is inline. The size cap drops whole layers from the end of the list (`delivery: omitted`, `truncated: true`, warning in `map.warnings`); it never drops part of a layer. Layer `authority` values: `user_input`, `machine_estimate`, `reference_data`. `data_vintage` nullable (no SSURGO vintage without an extra query). The section 4 mapping table is what 44.4.1 asserts.
+
+## 44.1.2
+
+- **Status:** part 1-2 done (serverless metadata and requests with the app `Origin`); part 3 waiting for the user's browser-console run from the deployed app.
+- **Files:** `planning/evidence/44.1.2-overlays.md` (new).
+- **Findings so far:** all four requests succeed with CORS for the app origin (SSURGO `*`; TIGERweb echoes the origin). SSURGO GetFeatureInfo supports only `text/plain`/`text/html`/`gml2` and returns `mukey`/`musym`, not farmland class. Sample urban area 5694 vertices (over the 2000 cap); sample county 1050.
+- **Gotchas:** TIGERweb CORS needs simple GETs (preflight gets no CORS headers). Browser CSP of the app is not covered by the server-side probe; the browser run checks it.
+
