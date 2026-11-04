@@ -22,9 +22,9 @@
 | 1 | Genie Code | 44.1.1 | done |
 | 1 | User + Genie Code | 44.1.2 | done |
 | 1 | gate | root check, app-check | passed on 09f42e6 (626 passed / 3 skipped; app 135); wave 1 done |
-| 2 | Genie Code | 44.2.1 | pending |
-| 2 | Genie Code | 44.2.2 | pending |
-| 2 | gate | root check, app-check, test-live | pending |
+| 2 | Genie Code | 44.2.1 | done |
+| 2 | Genie Code | 44.2.2 | done |
+| 2 | gate | root check, app-check, test-live | passed on 0767fa2 (645 passed / 3 skipped; app 135; live 43 / 3 skipped) |
 | 3 | Genie Code | 44.3.1 | pending |
 | 3 | Genie Code | 44.3.2 | pending |
 | 3 | gate | root check, app-check, test-live | pending |
@@ -66,4 +66,21 @@
 - **Files:** `planning/evidence/44.1.2-overlays.md` (new).
 - **Findings so far:** all four requests succeed with CORS for the app origin (SSURGO `*`; TIGERweb echoes the origin). SSURGO GetFeatureInfo supports only `text/plain`/`text/html`/`gml2` and returns `mukey`/`musym`, not farmland class. Sample urban area 5694 vertices (over the 2000 cap); sample county 1050.
 - **Gotchas:** TIGERweb CORS needs simple GETs (preflight gets no CORS headers). Browser CSP of the app is not covered by the server-side probe; the browser run checks it.
+
+## 44.2.2
+
+- **Status:** done. Commit d8231c0 (`feat(tigerweb): return fetched urban area geometries alongside the screening record`).
+- **Files:** `src/fpac_soil_mcp/tigerweb_client.py` (`check_urban_exemption` now delegates; new `check_urban_exemption_with_geometries` returns `(record, [(name, Polygon|MultiPolygon)])`, +32/-3); `tests/test_tigerweb_client.py` (+82, 4 tests); `planning/tasks/44.2.2.todo.md`.
+- **Checks:** `uv run pytest tests/test_tigerweb_client.py -q` 34 passed; ruff check and format clean.
+- **Deviations:** none. `UrbanExemptionRecord` and all callers unchanged.
+- **Gotchas for 44.3.x:** names follow `NAME` -> `BASENAME` -> `Unknown Urban Area`; only features with parseable rings appear in the list. Point inputs and error paths return `[]`. Existing analyzer tests mock `check_urban_exemption` on a mock client; when 44.3.x switch to the new method, those mocks need `check_urban_exemption_with_geometries.return_value = (record, [])` (or the analyzer should call the new method only when `include_map` is true, keeping the old mocks valid).
+
+## 44.2.1
+
+- **Status:** done. Commit 0767fa2 (`feat(map): add the map result contract models, builders and settings`).
+- **Files:** `src/fpac_soil_mcp/map_contract.py` (new); `config.py` (`map_simplify_tolerance_m` 1.0, >= 0; `map_max_geojson_bytes` 2,000,000, > 0); `models.py` (optional `schema_version`, `data_mode`, `authority`, `map` on both analyze responses); `tests/test_map_contract.py` (new, 15 tests); `planning/tasks/44.2.1.todo.md`.
+- **Checks:** `uv run pytest tests/test_map_contract.py tests/test_models.py tests/test_config.py -q` 20 passed (also with `-W error::DeprecationWarning`); ruff clean.
+- **Deviations:** `features_from_sda_rows` returns `(Shapely geometry, properties)` pairs, not GeoJSON dicts, so `build_layer` can simplify before writing GeoJSON. Settings validator tests live in `test_map_contract.py` (`test_config.py` not in scope).
+- **API for 44.3.x:** `build_layer(layer_id=, title=, kind=, authority=, source=, features=[(geom, props)], include_map=, data_vintage=, style_key=, legend=, simplify_tolerance_m=)`; `build_map_block(layers, max_bytes)` applies the cap and bounds; `farmland_legend()`, `single_legend(value, label, color, pattern)`; colour constants `URBAN_CONTEXT_COLOR`, `CORRIDOR_DIRECT_COLOR`, `ALTERNATIVE_COLORS`, `NEUTRAL_OUTLINE_COLOR`.
+- **Gotchas:** `map_contract` must not import `models`/analyzers at module level (cycle); `features_from_sda_rows` imports `categorize_farmland_class` lazily. Simplification is per geometry (`preserve_topology=True`), not coverage simplify. Every response now dumps `schema_version`, `data_mode`, `authority` and an empty `map` (no layers) until 44.3.x fill descriptors; no existing test needed changes.
 
