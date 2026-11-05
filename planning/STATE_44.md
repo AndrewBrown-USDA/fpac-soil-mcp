@@ -33,7 +33,7 @@
 | 5 | Genie Code | 44.5.1 | done, a98cbad |
 | 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | done, 0d6ed22; fixes 8138b45, 1db8429 |
 | 5 | gate | root check, app-check | pending |
-| 6 | Genie Code | 44.6.1 | done, 0653022 (not yet seen in a browser) |
+| 6 | Genie Code | 44.6.1 | done, 0653022; fixes 48b3fe8, 95719d9 |
 | 6 | gate | root check, app-check, app-frontend-check | pending |
 | 7 | Genie Code | 44.7.1 | pending |
 | 7 | gate | root check, app-check, app-frontend-check | pending |
@@ -150,4 +150,6 @@
 - 44.5.2 acceptance (user browser check, 2026-11-04): screening on the dev agent app succeeds through `mcp-fpac-soil-dev` with `include_map=True`; chat tool calls work (the `FPAC_MCP_APP` lookup works with CAN_USE alone). Wave 5 done.
 - Open: dev agent app traces are not saved (`PERMISSION_DENIED`: `app-2vrjmx agent-fpac-soil-dev` lacks SELECT on `users.andrew_g_brown.4493391463784067_otel_spans`); user to grant or switch experiment. Not a wave gate.
 - Wave 6 (2026-11-04): 0653022 44.6.1. Gates: `make app-check` 173 passed; `make app-frontend-check` passed; `tsc` 5 errors before and after, none in `components/map/`. Root suite unaffected (no root files). Rendering not yet checked in a browser.
+- Wave 6 fixes: 48b3fe8 draws outline-only layers above filled layers (server order is drop priority); 95719d9 keeps the map at the panel's full visible height when results show (user report: the map halved after screening). Pushed `1db8429..95719d9` early with user approval to check the renderer. Dev apps on 95719d9: `mcp-fpac-soil-dev` 01f1d8cc00d21e4aaf59068031777b9d, `agent-fpac-soil-dev` 01f1d8cc00c91179bc5ebdb158638886.
+- Wave 6 browser check (user, 2026-11-04): renderer looks right; map height stays fixed after screening. Wave 6 done.
 
