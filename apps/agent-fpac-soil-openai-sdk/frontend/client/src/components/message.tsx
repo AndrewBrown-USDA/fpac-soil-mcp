@@ -43,6 +43,7 @@ import {
 } from '@/lib/tool-group-segments';
 import { Streamdown } from 'streamdown';
 import { useApproval } from '@/hooks/use-approval';
+import { MAP_TOOLS, ShowOnMapButton } from './map/ShowOnMapButton';
 
 const PurePreviewMessage = ({
   message,
@@ -444,6 +445,9 @@ const ToolPartRenderer = ({
     );
   }
 
+  const showOnMap =
+    state === 'output-available' && !errorText && MAP_TOOLS.has(toolName);
+
   return (
     <Tool defaultOpen={true}>
       <ToolHeader type={toolName} state={effectiveState} />
@@ -466,6 +470,9 @@ const ToolPartRenderer = ({
             }
             errorText={undefined}
           />
+        )}
+        {showOnMap && (
+          <ShowOnMapButton tool={toolName} toolCallId={toolCallId} input={input} />
         )}
       </ToolContent>
     </Tool>

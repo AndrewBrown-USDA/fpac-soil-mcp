@@ -15,7 +15,9 @@ import { GeoJsonInput } from './GeoJsonInput';
 import { featureCollection, geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
+import { MapLegend } from './Legend';
 import { clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
+import { useMapResult } from './MapResultContext';
 import { ScreeningResults } from './ScreeningResults';
 import { useScreening } from './useScreening';
 
@@ -53,7 +55,9 @@ export function MapPanel() {
   const [tileError, setTileError] = useState(false);
   // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
   // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
-  const { activeAoi, setGeometry, setSummary } = useActiveAoi();
+  const { chatId, activeAoi, setGeometry, setSummary } = useActiveAoi();
+  // The result drawn on the map: this panel's screening or a tool card's "Show on map".
+  const { shown, show, clear: clearShown } = useMapResult();
   const aoi = activeAoi?.geometry ?? null;
   const aoiRef = useRef<PolygonGeometry | null>(null);
   const screenedRef = useRef<string | null>(null);
@@ -201,21 +205,46 @@ export function MapPanel() {
     screening.run(aoi, activeAoi.aoi_ref);
   };
 
+  // A finished screening becomes the shown result; a new or reset screening drops it.
+  const screeningMap =
+    screening.status === 'done' ? (screening.result?.display?.map ?? null) : null;
+  const screeningNotice = screening.result?.display?.regulatory_notice ?? null;
+  const showScreening = useCallback(() => {
+    if (screeningMap) {
+      show({ origin: 'screening', block: screeningMap, regulatory_notice: screeningNotice });
+    }
+  }, [screeningMap, screeningNotice, show]);
+  useEffect(() => {
+    showScreening();
+  }, [showScreening]);
+  useEffect(() => {
+    if (screening.status !== 'done' && shown?.origin === 'screening') clearShown();
+  }, [screening.status, shown, clearShown]);
+
+  // A tool result belongs to the chat and AOI it was shown for.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clears on chat or AOI change
+  useEffect(() => {
+    clearShown();
+  }, [aoi, chatId, clearShown]);
+
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    // Server layers draw below the panel's own AOI outline (`aoi-line`).
-    if (screening.status === 'done') {
-      renderMapBlock(map, screening.result?.display?.map, 'aoi-line');
-    } else {
+    if (!shown) {
       clearMapBlock(map);
+      return;
     }
-    if (screening.status === 'done' && aoiRef.current) {
-      const bounds = geometryBounds(aoiRef.current);
-      if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
-    }
-  }, [screening.result, screening.status, mapReady]);
+    // Server layers draw below the panel's own AOI outline (`aoi-line`).
+    renderMapBlock(map, shown.block, 'aoi-line');
+    // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
+    // its layers (a corridor has no AOI).
+    const bounds =
+      shown.origin === 'screening' && aoiRef.current
+        ? geometryBounds(aoiRef.current)
+        : (shown.block.bounds ?? null);
+    if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+  }, [shown, mapReady]);
 
   const chooseMode = (next: DrawMode) => {
     drawRef.current?.setMode(next);
@@ -328,8 +357,31 @@ export function MapPanel() {
           </div>
         )}
       </div>
-      {screening.status === 'done' && screening.result && (
-        <ScreeningResults result={screening.result} />
+      {shown?.origin === 'tool' ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-medium text-sm">Map of {shown.tool} result</h3>
+            {screeningMap && (
+              <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
+                Back to screening
+              </Button>
+            )}
+          </div>
+          {shown.regulatory_notice ? (
+            <div className="rounded-md border border-border bg-muted p-2 text-sm">
+              <h3 className="font-medium">Regulatory notice</h3>
+              <p className="whitespace-pre-line">{shown.regulatory_notice}</p>
+            </div>
+          ) : (
+            <p role="alert" className="text-destructive text-sm">
+              Regulatory notice missing - treat this result as invalid.
+            </p>
+          )}
+          <MapLegend block={shown.block} />
+        </div>
+      ) : (
+        screening.status === 'done' &&
+        screening.result && <ScreeningResults result={screening.result} />
       )}
     </section>
   );

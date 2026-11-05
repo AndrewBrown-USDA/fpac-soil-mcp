@@ -35,7 +35,7 @@
 | 5 | gate | root check, app-check | pending |
 | 6 | Genie Code | 44.6.1 | done, 0653022; fixes 48b3fe8, 95719d9 |
 | 6 | gate | root check, app-check, app-frontend-check | pending |
-| 7 | Genie Code | 44.7.1 | pending |
+| 7 | Genie Code | 44.7.1 | done (not yet seen in a browser) |
 | 7 | gate | root check, app-check, app-frontend-check | pending |
 | 8 | User + Genie Code | 44.8.1 | pending |
 | 8 | Genie Code | 44.8.2 | pending |
