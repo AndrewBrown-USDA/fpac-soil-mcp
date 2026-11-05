@@ -160,8 +160,8 @@ def test_numbers_identical_with_and_without_map():
 def test_call_counts_and_return_geom(include_map):
     _, sda, tiger = _run(include_map, alternatives=ALTERNATIVES)
     flags = [c.kwargs["return_geom"] for c in sda.get_spatial_intersection.call_args_list]
-    # Two primary segments follow the flag; two alternative segments never fetch geometry.
-    assert flags == [include_map, include_map, False, False]
+    # Primary and alternative segments both follow the flag (alternative farmland is drawn).
+    assert flags == [include_map, include_map, include_map, include_map]
     assert tiger.check_urban_exemption_with_geometries.call_count == 2
     tiger.check_urban_exemption.assert_not_called()
 
@@ -332,3 +332,64 @@ def test_duplicate_alternative_ids_get_distinct_layers():
     ]
     assert alt_layers[0].legend[0].color != alt_layers[1].legend[0].color
     assert len({layer.id for layer in result.map.layers}) == len(result.map.layers)
+
+
+def test_alternative_reports_class_breakdown_like_the_primary():
+    result, _, _ = _run(False, alternatives=ALTERNATIVES)
+    (alt,) = result.alternatives
+    # Each of two alternative county segments returns one prime and one statewide row
+    # of 1.5 ac.
+    assert alt.prime_farmland_acres == 3.0
+    assert alt.statewide_importance_acres == 3.0
+    assert alt.conditional_prime_acres == 0.0
+    assert alt.local_importance_acres == 0.0
+    assert alt.unique_farmland_acres == 0.0
+    assert alt.not_prime_acres == 0.0
+    assert alt.not_prime_pct == 0.0
+    assert alt.total_fppa_protected_acres == 6.0
+    parts = (
+        alt.prime_farmland_acres
+        + alt.conditional_prime_acres
+        + alt.statewide_importance_acres
+        + alt.local_importance_acres
+        + alt.unique_farmland_acres
+        + alt.not_prime_acres
+        + alt.unmapped_acres
+    )
+    assert parts == pytest.approx(alt.total_project_acres, abs=0.05)
+
+
+OVERLAPPING_ALT = [{"alternative_id": "C", "centerline": "LINESTRING(0.0 0.0055, 0.01 0.0055)"}]
+
+
+def test_alternative_farmland_is_drawn_outside_the_primary_footprint():
+    result, _, _ = _run(True, alternatives=OVERLAPPING_ALT)
+    layer = _layers(result)["farmland_classes"]
+    assert layer.title == "Farmland classification (all alignments)"
+    features = layer.feature_collection["features"]
+    alt_features = [f for f in features if f["properties"].get("alignment") == "C"]
+    primary = [f for f in features if "alignment" not in f["properties"]]
+    assert primary and alt_features
+    direct = buffer_centerline(
+        centerline_input=CENTERLINE, buffer_distance=50.0, distance_unit="meters"
+    )
+    alt_footprint = buffer_centerline(
+        centerline_input=OVERLAPPING_ALT[0]["centerline"],
+        buffer_distance=50.0,
+        distance_unit="meters",
+    )
+    for feature in alt_features:
+        geom = shape(feature["geometry"])
+        assert "area_ac" not in feature["properties"]
+        assert feature["properties"]["farmland_class"] in {"prime", "statewide"}
+        # Display copies are simplified at about 1 m, so allow a sliver of overlap.
+        assert geom.intersection(direct).area <= geom.area * 0.02
+        assert geom.difference(alt_footprint.buffer(1e-5)).area <= geom.area * 0.02
+
+
+def test_alternative_outside_soil_rows_adds_no_features():
+    # ALTERNATIVES lies outside every synthetic soil row, so it adds no features.
+    result, _, _ = _run(True, alternatives=ALTERNATIVES)
+    layer = _layers(result)["farmland_classes"]
+    features = layer.feature_collection["features"]
+    assert not [f for f in features if "alignment" in f["properties"]]

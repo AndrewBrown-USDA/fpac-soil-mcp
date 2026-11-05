@@ -279,6 +279,31 @@ class CorridorAlternativeComparison(BaseModel):
     total_fppa_protected_pct: float = Field(
         default=0.0, description="Percentage of alternative footprint in protected farmland"
     )
+    prime_farmland_acres: float = Field(
+        default=0.0, description="Acres of all areas prime farmland in this alternative"
+    )
+    conditional_prime_acres: float = Field(
+        default=0.0,
+        description="Acres of prime farmland if drained/protected/irrigated in this alternative",
+    )
+    statewide_importance_acres: float = Field(
+        default=0.0, description="Acres of farmland of statewide importance in this alternative"
+    )
+    local_importance_acres: float = Field(
+        default=0.0, description="Acres of farmland of local importance in this alternative"
+    )
+    unique_farmland_acres: float = Field(
+        default=0.0, description="Acres of unique farmland in this alternative"
+    )
+    not_prime_acres: float = Field(
+        default=0.0, description="Acres of not prime farmland in this alternative"
+    )
+    not_prime_pct: float = Field(
+        default=0.0, description="Percentage of alternative footprint in not prime farmland"
+    )
+    unmapped_acres: float = Field(
+        default=0.0, description="Acres of unmapped / water area in this alternative"
+    )
     composite_relative_rating: float | None = Field(
         default=None,
         description="Area-weighted composite Land Evaluation score across all counties (0-100)",
