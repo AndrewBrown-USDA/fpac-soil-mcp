@@ -139,4 +139,10 @@
 - 47e99f0 A3 recorded; a98cbad 44.5.1; 0d6ed22 44.5.2 Genie Code part (`agent.py` and `test_agent_mcp_wiring.py` added to its scope).
 - Gates on 0d6ed22: root `make check` 688 passed / 3 skipped (unchanged, no server code); `make app-check` 173 passed (was 135). Live suite not rerun (no server change).
 - Not pushed. Push waits for user approval after the dev apps exist.
+- Pushed `fdc0e4c..527da95` (user approval). Both dev apps RUNNING on 527da95, git source `feature/agent-app-map2`, auto-deploy on (the dev agent app's was turned on after its first deploy):
+  - `mcp-fpac-soil-dev`: https://mcp-fpac-soil-dev-7474654188777746.aws.databricksapps.com, deployment 01f1d8b1ef2a149ebb7f69ec15d690d3, SP `app-2vrjmx mcp-fpac-soil-dev`.
+  - `agent-fpac-soil-dev`: https://agent-fpac-soil-dev-7474654188777746.aws.databricksapps.com, deployment 01f1d8b3839618b8a717abcad3dbffb4, SP `app-2vrjmx agent-fpac-soil-dev`; resources `mcp_server` -> `mcp-fpac-soil-dev` CAN_USE, `llm-endpoint` `models.ai.gpt-5-6-luna`, `experiment` 4493391463784067.
+  - Production `agent-fpac-soil-openai-sdk` unchanged on `main` 06525de.
+- Smoke call not possible from Genie Code: the dev server returns 401 to the workspace PAT, and app log access fails the same OAuth exchange. Pending user browser check on the dev agent app (see 44.5.2 checklist).
+- Every push to the branch now redeploys both dev apps.
 
