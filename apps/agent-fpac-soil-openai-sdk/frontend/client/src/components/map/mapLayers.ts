@@ -68,6 +68,10 @@ export const AUTHORITY_LABELS: Record<LayerAuthority, string> = {
 // redraw removes exactly the previous result and nothing else (basemap, AOI, draw).
 const PREFIX = 'result-';
 const FILL_OPACITY = 0.55;
+// Outline-only layers (AOI, corridors, counties, urban areas) are thin and partly
+// transparent so a narrow fill underneath, such as a corridor strip, stays visible.
+const OUTLINE_WIDTH = 1.25;
+const OUTLINE_OPACITY = 0.75;
 const EDGE_COLOR = '#333333';
 const FALLBACK_COLOR = '#424242';
 const PATTERNS = ['diagonal_hatch', 'cross_hatch', 'dot_stipple'] as const;
@@ -273,8 +277,13 @@ function addPolygonLayers(map: MapLibreMap, layer: MapLayer, source: string, bef
           ) as string,
           'line-width': byValue(
             layer,
-            (item) => (item.pattern === 'outline' ? 2 : 0.5),
+            (item) => (item.pattern === 'outline' ? OUTLINE_WIDTH : 0.5),
             0.5,
+          ) as number,
+          'line-opacity': byValue(
+            layer,
+            (item) => (item.pattern === 'outline' ? OUTLINE_OPACITY : 1),
+            1,
           ) as number,
         },
       },
@@ -291,7 +300,8 @@ function addPolygonLayers(map: MapLibreMap, layer: MapLayer, source: string, bef
         filter: dashed,
         paint: {
           'line-color': byValue(layer, (item) => item.color, FALLBACK_COLOR) as string,
-          'line-width': 2,
+          'line-width': OUTLINE_WIDTH,
+          'line-opacity': OUTLINE_OPACITY,
           'line-dasharray': [3, 2],
         },
       },
@@ -328,7 +338,8 @@ export function renderMapBlock(
           source,
           paint: {
             'line-color': byValue(layer, (item) => item.color, FALLBACK_COLOR) as string,
-            'line-width': 2.5,
+            'line-width': OUTLINE_WIDTH,
+            'line-opacity': OUTLINE_OPACITY,
             ...(dashedLine ? { 'line-dasharray': [3, 2] } : {}),
           },
         },

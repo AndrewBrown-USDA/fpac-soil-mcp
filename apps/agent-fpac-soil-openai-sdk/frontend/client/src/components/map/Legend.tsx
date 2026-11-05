@@ -78,6 +78,10 @@ function layerNotes(layer: MapLayer): string[] {
     );
   }
   if (layer.truncated) notes.push('Partial layer: features dropped by the size limit');
+  if (layer.id === 'corridor_direct' && layer.delivery === 'inline_geojson') {
+    // A right-of-way strip can be a few pixels wide when the whole corridor is in view.
+    notes.push('Narrow corridor: zoom in along the line to see the farmland classes');
+  }
   return notes;
 }
 
