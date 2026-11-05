@@ -11,11 +11,11 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import { Button } from '@/components/ui/button';
-import { FARMLAND_FILL_COLOR, withFarmlandClass } from './farmlandClasses';
 import { GeoJsonInput } from './GeoJsonInput';
 import { featureCollection, geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
+import { clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { ScreeningResults } from './ScreeningResults';
 import { useScreening } from './useScreening';
 
@@ -105,19 +105,6 @@ export function MapPanel() {
     });
 
     map.on('load', () => {
-      map.addSource('soil', { type: 'geojson', data: emptyCollection });
-      map.addLayer({
-        id: 'soil-fill',
-        type: 'fill',
-        source: 'soil',
-        paint: { 'fill-color': FARMLAND_FILL_COLOR, 'fill-opacity': 0.55 },
-      });
-      map.addLayer({
-        id: 'soil-line',
-        type: 'line',
-        source: 'soil',
-        paint: { 'line-color': '#333333', 'line-width': 0.5 },
-      });
       map.addSource('aoi', { type: 'geojson', data: emptyCollection });
       map.addLayer({
         id: 'aoi-line',
@@ -216,13 +203,14 @@ export function MapPanel() {
 
   useEffect(() => {
     if (!mapReady) return;
-    const source = mapRef.current?.getSource('soil') as GeoJSONSource | undefined;
-    const polygons = screening.result?.display?.soil_polygons;
-    source?.setData(
-      (polygons ? withFarmlandClass(polygons) : emptyCollection) as Parameters<
-        GeoJSONSource['setData']
-      >[0],
-    );
+    const map = mapRef.current;
+    if (!map) return;
+    // Server layers draw below the panel's own AOI outline (`aoi-line`).
+    if (screening.status === 'done') {
+      renderMapBlock(map, screening.result?.display?.map, 'aoi-line');
+    } else {
+      clearMapBlock(map);
+    }
     if (screening.status === 'done' && aoiRef.current) {
       const bounds = geometryBounds(aoiRef.current);
       if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
@@ -320,7 +308,7 @@ export function MapPanel() {
             `AOI ${activeAoi.aoi_ref} is attached to this chat.`}
           {screening.status === 'running' && 'Running preliminary screening.'}
           {screening.status === 'done' &&
-            `Preliminary screening done (${screening.result?.display?.soil_polygons?.features.length ?? 0} soil polygons).`}
+            `Preliminary screening done (${inlineLayers(screening.result?.display?.map).length} map layers drawn).`}
         </p>
       </div>
       {(aoiError || tileError || screening.status === 'error') && (

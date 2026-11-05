@@ -256,7 +256,7 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
     assert re.fullmatch(r"aoi-[0-9a-f]{8}", body["aoi_ref"])
     assert body["chat_summary"]["aoi_ref"] == body["aoi_ref"]
     assert body["display"]["map"] == _map_block()
-    assert body["display"]["soil_polygons"] == _polygons()
+    assert "soil_polygons" not in body["display"]
     assert body["display"]["regulatory_notice"].startswith("Preliminary screening")
     summary = body["chat_summary"]
     assert summary["total_aoi_acres"] == 123.5
@@ -492,16 +492,11 @@ def test_summary_text_is_capped():
     assert len(geo.render_chat_summary_text(summary)) <= 2000
 
 
-def test_soil_polygons_empty_when_map_or_layer_missing(start_server, fake_mcp):
+def test_map_is_null_when_result_has_no_map_block(start_server, fake_mcp):
     fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured(_analysis())}))
     body = _post(start_server, {"geometry": SQUARE}).json()
     assert body["display"]["map"] is None
-    assert body["display"]["soil_polygons"] == {"type": "FeatureCollection", "features": []}
-
-    no_layer = {**_analysis(), "map": {**_map_block(), "layers": _map_block()["layers"][:1]}}
-    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured(no_layer)}))
-    body = _post(start_server, {"geometry": SQUARE}).json()
-    assert body["display"]["soil_polygons"]["features"] == []
+    assert "soil_polygons" not in body["display"]
 
 
 def test_map_block_never_reaches_chat_summary(start_server, fake_mcp):

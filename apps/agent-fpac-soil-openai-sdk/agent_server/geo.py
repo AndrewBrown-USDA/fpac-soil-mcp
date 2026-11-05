@@ -30,7 +30,6 @@ ANALYSIS_TOOL = "analyze_farmland_by_polygon"
 CORRIDOR_TOOL = "analyze_corridor_fppa"
 # Tools whose results carry an ADR 0017 ``map`` block; the only tools /api/geo/map calls.
 MAP_TOOLS = (ANALYSIS_TOOL, CORRIDOR_TOOL)
-FARMLAND_LAYER_ID = "farmland_classes"
 
 FARMLAND_CLASSES = (
     ("prime_farmland", "Prime farmland"),
@@ -314,23 +313,6 @@ def map_block(result: dict[str, Any]) -> dict[str, Any] | None:
     return block if isinstance(block, dict) else None
 
 
-def farmland_feature_collection(block: dict[str, Any] | None) -> dict[str, Any]:
-    """Features of the ``farmland_classes`` layer as a FeatureCollection (empty if absent).
-
-    Feeds ``display.soil_polygons`` so the current map panel keeps working until it
-    draws ``display.map`` directly (44.6.1 removes this).
-    """
-    features: list[Any] = []
-    for layer in (block or {}).get("layers") or []:
-        if not isinstance(layer, dict) or layer.get("id") != FARMLAND_LAYER_ID:
-            continue
-        collection = layer.get("feature_collection")
-        if isinstance(collection, dict) and isinstance(collection.get("features"), list):
-            features = collection["features"]
-        break
-    return {"type": "FeatureCollection", "features": features}
-
-
 async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
     """Screen one AOI with one MCP call. Raises ``GeoRequestError(502)`` on MCP failure."""
     geometry = request.geometry.model_dump()
@@ -366,7 +348,6 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
         "display": {
             "analysis": select_display_analysis(analysis),
             "map": block,
-            "soil_polygons": farmland_feature_collection(block),
             "regulatory_notice": summary["regulatory_notice"],
         },
         "chat_summary": summary,

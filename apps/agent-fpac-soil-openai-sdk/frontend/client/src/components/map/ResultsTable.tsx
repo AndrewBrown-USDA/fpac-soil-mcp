@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { CLASS_BY_KEY, FARMLAND_CLASSES, classifyFarmland } from './farmlandClasses';
-import { Swatch } from './Legend';
+import type { FarmlandClass } from './farmlandClasses';
+import { LegendSwatch, Swatch } from './Legend';
+import type { MapLegendItem } from './mapLayers';
 import type { DisplayAnalysis } from './useScreening';
 
 function num(value: unknown): number | null {
@@ -13,9 +15,33 @@ function fmt(value: number | null | undefined): string {
     : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
+// Server legend entry for a class when the result has one, else the client class.
+function ClassMark({
+  farmlandClass,
+  legend,
+}: {
+  farmlandClass: FarmlandClass;
+  legend: Map<string, MapLegendItem>;
+}) {
+  const item = legend.get(farmlandClass.key);
+  return (
+    <>
+      {item ? <LegendSwatch item={item} /> : <Swatch farmlandClass={farmlandClass} />}
+      <span className="font-mono text-xs">[{item?.code ?? farmlandClass.code}]</span>
+    </>
+  );
+}
+
 // The non-map way to read a screening result: class breakdown and map units.
-export function ResultsTable({ analysis }: { analysis: DisplayAnalysis }) {
+export function ResultsTable({
+  analysis,
+  legend,
+}: {
+  analysis: DisplayAnalysis;
+  legend?: MapLegendItem[];
+}) {
   const [order, setOrder] = useState<'desc' | 'asc'>('desc');
+  const legendByValue = new Map((legend ?? []).map((item) => [item.value, item]));
   const summary = analysis.farmland_summary ?? {};
   const classRows = FARMLAND_CLASSES.map((farmlandClass) => ({
     farmlandClass,
@@ -51,8 +77,7 @@ export function ResultsTable({ analysis }: { analysis: DisplayAnalysis }) {
             <tr key={farmlandClass.key} className="border-border border-b">
               <th scope="row" className="py-1 text-left font-normal">
                 <span className="flex items-center gap-2">
-                  <Swatch farmlandClass={farmlandClass} />
-                  <span className="font-mono text-xs">[{farmlandClass.code}]</span>
+                  <ClassMark farmlandClass={farmlandClass} legend={legendByValue} />
                   {farmlandClass.label}
                 </span>
               </th>
@@ -109,8 +134,7 @@ export function ResultsTable({ analysis }: { analysis: DisplayAnalysis }) {
                   <td>{unit.muname ?? 'n/a'}</td>
                   <td>
                     <span className="flex items-center gap-2">
-                      <Swatch farmlandClass={farmlandClass} />
-                      <span className="font-mono text-xs">[{farmlandClass.code}]</span>
+                      <ClassMark farmlandClass={farmlandClass} legend={legendByValue} />
                       {unit.farmlndcl || farmlandClass.label}
                     </span>
                   </td>

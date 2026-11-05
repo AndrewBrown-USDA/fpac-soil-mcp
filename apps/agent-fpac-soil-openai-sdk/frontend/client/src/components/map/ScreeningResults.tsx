@@ -1,26 +1,15 @@
-import { useMemo } from 'react';
-import { classifyFarmland } from './farmlandClasses';
-import type { FarmlandClassKey } from './farmlandClasses';
-import { Legend } from './Legend';
+import { MapLegend } from './Legend';
 import { ResultsTable } from './ResultsTable';
 import type { ScreeningResponse } from './useScreening';
 
-function presentClasses(result: ScreeningResponse): Set<FarmlandClassKey> {
-  const present = new Set<FarmlandClassKey>();
-  for (const unit of result.display.analysis?.map_units ?? []) {
-    present.add(classifyFarmland(unit.farmlndcl));
-  }
-  for (const feature of result.display.soil_polygons?.features ?? []) {
-    present.add(classifyFarmland(feature.properties?.farmlndcl));
-  }
-  return present;
-}
+const FARMLAND_LAYER_ID = 'farmland_classes';
 
-// Notice first (verbatim, ADR 0003), then legend and table.
+// Notice first (verbatim, ADR 0003), then the server's map legends and the table.
 export function ScreeningResults({ result }: { result: ScreeningResponse }) {
-  const present = useMemo(() => presentClasses(result), [result]);
   const notice = result.display.regulatory_notice;
   const analysis = result.display.analysis;
+  const block = result.display.map;
+  const farmlandLegend = block?.layers.find((layer) => layer.id === FARMLAND_LAYER_ID)?.legend;
   return (
     <div className="flex flex-col gap-3">
       {notice ? (
@@ -33,8 +22,8 @@ export function ScreeningResults({ result }: { result: ScreeningResponse }) {
           Regulatory notice missing - treat this result as invalid.
         </p>
       )}
-      <Legend present={present} />
-      {analysis && <ResultsTable analysis={analysis} />}
+      {block && <MapLegend block={block} />}
+      {analysis && <ResultsTable analysis={analysis} legend={farmlandLegend} />}
     </div>
   );
 }
