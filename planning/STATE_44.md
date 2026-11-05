@@ -30,8 +30,8 @@
 | 3 | gate | root check, app-check, test-live | passed on 5dd084a (666 passed / 3 skipped; app 135; live 43 / 3 skipped) |
 | 4 | Genie Code | 44.4.1 | done |
 | 4 | gate | root check, app-check, test-live | passed on 18d76dd (688 passed / 3 skipped; app 135; live 43 / 3 skipped) |
-| 5 | Genie Code | 44.5.1 | pending |
-| 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | pending |
+| 5 | Genie Code | 44.5.1 | done, a98cbad |
+| 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | Genie Code part done, 0d6ed22; user steps pending (dev apps, push approval, smoke call) |
 | 5 | gate | root check, app-check | pending |
 | 6 | Genie Code | 44.6.1 | pending |
 | 6 | gate | root check, app-check, app-frontend-check | pending |
@@ -133,4 +133,10 @@
 
 - Default `map` descriptors add about 2.0-2.5 KB per analyze call to model context (legends about 1 KB, colour and pattern about 0.4 KB, null or false fields about 0.4-0.6 KB). Kept unconditional (user, 2026-11-04). Measure the share on real AOIs during the 44.8.1 trials; unconditional trims if needed: omit null or false descriptor fields, or legend colours by `style_key`.
 - `.env.example` lacks `MAP_SIMPLIFY_TOLERANCE_M` and `MAP_MAX_GEOJSON_BYTES`.
+
+## Wave 5 progress (2026-11-04)
+
+- 47e99f0 A3 recorded; a98cbad 44.5.1; 0d6ed22 44.5.2 Genie Code part (`agent.py` and `test_agent_mcp_wiring.py` added to its scope).
+- Gates on 0d6ed22: root `make check` 688 passed / 3 skipped (unchanged, no server code); `make app-check` 173 passed (was 135). Live suite not rerun (no server change).
+- Not pushed. Push waits for user approval after the dev apps exist.
 
