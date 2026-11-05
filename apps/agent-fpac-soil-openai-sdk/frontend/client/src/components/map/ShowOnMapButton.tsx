@@ -113,11 +113,8 @@ export function ShowOnMapButton({
         onClick={run}
         disabled={status === 'loading'}
       >
-        {status === 'loading' ? 'Loading map...' : isShown ? 'Show on map again' : 'Show on map'}
+        {status === 'loading' ? 'Loading map...' : isShown ? 'Shown on map' : 'Show on map'}
       </Button>
-      {isShown && status !== 'loading' && (
-        <span className="text-muted-foreground text-xs">Shown on the map.</span>
-      )}
       {status === 'error' && message && (
         <span role="alert" className="text-destructive text-xs">
           {message}
