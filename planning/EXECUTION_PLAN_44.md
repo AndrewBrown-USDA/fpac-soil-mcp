@@ -62,6 +62,8 @@
 
 11. **A2, 2026-11-04, amendment (user direction):** the 44.4.1 contract test file is `tests/test_map_tool_contracts.py`, not `tests/test_phase8_contracts.py` (name says what it covers). 44.4.1 also adds `map_simplify_tolerance_m` and `map_max_geojson_bytes` to the README configuration reference, since 44.2.1 added them without docs. The tool layer always passes `include_map` to the analyzers; existing call assertions in `tests/test_tools.py` are amended.
 
+12. **A3, 2026-11-04, amendment (user direction), replaces the trial wiring in D9:** trials use two dev apps and leave both production apps alone. `mcp-fpac-soil-dev` (MEDIUM, no resources) deploys from git, repo root, branch `feature/agent-app-map2`. A dev agent app (proposed name `agent-fpac-soil-dev`, user's choice) deploys from git, `apps/agent-fpac-soil-openai-sdk`, same branch, with resources `mcp_server` -> `mcp-fpac-soil-dev` (CAN_USE), `llm-endpoint` and `experiment` (user's choice of experiment). The agent app picks its MCP server from its `mcp_server` resource: `app.yaml` sets `FPAC_MCP_APP` with `valueFrom: mcp_server` (resolves to the app name), and `config.py` resolves the URL once per process with `WorkspaceClient().apps.get(name).url` + `/mcp`; an explicit `FPAC_MCP_URL` still wins (local runs, tests), then `FPAC_MCP_APP`, then the default. `app.yaml` is the same on every branch, so nothing is reverted at close-out and the production agent app keeps `mcp-fpac-soil` through its own resource. A later dev branch only re-points both dev apps. Unverified: that CAN_USE lets the agent app's service principal call `apps.get` on the server app; the 44.5.2 smoke call checks it (fallback: also grant CAN_VIEW).
+
 ## Wave & Dependency Table
 
 Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `apps/agent-fpac-soil-openai-sdk/`; `src/` and root `tests/` are the MCP server.
@@ -76,7 +78,7 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 3 | Genie Code | 44.3.2 | Corridor analyzer map layers | `src/fpac_soil_mcp/corridor_analysis.py`, root `tests/test_corridor_map.py` (new), root `tests/test_corridor_analysis.py` and `tests/test_phase3_contracts.py` (urban mocks only, amendment A1) | 44.2.1, 44.2.2 |
 | 4 | Genie Code | 44.4.1 | Tool parameters, MCP contract tests, tool docs | `src/fpac_soil_mcp/tools/spatial_analysis_tools.py`, root `tests/test_tools.py`, root `tests/test_map_tool_contracts.py` (new), root `README.md` (`## Tool Reference`, L260, and the two map settings in `## Configuration Reference`, A2) | 44.3.1, 44.3.2 |
 | 5 | Genie Code | 44.5.1 | App routes: screening from `map`, `/api/geo/map` | `agent_server/geo.py`, `agent_server/start_server.py`, app `tests/test_geo_screen.py`, app `tests/test_geo_map.py` (new) | 44.4.1 |
-| 5 | User + Genie Code | 44.5.2 | Dev MCP server and trial wiring | app `app.yaml`, app `databricks.yml`, app `tests/test_deploy_config.py`, `planning/STATE_44.md` | 44.4.1 |
+| 5 | User + Genie Code | 44.5.2 | Dev apps and MCP server lookup (A3) | app `app.yaml`, app `databricks.yml`, `agent_server/config.py`, app `tests/test_deploy_config.py`, app `tests/test_agent_config.py`, app `README.md` (configuration table), `planning/STATE_44.md` | 44.4.1 |
 | 6 | Genie Code | 44.6.1 | Generic map layer renderer | `frontend/client/src/components/map/mapLayers.ts` (new), `MapPanel.tsx`, `Legend.tsx`, `useScreening.ts`, `ScreeningResults.tsx`, `ResultsTable.tsx` (all under `components/map/`); `agent_server/geo.py` and app `tests/test_geo_screen.py` (remove `soil_polygons` only) | 44.5.1, 44.5.2 |
 | 7 | Genie Code | 44.7.1 | "Show on map" on tool cards | `frontend/client/src/components/message.tsx`, `frontend/client/src/layouts/ChatLayout.tsx`, `components/map/MapResultContext.tsx` (new), `components/map/ShowOnMapButton.tsx` (new), `components/map/MapPanel.tsx` | 44.6.1 |
 | 8 | User + Genie Code | 44.8.1 | M4 deployed trial | `planning/evidence/44.8.1-trial.md` (new), `planning/STATE_44.md` | 44.7.1 |
@@ -85,7 +87,7 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 9 | Genie Code | 44.9.2 | Docs: ADR 0015 local changes, app docs | `docs/decisions/0015-vendored-agent-app-frontend.md`, app `README.md`, app `AGENTS.md` | 44.8.2 |
 | 10 | User + Genie Code | 44.10.1 | Final deployed trial (M4 + M5) | `planning/evidence/44.10.1-trial.md` (new), `planning/STATE_44.md` | 44.9.1, 44.9.2 |
 | 11 | Genie Code | 44.11.1 | Two-axis code review of the branch | `planning/REVIEW_44.md` (new), `planning/STATE_44.md` | 44.10.1 |
-| 12 | Genie Code + User | 44.12.1 | Close-out | revert of 44.5.2 files, ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1 and any review fix tasks |
+| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1 and any review fix tasks |
 
 Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 44.9.1; `geo.py`: 44.5.1, 44.6.1; `spatial_analysis_tools.py`: 44.4.1 only), and no task depends on another task in its own wave. Execution is serial anyway (D8); file scopes are disjoint within each wave so a worker-capable tool could run them in parallel. Review findings that need code become numbered fix tasks (44.11.2, 44.11.3, ...) added to this table before close-out.
 
@@ -102,7 +104,7 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 - **No extra upstream queries:** `include_map=True` flips `return_geom` on the existing SDA call and reuses the TIGERweb urban geometries already fetched. Do not add SDA or TIGERweb calls. Mocked tests count calls.
 - **Additive only (D4):** do not rename, remove or reshape existing response fields. `geo.py` `select_display_analysis`/`build_chat_summary`, the eval cases (`eval/prompt_test_cases.json`) and LESA's use of the corridor result must keep working unchanged.
 - **Regulatory notice (ADR 0003):** every rendered result shows the server `regulatory_notice` and authority label; the map never shows "official".
-- **Deploy config tests:** `tests/test_deploy_config.py` pins the production MCP URL and resource. 44.5.2 changes them for the trial on this branch only; 44.12.1 reverts them before the PR merges. Never merge with the dev URL.
+- **Deploy config tests:** `tests/test_deploy_config.py` pins the production MCP resource. After 44.5.2 (A3) it pins `FPAC_MCP_APP` `valueFrom: mcp_server` and the production resource name in `databricks.yml`; the dev apps set their own resources in the UI, so no dev name or URL is committed.
 - **Auto-deploy:** while the agent app tracks this branch, every approved push redeploys it. Push only at 44.5.2, 44.8.1, 44.10.1 and close-out unless the user asks. The dev MCP server deploys from the workspace clone path, so redeploy it after server changes; it does not auto-deploy.
 - **`aoi_ref` in tool-card arguments:** the model passes the active `aoi_ref` string; substitution happens in the agent server. `/api/geo/map` must accept the browser's active AOI and reuse `aoi_context.substitute_arguments`; never trust a geometry argument the browser did not send.
 - **Route allowlist:** `/api/geo/map` accepts only the two analyze tool names, forces `include_map=True`, enforces `MAX_BODY_BYTES`, and returns bounded 4xx/502 errors that never echo arguments.
@@ -170,12 +172,12 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 - **Anchors:** `spatial_analysis_tools.py` L21, L57, L115, L179; `tests/test_phase3_contracts.py` for fixture style.
 - **Acceptance:** root `make check` passes; then wave gate with `make test-live`.
 
-### 44.5.2 -- Dev MCP server and trial wiring
+### 44.5.2 -- Dev apps and MCP server lookup (A3)
 
 - **Executor:** User + Genie Code. **Depends on:** 44.4.1.
-- **Files in scope:** must edit app `app.yaml` (`FPAC_MCP_URL`), app `databricks.yml` (`resources.apps.agent_openai_agents_sdk` env and `mcp_server` resource), app `tests/test_deploy_config.py` (`MCP_URL`, resource assertion), `planning/STATE_44.md`.
-- **Spec:** User creates `mcp-fpac-soil-dev` (same config as `mcp-fpac-soil`) deployed from `/Workspace/Users/andrew.g.brown@usda.gov/fpac-soil-mcp` at the branch head, and grants the agent app's service principal CAN_USE. Genie Code commits the dev URL and resource name in app config and the deploy test (one commit, `chore(agent-app): point trial at dev MCP server`). User approves the push and sets the agent app's git branch to `feature/agent-app-map2`. Record app names, URLs, deployment ids and a direct `include_map` smoke call through the dev server.
-- **Acceptance:** `make app-check` passes; `apps get` shows both apps RUNNING; smoke call returns a `map` block.
+- **Files in scope:** must edit app `app.yaml` (`FPAC_MCP_URL` -> `FPAC_MCP_APP` `valueFrom: mcp_server`), app `databricks.yml` (same env change; `mcp_server` resource stays `mcp-fpac-soil`), `agent_server/config.py` (lookup), app `tests/test_deploy_config.py`, app `tests/test_agent_config.py`, app `README.md` (configuration table), `planning/STATE_44.md`.
+- **Spec:** Genie Code: `fpac_mcp_url()` returns `FPAC_MCP_URL` when set; else, when `FPAC_MCP_APP` is set, the looked-up app URL + `/mcp` (cached per process; a failed lookup raises a bounded error naming only the env var, never falls back silently to production); else the default. One commit, `feat(agent-app): pick the MCP server from the app resource`. User: creates `mcp-fpac-soil-dev` and the dev agent app as in A3, holds the dev agent app's first deploy until the push, approves the push. Record app names, URLs, deployment ids and a direct `include_map` smoke call through the dev server.
+- **Acceptance:** `make app-check` passes; `apps get` shows both dev apps RUNNING on the branch head; the dev agent app reaches `mcp-fpac-soil-dev` (smoke call returns a `map` block); the production agent app is unchanged.
 
 ### 44.5.1 -- App routes: screening from `map`, `/api/geo/map`
 
@@ -248,6 +250,6 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 ### 44.12.1 -- Close-out
 
 - **Executor:** Genie Code + User. **Depends on:** 44.11.1 and fix tasks.
-- **Files in scope:** revert the 44.5.2 files; must edit ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md` (Phase 8 and Track A status), `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (one status note pointing to ADR 0017), `planning/STATE_44.md`.
-- **Spec:** Revert the trial wiring (production URL and resource; deploy test green). ADR 0017 -> `Accepted`. Mark M3-M5 delivered and list remaining Phase 8 items. Final gate (all suites). User approves push and merges. After merge: user points the agent app back to `main`; with user approval, refresh the team-03 clone to `main` and redeploy `mcp-fpac-soil`; delete or stop `mcp-fpac-soil-dev` (user decision).
-- **Acceptance:** `grep -n mcp-fpac-soil-dev` finds nothing outside planning; all gates green; `apps get` for both production apps shows the merged commit.
+- **Files in scope:** must edit ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md` (Phase 8 and Track A status), `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (one status note pointing to ADR 0017), `planning/STATE_44.md`.
+- **Spec:** ADR 0017 -> `Accepted`. Mark M3-M5 delivered and list remaining Phase 8 items. Final gate (all suites). User approves push and merges. After merge: the production agent app redeploys from `main` (its `mcp_server` resource already names `mcp-fpac-soil`); with user approval, refresh the team-03 clone to `main` and redeploy `mcp-fpac-soil`; the dev apps stay for the next dev branch or are stopped (user decision).
+- **Acceptance:** `grep -n mcp-fpac-soil-dev` finds nothing outside planning and app docs; all gates green; `apps get` for both production apps shows the merged commit.

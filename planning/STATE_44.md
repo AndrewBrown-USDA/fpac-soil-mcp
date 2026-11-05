@@ -31,7 +31,7 @@
 | 4 | Genie Code | 44.4.1 | done |
 | 4 | gate | root check, app-check, test-live | passed on 18d76dd (688 passed / 3 skipped; app 135; live 43 / 3 skipped) |
 | 5 | Genie Code | 44.5.1 | pending |
-| 5 | User + Genie Code | 44.5.2 | pending |
+| 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | pending |
 | 5 | gate | root check, app-check | pending |
 | 6 | Genie Code | 44.6.1 | pending |
 | 6 | gate | root check, app-check, app-frontend-check | pending |
@@ -124,4 +124,13 @@
 - **Deviations:** size check uses a fixed 4,000-byte margin, not 10%: the additive keys measured 2,163 bytes (polygon, +43%) and 2,657 bytes (corridor, +47%) on the small fixtures, mostly the farmland legend. The pre-change response is the same call with the four additive keys removed (no stored fixture). The section 4 table in the test is checked against the ADR table text, so ADR edits that add or drop a row fail the test.
 - **Gotchas for 44.5.x:** the MCP JSON schema shows `include_map` with `default: false` and the "Leave false." description; the tool-level `description` strings in `tools/__init__.py` do not mention it. Default responses grow by about 2-3 KB per call (descriptor layers and legend), which reaches the model context; if that matters for agent token budgets, a later task could trim descriptors when `include_map` is false. `.env.example` still lacks the map settings.
 - **Process:** shell writes to workspace files can also lag `git` reads; edits now land via `/tmp` clone + `cat >` and a `cmp` check before commit.
+
+## Amendment A3 (2026-11-04)
+
+- User direction: a dev agent app plus `mcp-fpac-soil-dev`, both from git on the dev branch; the production agent app stays on `main`. The agent app's MCP URL comes from its `mcp_server` resource (`FPAC_MCP_APP` `valueFrom`, SDK lookup), so `app.yaml` is branch-neutral and close-out has nothing to revert. 44.5.2 and 44.12.1 rewritten in EXECUTION_PLAN_44.
+
+## Open items
+
+- Default `map` descriptors add about 2.0-2.5 KB per analyze call to model context (legends about 1 KB, colour and pattern about 0.4 KB, null or false fields about 0.4-0.6 KB). Kept unconditional (user, 2026-11-04). Measure the share on real AOIs during the 44.8.1 trials; unconditional trims if needed: omit null or false descriptor fields, or legend colours by `style_key`.
+- `.env.example` lacks `MAP_SIMPLIFY_TOLERANCE_M` and `MAP_MAX_GEOJSON_BYTES`.
 
