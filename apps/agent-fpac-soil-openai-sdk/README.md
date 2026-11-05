@@ -15,7 +15,8 @@ Answers are preliminary screening only. They are based on SSURGO soil inventory 
 | Name | Default | Purpose |
 | --- | --- | --- |
 | `AGENT_MODEL` | `models.ai.gpt-5-6-luna` | Unity Catalog model service, called through AI Gateway (`/ai-gateway/mlflow/v1`). In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
-| `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | URL of the fpac-soil-mcp server. |
+| `FPAC_MCP_APP` | unset | Name of the fpac-soil-mcp server app. In `app.yaml` it comes from the `mcp_server` app resource (`valueFrom`), and the app looks up that app's URL once per process and adds `/mcp`, so production and dev agent apps differ only in their `mcp_server` resource. If set but not resolvable, the agent runs without tools rather than using another server. |
+| `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | Explicit MCP URL for local runs and tests; overrides `FPAC_MCP_APP`. Not set in the deploy files. |
 | `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
 
 GPT-5 models are called with `reasoning_effort="none"`, which they need for tool calling.

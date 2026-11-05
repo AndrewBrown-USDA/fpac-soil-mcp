@@ -7,6 +7,7 @@ import time.
 
 import functools
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 # Unity Catalog model service name. The workspace no longer serves the legacy
@@ -29,9 +30,51 @@ def agent_model() -> str:
     return _env_or_default("AGENT_MODEL", DEFAULT_AGENT_MODEL)
 
 
-def fpac_mcp_url() -> str:
-    """URL of the fpac-soil-mcp server (env ``FPAC_MCP_URL``)."""
-    return _env_or_default("FPAC_MCP_URL", DEFAULT_FPAC_MCP_URL)
+class McpServerLookupError(RuntimeError):
+    """``FPAC_MCP_APP`` could not be resolved; the message is fixed text."""
+
+
+# App name -> resolved MCP URL, once per process.
+_RESOLVED_MCP_URLS: dict[str, str] = {}
+
+
+def fpac_mcp_app() -> str | None:
+    """Name of the fpac-soil-mcp server app (env ``FPAC_MCP_APP``, from the ``mcp_server``
+    app resource via ``valueFrom``), or None when unset or blank."""
+    return os.environ.get("FPAC_MCP_APP", "").strip() or None
+
+
+def fpac_mcp_url(app_url_lookup: Callable[[str], str | None] | None = None) -> str:
+    """URL of the fpac-soil-mcp server.
+
+    Order: an explicit ``FPAC_MCP_URL`` (local runs, tests); else the URL of the app
+    named by ``FPAC_MCP_APP``, looked up once per process with ``app_url_lookup``
+    (app name -> app base URL) plus ``/mcp``; else the default. A set ``FPAC_MCP_APP``
+    that cannot be resolved raises rather than falling back to the default server.
+
+    Raises:
+        McpServerLookupError: if ``FPAC_MCP_APP`` is set and the lookup fails, is not
+            available, or returns something other than an ``https://`` URL.
+    """
+    explicit = os.environ.get("FPAC_MCP_URL", "").strip()
+    if explicit:
+        return explicit
+    app = fpac_mcp_app()
+    if app is None:
+        return DEFAULT_FPAC_MCP_URL
+    if app in _RESOLVED_MCP_URLS:
+        return _RESOLVED_MCP_URLS[app]
+    if app_url_lookup is None:
+        raise McpServerLookupError("FPAC_MCP_APP is set but no app lookup is available.")
+    try:
+        base = app_url_lookup(app)
+    except Exception:  # noqa: BLE001 - any lookup failure is one bounded error
+        raise McpServerLookupError("Could not resolve FPAC_MCP_APP to an app URL.") from None
+    if not isinstance(base, str) or not base.startswith("https://"):
+        raise McpServerLookupError("FPAC_MCP_APP did not resolve to an https URL.")
+    url = f"{base.rstrip('/')}/mcp"
+    _RESOLVED_MCP_URLS[app] = url
+    return url
 
 
 def fpac_mcp_timeout_seconds() -> float:

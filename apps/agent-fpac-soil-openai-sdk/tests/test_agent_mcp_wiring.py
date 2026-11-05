@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from agent_server import agent as agent_module
+from agent_server import config as config_module
 from mlflow.types.responses import ResponsesAgentRequest
 
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
@@ -28,8 +29,9 @@ async def _empty_events():
 
 @pytest.fixture(autouse=True)
 def _clear_env(monkeypatch):
-    for name in ("AGENT_MODEL", "FPAC_MCP_URL", "FPAC_MCP_TIMEOUT_SECONDS"):
+    for name in ("AGENT_MODEL", "FPAC_MCP_URL", "FPAC_MCP_APP", "FPAC_MCP_TIMEOUT_SECONDS"):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(config_module, "_RESOLVED_MCP_URLS", {})
 
 
 @pytest.fixture
@@ -88,6 +90,42 @@ def test_init_fpac_mcp_server_env_overrides(monkeypatch):
     mcp_server.assert_called_once_with(
         url="https://example.com/mcp", name="fpac-soil-mcp", workspace_client=ws, timeout=30.0
     )
+
+
+def test_init_fpac_mcp_server_resolves_mcp_app(monkeypatch):
+    mcp_server = MagicMock(name="McpServer")
+    monkeypatch.setattr(agent_module, "McpServer", mcp_server)
+    monkeypatch.setenv("FPAC_MCP_APP", "mcp-fpac-soil-dev")
+    ws = MagicMock(name="ws")
+    ws.apps.get.return_value.url = "https://mcp-fpac-soil-dev-0000.aws.databricksapps.com"
+    agent_module.init_fpac_mcp_server(ws)
+    ws.apps.get.assert_called_once_with(name="mcp-fpac-soil-dev")
+    assert (
+        mcp_server.call_args.kwargs["url"]
+        == "https://mcp-fpac-soil-dev-0000.aws.databricksapps.com/mcp"
+    )
+
+
+def test_connect_runs_without_tools_when_lookup_fails(monkeypatch):
+    monkeypatch.setattr(agent_module, "WorkspaceClient", MagicMock())
+    monkeypatch.setattr(
+        agent_module,
+        "init_fpac_mcp_server",
+        MagicMock(side_effect=config_module.McpServerLookupError("lookup failed")),
+    )
+    create = MagicMock(name="create_agent")
+    monkeypatch.setattr(agent_module, "create_agent", create)
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    result = asyncio.run(connect())
+
+    assert result is create.return_value
+    create.assert_called_once_with(mcp_servers=[], tools_unavailable=True)
 
 
 @pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])

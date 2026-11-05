@@ -24,8 +24,8 @@ resources:
             value_from: "experiment"
           - name: AGENT_MODEL
             value_from: "llm-endpoint"
-          - name: FPAC_MCP_URL
-            value: "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
+          - name: FPAC_MCP_APP
+            value_from: "mcp_server"
           - name: FPAC_MCP_TIMEOUT_SECONDS
             value: "180"
 

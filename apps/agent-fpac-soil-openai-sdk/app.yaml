@@ -16,7 +16,9 @@ env:
     valueFrom: "experiment"
   - name: AGENT_MODEL
     valueFrom: "llm-endpoint"
-  - name: FPAC_MCP_URL
-    value: "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
+  # The MCP server is whichever app the ``mcp_server`` resource names (resolved to its
+  # URL at runtime), so this file is the same for production and dev apps.
+  - name: FPAC_MCP_APP
+    valueFrom: "mcp_server"
   - name: FPAC_MCP_TIMEOUT_SECONDS
     value: "180"

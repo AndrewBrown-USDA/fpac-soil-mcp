@@ -30,6 +30,7 @@ from agent_server.aoi_context import (
     read_active_aoi,
 )
 from agent_server.config import (
+    McpServerLookupError,
     agent_model,
     fpac_mcp_timeout_seconds,
     fpac_mcp_url,
@@ -70,7 +71,8 @@ def configure_openai_client() -> AsyncDatabricksOpenAI:
 def init_fpac_mcp_server(workspace_client: WorkspaceClient) -> McpServer:
     """Build the client for the deployed fpac-soil-mcp server."""
     return McpServer(
-        url=fpac_mcp_url(),
+        # FPAC_MCP_APP (the ``mcp_server`` resource) resolves through the Apps API.
+        url=fpac_mcp_url(lambda name: workspace_client.apps.get(name=name).url),
         name=FPAC_MCP_SERVER_NAME,
         workspace_client=workspace_client,
         timeout=fpac_mcp_timeout_seconds(),
@@ -141,7 +143,12 @@ async def _connect_fpac_agent(stack: AsyncExitStack, aoi: ActiveAoi | None = Non
     # WorkspaceClient() authenticates as the app's service principal, not the user.
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
     # traceback), so the request still runs.
-    server = init_fpac_mcp_server(WorkspaceClient())
+    try:
+        server = init_fpac_mcp_server(WorkspaceClient())
+    except McpServerLookupError as exc:
+        # Same outcome as an unreachable server: the turn runs without tools.
+        logger.warning("MCP server lookup failed: %s", exc)
+        return create_agent(mcp_servers=[], tools_unavailable=True)
     if aoi is not None:
         bind_active_aoi(server, aoi)
     servers, unavailable = await connect_healthy_mcp_servers(stack, [server])
