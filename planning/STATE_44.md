@@ -37,7 +37,7 @@
 | 6 | gate | root check, app-check, app-frontend-check | pending |
 | 7 | Genie Code | 44.7.1 | done (not yet seen in a browser) |
 | 7 | gate | root check, app-check, app-frontend-check | pending |
-| 8 | User + Genie Code | 44.8.1 | pending |
+| 8 | User + Genie Code | 44.8.1 | done, trial passed (planning/evidence/44.8.1-trial.md) |
 | 8 | Genie Code | 44.8.2 | pending |
 | 8 | gate | root check, app-check, app-frontend-check | pending |
 | 9 | Genie Code | 44.9.1 | pending |
@@ -154,4 +154,4 @@
 - Wave 6 fixes: 48b3fe8 draws outline-only layers above filled layers (server order is drop priority); 95719d9 keeps the map at the panel's full visible height when results show (user report: the map halved after screening). Pushed `1db8429..95719d9` early with user approval to check the renderer. Dev apps on 95719d9: `mcp-fpac-soil-dev` 01f1d8cc00d21e4aaf59068031777b9d, `agent-fpac-soil-dev` 01f1d8cc00c91179bc5ebdb158638886.
 - Wave 6 browser check (user, 2026-11-04): renderer looks right; map height stays fixed after screening. Wave 6 done.
 - A4 (user, 2026-11-05, trial 44.8.1): corridor alternatives report the same class breakdown as the primary (`prime_farmland_acres`, `conditional_prime_acres`, `statewide_importance_acres`, `local_importance_acres`, `unique_farmland_acres`, `not_prime_acres`, `not_prime_pct`, `unmapped_acres`; additive on `CorridorAlternativeComparison`), and with `include_map=true` the `farmland_classes` layer also covers each alternative, clipped to ground outside the primary footprint and earlier alternatives (pieces carry `alignment`, no `area_ac`). Alternative SDA calls now follow `include_map` for `return_geom`; numbers unchanged with or without the map. Local check (two-alternative Ames prompt): Alt B 173.13 ac = 79.8 prime + 69.51 conditional + 14.53 statewide + 9.29 not prime; Alt C 200.39 ac = 71.89 + 48.19 + 58.48 + 21.81 not prime + 0.02 unmapped; farmland features main 131, Alt B 127, Alt C 137; 428 KB, no warnings. Root `make check` 694 passed / 3 skipped.
-
+- Wave 8 (2026-11-05): 44.8.1 trial passed; M4 exit criterion met. Dev apps on cfe1b57. Next: 44.8.2 overlay catalog and toggles.
