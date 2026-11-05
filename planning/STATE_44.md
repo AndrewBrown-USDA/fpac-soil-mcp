@@ -31,7 +31,7 @@
 | 4 | Genie Code | 44.4.1 | done |
 | 4 | gate | root check, app-check, test-live | passed on 18d76dd (688 passed / 3 skipped; app 135; live 43 / 3 skipped) |
 | 5 | Genie Code | 44.5.1 | done, a98cbad |
-| 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | Genie Code part done, 0d6ed22; user steps pending (dev apps, push approval, smoke call) |
+| 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | done, 0d6ed22; fixes 8138b45, 1db8429 |
 | 5 | gate | root check, app-check | pending |
 | 6 | Genie Code | 44.6.1 | pending |
 | 6 | gate | root check, app-check, app-frontend-check | pending |
@@ -146,4 +146,7 @@
 - Smoke call not possible from Genie Code: the dev server returns 401 to the workspace PAT, and app log access fails the same OAuth exchange. Pending user browser check on the dev agent app (see 44.5.2 checklist).
 - Every push to the branch now redeploys both dev apps.
 - Browser check failed: every screening returned the tool-error display. Dev server log: `Invalid arguments for tool 'analyze_farmland_by_polygon': unexpected_keyword_argument` at 01:29 UTC, while `apps get` reports 527da95 (the branch has `include_map`, `main` does not). `main.py` imported `fpac_soil_mcp` from the installed environment, which evidently held an older build of the same version 0.4.0. Fix: `main.py` puts its own `src/` first on `sys.path`; `tests/test_main_entrypoint.py` (3 tests). Root `make check` 691 passed / 3 skipped. Needs a push to redeploy both dev apps.
+- 1db8429 bumps the package to 0.5.0 (user direction) so an environment holding an older 0.4.0 build cannot satisfy the install. Pushed `527da95..1db8429`; both dev apps redeployed on 1db8429: `mcp-fpac-soil-dev` 01f1d8c643a416c39d3420671dfa3e4b, `agent-fpac-soil-dev` 01f1d8c644121f89adfb33529c3cd3e0.
+- 44.5.2 acceptance (user browser check, 2026-11-04): screening on the dev agent app succeeds through `mcp-fpac-soil-dev` with `include_map=True`; chat tool calls work (the `FPAC_MCP_APP` lookup works with CAN_USE alone). Wave 5 done.
+- Open: dev agent app traces are not saved (`PERMISSION_DENIED`: `app-2vrjmx agent-fpac-soil-dev` lacks SELECT on `users.andrew_g_brown.4493391463784067_otel_spans`); user to grant or switch experiment. Not a wave gate.
 
