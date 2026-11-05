@@ -263,66 +263,71 @@ export function MapPanel() {
       aria-label="Map screening"
       className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3"
     >
-      <p className="rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-medium text-xs">
-        Preliminary screening view. Not an official NRCS determination.
-      </p>
-      <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Draw AOI">
-        {toolButton('Polygon', 'polygon')}
-        {toolButton('Rectangle', 'rectangle')}
-        {toolButton('Edit', 'select')}
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={undo}
-          disabled={!previousAoi && !aoi}
-        >
-          Undo
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={clear}
-          disabled={!aoi}
-        >
-          Clear
-        </Button>
-      </div>
-      <div
-        ref={containerRef}
-        className="min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border"
-      />
-      <GeoJsonInput onGeometry={onPasted} />
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          onClick={runScreening}
-          disabled={!aoi || screening.status === 'running'}
-        >
-          {screening.status === 'running' ? 'Screening...' : 'Run screening'}
-        </Button>
-        <p className="text-muted-foreground text-sm" aria-live="polite">
-          {!aoi && 'Draw or paste one AOI for this chat.'}
-          {aoi && activeAoi && screening.status === 'idle' &&
-            `AOI ${activeAoi.aoi_ref} is attached to this chat.`}
-          {screening.status === 'running' && 'Running preliminary screening.'}
-          {screening.status === 'done' &&
-            `Preliminary screening done (${inlineLayers(screening.result?.display?.map).length} map layers drawn).`}
+      {/* The map and its controls fill the panel's visible height; results start
+          below and are reached with the panel's scrollbar, so screening never
+          shrinks the map. */}
+      <div className="flex min-h-full shrink-0 flex-col gap-3">
+        <p className="rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-medium text-xs">
+          Preliminary screening view. Not an official NRCS determination.
         </p>
-      </div>
-      {(aoiError || tileError || screening.status === 'error') && (
-        <div role="alert" className="flex flex-col gap-1 text-destructive text-sm">
-          {aoiError && <p>{aoiError}</p>}
-          {screening.status === 'error' && screening.error && <p>{screening.error}</p>}
-          {tileError && (
-            <p>
-              Basemap tiles failed to load. Drawing, screening and the results table
-              still work.
-            </p>
-          )}
+        <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Draw AOI">
+          {toolButton('Polygon', 'polygon')}
+          {toolButton('Rectangle', 'rectangle')}
+          {toolButton('Edit', 'select')}
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={undo}
+            disabled={!previousAoi && !aoi}
+          >
+            Undo
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={clear}
+            disabled={!aoi}
+          >
+            Clear
+          </Button>
         </div>
-      )}
+        <div
+          ref={containerRef}
+          className="min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border"
+        />
+        <GeoJsonInput onGeometry={onPasted} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            onClick={runScreening}
+            disabled={!aoi || screening.status === 'running'}
+          >
+            {screening.status === 'running' ? 'Screening...' : 'Run screening'}
+          </Button>
+          <p className="text-muted-foreground text-sm" aria-live="polite">
+            {!aoi && 'Draw or paste one AOI for this chat.'}
+            {aoi && activeAoi && screening.status === 'idle' &&
+              `AOI ${activeAoi.aoi_ref} is attached to this chat.`}
+            {screening.status === 'running' && 'Running preliminary screening.'}
+            {screening.status === 'done' &&
+              `Preliminary screening done (${inlineLayers(screening.result?.display?.map).length} map layers drawn).`}
+          </p>
+        </div>
+        {(aoiError || tileError || screening.status === 'error') && (
+          <div role="alert" className="flex flex-col gap-1 text-destructive text-sm">
+            {aoiError && <p>{aoiError}</p>}
+            {screening.status === 'error' && screening.error && <p>{screening.error}</p>}
+            {tileError && (
+              <p>
+                Basemap tiles failed to load. Drawing, screening and the results table
+                still work.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
       {screening.status === 'done' && screening.result && (
         <ScreeningResults result={screening.result} />
       )}
