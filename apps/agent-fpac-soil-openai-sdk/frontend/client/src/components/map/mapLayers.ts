@@ -193,6 +193,23 @@ export function inlineLayers(block: MapBlock | null | undefined): MapLayer[] {
   );
 }
 
+// A layer that draws no fill: lines, points, or polygons whose legend is all outlines.
+export function isOutlineOnly(layer: MapLayer): boolean {
+  if (layer.kind !== 'polygon') return true;
+  const legend = layer.legend ?? [];
+  return legend.length > 0 && legend.every((item) => isOutline(item.pattern));
+}
+
+// Server layer order is size-cap drop priority, not draw order (ADR 0017). Draw
+// filled layers first and outline-only layers above them, each group in server order,
+// so corridor and urban outlines are never hidden under the farmland fill.
+export function drawOrder(layers: readonly MapLayer[]): MapLayer[] {
+  return [
+    ...layers.filter((layer) => !isOutlineOnly(layer)),
+    ...layers.filter((layer) => isOutlineOnly(layer)),
+  ];
+}
+
 export function clearMapBlock(map: MapLibreMap) {
   const style = map.getStyle();
   for (const layer of [...(style?.layers ?? [])].reverse()) {
@@ -290,7 +307,7 @@ export function renderMapBlock(
   beforeId?: string,
 ) {
   clearMapBlock(map);
-  const layers = inlineLayers(block);
+  const layers = drawOrder(inlineLayers(block));
   if (layers.length === 0) return;
   ensurePatternImages(map);
   const below = beforeId && map.getLayer(beforeId) ? beforeId : undefined;

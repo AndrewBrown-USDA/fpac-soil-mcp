@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { FarmlandClass } from './farmlandClasses';
-import { AUTHORITY_LABELS } from './mapLayers';
+import { AUTHORITY_LABELS, drawOrder } from './mapLayers';
 import type { MapBlock, MapLayer, MapLegendItem } from './mapLayers';
 
 export function swatchStyle(farmlandClass: FarmlandClass): CSSProperties {
@@ -81,10 +81,10 @@ function layerNotes(layer: MapLayer): string[] {
   return notes;
 }
 
-// Server legends, one block per layer, top layer first; text codes keep meaning
-// off colour alone. Warnings from the server follow the layers.
+// Server legends, one block per layer, in the order drawn (top layer first); text
+// codes keep meaning off colour alone. Warnings from the server follow the layers.
 export function MapLegend({ block }: { block: MapBlock }) {
-  const layers = [...block.layers].reverse();
+  const layers = drawOrder(block.layers).reverse();
   if (layers.length === 0) return null;
   return (
     <div>
