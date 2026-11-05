@@ -38,7 +38,7 @@
 | 7 | Genie Code | 44.7.1 | done (not yet seen in a browser) |
 | 7 | gate | root check, app-check, app-frontend-check | pending |
 | 8 | User + Genie Code | 44.8.1 | done, trial passed (planning/evidence/44.8.1-trial.md) |
-| 8 | Genie Code | 44.8.2 | pending |
+| 8 | Genie Code | 44.8.2 | done (not yet seen in a browser) |
 | 8 | gate | root check, app-check, app-frontend-check | pending |
 | 9 | Genie Code | 44.9.1 | pending |
 | 9 | Genie Code | 44.9.2 | pending |

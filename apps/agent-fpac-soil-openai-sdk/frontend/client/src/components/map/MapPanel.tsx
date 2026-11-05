@@ -18,6 +18,10 @@ import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
 import { clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
+import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
+import type { OverlayFlags } from './OverlayControl';
+import { OVERLAYS, addOverlay, overlayIdForSource, removeOverlay } from './overlays';
+import type { OverlayId } from './overlays';
 import { ScreeningResults } from './ScreeningResults';
 import { useScreening } from './useScreening';
 
@@ -53,6 +57,11 @@ export function MapPanel() {
   const [previousAoi, setPreviousAoi] = useState<PolygonGeometry | null>(null);
   const [aoiError, setAoiError] = useState<string | null>(null);
   const [tileError, setTileError] = useState(false);
+  // Context overlays (D5): panel state only, off by default, never stored.
+  const [overlayOn, setOverlayOn] = useState<OverlayFlags>(NO_OVERLAYS);
+  const [overlayError, setOverlayError] = useState<OverlayFlags>(NO_OVERLAYS);
+  const [overlayLoading, setOverlayLoading] = useState<OverlayFlags>(NO_OVERLAYS);
+  const [zoom, setZoom] = useState(3);
   // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
   // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
   const { chatId, activeAoi, setGeometry, setSummary } = useActiveAoi();
@@ -102,11 +111,22 @@ export function MapPanel() {
     mapRef.current = map;
 
     // Basemap tile failures are shown in the panel, never as a silent blank map.
+    // Overlay failures are reported per overlay and never as a basemap error.
     map.on('error', (event) => {
-      if ((event as { sourceId?: string }).sourceId === 'usgsTopo') {
+      const sourceId = (event as { sourceId?: string }).sourceId;
+      if (sourceId === 'usgsTopo') {
         setTileError(true);
+        return;
       }
+      const overlayId = overlayIdForSource(sourceId);
+      if (overlayId) setOverlayError((prev) => ({ ...prev, [overlayId]: true }));
     });
+    map.on('sourcedataloading', (event) => {
+      const overlayId = overlayIdForSource(event.sourceId);
+      if (overlayId) setOverlayLoading((prev) => ({ ...prev, [overlayId]: true }));
+    });
+    map.on('idle', () => setOverlayLoading(NO_OVERLAYS));
+    map.on('zoomend', () => setZoom(map.getZoom()));
 
     map.on('load', () => {
       map.addSource('aoi', { type: 'geojson', data: emptyCollection });
@@ -246,6 +266,22 @@ export function MapPanel() {
     if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
   }, [shown, mapReady]);
 
+  // Add or remove overlays to match the toggles; a removed overlay forgets its error.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    for (const overlay of OVERLAYS) {
+      if (overlayOn[overlay.id]) addOverlay(map, overlay);
+      else removeOverlay(map, overlay);
+    }
+  }, [overlayOn, mapReady]);
+
+  const toggleOverlay = useCallback((id: OverlayId, next: boolean) => {
+    setOverlayOn((prev) => ({ ...prev, [id]: next }));
+    setOverlayError((prev) => ({ ...prev, [id]: false }));
+  }, []);
+
   const chooseMode = (next: DrawMode) => {
     drawRef.current?.setMode(next);
     setMode(next);
@@ -325,6 +361,13 @@ export function MapPanel() {
         <div
           ref={containerRef}
           className="min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border"
+        />
+        <OverlayControl
+          on={overlayOn}
+          errors={overlayError}
+          loading={overlayLoading}
+          zoom={zoom}
+          onToggle={toggleOverlay}
         />
         <GeoJsonInput onGeometry={onPasted} />
         <div className="flex flex-wrap items-center gap-3">
