@@ -58,8 +58,6 @@ export function ShowOnMapButton({
     : refs.some((ref) => ref.trim() !== activeAoi?.aoi_ref)
       ? 'Not available: the AOI this call used is no longer attached to the chat.'
       : null;
-  const isShown =
-    mapResult.shown?.origin === 'tool' && mapResult.shown.toolCallId === toolCallId;
 
   const run = async () => {
     setStatus('loading');
@@ -113,7 +111,7 @@ export function ShowOnMapButton({
         onClick={run}
         disabled={status === 'loading'}
       >
-        {status === 'loading' ? 'Loading map...' : isShown ? 'Shown on map' : 'Show on map'}
+        {status === 'loading' ? 'Loading map...' : 'Show on map'}
       </Button>
       {status === 'error' && message && (
         <span role="alert" className="text-destructive text-xs">
