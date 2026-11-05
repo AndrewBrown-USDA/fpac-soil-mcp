@@ -27,7 +27,10 @@ DEFAULT_MAX_VERTICES = 2000
 MAX_SUMMARY_MAP_UNITS = 10
 MAX_SUMMARY_TEXT_CHARS = 2000
 ANALYSIS_TOOL = "analyze_farmland_by_polygon"
-POLYGONS_TOOL = "get_soil_polygons_by_geometry"
+CORRIDOR_TOOL = "analyze_corridor_fppa"
+# Tools whose results carry an ADR 0017 ``map`` block; the only tools /api/geo/map calls.
+MAP_TOOLS = (ANALYSIS_TOOL, CORRIDOR_TOOL)
+FARMLAND_LAYER_ID = "farmland_classes"
 
 FARMLAND_CLASSES = (
     ("prime_farmland", "Prime farmland"),
@@ -305,17 +308,39 @@ async def _call_tool_untraced(server: McpServer, name: str, arguments: dict[str,
     return await MCPServerStreamableHttp.call_tool(server, name, arguments)
 
 
+def map_block(result: dict[str, Any]) -> dict[str, Any] | None:
+    """The server's ADR 0017 ``map`` block, passed through unchanged; browser-only."""
+    block = result.get("map")
+    return block if isinstance(block, dict) else None
+
+
+def farmland_feature_collection(block: dict[str, Any] | None) -> dict[str, Any]:
+    """Features of the ``farmland_classes`` layer as a FeatureCollection (empty if absent).
+
+    Feeds ``display.soil_polygons`` so the current map panel keeps working until it
+    draws ``display.map`` directly (44.6.1 removes this).
+    """
+    features: list[Any] = []
+    for layer in (block or {}).get("layers") or []:
+        if not isinstance(layer, dict) or layer.get("id") != FARMLAND_LAYER_ID:
+            continue
+        collection = layer.get("feature_collection")
+        if isinstance(collection, dict) and isinstance(collection.get("features"), list):
+            features = collection["features"]
+        break
+    return {"type": "FeatureCollection", "features": features}
+
+
 async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
-    """Run both MCP tools for one AOI. Raises ``GeoRequestError(502)`` on MCP failure."""
+    """Screen one AOI with one MCP call. Raises ``GeoRequestError(502)`` on MCP failure."""
     geometry = request.geometry.model_dump()
     aoi_ref = request.aoi_ref or new_aoi_ref()
     try:
         async with init_fpac_mcp_server(WorkspaceClient()) as server:
             analysis_result = await _call_tool_untraced(
-                server, ANALYSIS_TOOL, {"geojson": geometry, "include_nccpi": True}
-            )
-            polygons_result = await _call_tool_untraced(
-                server, POLYGONS_TOOL, {"geojson": geometry, "clip": True}
+                server,
+                ANALYSIS_TOOL,
+                {"geojson": geometry, "include_nccpi": True, "include_map": True},
             )
     except Exception as exc:  # noqa: BLE001 - every MCP failure becomes a bounded 502
         # Exception text may echo tool arguments, so only the type is logged.
@@ -324,7 +349,6 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
 
     try:
         analysis = parse_tool_result(analysis_result)
-        polygons = parse_tool_result(polygons_result)
     except ToolFailure:
         logger.warning("AOI screening tool reported an error.")
         summary = failed_chat_summary(aoi_ref)
@@ -336,14 +360,81 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
         }
 
     summary = build_chat_summary(analysis, aoi_ref)
-    features = polygons.get("features") if isinstance(polygons.get("features"), list) else []
+    block = map_block(analysis)
     return {
         "aoi_ref": aoi_ref,
         "display": {
             "analysis": select_display_analysis(analysis),
-            "soil_polygons": {"type": "FeatureCollection", "features": features},
+            "map": block,
+            "soil_polygons": farmland_feature_collection(block),
             "regulatory_notice": summary["regulatory_notice"],
         },
         "chat_summary": summary,
         "chat_summary_text": render_chat_summary_text(summary),
+    }
+
+
+class MapRequest(BaseModel):
+    tool: Literal["analyze_farmland_by_polygon", "analyze_corridor_fppa"]
+    arguments: dict[str, Any]
+    active_aoi: dict[str, Any] | None = None
+
+
+def parse_map_request(raw: bytes) -> tuple[str, dict[str, Any]]:
+    """Validate a ``/api/geo/map`` body and return ``(tool, arguments)``.
+
+    ``aoi_ref`` arguments are replaced with the ``active_aoi`` geometry and
+    ``include_map`` is forced on. Every error message is fixed text.
+    """
+    # Imported here: aoi_context imports this module lazily for the same reason.
+    from agent_server.aoi_context import InvalidAoi, parse_active_aoi, substitute_arguments
+
+    if len(raw) > MAX_BODY_BYTES:
+        raise GeoRequestError(413, f"Request body exceeds {MAX_BODY_BYTES // 1024} KB.")
+    try:
+        payload = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        raise GeoRequestError(400, "Request body must be JSON.") from None
+    if not isinstance(payload, dict):
+        raise GeoRequestError(400, "Request body must be a JSON object.")
+    if payload.get("tool") not in MAP_TOOLS:
+        raise GeoRequestError(400, "Tool is not available for maps.")
+    try:
+        request = MapRequest.model_validate(payload)
+    except ValidationError:
+        raise GeoRequestError(400, "Request does not match the map schema.") from None
+    arguments = dict(request.arguments)
+    if request.active_aoi is not None:
+        try:
+            aoi = parse_active_aoi(request.active_aoi)
+        except InvalidAoi:
+            raise GeoRequestError(400, "active_aoi is invalid.") from None
+        arguments = substitute_arguments(arguments, aoi) or arguments
+    arguments["include_map"] = True
+    return request.tool, arguments
+
+
+async def map_for_tool(tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Call one map tool untraced and return its map block, notice and authority.
+
+    Raises ``GeoRequestError(502)`` on MCP failure or a tool error; nothing from the
+    arguments or the result is logged or echoed.
+    """
+    try:
+        async with init_fpac_mcp_server(WorkspaceClient()) as server:
+            raw = await _call_tool_untraced(server, tool, arguments)
+    except Exception as exc:  # noqa: BLE001 - every MCP failure becomes a bounded 502
+        logger.warning("Map MCP call failed (%s).", type(exc).__name__)
+        raise GeoRequestError(502, "map_unavailable") from None
+    try:
+        result = parse_tool_result(raw)
+    except ToolFailure:
+        logger.warning("Map tool reported an error.")
+        raise GeoRequestError(502, "map_unavailable") from None
+    authority = result.get("authority")
+    return {
+        "tool": tool,
+        "map": map_block(result),
+        "regulatory_notice": _short_text(result.get("regulatory_notice"), 1000),
+        "authority": authority if isinstance(authority, dict) else None,
     }

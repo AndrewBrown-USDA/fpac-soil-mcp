@@ -104,6 +104,33 @@ def _polygons() -> dict:
     }
 
 
+def _map_block() -> dict:
+    """An ADR 0017 map block: inline farmland layer (from ``_polygons``) plus a descriptor."""
+    return {
+        "display_crs": "EPSG:4326",
+        "bounds": [0, 0, 1, 1],
+        "warnings": [],
+        "layers": [
+            {
+                "id": "aoi",
+                "title": "Area of interest",
+                "delivery": "omitted",
+                "feature_collection": None,
+            },
+            {
+                "id": "farmland_classes",
+                "title": "Farmland classification",
+                "delivery": "inline_geojson",
+                "feature_collection": _polygons(),
+            },
+        ],
+    }
+
+
+def _analysis_with_map() -> dict:
+    return {**_analysis(), "map": _map_block()}
+
+
 def _structured(data: dict) -> CallToolResult:
     return CallToolResult(content=[], structuredContent=data, isError=False)
 
@@ -186,12 +213,7 @@ def _local_experiment(tmp_path):
 
 
 def _happy_server() -> FakeMcpServer:
-    return FakeMcpServer(
-        {
-            geo.ANALYSIS_TOOL: _structured(_analysis()),
-            geo.POLYGONS_TOOL: _text(_polygons()),
-        }
-    )
+    return FakeMcpServer({geo.ANALYSIS_TOOL: _structured(_analysis_with_map())})
 
 
 def _post(start_server, body):
@@ -233,8 +255,8 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
     assert set(body) == {"aoi_ref", "display", "chat_summary", "chat_summary_text"}
     assert re.fullmatch(r"aoi-[0-9a-f]{8}", body["aoi_ref"])
     assert body["chat_summary"]["aoi_ref"] == body["aoi_ref"]
-    assert body["display"]["soil_polygons"]["type"] == "FeatureCollection"
-    assert len(body["display"]["soil_polygons"]["features"]) == 1
+    assert body["display"]["map"] == _map_block()
+    assert body["display"]["soil_polygons"] == _polygons()
     assert body["display"]["regulatory_notice"].startswith("Preliminary screening")
     summary = body["chat_summary"]
     assert summary["total_aoi_acres"] == 123.5
@@ -245,9 +267,9 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
     assert "My field" not in json.dumps(summary) + body["chat_summary_text"]
     assert body["chat_summary_text"].startswith("Map screening result (preliminary)")
     assert len(body["chat_summary_text"]) <= 2000
-    assert [name for name, _ in server.calls] == [geo.ANALYSIS_TOOL, geo.POLYGONS_TOOL]
-    assert server.calls[0][1] == {"geojson": SQUARE, "include_nccpi": True}
-    assert server.calls[1][1] == {"geojson": SQUARE, "clip": True}
+    assert server.calls == [
+        (geo.ANALYSIS_TOOL, {"geojson": SQUARE, "include_nccpi": True, "include_map": True})
+    ]
     assert server.entered == server.exited == 1
 
 
@@ -396,9 +418,7 @@ def test_call_tool_exception_returns_502(start_server, fake_mcp):
     ],
 )
 def test_tool_error_returns_display_error(start_server, fake_mcp, failing):
-    fake_mcp(
-        FakeMcpServer({geo.ANALYSIS_TOOL: _structured(_analysis()), geo.POLYGONS_TOOL: failing})
-    )
+    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: failing}))
 
     response = _post(start_server, {"geometry": SQUARE})
     body = response.json()
@@ -431,7 +451,7 @@ def test_screening_creates_no_traces(start_server, fake_mcp, tmp_path):
         traces = trace_count()
 
     assert response.status_code == 200
-    assert [name for name, _ in fake.calls] == [geo.ANALYSIS_TOOL, geo.POLYGONS_TOOL]
+    assert [name for name, _ in fake.calls] == [geo.ANALYSIS_TOOL]
     assert traces == 0
 
 
@@ -458,11 +478,7 @@ def test_debug_logs_contain_no_marker(start_server, fake_mcp, caplog):
     marked = {"type": "Polygon", "coordinates": SQUARE["coordinates"]}
 
     _post(start_server, {"geometry": marked, "name": MARKER})
-    fake_mcp(
-        FakeMcpServer(
-            {geo.ANALYSIS_TOOL: _structured({"error": MARKER}), geo.POLYGONS_TOOL: _text({})}
-        )
-    )
+    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured({"error": MARKER})}))
     _post(start_server, {"geometry": marked})
 
     assert MARKER not in caplog.text
@@ -474,3 +490,23 @@ def test_summary_text_is_capped():
     summary = geo.build_chat_summary(analysis, "aoi-00000000")
 
     assert len(geo.render_chat_summary_text(summary)) <= 2000
+
+
+def test_soil_polygons_empty_when_map_or_layer_missing(start_server, fake_mcp):
+    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured(_analysis())}))
+    body = _post(start_server, {"geometry": SQUARE}).json()
+    assert body["display"]["map"] is None
+    assert body["display"]["soil_polygons"] == {"type": "FeatureCollection", "features": []}
+
+    no_layer = {**_analysis(), "map": {**_map_block(), "layers": _map_block()["layers"][:1]}}
+    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured(no_layer)}))
+    body = _post(start_server, {"geometry": SQUARE}).json()
+    assert body["display"]["soil_polygons"]["features"] == []
+
+
+def test_map_block_never_reaches_chat_summary(start_server, fake_mcp):
+    fake_mcp(_happy_server())
+    body = _post(start_server, {"geometry": SQUARE}).json()
+    assert MARKER in json.dumps(body["display"]["map"])
+    assert MARKER not in json.dumps(body["chat_summary"]) + body["chat_summary_text"]
+    assert not any(GEOMETRY_KEYS.search(key) for key in _keys(body["chat_summary"]))
