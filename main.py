@@ -1,6 +1,15 @@
 """Main entrypoint for fpac-soil-mcp server."""
 
 import sys
+from pathlib import Path
+
+# Import the package from this checkout's ``src/``, not from an installed copy. Databricks
+# Apps can reuse a Python environment whose installed ``fpac_soil_mcp`` was built from an
+# older deployment's source (same package version), so the running tools would not match
+# the deployed commit.
+SRC_DIR = Path(__file__).resolve().parent / "src"
+if SRC_DIR.is_dir() and str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 
 def main() -> None:

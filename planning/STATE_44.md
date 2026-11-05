@@ -145,4 +145,5 @@
   - Production `agent-fpac-soil-openai-sdk` unchanged on `main` 06525de.
 - Smoke call not possible from Genie Code: the dev server returns 401 to the workspace PAT, and app log access fails the same OAuth exchange. Pending user browser check on the dev agent app (see 44.5.2 checklist).
 - Every push to the branch now redeploys both dev apps.
+- Browser check failed: every screening returned the tool-error display. Dev server log: `Invalid arguments for tool 'analyze_farmland_by_polygon': unexpected_keyword_argument` at 01:29 UTC, while `apps get` reports 527da95 (the branch has `include_map`, `main` does not). `main.py` imported `fpac_soil_mcp` from the installed environment, which evidently held an older build of the same version 0.4.0. Fix: `main.py` puts its own `src/` first on `sys.path`; `tests/test_main_entrypoint.py` (3 tests). Root `make check` 691 passed / 3 skipped. Needs a push to redeploy both dev apps.
 
