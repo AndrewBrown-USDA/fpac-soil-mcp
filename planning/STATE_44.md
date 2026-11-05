@@ -33,7 +33,7 @@
 | 5 | Genie Code | 44.5.1 | done, a98cbad |
 | 5 | User + Genie Code | 44.5.2 (dev apps, MCP server lookup, A3) | done, 0d6ed22; fixes 8138b45, 1db8429 |
 | 5 | gate | root check, app-check | pending |
-| 6 | Genie Code | 44.6.1 | pending |
+| 6 | Genie Code | 44.6.1 | done, 0653022 (not yet seen in a browser) |
 | 6 | gate | root check, app-check, app-frontend-check | pending |
 | 7 | Genie Code | 44.7.1 | pending |
 | 7 | gate | root check, app-check, app-frontend-check | pending |
@@ -149,4 +149,5 @@
 - 1db8429 bumps the package to 0.5.0 (user direction) so an environment holding an older 0.4.0 build cannot satisfy the install. Pushed `527da95..1db8429`; both dev apps redeployed on 1db8429: `mcp-fpac-soil-dev` 01f1d8c643a416c39d3420671dfa3e4b, `agent-fpac-soil-dev` 01f1d8c644121f89adfb33529c3cd3e0.
 - 44.5.2 acceptance (user browser check, 2026-11-04): screening on the dev agent app succeeds through `mcp-fpac-soil-dev` with `include_map=True`; chat tool calls work (the `FPAC_MCP_APP` lookup works with CAN_USE alone). Wave 5 done.
 - Open: dev agent app traces are not saved (`PERMISSION_DENIED`: `app-2vrjmx agent-fpac-soil-dev` lacks SELECT on `users.andrew_g_brown.4493391463784067_otel_spans`); user to grant or switch experiment. Not a wave gate.
+- Wave 6 (2026-11-04): 0653022 44.6.1. Gates: `make app-check` 173 passed; `make app-frontend-check` passed; `tsc` 5 errors before and after, none in `components/map/`. Root suite unaffected (no root files). Rendering not yet checked in a browser.
 
