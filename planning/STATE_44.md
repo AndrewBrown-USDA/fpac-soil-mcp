@@ -133,6 +133,7 @@
 
 - Default `map` descriptors add about 2.0-2.5 KB per analyze call to model context (legends about 1 KB, colour and pattern about 0.4 KB, null or false fields about 0.4-0.6 KB). Kept unconditional (user, 2026-11-04). Measure the share on real AOIs during the 44.8.1 trials; unconditional trims if needed: omit null or false descriptor fields, or legend colours by `style_key`.
 - `.env.example` lacks `MAP_SIMPLIFY_TOLERANCE_M` and `MAP_MAX_GEOJSON_BYTES`.
+- Follow-up after Plan 44 (user, 2026-11-04): AOI memory within a chat session, so the user and the agent can refer to several AOIs (for example, comparing alternative sites). Today one AOI per chat (ADR 0016): a new AOI replaces the old, and "Show on map" reports "Not available" for calls made on an earlier AOI. Needs its own plan and an ADR 0016 amendment: per-chat list of `aoi_ref` -> geometry (session storage, bounded count and size), naming/selection in the panel, `active_aoi` widened to the referenced set for substitution in chat and `/api/geo/map`, and the model note listing the available references. Corridor alternatives already compare inside one `analyze_corridor_fppa` call.
 
 ## Wave 5 progress (2026-11-04)
 
