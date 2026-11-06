@@ -41,15 +41,18 @@ async function stopChild(child) {
   if (child.exitCode === null) child.kill("SIGKILL");
 }
 
-test("local harness smoke path is fixture-only and cleans up", async () => {
+async function smokeTest(databricks) {
   const port = await freePort();
   const child = spawn(process.execPath, [serverPath], {
     cwd: harnessDir,
     env: {
       ...process.env,
-      HARNESS_HOST: "127.0.0.1",
-      HARNESS_PORT: String(port),
+      HARNESS_HOST: databricks ? "0.0.0.0" : "127.0.0.1",
+      HARNESS_PORT: databricks ? "1" : String(port),
+      DATABRICKS_APP_PORT: databricks ? String(port) : "",
       HARNESS_AUTOCONNECT: "false",
+      HARNESS_ALLOW_COMMAND_OVERRIDE: databricks ? "false" : "true",
+      MCP_MODE: databricks ? "http" : "stdio",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
