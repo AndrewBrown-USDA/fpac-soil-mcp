@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { AreaInfo, SoilInfo } from './identify';
-import { CONTEXT_LABEL } from './overlays';
 import type { Overlay } from './overlays';
 
 export type IdentifySection =
@@ -11,13 +10,13 @@ export type IdentifySection =
 
 export type UseAsAoiResult = { ok: true } | { ok: false; message: string };
 
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
+function Row({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
-    <div>
-      <span className="text-muted-foreground">{label}: </span>
-      {value}
-    </div>
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="truncate">{value}</dd>
+    </>
   );
 }
 
@@ -53,8 +52,10 @@ function AreaActions({
   );
 }
 
-// One section per overlay that was on at the clicked point. Rendered into the MapLibre
-// popup through a portal.
+// One compact section per overlay that was on at the clicked point, rendered into the
+// MapLibre popup through a portal. Theme colours come from the app (`bg-popover`), so
+// the popup follows light and dark mode; MapLibre's own white box is cleared in
+// MapPanel.
 export function IdentifyPopup({
   sections,
   onUseAsAoi,
@@ -63,41 +64,37 @@ export function IdentifyPopup({
   onUseAsAoi: (section: IdentifySection, area: AreaInfo) => Promise<UseAsAoiResult>;
 }) {
   return (
-    <div className="flex max-w-72 flex-col gap-2 text-foreground text-xs">
+    <div className="flex max-h-64 w-60 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pr-6 text-popover-foreground text-xs shadow-md">
       {sections.map((section) => (
         <section key={section.overlay.id} aria-label={section.overlay.title}>
-          <h3 className="font-medium text-sm">{section.overlay.title}</h3>
+          <h3 className="font-medium">{section.overlay.title}</h3>
           {section.state === 'loading' && <p className="text-muted-foreground">Loading...</p>}
-          {section.state === 'error' && (
-            <p className="text-destructive">Could not load this layer here.</p>
-          )}
+          {section.state === 'error' && <p className="text-destructive">Could not load.</p>}
           {section.state === 'done' && section.soil && (
             <>
-              <Field label="Map unit symbol" value={section.soil.musym} />
-              <Field label="Map unit key (mukey)" value={section.soil.mukey} />
-              <Field label="Survey area" value={section.soil.areasymbol} />
-              <Field label="Polygon acres" value={section.soil.acres} />
-              <p className="mt-1 text-muted-foreground">
-                Farmland class and map unit name are not in this service; run screening for
-                this area.
-              </p>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-2">
+                <Row label="Symbol" value={section.soil.musym} />
+                <Row label="mukey" value={section.soil.mukey} />
+                <Row label="Survey" value={section.soil.areasymbol} />
+              </dl>
+              <p className="text-muted-foreground">Run screening for farmland class.</p>
             </>
           )}
           {section.state === 'done' && section.area && (
             <>
-              <Field label="Name" value={section.area.name} />
-              <Field label="GEOID" value={section.area.geoid} />
+              <dl className="grid grid-cols-[auto_1fr] gap-x-2">
+                <Row label="Name" value={section.area.name} />
+                <Row label="GEOID" value={section.area.geoid} />
+              </dl>
               <AreaActions section={section} area={section.area} onUseAsAoi={onUseAsAoi} />
             </>
           )}
           {section.state === 'done' && !section.soil && !section.area && (
             <p className="text-muted-foreground">Nothing here.</p>
           )}
-          <p className="mt-1 text-muted-foreground">
-            {CONTEXT_LABEL}. {section.overlay.source} ({section.overlay.vintage}).
-          </p>
         </section>
       ))}
+      <p className="text-muted-foreground">Context layers, not analysis results.</p>
     </div>
   );
 }

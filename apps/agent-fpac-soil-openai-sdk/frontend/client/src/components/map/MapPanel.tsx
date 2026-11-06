@@ -316,10 +316,20 @@ export function MapPanel() {
       identifyAbort.current = controller;
       popupRef.current?.remove();
       const node = document.createElement('div');
-      const popup = new Popup({ closeButton: true, maxWidth: '320px' })
+      const popup = new Popup({ closeButton: true, maxWidth: 'none' })
         .setLngLat(event.lngLat)
         .setDOMContent(node)
         .addTo(map);
+      // Clear MapLibre's fixed white box and tip so the themed content shows in dark
+      // mode; the close button takes the content colour.
+      const element = popup.getElement();
+      const content = element.querySelector<HTMLElement>('.maplibregl-popup-content');
+      if (content) Object.assign(content.style, { background: 'transparent', padding: '0', boxShadow: 'none' });
+      const tip = element.querySelector<HTMLElement>('.maplibregl-popup-tip');
+      if (tip) tip.style.display = 'none';
+      const close = element.querySelector<HTMLElement>('.maplibregl-popup-close-button');
+      if (close) Object.assign(close.style, { color: 'inherit', right: '2px', top: '2px' });
+      node.className = 'text-popover-foreground';
       popup.on('close', () => {
         if (popupRef.current !== popup) return;
         popupRef.current = null;
