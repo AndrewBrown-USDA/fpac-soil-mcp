@@ -41,9 +41,9 @@
 | 8 | Genie Code | 44.8.2 | done (not yet seen in a browser) |
 | 8 | gate | root check, app-check, app-frontend-check | pending |
 | 9 | Genie Code | 44.9.1 | done (not yet seen in a browser) |
-| 9 | Genie Code | 44.9.2 | pending |
+| 9 | Genie Code | 44.9.2 | done |
 | 9 | gate | root check, app-check, app-frontend-check | pending |
-| 10 | User + Genie Code | 44.10.1 | pending |
+| 10 | User + Genie Code | 44.10.1 | in progress (planning/evidence/44.10.1-trial.md) |
 | 11 | Genie Code | 44.11.1 | pending |
 | 12 | Genie Code + User | 44.12.1 | pending |
 | 12 | gate | all suites | pending |
@@ -155,3 +155,4 @@
 - Wave 6 browser check (user, 2026-11-04): renderer looks right; map height stays fixed after screening. Wave 6 done.
 - A4 (user, 2026-11-05, trial 44.8.1): corridor alternatives report the same class breakdown as the primary (`prime_farmland_acres`, `conditional_prime_acres`, `statewide_importance_acres`, `local_importance_acres`, `unique_farmland_acres`, `not_prime_acres`, `not_prime_pct`, `unmapped_acres`; additive on `CorridorAlternativeComparison`), and with `include_map=true` the `farmland_classes` layer also covers each alternative, clipped to ground outside the primary footprint and earlier alternatives (pieces carry `alignment`, no `area_ac`). Alternative SDA calls now follow `include_map` for `return_geom`; numbers unchanged with or without the map. Local check (two-alternative Ames prompt): Alt B 173.13 ac = 79.8 prime + 69.51 conditional + 14.53 statewide + 9.29 not prime; Alt C 200.39 ac = 71.89 + 48.19 + 58.48 + 21.81 not prime + 0.02 unmapped; farmland features main 131, Alt B 127, Alt C 137; 428 KB, no warnings. Root `make check` 694 passed / 3 skipped.
 - Wave 8 (2026-11-05): 44.8.1 trial passed; M4 exit criterion met. Dev apps on cfe1b57. Next: 44.8.2 overlay catalog and toggles.
+- Wave 9 (2026-11-06): 44.9.1 5444db6; 44.9.2 docs (ADR 0015 local changes, app README map results and dev trial apps, app AGENTS.md). Root `make check` 694 passed / 3 skipped; `make app-check` 175 passed; doc links resolve. Efficiency review handoff prompt in `planning/HANDOFF_EFFICIENCY_REVIEW.md` (follow-up, not a Plan 44 task).
