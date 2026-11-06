@@ -28,15 +28,16 @@ The system gives MCP clients tools to:
 4. Calculate direct, indirect, alternative, and excluded acreage using equal-area projections (EPSG:6933 and local CRS).
 5. Intersect, partition, and reconcile multi-county corridors across county boundaries without arbitrary single-county simplifications.
 6. Retrieve live county agricultural census baselines from the USDA NASS QuickStats REST API.
-7. Perform automated Decennial Urban Area spatial screening via US Census Bureau TIGERweb REST endpoints.
-8. Calculate candidate Land Evaluation (LE) relative ratings normalized by county baselines, supporting state-specific productivity indexes (CSR2, CPI, Storie Index).
-9. Calculate preliminary Site Assessment (SA) scores implementing 7 CFR § 658.5(c) corridor scoring rules.
-10. Populate watermarked draft Form AD-1006 (parcels) and Form NRCS-CPA-106 (corridors) using standard document template placeholder tags.
-11. Generate standard FPPA clearance and exemption determination letters covering statutory exemption categories (including "Minimal Surface Disturbance").
-12. Compare project design alternatives (Alternatives B, C, and D) side-by-side with strict analytical neutrality.
-13. Track request lifecycle, claimed exemptions, and calculation audits in an ACID-compliant local SQLite case store.
-14. Generate annual multi-agency Form NRCS-CPA-2 reporting workbooks aggregating all 19 statutory indicators across the 22 Federal action agencies.
-15. Keep human authority boundaries explicit on all outputs.
+7. Retrieve preliminary recent mapped agricultural-land-cover evidence from the USDA NASS CDL ImageServer for AOI screening.
+8. Perform automated Decennial Urban Area spatial screening via US Census Bureau TIGERweb REST endpoints.
+9. Calculate candidate Land Evaluation (LE) relative ratings normalized by county baselines, supporting state-specific productivity indexes (CSR2, CPI, Storie Index).
+10. Calculate preliminary Site Assessment (SA) scores implementing 7 CFR § 658.5(c) corridor scoring rules.
+11. Populate watermarked draft Form AD-1006 (parcels) and Form NRCS-CPA-106 (corridors) using standard document template placeholder tags.
+12. Generate standard FPPA clearance and exemption determination letters covering statutory exemption categories (including "Minimal Surface Disturbance").
+13. Compare project design alternatives (Alternatives B, C, and D) side-by-side with strict analytical neutrality.
+14. Track request lifecycle, claimed exemptions, and calculation audits in an ACID-compliant local SQLite case store.
+15. Generate annual multi-agency Form NRCS-CPA-2 reporting workbooks aggregating all 19 statutory indicators across the 22 Federal action agencies.
+16. Keep human authority boundaries explicit on all outputs.
 
 ### Users
 

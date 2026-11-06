@@ -11,6 +11,8 @@ tools:
     description: Query USDA NRCS Soil Data Access (SDA) by Map Unit Key (mukey) to retrieve SSURGO soil map unit details, official farmland classification (7 CFR 657), and FPPA regulatory notice.
   - name: analyze_farmland_by_polygon
     description: Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI. Calculates total equal-area acreage, checks Census 2020 Urban Area statutory exemption status, queries intersecting SSURGO map units via SDA with exact spatial clipping, retrieves crop NCCPI productivity ratings, calculates candidate Land Evaluation (LE) scores, and generates acreage breakdowns by farmland classification.
+  - name: analyze_cdl_histogram
+    description: Compute preliminary USDA NASS Cropland Data Layer categorical histogram evidence for a Polygon or MultiPolygon AOI. Results describe recent mapped land cover only and do not establish active farming or constitute an official FPPA or LESA determination.
   - name: get_soil_polygons_by_geometry
     description: Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as a GeoJSON FeatureCollection for a Polygon or MultiPolygon AOI, with support for server-side clipping and geodesic acreage.
   - name: check_urban_area_exemption
@@ -37,7 +39,7 @@ resources:
     description: Reference listing of SSURGO farmland classification categories and statutory criteria.
 prompts:
   - name: fppa_screening_assistant
-    description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 10 tools, and regulatory disclaimers.
+    description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 11 tools, and regulatory disclaimers.
     arguments:
       - name: project_name
         description: Optional name or description of the proposed project.

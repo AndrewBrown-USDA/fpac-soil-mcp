@@ -259,13 +259,14 @@ Standard boilerplate JSON configuration snippets for any standard MCP host.
 
 ## Tool Reference
 
-The server exposes **10 core MCP tools** for spatial soil query, farmland classification, and corridor assessment:
+The server exposes **11 core MCP tools** for spatial soil query, farmland classification, CDL land-cover evidence, and corridor assessment:
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
 | `get_farmland_classification_by_point` | `latitude` (float, required), `longitude` (float, required) | Queries SDA for soil map unit attributes and farmland classification at a point. |
 | `get_farmland_classification_by_mukey` | `mukey` (string, required) | Fetches soil map unit details and farmland classification by Map Unit Key. |
 | `analyze_farmland_by_polygon` | `geojson` (dict \| string, required), `include_nccpi` (bool, default `true`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional) | Performs preliminary FPPA screening on a polygon, summarizes farmland categories, and fetches one of the validated `NCCPI`, `CSR2`, `CPI`, or `STORIE` productivity indexes with candidate Land Evaluation scoring. Results use generic productivity fields and selector-specific SDA provenance; `nccpi_rating` and `nccpi_class` are not public aliases. |
+| `analyze_cdl_histogram` | `geojson` (dict \| string, required), `product_vintage` (string, required), `qualifying_class_values` (list[int], required), `nodata_class_values` (list[int], optional) | Computes validated categorical histogram evidence from the USDA NASS CDL ImageServer for a Polygon or MultiPolygon AOI. Results describe recent mapped agricultural land cover only; they do not establish active farming or an official FPPA/LESA determination. |
 | `calculate_preliminary_lesa` | `project_name` (string, required), `geometry` (dict \| string, required), `project_type` (string, default `'site'`), `productivity_index` (string, default `'nccpi'`), `max_county_rating_override` (float, optional), `site_assessment_inputs` (dict, optional) | Performs unified Land Evaluation and Site Assessment (LESA) evaluation for site or corridor projects using a validated `NCCPI`, `CSR2`, `CPI`, or `STORIE` index, normalized against that index's county benchmark or a supported override, with optional corridor assessment inputs. |
 | `get_soil_polygons_by_geometry` | `geojson` (dict \| string, required), `clip` (bool, default `true`) | Returns intersecting SSURGO map unit polygon geometries and attributes as a GeoJSON `FeatureCollection`. |
 | `check_urban_area_exemption` | `geojson` (dict \| string, required) | Screens point or polygon geometries against Census Bureau 2020 Urban Area boundaries (7 CFR § 658.2(a)). |
@@ -346,6 +347,8 @@ Configure settings via environment variables or a `.env` file (see [`.env.exampl
 | `NASS_BASE_URL` | string | `https://quickstats.nass.usda.gov/api/api_GET/` | USDA NASS Quick Stats API GET endpoint |
 | `NASS_ENABLED` | boolean | `false` | Enable USDA NASS integration |
 | `NASS_CENSUS_YEAR` | int | `2022` | Baseline Census of Agriculture year |
+| `NASS_CDL_IMAGE_SERVER_URL` | string | `https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer` | USDA NASS Cropland Data Layer ArcGIS ImageServer endpoint |
+| `NASS_CDL_METADATA_CACHE_SECONDS` | float | `900.0` | Metadata cache duration for CDL ImageServer discovery |
 | `TIGERWEB_REST_URL` | string | `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/0` | Census TIGERweb 2020 Urban Areas MapServer Layer 0 |
 | `TIGERWEB_URBAN_LAYER_ID` | int | `0` | Layer index for 2020 Census Urban Areas |
 | `TIGERWEB_TIMEOUT_SECONDS` | float | `15.0` | Timeout in seconds for TIGERweb queries |
