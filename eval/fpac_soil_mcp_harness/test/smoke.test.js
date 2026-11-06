@@ -66,9 +66,10 @@ async function smokeTest(databricks) {
     const configResponse = await waitForHttp(`${base}/api/config`, child);
     assert.equal(configResponse.status, 200);
     const config = await configResponse.json();
-    assert.equal(config.host, "127.0.0.1");
+    assert.equal(config.host, databricks ? "0.0.0.0" : "127.0.0.1");
     assert.equal(config.port, port);
-    assert.equal(config.mcp.mode, "stdio");
+    assert.equal(config.allowCommandOverride, !databricks);
+    assert.equal(config.mcp.mode, databricks ? "http" : "stdio");
 
     const statusResponse = await fetch(`${base}/api/status`);
     assert.equal(statusResponse.status, 200);
@@ -125,4 +126,7 @@ async function smokeTest(databricks) {
   } finally {
     await stopChild(child);
   }
-});
+}
+
+test("harness HTTP smoke test with local configuration", () => smokeTest(false));
+test("harness HTTP smoke test with Databricks configuration", () => smokeTest(true));
