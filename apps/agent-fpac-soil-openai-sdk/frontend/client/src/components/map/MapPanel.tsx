@@ -370,6 +370,15 @@ export function MapPanel() {
     };
   }, [mapReady, mode, overlayOn]);
 
+  // MapLibre picks the popup anchor from the content size when it is added, but the
+  // portal fills the content afterwards. Re-anchor once the sections render (and
+  // when they change size) so the popup flips to stay inside the map.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run when sections render
+  useEffect(() => {
+    const popup = popupRef.current;
+    if (popup && popupNode) popup.setLngLat(popup.getLngLat());
+  }, [sections, popupNode]);
+
   const chooseMode = (next: DrawMode) => {
     drawRef.current?.setMode(next);
     setMode(next);
