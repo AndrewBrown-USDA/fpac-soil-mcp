@@ -45,3 +45,59 @@ Add an MCP tool that computes validated USDA NASS Cropland Data Layer (CDL) cate
 - Scope is the initial histogram prototype described in `planning/RESEARCH_CDL_IMAGESERVER_CRITERION_2.md`.
 - Do not label CDL classifications as confirmed active agricultural use, ownership, legal agricultural status, FPPA farmland status, or official NRCS/LESA findings.
 - Use existing HTTP client, geometry validation, Pydantic, MCP registration, and mocked transport patterns where applicable.
+
+---
+
+# TODO: Live CDL Integration Demo
+
+## Goal
+Run a one-off live-feed demo for the CDL histogram MCP tool using a small default Iowa polygon and render the response both as terminal output and a standalone HTML report.
+
+## Tasks
+
+### 1. Run the live demo
+- [x] Invoke the existing public CDL tool path against the live NASS CDL ImageServer using a small default Iowa polygon.
+- [x] Use only live service responses and the existing production code path; do not use mock data or modify the test suite.
+- [x] Keep the demo one-off and avoid adding a new committed demo script or dependency.
+
+### 2. Show live results
+- [x] Print status, AOI hash, product vintage, coverage, qualifying percentage, pixel counts, provenance, and histogram bins in a readable terminal summary.
+- [x] Write a standalone HTML report with the same live evidence, a proportional histogram visualization, source metadata, and the preliminary-screening limitations.
+- [x] Render error, unavailable, invalid, and ambiguous responses visibly without fabricating measurements.
+
+### 3. Validate the live run
+- [x] Run the demo against the live feed and confirm the generated HTML report exists.
+- [x] Do not add tests or update README documentation for this one-off demonstration.
+
+## Notes
+- Use a small Iowa Polygon as the default AOI so the live request remains bounded.
+- The demo is observational and must not describe CDL classes as confirmed active agricultural use or an official FPPA/LESA determination.
+- Keep the demo separate from the MCP server runtime and do not add `exportImage` or local raster processing.
+
+---
+
+# TODO: CDL Raster Attribute Table Names
+
+## Goal
+Extend the production CDL histogram response to include live raster attribute-table class names alongside numeric class values and correctly parse the ImageServer histogram edge metadata.
+
+## Tasks
+
+### 1. Discover and model live RAT metadata
+- [x] Query the live ImageServer metadata for its raster attribute table fields and class-name column.
+- [x] Add a validated class-name mapping to the production CDL response contract and preserve numeric codes when a name is unavailable.
+
+### 2. Parse and attach class names
+- [x] Parse the live ImageServer histogram where `min` and `max` are bin edges such as `-0.5` and `190.5`, deriving integer class codes from count indexes.
+- [x] Attach raster attribute-table names to histogram bins without treating names as agricultural qualification evidence.
+- [x] Preserve explicit ambiguous/error states when RAT metadata or histogram semantics cannot be verified.
+
+### 3. Run live validation
+- [x] Run the production MCP tool against the live Iowa polygon and display numeric class values with RAT names in terminal output and the existing HTML report.
+- [x] Do not use mock data, modify the test suite, or update README documentation for this live validation.
+
+## Notes
+- Scope is the production MCP response, not only the temporary demo.
+- Use the USDA NASS CDL ImageServer as the only data source.
+- Do not infer class names from hard-coded CDL tables when the live raster attribute table is unavailable.
+- Preserve the preliminary mapped-land-cover limitation and do not award Criterion 2 points from CDL alone.

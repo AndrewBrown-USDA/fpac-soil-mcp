@@ -47,6 +47,7 @@ class CDLClient:
             raise ValueError("metadata_cache_seconds must be positive.")
         self._http_client = http_client
         self._metadata_cache: tuple[datetime, CDLServiceMetadata] | None = None
+        self._raster_attribute_table_cache: dict[int, str] | None = None
 
     def get_service_metadata(self, *, force_refresh: bool = False) -> CDLServiceMetadata:
         """Fetch, validate, and cache ImageServer service metadata."""
@@ -76,6 +77,24 @@ class CDLClient:
                 "f": "json",
             },
         )
+
+    def get_raster_attribute_table(self, *, force_refresh: bool = False) -> dict[int, str]:
+        """Fetch live CDL numeric values and their raster attribute-table names."""
+        if self._raster_attribute_table_cache is not None and not force_refresh:
+            return dict(self._raster_attribute_table_cache)
+
+        payload = self._get_json(f"{self.base_url}/rasterAttributeTable", params={"f": "json"})
+        mapping: dict[int, str] = {}
+        for feature in payload.get("features", []):
+            attributes = feature.get("attributes", {})
+            value = attributes.get("Value")
+            class_name = attributes.get("Class_Names")
+            if isinstance(value, int) and isinstance(class_name, str) and class_name.strip():
+                mapping[value] = class_name.strip()
+        if not mapping:
+            raise ValueError("CDL raster attribute table did not contain Value/Class_Names rows.")
+        self._raster_attribute_table_cache = mapping
+        return dict(mapping)
 
     def compute_statistics_histograms(
         self,
@@ -120,8 +139,13 @@ class CDLClient:
         )
         try:
             metadata = self.get_service_metadata()
+            class_names = self.get_raster_attribute_table()
             payload = self.compute_statistics_histograms(geometry=geometry, mosaic_rule=mosaic_rule)
-            bins = parse_histogram_payload(payload, nodata_class_values=nodata_class_values or {0})
+            bins = parse_histogram_payload(
+                payload,
+                nodata_class_values=nodata_class_values or {0},
+                class_names=class_names,
+            )
             bins = [
                 item.model_copy(
                     update={
@@ -254,7 +278,10 @@ class CDLClient:
 
 
 def parse_histogram_payload(
-    payload: dict[str, Any], *, nodata_class_values: set[int]
+    payload: dict[str, Any],
+    *,
+    nodata_class_values: set[int],
+    class_names: dict[int, str] | None = None,
 ) -> list[CDLHistogramBin]:
     """Parse only explicit categorical histogram representations."""
     histograms = payload.get("histograms")
@@ -278,6 +305,7 @@ def parse_histogram_payload(
                 CDLHistogramBin(
                     class_value=class_value,
                     pixel_count=pixel_count,
+                    class_name=(class_names or {}).get(class_value),
                 )
             )
         return parsed
@@ -286,8 +314,9 @@ def parse_histogram_payload(
     minimum = histogram.get("min")
     if isinstance(raw_counts, dict):
         items = raw_counts.items()
-    elif isinstance(raw_counts, list) and isinstance(minimum, int):
-        items = ((minimum + offset, count) for offset, count in enumerate(raw_counts))
+    elif isinstance(raw_counts, list) and isinstance(minimum, (int, float)):
+        class_centers = (minimum + offset + 0.5 for offset in range(len(raw_counts)))
+        items = ((round(center), count) for center, count in zip(class_centers, raw_counts))
     else:
         raise TypeError("Histogram must expose explicit bins or counts with an integer min.")
 
@@ -302,6 +331,7 @@ def parse_histogram_payload(
             CDLHistogramBin(
                 class_value=class_value,
                 pixel_count=pixel_count,
+                class_name=(class_names or {}).get(class_value),
             )
         )
     return parsed
