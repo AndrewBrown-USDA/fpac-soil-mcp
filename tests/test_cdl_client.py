@@ -79,6 +79,16 @@ def test_cdl_client_returns_validated_histogram_evidence_with_nodata():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/ImageServer"):
             return httpx.Response(200, json={"capabilities": "Image"})
+        if request.url.path.endswith("/rasterAttributeTable"):
+            return httpx.Response(
+                200,
+                json={
+                    "features": [
+                        {"attributes": {"Value": 0, "Class_Names": "Background"}},
+                        {"attributes": {"Value": 1, "Class_Names": "Corn"}},
+                    ]
+                },
+            )
         return httpx.Response(
             200,
             json={"histograms": [{"bins": [{"value": 0, "count": 2}, {"value": 1, "count": 8}]}]},
@@ -103,12 +113,19 @@ def test_cdl_client_returns_validated_histogram_evidence_with_nodata():
     assert response.qualifying_agricultural_pixel_pct == 100
     assert response.histogram[0].is_qualifying_agricultural is False
     assert response.histogram[1].is_qualifying_agricultural is True
+    assert response.histogram[0].class_name == "Background"
+    assert response.histogram[1].class_name == "Corn"
 
 
 def test_cdl_client_rejects_ambiguous_histogram_shape():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/ImageServer"):
             return httpx.Response(200, json={"capabilities": "Image"})
+        if request.url.path.endswith("/rasterAttributeTable"):
+            return httpx.Response(
+                200,
+                json={"features": [{"attributes": {"Value": 1, "Class_Names": "Corn"}}]},
+            )
         return httpx.Response(200, json={"histograms": [{"counts": [1, 2]}]})
 
     client = CDLClient(
