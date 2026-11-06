@@ -74,6 +74,42 @@ pasting GeoJSON. Geometry appears in chat traces and app logs; do not draw or
 paste personal data or Section 1619 producer data outside an environment
 approved for it.
 
+Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)):
+
+* `analyze_farmland_by_polygon` and `analyze_corridor_fppa` return a `map`
+  block. The model's calls use `include_map=false` (layer list, legends and
+  sources, no geometry). `/api/geo/screen` and `/api/geo/map` ask for
+  `include_map=true` and the panel draws the server's layers with the server's
+  legends, simplification notes and size-limit warnings. Corridor results
+  include each alternative's footprint and farmland.
+* `POST /api/geo/map` backs "Show on map" on completed tool cards for those two
+  tools: body `{tool, arguments, active_aoi}`; only those tools are allowed
+  (400 otherwise), `include_map` is forced on, and an AOI reference in the
+  arguments is replaced only by the matching active AOI. Like
+  `/api/geo/screen`, it is untraced and logs no request bodies.
+* Context layers (collapsed "Context layers" control, all off by default):
+  SSURGO map units (SDA WMS, from zoom 12), TIGERweb counties (from zoom 6) and
+  Census 2020 urban areas (from zoom 7). The catalog is fixed in
+  `overlays.ts`; the browser loads these public services directly, so map tile
+  bounds and clicked points go to USDA NRCS and the Census Bureau.
+* Clicking the map with a context layer on (no drawing tool active) shows an
+  identify popup. County and urban results offer "Use as AOI", which loads the
+  exact outline and refuses it above 2000 vertices instead of simplifying.
+  SSURGO identify has no farmland class; run screening for that.
+
+### Dev trial apps
+
+Branch trials use two dev apps deployed from git on the feature branch, so the
+production apps stay on `main`:
+
+* `mcp-fpac-soil-dev`: the MCP server from the branch.
+* `agent-fpac-soil-dev`: this app from the branch, with its `mcp_server`
+  resource pointing at `mcp-fpac-soil-dev` (`CAN_USE`). `FPAC_MCP_APP` comes
+  from that resource, so `app.yaml` needs no branch-specific URL.
+
+Both have auto-deploy on; every push to the branch redeploys both. Record
+trial deployments and results under `planning/evidence/`.
+
 ### MCP timeout
 
 The client timeout is 180 seconds, not the 20-second default. Some tools, such as preliminary LESA and corridor analysis, query several USDA and Census services and can run longer than 20 seconds. 180 seconds matches the timeout used by the JS test harness.
