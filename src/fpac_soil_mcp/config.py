@@ -45,6 +45,16 @@ class Settings(BaseSettings):
         description="Default baseline Census of Agriculture year",
     )
 
+    # USDA NASS Cropland Data Layer ImageServer Configuration
+    nass_cdl_image_server_url: str = Field(
+        default="https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer",
+        description="USDA NASS Cropland Data Layer ArcGIS ImageServer endpoint",
+    )
+    nass_cdl_metadata_cache_seconds: float = Field(
+        default=900.0,
+        description="Duration in seconds to cache validated CDL ImageServer metadata",
+    )
+
     # Census TIGERweb Configuration
     tigerweb_rest_url: str = Field(
         default="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/0",
@@ -93,14 +103,18 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("mcp_port", "DATABRICKS_APP_PORT"),
     )
 
-    @field_validator("sda_tabular_url", "nass_base_url", "tigerweb_rest_url")
+    @field_validator(
+        "sda_tabular_url", "nass_base_url", "nass_cdl_image_server_url", "tigerweb_rest_url"
+    )
     @classmethod
     def _validate_urls(cls, v: str, info) -> str:
         if not v.startswith(("http://", "https://")):
             raise ValueError(f"{info.field_name} must be a valid HTTP/HTTPS URL.")
         return v
 
-    @field_validator("request_timeout_seconds", "tigerweb_timeout_seconds")
+    @field_validator(
+        "request_timeout_seconds", "tigerweb_timeout_seconds", "nass_cdl_metadata_cache_seconds"
+    )
     @classmethod
     def _validate_timeouts(cls, v: float) -> float:
         if v <= 0:
