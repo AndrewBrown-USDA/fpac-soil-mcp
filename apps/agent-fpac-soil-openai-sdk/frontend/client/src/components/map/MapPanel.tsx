@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Map as MapLibreMap } from 'maplibre-gl';
+import { createPortal } from 'react-dom';
+import { Map as MapLibreMap, Popup } from 'maplibre-gl';
+import type { MapMouseEvent } from 'maplibre-gl';
 import type { GeoJSONSource, StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './maplibreWorker';
@@ -12,7 +14,17 @@ import {
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import { Button } from '@/components/ui/button';
 import { GeoJsonInput } from './GeoJsonInput';
-import { featureCollection, geometryBounds, toPolygonGeometry } from './geojson';
+import {
+  MAX_AOI_VERTICES,
+  countVertices,
+  featureCollection,
+  geometryBounds,
+  toPolygonGeometry,
+} from './geojson';
+import { IdentifyPopup } from './IdentifyPopup';
+import type { IdentifySection, UseAsAoiResult } from './IdentifyPopup';
+import { fetchOutline, identifyArea, identifySoil } from './identify';
+import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
@@ -62,6 +74,11 @@ export function MapPanel() {
   const [overlayError, setOverlayError] = useState<OverlayFlags>(NO_OVERLAYS);
   const [overlayLoading, setOverlayLoading] = useState<OverlayFlags>(NO_OVERLAYS);
   const [zoom, setZoom] = useState(3);
+  // Identify popup (D6): MapLibre popup whose content is rendered through a portal.
+  const popupRef = useRef<Popup | null>(null);
+  const identifyAbort = useRef<AbortController | null>(null);
+  const [popupNode, setPopupNode] = useState<HTMLDivElement | null>(null);
+  const [sections, setSections] = useState<IdentifySection[]>([]);
   // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
   // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
   const { chatId, activeAoi, setGeometry, setSummary } = useActiveAoi();
@@ -282,6 +299,67 @@ export function MapPanel() {
     setOverlayError((prev) => ({ ...prev, [id]: false }));
   }, []);
 
+  // A click identifies the overlays that are on and in range, only when no drawing
+  // tool is active (Terra Draw owns clicks in the other modes).
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const onClick = (event: MapMouseEvent) => {
+      if (mode !== 'static') return;
+      const active = OVERLAYS.filter(
+        (overlay) => overlayOn[overlay.id] && map.getZoom() >= overlay.minzoom,
+      );
+      if (active.length === 0) return;
+      identifyAbort.current?.abort();
+      const controller = new AbortController();
+      identifyAbort.current = controller;
+      popupRef.current?.remove();
+      const node = document.createElement('div');
+      const popup = new Popup({ closeButton: true, maxWidth: '320px' })
+        .setLngLat(event.lngLat)
+        .setDOMContent(node)
+        .addTo(map);
+      popup.on('close', () => {
+        if (popupRef.current !== popup) return;
+        popupRef.current = null;
+        controller.abort();
+        setPopupNode(null);
+      });
+      popupRef.current = popup;
+      setPopupNode(node);
+      setSections(active.map((overlay) => ({ overlay, state: 'loading' as const })));
+      const { lng, lat } = event.lngLat;
+      for (const overlay of active) {
+        const query =
+          overlay.id === 'ssurgo'
+            ? identifySoil(lng, lat, controller.signal).then((soil) => ({ soil }))
+            : identifyArea(overlay.id, lng, lat, controller.signal).then((area) => ({ area }));
+        query
+          .then((found) => {
+            if (controller.signal.aborted) return;
+            setSections((prev) =>
+              prev.map((s) =>
+                s.overlay.id === overlay.id ? { overlay, state: 'done' as const, ...found } : s,
+              ),
+            );
+          })
+          .catch(() => {
+            if (controller.signal.aborted) return;
+            setSections((prev) =>
+              prev.map((s) =>
+                s.overlay.id === overlay.id ? { overlay, state: 'error' as const } : s,
+              ),
+            );
+          });
+      }
+    };
+    map.on('click', onClick);
+    return () => {
+      map.off('click', onClick);
+    };
+  }, [mapReady, mode, overlayOn]);
+
   const chooseMode = (next: DrawMode) => {
     drawRef.current?.setMode(next);
     setMode(next);
@@ -293,6 +371,30 @@ export function MapPanel() {
     chooseMode('static');
     const bounds = geometryBounds(geometry);
     if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+  };
+
+  // Use as AOI: the exact outline, refused above the vertex cap (D6, never simplified).
+  const applyAreaAsAoi = async (section: IdentifySection, area: AreaInfo): Promise<UseAsAoiResult> => {
+    const overlayId = section.overlay.id;
+    if (overlayId === 'ssurgo') return { ok: false, message: 'Soil map units cannot be an AOI.' };
+    const controller = new AbortController();
+    let geometry: PolygonGeometry | null = null;
+    try {
+      geometry = await fetchOutline(overlayId, area.geoid, controller.signal);
+    } catch {
+      return { ok: false, message: 'Could not load this outline. Try again later.' };
+    }
+    if (!geometry) return { ok: false, message: 'Could not load this outline. Try again later.' };
+    const vertices = countVertices(geometry);
+    if (vertices > MAX_AOI_VERTICES) {
+      return {
+        ok: false,
+        message: `This outline has ${vertices} vertices; the AOI limit is ${MAX_AOI_VERTICES}. Draw or paste a smaller AOI.`,
+      };
+    }
+    popupRef.current?.remove();
+    onPasted(geometry);
+    return { ok: true };
   };
 
   const undo = () => {
@@ -362,6 +464,8 @@ export function MapPanel() {
           ref={containerRef}
           className="min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border"
         />
+        {popupNode &&
+          createPortal(<IdentifyPopup sections={sections} onUseAsAoi={applyAreaAsAoi} />, popupNode)}
         <OverlayControl
           on={overlayOn}
           errors={overlayError}

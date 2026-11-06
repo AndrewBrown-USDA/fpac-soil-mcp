@@ -110,3 +110,15 @@ export const featureCollection = (geometry: PolygonGeometry | null) => ({
     ? [{ type: 'Feature' as const, properties: {}, geometry }]
     : [],
 });
+
+// Same rule as `agent_server/geo.py` `count_vertices`: every ring position counts,
+// the closing position included, summed over rings and polygons.
+export const MAX_AOI_VERTICES = 2000;
+
+export function countVertices(geometry: PolygonGeometry): number {
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+  return polygons.reduce(
+    (total, polygon) => total + polygon.reduce((sum, ring) => sum + ring.length, 0),
+    0,
+  );
+}
