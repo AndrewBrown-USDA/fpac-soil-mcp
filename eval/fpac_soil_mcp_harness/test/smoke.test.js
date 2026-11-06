@@ -41,15 +41,18 @@ async function stopChild(child) {
   if (child.exitCode === null) child.kill("SIGKILL");
 }
 
-test("local harness smoke path is fixture-only and cleans up", async () => {
+async function smokeTest(databricks) {
   const port = await freePort();
   const child = spawn(process.execPath, [serverPath], {
     cwd: harnessDir,
     env: {
       ...process.env,
-      HARNESS_HOST: "127.0.0.1",
-      HARNESS_PORT: String(port),
+      HARNESS_HOST: databricks ? "0.0.0.0" : "127.0.0.1",
+      HARNESS_PORT: databricks ? "1" : String(port),
+      DATABRICKS_APP_PORT: databricks ? String(port) : "",
       HARNESS_AUTOCONNECT: "false",
+      HARNESS_ALLOW_COMMAND_OVERRIDE: databricks ? "false" : "true",
+      MCP_MODE: databricks ? "http" : "stdio",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -63,9 +66,10 @@ test("local harness smoke path is fixture-only and cleans up", async () => {
     const configResponse = await waitForHttp(`${base}/api/config`, child);
     assert.equal(configResponse.status, 200);
     const config = await configResponse.json();
-    assert.equal(config.host, "127.0.0.1");
+    assert.equal(config.host, databricks ? "0.0.0.0" : "127.0.0.1");
     assert.equal(config.port, port);
-    assert.equal(config.mcp.mode, "stdio");
+    assert.equal(config.allowCommandOverride, !databricks);
+    assert.equal(config.mcp.mode, databricks ? "http" : "stdio");
 
     const statusResponse = await fetch(`${base}/api/status`);
     assert.equal(statusResponse.status, 200);
@@ -122,4 +126,7 @@ test("local harness smoke path is fixture-only and cleans up", async () => {
   } finally {
     await stopChild(child);
   }
-});
+}
+
+test("harness HTTP smoke test with local configuration", () => smokeTest(false));
+test("harness HTTP smoke test with Databricks configuration", () => smokeTest(true));

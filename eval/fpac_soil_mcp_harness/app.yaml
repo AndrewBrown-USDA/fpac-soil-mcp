@@ -1,0 +1,12 @@
+command:
+  - node
+  - server.js
+env:
+  - name: HARNESS_HOST
+    value: "0.0.0.0"
+  - name: HARNESS_AUTOCONNECT
+    value: "false"
+  - name: HARNESS_ALLOW_COMMAND_OVERRIDE
+    value: "false"
+  - name: MCP_MODE
+    value: "http"
