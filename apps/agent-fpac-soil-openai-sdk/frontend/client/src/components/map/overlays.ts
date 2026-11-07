@@ -13,21 +13,17 @@ export type Overlay = {
   id: OverlayId;
   title: string;
   tiles: string;
-  // Below this map zoom the layer is hidden and the control says "Zoom in to see".
+  // Below this zoom no tiles are requested and the control says "Zoom in to see".
   minzoom: number;
-  // Display size of one tile in CSS pixels. The service draws labels at a fixed
-  // pixel size, so a tile image smaller than `tileSize` enlarges its labels.
-  tileSize: number;
   opacity: number;
   source: string;
   vintage: string;
   attribution: string;
 };
 
-// SDA WMS ignores DPI parameters (MAP_RESOLUTION, FORMAT_OPTIONS=dpi, DPI; checked
-// 2026-11-06), so map unit labels are enlarged by drawing 256 px images on 512 px
-// tiles (2x; softer labels and thicker lines; 1.33x with 384 px was still too small
-// in the 44.10.1 trial).
+// Drawn at native size only. SDA WMS draws labels at a fixed pixel size and ignores
+// DPI parameters (MAP_RESOLUTION, FORMAT_OPTIONS=dpi, DPI; checked 2026-11-06);
+// stretching tiles to enlarge labels blurred them (44.10.1 trial), so do not.
 const SSURGO_WMS_TILES =
   'https://SDMDataAccess.sc.egov.usda.gov/Spatial/SDM.wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=mapunitpoly&STYLES=&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true';
 
@@ -45,7 +41,6 @@ export const OVERLAYS: readonly Overlay[] = [
     title: 'SSURGO soil map units',
     tiles: SSURGO_WMS_TILES,
     minzoom: 12,
-    tileSize: 512,
     opacity: 0.8,
     source: 'USDA NRCS Soil Data Access (SDA) WMS',
     vintage: 'SSURGO, current SDA publication',
@@ -56,7 +51,6 @@ export const OVERLAYS: readonly Overlay[] = [
     title: 'Counties',
     tiles: TIGERWEB_COUNTY_TILES,
     minzoom: 6,
-    tileSize: 256,
     opacity: 0.9,
     source: 'US Census Bureau TIGERweb',
     vintage: 'TIGERweb counties (current)',
@@ -67,7 +61,6 @@ export const OVERLAYS: readonly Overlay[] = [
     title: 'Census 2020 urban areas',
     tiles: TIGERWEB_URBAN_TILES,
     minzoom: 7,
-    tileSize: 256,
     opacity: 0.6,
     source: 'US Census Bureau TIGERweb',
     vintage: 'Census 2020 Urban Areas',
@@ -98,14 +91,11 @@ function overlayBeforeId(map: MapLibreMap): string | undefined {
 export function addOverlay(map: MapLibreMap, overlay: Overlay): void {
   const id = overlaySourceId(overlay.id);
   if (map.getSource(id)) return;
-  // A 512 px tile covers what 256 px tiles cover one zoom level higher, so its source
-  // zoom range starts one level lower than the map zoom.
-  const sourceMinzoom = Math.max(0, overlay.minzoom - Math.log2(overlay.tileSize / 256));
   map.addSource(id, {
     type: 'raster',
     tiles: [overlay.tiles],
-    tileSize: overlay.tileSize,
-    minzoom: sourceMinzoom,
+    tileSize: 256,
+    minzoom: overlay.minzoom,
     maxzoom: 18,
     attribution: overlay.attribution,
   });
