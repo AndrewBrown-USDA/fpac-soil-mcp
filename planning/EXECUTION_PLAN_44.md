@@ -68,6 +68,8 @@
 
 14. **A5, 2026-11-07, review decisions (user, `REVIEW_44.md`):** fix R1-R3 and R8 in 44.11.2 (docs). Fix R12 in 44.11.3: run the POLY-01 and POLY-02 eval cases ("i do want to make sure those eval cases work"). Accept R4-R6, R9-R11 and R13. Defer R7 (serve the AOI vertex limit from the server), R14 and R15 to `MASTER_PLAN.md` follow-ups at close-out.
 
+15. **A6, 2026-11-07, amendment (user direction: "add show on map"), revises D3 for one tool:** `get_soil_polygons_by_geometry` also takes `include_map: bool = False` (same "Leave false." description) so POLY-02 tool cards get "Show on map". Its existing FeatureCollection keys stay as they are; it gains the same additive `schema_version`, `data_mode`, `authority` and `map` keys, with descriptor-only layers by default, on success and on error. Layers are `aoi` and `farmland_classes` (same id, `style_key` and legend as the analyze tools, so the renderer needs no change); `farmland_classes` is built from the rows already fetched (`features_from_sda_rows`), with simplification and the size cap. No extra upstream call. The app adds the tool to `geo.MAP_TOOLS` and the frontend `MAP_TOOLS`. LESA and point/mukey lookups stay unchanged.
+
 ## Wave & Dependency Table
 
 Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `apps/agent-fpac-soil-openai-sdk/`; `src/` and root `tests/` are the MCP server.
@@ -92,8 +94,10 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 10 | User + Genie Code | 44.10.1 | Final deployed trial (M4 + M5) | `planning/evidence/44.10.1-trial.md` (new), `planning/STATE_44.md` | 44.9.1, 44.9.2 |
 | 11 | Genie Code | 44.11.1 | Two-axis code review of the branch | `planning/REVIEW_44.md` (new), `planning/STATE_44.md` | 44.10.1 |
 | 11 | Genie Code | 44.11.2 | Review doc fixes | app `AGENTS.md`, `docs/decisions/0016-out-of-band-aoi-screening-handoff.md`, root `.env.example`, `planning/STATE_44.md` | 44.11.1 |
-| 11 | User + Genie Code | 44.11.3 | POLY-01 and POLY-02 eval cases | `planning/evidence/44.11.3-eval.md` (new), `planning/STATE_44.md` | 44.11.1 |
-| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1, 44.11.2, 44.11.3 |
+| 11 | Genie Code | 44.11.4 | Map result on `get_soil_polygons_by_geometry` (A6) | `src/fpac_soil_mcp/tools/soil_lookup_tools.py`, root `tests/test_map_tool_contracts.py`, root `tests/test_soil_polygons_map.py` (new), root `README.md` (tool row), ADR 0017 | 44.11.1 |
+| 11 | Genie Code | 44.11.5 | "Show on map" for soil polygon cards (A6) | `agent_server/geo.py`, app `tests/test_geo_map.py`, `components/map/ShowOnMapButton.tsx`, app `AGENTS.md`, app `README.md`, ADR 0015 (`message.tsx` entry), ADR 0016 (the 2026-11-07 amendment) | 44.11.4 |
+| 11 | User + Genie Code | 44.11.3 | POLY-01 and POLY-02 eval cases | `planning/evidence/44.11.3-eval.md` (new), `planning/STATE_44.md` | 44.11.5 |
+| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1-44.11.5 |
 
 Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 44.9.1; `geo.py`: 44.5.1, 44.6.1; `spatial_analysis_tools.py`: 44.4.1 only), and no task depends on another task in its own wave. Execution is serial anyway (D8); file scopes are disjoint within each wave so a worker-capable tool could run them in parallel. Review findings that need code become numbered fix tasks (44.11.2, 44.11.3, ...) added to this table before close-out.
 
@@ -264,8 +268,23 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 
 - **Executor:** User + Genie Code. **Depends on:** 44.11.1.
 - **Files in scope:** can create `planning/evidence/44.11.3-eval.md`; must edit `planning/STATE_44.md`.
-- **Spec:** The M4 exit row names POLY-01 (`analyze_farmland_by_polygon`) and POLY-02 (`get_soil_polygons_by_geometry`) from `eval/prompt_test_cases.json`. (1) Genie Code runs the T1 eval for both cases (`make eval-databricks ARGS="--cases POLY-01,POLY-02"`) and records the run id and per-scorer results. (2) The user sends both prompts in the dev agent app. For POLY-01, "Show on map" on the tool card draws the `aoi`, `farmland_classes` and `urban_context` layers with legend, source, authority and notice. POLY-02's tool has no `include_map` and no "Show on map" (D3); its map check is the POLY-01 `farmland_classes` layer, unless the user decides otherwise. Record trace ids and outcomes.
-- **Acceptance:** both cases pass the T1 scorers or failures are recorded as fix tasks; the POLY-01 card renders on the map.
+- **Spec:** The M4 exit row names POLY-01 (`analyze_farmland_by_polygon`) and POLY-02 (`get_soil_polygons_by_geometry`) from `eval/prompt_test_cases.json`. (1) Genie Code runs the T1 eval for both cases (`make eval-databricks ARGS="--cases POLY-01,POLY-02"`) and records the run id and per-scorer results. (2) The user sends both prompts in the dev agent app. For POLY-01, "Show on map" on the tool card draws the `aoi`, `farmland_classes` and `urban_context` layers with legend, source, authority and notice. For POLY-02, "Show on map" (A6, 44.11.5) draws `aoi` and `farmland_classes` the same way. Record trace ids and outcomes.
+- **Acceptance:** both cases pass the T1 scorers or failures are recorded as fix tasks; both cards render on the map.
+
+### 44.11.4 -- Map result on `get_soil_polygons_by_geometry` (A6)
+
+- **Executor:** Genie Code. **Depends on:** 44.11.1.
+- **Files in scope:** must edit `src/fpac_soil_mcp/tools/soil_lookup_tools.py`, root `tests/test_map_tool_contracts.py` (move the tool from `UNCHANGED_TOOLS` to the schema check, fix the module docstring), root `README.md` (tool reference row), `docs/decisions/0017-server-map-result-contract.md` (fold A6 into the main text; the ADR is still Proposed on this branch); can create root `tests/test_soil_polygons_map.py`.
+- **Spec:** As A6. `include_map: IncludeMap = False` (reuse `spatial_analysis_tools.IncludeMap`). One SDA call, as now. The `farmland_classes` title says when polygons are full survey polygons (`clip=False`). Error paths return descriptor-only `map`.
+- **Anchors:** `soil_lookup_tools.py` `get_soil_polygons_by_geometry`; `polygon_analysis.py` `_polygon_map` (reference); `map_contract.py` `build_layer`, `build_map_block`, `features_from_sda_rows`, `ResultAuthority`, `MAP_SCHEMA_VERSION`.
+- **Acceptance:** `uv run pytest tests/test_soil_polygons_map.py tests/test_map_tool_contracts.py tests/test_tools.py -q` passes; tests cover descriptors by default, inline layers when true, one SDA call, existing keys and features unchanged for both flag values, error paths; root `make check` (fresh `/tmp` clone) and `make test-live` pass.
+
+### 44.11.5 -- "Show on map" for soil polygon cards (A6)
+
+- **Executor:** Genie Code. **Depends on:** 44.11.4.
+- **Files in scope:** must edit `agent_server/geo.py` (`MAP_TOOLS`, `MapRequest`), app `tests/test_geo_map.py`, `frontend/client/src/components/map/ShowOnMapButton.tsx` (`MAP_TOOLS`), app `AGENTS.md`, app `README.md`, `docs/decisions/0015-vendored-agent-app-frontend.md` (`message.tsx` entry), `docs/decisions/0016-out-of-band-aoi-screening-handoff.md` (the 2026-11-07 amendment written on this branch).
+- **Spec:** Add `get_soil_polygons_by_geometry` to both allowlists; `/api/geo/map` substitutes `aoi_ref` in `geojson` and forces `include_map=True` as for the others. Docs say "the map tools" instead of "the two analyze tools" where they describe the allowlist.
+- **Acceptance:** `make app-check` and `make app-frontend-check` pass (fresh `/tmp` clone); a test asserts the soil tool is accepted with substitution and the forced flag; no new `tsc` errors in `components/map/`.
 
 ### 44.12.1 -- Close-out
 
