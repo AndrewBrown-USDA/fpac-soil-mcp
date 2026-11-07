@@ -33,7 +33,8 @@ source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_42"
 > `get_soil_polygons_by_geometry` call and the clipped soil FeatureCollection
 > described under "Map screening route" below. The same rules apply to the new
 > `POST /api/geo/map` route behind "Show on map": it is untraced, does not log
-> bodies, and accepts only the two analyze tools. See
+> bodies, and accepts only the tools that return a `map` block (the two
+> analyze tools and `get_soil_polygons_by_geometry`). See
 > [ADR 0017](0017-server-map-result-contract.md).
 
 ## Context and Problem Statement

@@ -183,10 +183,28 @@ def test_other_argument_left_alone_when_ref_differs(start_server, fake_mcp):
     assert fake.calls[0][1]["geojson"] == "aoi-ffffffff"
 
 
+def test_soil_polygons_tool_is_accepted_with_substitution(start_server, fake_mcp):
+    fake = fake_mcp(_happy())
+
+    response = _post(
+        start_server,
+        {
+            "tool": geo.SOIL_POLYGONS_TOOL,
+            "arguments": {"geojson": AOI_REF, "clip": True, "include_map": False},
+            "active_aoi": {"aoi_ref": AOI_REF, "geometry": SQUARE},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tool"] == geo.SOIL_POLYGONS_TOOL
+    assert fake.calls == [
+        (geo.SOIL_POLYGONS_TOOL, {"geojson": SQUARE, "clip": True, "include_map": True})
+    ]
+
+
 @pytest.mark.parametrize(
     "tool",
     [
-        "get_soil_polygons_by_geometry",
         "calculate_preliminary_lesa",
         "get_farmland_classification_by_point",
         MARKER,

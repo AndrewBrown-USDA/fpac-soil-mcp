@@ -9,6 +9,7 @@ import { useOptionalMapResult } from './MapResultContext';
 export const MAP_TOOLS: ReadonlySet<string> = new Set([
   'analyze_farmland_by_polygon',
   'analyze_corridor_fppa',
+  'get_soil_polygons_by_geometry',
 ]);
 
 const AOI_REF = /^aoi-[0-9a-f]{8}$/;

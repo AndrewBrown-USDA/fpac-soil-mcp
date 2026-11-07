@@ -109,8 +109,8 @@ Modified upstream files:
   provider, which opens the panel when a tool card's "Show on map" is used
   (Plan 44, ADR 0017).
 * `client/src/components/message.tsx`: "Show on map" button on completed
-  `analyze_farmland_by_polygon` and `analyze_corridor_fppa` tool cards
-  (Plan 44, ADR 0017).
+  `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and
+  `get_soil_polygons_by_geometry` tool cards (Plan 44, ADR 0017).
 * `client/src/components/multimodal-input.tsx`: shows the attached map AOI
   chip above the textarea (ADR 0016).
 * `client/src/components/chat.tsx`: tells the map panel the open chat id and

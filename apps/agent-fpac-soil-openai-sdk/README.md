@@ -76,15 +76,15 @@ approved for it.
 
 Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)):
 
-* `analyze_farmland_by_polygon` and `analyze_corridor_fppa` return a `map`
-  block. The model's calls use `include_map=false` (layer list, legends and
-  sources, no geometry). `/api/geo/screen` and `/api/geo/map` ask for
+* `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and
+  `get_soil_polygons_by_geometry` return a `map` block. The model's calls use
+  `include_map=false` (layer list, legends and sources, no geometry). `/api/geo/screen` and `/api/geo/map` ask for
   `include_map=true` and the panel draws the server's layers with the server's
   legends, simplification notes and size-limit warnings. Corridor results
   include each alternative's footprint and farmland.
-* `POST /api/geo/map` backs "Show on map" on completed tool cards for those two
-  tools: body `{tool, arguments, active_aoi}`; only those tools are allowed
-  (400 otherwise), `include_map` is forced on, and an AOI reference in the
+* `POST /api/geo/map` backs "Show on map" on completed tool cards for those
+  three tools (`geo.MAP_TOOLS`): body `{tool, arguments, active_aoi}`; only
+  those tools are allowed (400 otherwise), `include_map` is forced on, and an AOI reference in the
   arguments is replaced only by the matching active AOI. Like
   `/api/geo/screen`, it is untraced and logs no request bodies.
 * Context layers (collapsed "Context layers" control, all off by default):

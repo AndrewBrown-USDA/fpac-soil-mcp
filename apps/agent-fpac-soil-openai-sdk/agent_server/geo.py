@@ -28,8 +28,9 @@ MAX_SUMMARY_MAP_UNITS = 10
 MAX_SUMMARY_TEXT_CHARS = 2000
 ANALYSIS_TOOL = "analyze_farmland_by_polygon"
 CORRIDOR_TOOL = "analyze_corridor_fppa"
+SOIL_POLYGONS_TOOL = "get_soil_polygons_by_geometry"
 # Tools whose results carry an ADR 0017 ``map`` block; the only tools /api/geo/map calls.
-MAP_TOOLS = (ANALYSIS_TOOL, CORRIDOR_TOOL)
+MAP_TOOLS = (ANALYSIS_TOOL, CORRIDOR_TOOL, SOIL_POLYGONS_TOOL)
 
 FARMLAND_CLASSES = (
     ("prime_farmland", "Prime farmland"),
@@ -356,7 +357,9 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
 
 
 class MapRequest(BaseModel):
-    tool: Literal["analyze_farmland_by_polygon", "analyze_corridor_fppa"]
+    tool: Literal[
+        "analyze_farmland_by_polygon", "analyze_corridor_fppa", "get_soil_polygons_by_geometry"
+    ]
     arguments: dict[str, Any]
     active_aoi: dict[str, Any] | None = None
 
