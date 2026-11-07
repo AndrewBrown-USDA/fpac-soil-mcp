@@ -46,7 +46,9 @@
 | 10 | User + Genie Code | 44.10.1 | in progress (planning/evidence/44.10.1-trial.md) |
 | 11 | Genie Code | 44.11.1 | done, 95e78d1 (`planning/REVIEW_44.md`) |
 | 11 | Genie Code | 44.11.2 | done, 0d607d4 |
-| 11 | User + Genie Code | 44.11.3 | pending |
+| 11 | Genie Code | 44.11.4 | done, 83887aa |
+| 11 | Genie Code | 44.11.5 | done, e1a544e |
+| 11 | User + Genie Code | 44.11.3 | pending (needs push + dev redeploy) |
 | 12 | Genie Code + User | 44.12.1 | pending |
 | 12 | gate | all suites | pending |
 
@@ -173,3 +175,21 @@
 - **Files:** app `AGENTS.md` L34 (one MCP call, R1); ADR 0016 dated amendment 2026-11-07 after the acceptance note (R2, original text kept); `.env.example` commented `MAP_SIMPLIFY_TOLERANCE_M=1.0` and `MAP_MAX_GEOJSON_BYTES=2000000` (R3).
 - **Checks:** `grep -c "two MCP calls"` 0; `grep MAP_ .env.example` shows both; env vars load into `Settings` (2.5 / 123 test values). Fresh `/tmp/g44` clone at 0d607d4: root `make check` rc 0, 694 passed / 3 skipped; `make app-check` rc 0, 175 passed. (In the workspace clone, ruff reports only EXE002 from file modes.)
 - **Deviations:** none; R7 comment dropped (user chose a server-served limit follow-up).
+- Pushed `e760691..a7816d9` (user-approved, 2026-11-07).
+
+## A6 (user, 2026-11-07): "add show on map" for POLY-02
+
+- Recorded in the plan Decision Log with tasks 44.11.4 and 44.11.5 (ec37816).
+
+## 44.11.4
+
+- **Status:** done. Commit 83887aa (`feat(map): add the map result to get_soil_polygons_by_geometry`).
+- **Files:** `tools/soil_lookup_tools.py` (`include_map: IncludeMap = False`; `_soil_map_fields` adds `schema_version`, `data_mode`, `authority`, `map` with `aoi` + `farmland_classes` from the fetched rows, on success and both error paths); `tests/test_soil_polygons_map.py` (new, 7 tests); `tests/test_map_tool_contracts.py` (schema test covers the tool); root `README.md` tool row; ADR 0017 (A6 folded in).
+- **Checks:** new tests 7 passed, and 8 fail with the old `soil_lookup_tools.py`. Fresh `/tmp/g44` clone: root `make check` 701 passed / 3 skipped (694 + 7); `make test-live` 43 passed / 3 skipped.
+- **Gotcha for 44.11.3:** the POLY-02 prompt gives the AOI as WKT (`POLYGON((...))`), but `parse_geojson_geometry` accepts only GeoJSON (a WKT string raises "Invalid GeoJSON string"). The case passes only if the model converts it to GeoJSON. Not changed here; the eval will show whether it does.
+
+## 44.11.5
+
+- **Status:** done. Commit e1a544e (`feat(agent-app): show soil polygon results on the map`).
+- **Files:** `geo.py` (`SOIL_POLYGONS_TOOL` in `MAP_TOOLS` and `MapRequest`); app `tests/test_geo_map.py` (soil tool accepted with `aoi_ref` substitution and forced flag; removed from the reject list); `ShowOnMapButton.tsx` `MAP_TOOLS`; app `README.md`; ADR 0015 `message.tsx` entry; ADR 0016 2026-11-07 amendment.
+- **Checks:** new test fails with the old `geo.py` (1 failed) and passes with the new one. Fresh `/tmp/g44` clone: `make app-check` 175 passed (one test added, one reject case removed); `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`.
