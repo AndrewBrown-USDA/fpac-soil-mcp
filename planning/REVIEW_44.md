@@ -22,12 +22,12 @@ Severity: **high** blocks merge; **medium** fix before merge; **low** fix or acc
 | R4 | Standards | low | The registered tool descriptions in `tools/__init__.py` for the two analyze tools do not mention `include_map`. The parameter itself carries the description "Leave false. ..." (`IncludeMap` `Field`), and README L268/L273 list it. `manifest.yaml` lists tool descriptions only, no parameters, so it needs no change. | `tools/__init__.py` L66-74, L106-112; `spatial_analysis_tools.py` `INCLUDE_MAP_DESCRIPTION` | Accept: the parameter description is what the model sees, and leaving the flag out of the tool description avoids prompting the model to set it |
 | R5 | Standards | info | `simplify_for_display` logs the GEOS exception text, which can include a coordinate. This is server-side and ADR 0016 allows geometry in logs; no repository file is affected. | `map_contract.py` `simplify_for_display` | Accept |
 | R6 | Standards | info | Checked and conforming: ADR 0015 `### Local changes` covers `message.tsx`, `ChatLayout.tsx` and the new map files (under `client/src/components/map/**`). `geo.py` logs only exception type names and fixed messages, and `/api/geo/map` errors are fixed text. Overlay and identify URLs are string constants. `MAP_TOOLS` matches between `geo.py` and `ShowOnMapButton.tsx`. Version 0.5.0 is consistent across `pyproject.toml`, `server.json`, `manifest.yaml` and `__init__.py`. | as listed | none |
-| R7 | Spec | low | Vertex caps can diverge: the frontend `MAX_AOI_VERTICES = 2000` is a constant (`geojson.ts` L116), but the server reads `GEO_MAX_VERTICES` (default 2000). If the env var is lowered, "Use as AOI" accepts an outline that `/api/geo/screen` then rejects with its bounded 422 message. No data risk. | `geojson.ts` L116; `geo.py` L26, L69-72 | Accept with a comment in `geojson.ts` (44.11.2), or defer serving the limit from `/api/geo/health` |
+| R7 | Spec | low | Vertex caps can diverge: the frontend `MAX_AOI_VERTICES = 2000` is a constant (`geojson.ts` L116), but the server reads `GEO_MAX_VERTICES` (default 2000). If the env var is lowered, "Use as AOI" accepts an outline that `/api/geo/screen` then rejects with its bounded 422 message. No data risk. | `geojson.ts` L116; `geo.py` L26, L69-72 | Deferred (user): follow-up to serve the limit from the server |
 | R8 | Spec | low | A4 (corridor alternatives get the class breakdown and `farmland_classes` coverage) is recorded in `STATE_44.md` but not in the plan's Decision Log. | `STATE_44.md` L156; plan Decision Log ends at A3 | Fix (44.11.2): add A4 to the Decision Log |
 | R9 | Spec | low | The `STATE_44.md` wave board still shows the gate rows for waves 5-9 as `pending`. The task reports I read record gates for waves 6 and 9; I did not confirm waves 5, 7 and 8 from the reports. | `STATE_44.md` L35-45, L153, L158 | Accept: close-out 44.12.1 runs every gate on the final head and updates the board |
 | R10 | Spec | info | The M3 exit row asks for a `map` envelope on "every spatially enabled MCP tool" with polygon, soil, urban and corridor fixtures. D3 limits it to the two analyze tools, and 44.4.1 counts the `farmland_classes` layer as the soil fixture. | research s10 M3; D3 | Accept (decided D3); 44.12.1 records it in `MASTER_PLAN.md` |
 | R11 | Spec | info | The M5 row lists a catalog endpoint and proxy. D5 replaced both with a fixed frontend catalog after the 44.1.2 probe passed. | research s10 M5; D5; 44.1.2 | Accept (decided D5) |
-| R12 | Spec | low | The M4 exit row names POLY-01/POLY-02. The 44.8.1 and 44.10.1 trials used ad hoc prompts and do not reference those case ids. | `grep POLY-0 planning/evidence/44.*` empty | Defer to M7 (eval cases for the AOI path), or accept the trials as meeting M4 |
+| R12 | Spec | low | The M4 exit row names POLY-01/POLY-02. The 44.8.1 and 44.10.1 trials used ad hoc prompts and do not reference those case ids. | `grep POLY-0 planning/evidence/44.*` empty | Fix (user): fix task 44.11.3 runs both cases |
 | R13 | Spec | info | SSURGO identify shows symbol/mukey/survey but no farmland class or map unit name (SDA WMS `GetFeatureInfo` returns `mukey`/`musym` only). The popup says to run screening. | 44.1.2 evidence; 44.10.1 trial | Accept |
 | R14 | Spec | info | SSURGO labels are small at native tile size (user decision: no stretching). | 44.10.1 trial sheet | Defer: app-drawn labels as a follow-up |
 | R15 | Spec | info | Follow-ups outside Plan 44 scope: multiple AOIs per chat, drawing corridors on the map, app-drawn SSURGO labels, efficiency review (`planning/HANDOFF_EFFICIENCY_REVIEW.md`). | Goal & Scope deferrals; STATE_44 | Defer: list in `MASTER_PLAN.md` at close-out |
@@ -35,13 +35,10 @@ Severity: **high** blocks merge; **medium** fix before merge; **low** fix or acc
 
 No high-severity findings.
 
-## Proposed fix task
+## Decisions (user, 2026-11-07)
 
-**44.11.2 -- Review doc fixes** (Genie Code, depends on 44.11.1). Files: app `AGENTS.md` (R1), `docs/decisions/0016-out-of-band-aoi-screening-handoff.md` (R2, dated amendment), `.env.example` (R3), `frontend/client/src/components/map/geojson.ts` (R7 comment only, if accepted that way), `planning/EXECUTION_PLAN_44.md` (R8 and wave-table row). Acceptance: root `make check`, `make app-check`, `make app-frontend-check` pass; `grep -n "two MCP calls" apps/agent-fpac-soil-openai-sdk/AGENTS.md` empty; `grep -n MAP_ .env.example` shows both settings.
+- **Fix:** R1, R2, R3 and R8 in fix task 44.11.2 (docs only). R12 in fix task 44.11.3: "i do want to make sure those eval cases work". R16 by the user's 44.10.1 re-check.
+- **Accepted as proposed:** R4, R5, R6, R9, R10, R11, R13.
+- **Deferred to `MASTER_PLAN.md` follow-ups at close-out:** R7 (serve the AOI vertex limit from the server so the frontend uses the same value; user: "a follow up to serve limit from server would be good"), R14, R15.
 
-## Decisions needed from the user
-
-- R4, R5, R9-R11, R13: accept as proposed?
-- R7: comment only, or a follow-up to serve the limit from the server?
-- R12: accept the trials for M4, or defer POLY-01/POLY-02 to M7?
-- R14, R15: defer to `MASTER_PLAN.md` follow-ups?
+Fix task specs are in `EXECUTION_PLAN_44.md` (44.11.2, 44.11.3).

@@ -64,6 +64,10 @@
 
 12. **A3, 2026-11-04, amendment (user direction), replaces the trial wiring in D9:** trials use two dev apps and leave both production apps alone. `mcp-fpac-soil-dev` (MEDIUM, no resources) deploys from git, repo root, branch `feature/agent-app-map2`. A dev agent app (proposed name `agent-fpac-soil-dev`, user's choice) deploys from git, `apps/agent-fpac-soil-openai-sdk`, same branch, with resources `mcp_server` -> `mcp-fpac-soil-dev` (CAN_USE), `llm-endpoint` and `experiment` (user's choice of experiment). The agent app picks its MCP server from its `mcp_server` resource: `app.yaml` sets `FPAC_MCP_APP` with `valueFrom: mcp_server` (resolves to the app name), and `config.py` resolves the URL once per process with `WorkspaceClient().apps.get(name).url` + `/mcp`; an explicit `FPAC_MCP_URL` still wins (local runs, tests), then `FPAC_MCP_APP`, then the default. `app.yaml` is the same on every branch, so nothing is reverted at close-out and the production agent app keeps `mcp-fpac-soil` through its own resource. A later dev branch only re-points both dev apps. Unverified: that CAN_USE lets the agent app's service principal call `apps.get` on the server app; the 44.5.2 smoke call checks it (fallback: also grant CAN_VIEW).
 
+13. **A4, 2026-11-05, amendment (user direction, trial 44.8.1):** corridor alternatives report the same farmland class breakdown as the primary alignment (additive fields on `CorridorAlternativeComparison`). With `include_map=true` the `farmland_classes` layer also covers each alternative, clipped to ground outside the primary footprint and earlier alternatives (pieces carry `alignment`, no `area_ac`). Alternative SDA calls follow `include_map` for `return_geom`; numbers are the same with or without the map. Details in `STATE_44.md`.
+
+14. **A5, 2026-11-07, review decisions (user, `REVIEW_44.md`):** fix R1-R3 and R8 in 44.11.2 (docs). Fix R12 in 44.11.3: run the POLY-01 and POLY-02 eval cases ("i do want to make sure those eval cases work"). Accept R4-R6, R9-R11 and R13. Defer R7 (serve the AOI vertex limit from the server), R14 and R15 to `MASTER_PLAN.md` follow-ups at close-out.
+
 ## Wave & Dependency Table
 
 Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `apps/agent-fpac-soil-openai-sdk/`; `src/` and root `tests/` are the MCP server.
@@ -87,7 +91,9 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 9 | Genie Code | 44.9.2 | Docs: ADR 0015 local changes, app docs | `docs/decisions/0015-vendored-agent-app-frontend.md`, app `README.md`, app `AGENTS.md` | 44.8.2 |
 | 10 | User + Genie Code | 44.10.1 | Final deployed trial (M4 + M5) | `planning/evidence/44.10.1-trial.md` (new), `planning/STATE_44.md` | 44.9.1, 44.9.2 |
 | 11 | Genie Code | 44.11.1 | Two-axis code review of the branch | `planning/REVIEW_44.md` (new), `planning/STATE_44.md` | 44.10.1 |
-| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1 and any review fix tasks |
+| 11 | Genie Code | 44.11.2 | Review doc fixes | app `AGENTS.md`, `docs/decisions/0016-out-of-band-aoi-screening-handoff.md`, root `.env.example`, `planning/STATE_44.md` | 44.11.1 |
+| 11 | User + Genie Code | 44.11.3 | POLY-01 and POLY-02 eval cases | `planning/evidence/44.11.3-eval.md` (new), `planning/STATE_44.md` | 44.11.1 |
+| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1, 44.11.2, 44.11.3 |
 
 Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 44.9.1; `geo.py`: 44.5.1, 44.6.1; `spatial_analysis_tools.py`: 44.4.1 only), and no task depends on another task in its own wave. Execution is serial anyway (D8); file scopes are disjoint within each wave so a worker-capable tool could run them in parallel. Review findings that need code become numbered fix tasks (44.11.2, 44.11.3, ...) added to this table before close-out.
 
@@ -246,6 +252,20 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 - **Files in scope:** can create `planning/REVIEW_44.md`; must edit `planning/STATE_44.md`, this plan's wave table (fix tasks only).
 - **Spec:** Review `origin/main...feature/agent-app-map2` on two independent passes: Standards (root and app `AGENTS.md`, ADRs 0003, 0010-0017, repo style) and Spec (this plan's Goal & Scope, D1-D9, master plan M3-M5 exit criteria). Report findings side by side with severity. Findings that need code become fix tasks 44.11.2+ with their own specs.
 - **Acceptance:** review file exists; every finding is fixed, accepted by the user, or deferred with a reason.
+
+### 44.11.2 -- Review doc fixes
+
+- **Executor:** Genie Code. **Depends on:** 44.11.1.
+- **Files in scope:** must edit app `AGENTS.md`, `docs/decisions/0016-out-of-band-aoi-screening-handoff.md`, root `.env.example`, `planning/STATE_44.md`.
+- **Spec:** R1: the app `AGENTS.md` `geo.py` entry says `/api/geo/screen` makes one MCP call (`analyze_farmland_by_polygon` with `include_map=True`). R2: ADR 0016 gets a dated amendment (original text kept): the screening route makes that one call, and `display.map` (the ADR 0017 block) replaces `get_soil_polygons_by_geometry` and the clipped soil FeatureCollection. R3: `.env.example` lists `MAP_SIMPLIFY_TOLERANCE_M=1.0` and `MAP_MAX_GEOJSON_BYTES=2000000`, commented out like the other optional settings. R8 (A4 in the Decision Log) was recorded with A5.
+- **Acceptance:** `grep -n "two MCP calls" apps/agent-fpac-soil-openai-sdk/AGENTS.md` empty; `grep -n MAP_ .env.example` shows both; root `make check` and `make app-check` pass.
+
+### 44.11.3 -- POLY-01 and POLY-02 eval cases
+
+- **Executor:** User + Genie Code. **Depends on:** 44.11.1.
+- **Files in scope:** can create `planning/evidence/44.11.3-eval.md`; must edit `planning/STATE_44.md`.
+- **Spec:** The M4 exit row names POLY-01 (`analyze_farmland_by_polygon`) and POLY-02 (`get_soil_polygons_by_geometry`) from `eval/prompt_test_cases.json`. (1) Genie Code runs the T1 eval for both cases (`make eval-databricks ARGS="--cases POLY-01,POLY-02"`) and records the run id and per-scorer results. (2) The user sends both prompts in the dev agent app. For POLY-01, "Show on map" on the tool card draws the `aoi`, `farmland_classes` and `urban_context` layers with legend, source, authority and notice. POLY-02's tool has no `include_map` and no "Show on map" (D3); its map check is the POLY-01 `farmland_classes` layer, unless the user decides otherwise. Record trace ids and outcomes.
+- **Acceptance:** both cases pass the T1 scorers or failures are recorded as fix tasks; the POLY-01 card renders on the map.
 
 ### 44.12.1 -- Close-out
 
