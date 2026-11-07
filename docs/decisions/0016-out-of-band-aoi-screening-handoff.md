@@ -27,6 +27,15 @@ source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_42"
 > pasted geometry, and new chats had no AOI; see
 > [`planning/evidence/42.6.1-trial.md`](../../planning/evidence/42.6.1-trial.md).
 
+> **Amended 2026-11-07 (Plan 44, ADR 0017).** The screening route now makes
+> one MCP call, `analyze_farmland_by_polygon` with `include_map=True`, and
+> returns the server `map` block as `display.map`. That block replaces the
+> `get_soil_polygons_by_geometry` call and the clipped soil FeatureCollection
+> described under "Map screening route" below. The same rules apply to the new
+> `POST /api/geo/map` route behind "Show on map": it is untraced, does not log
+> bodies, and accepts only the two analyze tools. See
+> [ADR 0017](0017-server-map-result-contract.md).
+
 ## Context and Problem Statement
 
 The agent app needs a map panel where a user draws or pastes an area of
