@@ -25,10 +25,11 @@ export type Overlay = {
 };
 
 // SDA WMS ignores DPI parameters (MAP_RESOLUTION, FORMAT_OPTIONS=dpi, DPI; checked
-// 2026-11-06), so map unit labels are enlarged by drawing 384 px images on 512 px
-// tiles (about 1.33x, slightly soft).
+// 2026-11-06), so map unit labels are enlarged by drawing 256 px images on 512 px
+// tiles (2x; softer labels and thicker lines; 1.33x with 384 px was still too small
+// in the 44.10.1 trial).
 const SSURGO_WMS_TILES =
-  'https://SDMDataAccess.sc.egov.usda.gov/Spatial/SDM.wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=mapunitpoly&STYLES=&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=384&HEIGHT=384&FORMAT=image/png&TRANSPARENT=true';
+  'https://SDMDataAccess.sc.egov.usda.gov/Spatial/SDM.wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=mapunitpoly&STYLES=&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true';
 
 // Counties are scale-banded generalized layers (1, 3, 5, ... 13); showing all bands
 // draws counties at every zoom from about 7 (layer 1 alone is blank above zoom 14).
