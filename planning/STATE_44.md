@@ -186,7 +186,7 @@
 - **Status:** done. Commit 83887aa (`feat(map): add the map result to get_soil_polygons_by_geometry`).
 - **Files:** `tools/soil_lookup_tools.py` (`include_map: IncludeMap = False`; `_soil_map_fields` adds `schema_version`, `data_mode`, `authority`, `map` with `aoi` + `farmland_classes` from the fetched rows, on success and both error paths); `tests/test_soil_polygons_map.py` (new, 7 tests); `tests/test_map_tool_contracts.py` (schema test covers the tool); root `README.md` tool row; ADR 0017 (A6 folded in).
 - **Checks:** new tests 7 passed, and 8 fail with the old `soil_lookup_tools.py`. Fresh `/tmp/g44` clone: root `make check` 701 passed / 3 skipped (694 + 7); `make test-live` 43 passed / 3 skipped.
-- **Gotcha for 44.11.3:** the POLY-02 prompt gives the AOI as WKT (`POLYGON((...))`), but `parse_geojson_geometry` accepts only GeoJSON (a WKT string raises "Invalid GeoJSON string"). The case passes only if the model converts it to GeoJSON. Not changed here; the eval will show whether it does.
+- **Gotcha for 44.11.3:** the POLY-02 prompt gives the AOI as WKT (`POLYGON((...))`), but `parse_geojson_geometry` accepts only GeoJSON (a WKT string raises "Invalid GeoJSON string"). The case passes only if the model converts it to GeoJSON. Not changed here; the eval will show whether it does. User (2026-11-07): WKT input support is a follow-up for a teammate, not a Plan 44 task; list it in `MASTER_PLAN.md` at close-out.
 
 ## 44.11.5
 
