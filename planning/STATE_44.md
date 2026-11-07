@@ -45,7 +45,7 @@
 | 9 | gate | root check, app-check, app-frontend-check | pending |
 | 10 | User + Genie Code | 44.10.1 | in progress (planning/evidence/44.10.1-trial.md) |
 | 11 | Genie Code | 44.11.1 | done, 95e78d1 (`planning/REVIEW_44.md`) |
-| 11 | Genie Code | 44.11.2 | pending |
+| 11 | Genie Code | 44.11.2 | done, 0d607d4 |
 | 11 | User + Genie Code | 44.11.3 | pending |
 | 12 | Genie Code + User | 44.12.1 | pending |
 | 12 | gate | all suites | pending |
@@ -166,3 +166,10 @@
 - **Files:** `planning/REVIEW_44.md` (new): 16 findings R1-R16, none high. Not read line by line: the analyzer map code and the `mapLayers.ts`/`MapPanel.tsx`/`Legend.tsx` renderer (relied on task tests, gates and the trials).
 - **Checks:** cited lines re-grepped; `git merge-tree HEAD origin/main` (87e0a75) has no conflicts.
 - **Decisions (user, 2026-11-07, A5):** fix R1-R3 and R8 (44.11.2) and R12 (44.11.3, POLY-01/POLY-02 evals); accept R4-R6, R9-R11 and R13; defer R7 (server-served vertex limit), R14 and R15 to `MASTER_PLAN.md`. R8 done in the plan Decision Log (A4).
+
+## 44.11.2
+
+- **Status:** done. Commit 0d607d4 (`docs: align AOI screening docs and env example with the map result contract`).
+- **Files:** app `AGENTS.md` L34 (one MCP call, R1); ADR 0016 dated amendment 2026-11-07 after the acceptance note (R2, original text kept); `.env.example` commented `MAP_SIMPLIFY_TOLERANCE_M=1.0` and `MAP_MAX_GEOJSON_BYTES=2000000` (R3).
+- **Checks:** `grep -c "two MCP calls"` 0; `grep MAP_ .env.example` shows both; env vars load into `Settings` (2.5 / 123 test values). Fresh `/tmp/g44` clone at 0d607d4: root `make check` rc 0, 694 passed / 3 skipped; `make app-check` rc 0, 175 passed. (In the workspace clone, ruff reports only EXE002 from file modes.)
+- **Deviations:** none; R7 comment dropped (user chose a server-served limit follow-up).
