@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from shapely import wkt as shapely_wkt
 from shapely.errors import GEOSException, ShapelyError
-from shapely.geometry import mapping
+from shapely.geometry import MultiPolygon, Polygon, mapping
 
+from fpac_soil_mcp.config import settings
 from fpac_soil_mcp.constants import REGULATORY_LIMITATIONS, REGULATORY_NOTICE
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
@@ -16,8 +18,19 @@ from fpac_soil_mcp.geometry import (
     geometry_to_wkt,
     parse_geojson_geometry,
 )
+from fpac_soil_mcp.map_contract import (
+    MAP_SCHEMA_VERSION,
+    NEUTRAL_OUTLINE_COLOR,
+    ResultAuthority,
+    build_layer,
+    build_map_block,
+    farmland_legend,
+    features_from_sda_rows,
+    single_legend,
+)
 from fpac_soil_mcp.models import FarmlandClassificationResponse, QuerySource, SoilMapUnit
 from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.tools.spatial_analysis_tools import IncludeMap
 
 logger = logging.getLogger(__name__)
 
@@ -173,9 +186,57 @@ def get_soil_interpretations(
     )
 
 
+def _soil_map_fields(
+    include_map: bool,
+    geom: Polygon | MultiPolygon | None,
+    rows: list[dict[str, Any]],
+    clip: bool,
+) -> dict[str, Any]:
+    """ADR 0017 additive keys; layer geometry only when ``include_map`` is true.
+
+    Uses the SDA rows already fetched, so no extra upstream call. As in
+    ``PolygonAnalyzer._polygon_map``, the size cap drops layers from the end, so
+    the AOI outline goes last.
+    """
+    include = include_map and geom is not None
+    title = "Farmland classification" if clip else "Farmland classification (full survey polygons)"
+    layers = [
+        build_layer(
+            layer_id="aoi",
+            title="Area of interest",
+            kind="polygon",
+            authority="user_input",
+            source="User-supplied area of interest",
+            features=[(geom, {})] if include else None,
+            include_map=include,
+            legend=single_legend("aoi", "Area of interest", NEUTRAL_OUTLINE_COLOR),
+        ),
+        build_layer(
+            layer_id="farmland_classes",
+            title=title,
+            kind="polygon",
+            authority="machine_estimate",
+            source="USDA NRCS Soil Data Access (SDA)",
+            features=features_from_sda_rows(rows) if include else None,
+            include_map=include,
+            style_key="farmland_class",
+            legend=farmland_legend(),
+            simplify_tolerance_m=settings.map_simplify_tolerance_m,
+        ),
+    ]
+    block = build_map_block(layers, settings.map_max_geojson_bytes)
+    return {
+        "schema_version": MAP_SCHEMA_VERSION,
+        "data_mode": "live",
+        "authority": ResultAuthority().model_dump(),
+        "map": block.model_dump(),
+    }
+
+
 def get_soil_polygons_by_geometry(
     geojson: dict | str,
     clip: bool = True,
+    include_map: IncludeMap = False,
 ) -> dict:
     """Retrieve intersecting SSURGO soil map unit polygons as a GeoJSON FeatureCollection.
 
@@ -186,10 +247,13 @@ def get_soil_polygons_by_geometry(
     Args:
         geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
         clip: Whether to clip map units to AOI boundary (default True).
+        include_map: Leave false. True embeds display GeoJSON in ``map.layers``
+            (ADR 0017); by default the layers are descriptors without geometry.
 
     Returns:
         GeoJSON FeatureCollection dict with map unit attributes (mukey, musym, muname,
-        farmlndcl, areasymbol, area_ac) and polygon geometries.
+        farmlndcl, areasymbol, area_ac) and polygon geometries, plus the ADR 0017
+        ``schema_version``, ``data_mode``, ``authority`` and ``map`` keys.
     """
     timestamp = datetime.now(UTC).isoformat()
     client = SDAClient()
@@ -209,6 +273,7 @@ def get_soil_polygons_by_geometry(
             },
             "limitations": [*REGULATORY_LIMITATIONS, f"Geometry validation error: {exc}"],
             "regulatory_notice": REGULATORY_NOTICE,
+            **_soil_map_fields(False, None, [], clip),
         }
 
     try:
@@ -230,6 +295,7 @@ def get_soil_polygons_by_geometry(
             },
             "limitations": [*REGULATORY_LIMITATIONS, f"SDA spatial query error: {exc}"],
             "regulatory_notice": REGULATORY_NOTICE,
+            **_soil_map_fields(False, None, [], clip),
         }
 
     features: list[dict] = []
@@ -279,4 +345,5 @@ def get_soil_polygons_by_geometry(
         },
         "limitations": REGULATORY_LIMITATIONS,
         "regulatory_notice": REGULATORY_NOTICE,
+        **_soil_map_fields(include_map, geom, raw_rows, clip),
     }

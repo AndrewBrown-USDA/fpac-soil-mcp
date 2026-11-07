@@ -78,8 +78,14 @@ current consumer changes.
 * `analyze_farmland_by_polygon` and `analyze_corridor_fppa` take
   `include_map: bool = False`. Their docstrings tell the model to leave it
   false.
+* `get_soil_polygons_by_geometry` takes the same flag (Plan 44 A6), so its
+  tool cards (eval case POLY-02) get "Show on map". Its FeatureCollection keys
+  are unchanged; it gains the same additive keys with an `aoi` and a
+  `farmland_classes` layer built from the rows it already fetches. When
+  `clip=False` the `farmland_classes` title says the polygons are full survey
+  polygons.
 * `calculate_preliminary_lesa`, `get_farmland_classification_by_point`,
-  `get_soil_polygons_by_geometry` and every other tool are unchanged.
+  `get_farmland_classification_by_mukey` and every other tool are unchanged.
 * With `include_map=True` the existing SDA intersection calls request
   geometry (`return_geom=True`) and the urban check returns the urban-area
   geometries it already fetches. No other upstream call is added.
@@ -90,7 +96,8 @@ current consumer changes.
 ### Additive top-level fields
 
 Both response models gain these fields, with defaults so existing
-constructors validate:
+constructors validate; the `get_soil_polygons_by_geometry` FeatureCollection
+gains the same keys:
 
 | Field | Value |
 |---|---|
@@ -205,13 +212,16 @@ renderer that cannot draw a pattern may fill solid, but must show the `code`.
   its own call.
 * **Negative:** the frontend legend (`farmlandClasses.ts`) gives way to the
   server legend; colour changes now need a server deploy.
-* The Phase 8 M3 "soil" exit item is met by the `farmland_classes` layer;
-  `get_soil_polygons_by_geometry` keeps its current FeatureCollection.
+* The Phase 8 M3 "soil" exit item is met by the `farmland_classes` layer,
+  which `get_soil_polygons_by_geometry` also returns; that tool keeps its
+  current FeatureCollection, so a soil-polygon result with `include_map=True`
+  carries the geometry twice. Only the app's map route asks for that.
 
 ### Scope boundary
 
-Out of scope: `map` on other tools; the full section 4 envelope; a server
-overlay catalog; simplifying overlay outlines for use as an AOI.
+Out of scope: `map` on tools other than the three above; the full section 4
+envelope; a server overlay catalog; simplifying overlay outlines for use as an
+AOI.
 
 ## Validation & Compliance
 

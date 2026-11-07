@@ -5,8 +5,9 @@ Calls ``analyze_farmland_by_polygon`` and ``analyze_corridor_fppa`` through a
 synthetic SDA, TIGERweb and NASS clients. Synthetic geometry only.
 
 The Phase 8 M3 "soil" exit item is met by the ``farmland_classes`` layer on
-these two tools; the soil lookup tools, including
-``get_soil_polygons_by_geometry``, are unchanged (EXECUTION_PLAN_44 D3).
+these two tools. ``get_soil_polygons_by_geometry`` also takes ``include_map``
+(EXECUTION_PLAN_44 A6); its map block is tested in ``test_soil_polygons_map.py``.
+The point and mukey lookups and LESA are unchanged (D3).
 """
 
 from __future__ import annotations
@@ -38,11 +39,14 @@ from fpac_soil_mcp.tools import register_tools
 
 MARKER = "R6-MARKER"
 ADR_PATH = Path(__file__).resolve().parents[1] / "docs/decisions/0017-server-map-result-contract.md"
-MAP_TOOLS = ("analyze_farmland_by_polygon", "analyze_corridor_fppa")
+MAP_TOOLS = (
+    "analyze_farmland_by_polygon",
+    "analyze_corridor_fppa",
+    "get_soil_polygons_by_geometry",
+)
 UNCHANGED_TOOLS = (
     "get_farmland_classification_by_point",
     "get_farmland_classification_by_mukey",
-    "get_soil_polygons_by_geometry",
     "calculate_preliminary_lesa",
 )
 ADDITIVE_KEYS = ("schema_version", "data_mode", "authority", "map")
@@ -204,7 +208,7 @@ def _size(payload: dict[str, Any]) -> int:
 # --- tool schema --------------------------------------------------------------
 
 
-def test_include_map_only_on_the_two_analyze_tools(mcp):
+def test_include_map_only_on_the_map_tools(mcp):
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
     for name in MAP_TOOLS:
         prop = tools[name].parameters["properties"]["include_map"]
