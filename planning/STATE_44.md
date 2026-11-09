@@ -210,4 +210,10 @@
 
 - **Status:** done (code). Commit 9d035c9 (`feat(agent-app): identify drawn farmland polygons on click`); user browser check pending.
 - **Files:** `mapLayers.ts` (invisible `result-farmland_classes-hit` fill so outline-only classes are clickable), `IdentifyPopup.tsx` (`resultInfo`, "Result: map unit" section: name, symbol, farmland class, acres, productivity and index, alignment for corridor alternatives; footer line only with overlay sections), `MapPanel.tsx` (queries the hit layer on click; the hint only when neither a result nor an in-range layer), app `README.md`.
-- **Checks:** `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`. No frontend unit test. Browser check pending.
+- **Checks:** `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`. No frontend unit test.
+- **Browser check (user, 2026-11-09, dev apps at 7223df4):** "looks good". POLY-02 fails as expected (WKT not converted to GeoJSON; follow-up). Two draw issues found: right click also starts drawing; after finishing an AOI a new draw sometimes starts.
+
+## 44.11.7a (draw fix from the browser check)
+
+- **Status:** done (code); see the `fix(agent-app): draw only with the left button and stop after one shape` commit. User browser check pending. Polygon and rectangle modes take `pointerEvents` with `rightClick: false`, `contextMenu: false`; on `finish` from polygon or rectangle mode the panel switches to `static` (deferred one tick). Edit mode is unchanged.
+- **Checks:** terra-draw 1.39.0 `.d.ts` defaults `rightClick: true` (the cause) and types `pointerEvents` entries as `AllowPointerEvent`. Fresh `/tmp/d44` clone: `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`.
