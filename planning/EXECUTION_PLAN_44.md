@@ -102,6 +102,7 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 11 | Genie Code | 44.11.7 | Result polygon popup (A7) | `components/map/MapPanel.tsx`, `components/map/IdentifyPopup.tsx`, app `README.md` | 44.11.6 |
 | 11 | User + Genie Code | 44.11.3 | POLY-01 and POLY-02 eval cases | `planning/evidence/44.11.3-eval.md` (new), `planning/STATE_44.md` | 44.11.5 |
 | 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1-44.11.7 |
+| 13 | Genie Code | 44.13.1 | Code review fix: prioritize checkout src on sys.path | `main.py`, root `tests/test_main_entrypoint.py`, `planning/REVIEW_44.md`, `planning/STATE_44.md` | 44.12.1 |
 
 Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 44.9.1; `geo.py`: 44.5.1, 44.6.1; `spatial_analysis_tools.py`: 44.4.1 only), and no task depends on another task in its own wave. Execution is serial anyway (D8); file scopes are disjoint within each wave so a worker-capable tool could run them in parallel. Review findings that need code become numbered fix tasks (44.11.2, 44.11.3, ...) added to this table before close-out.
 
@@ -309,3 +310,10 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 - **Files in scope:** must edit ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md` (Phase 8 and Track A status), `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (one status note pointing to ADR 0017), `planning/STATE_44.md`.
 - **Spec:** ADR 0017 -> `Accepted`. Mark M3-M5 delivered and list remaining Phase 8 items. Final gate (all suites). User approves push and merges. After merge: the production agent app redeploys from `main` (its `mcp_server` resource already names `mcp-fpac-soil`); with user approval, refresh the team-03 clone to `main` and redeploy `mcp-fpac-soil`; the dev apps stay for the next dev branch or are stopped (user decision).
 - **Acceptance:** `grep -n mcp-fpac-soil-dev` finds nothing outside planning and app docs; all gates green; `apps get` for both production apps shows the merged commit.
+
+### 44.13.1 -- Code review fix: prioritize checkout src on sys.path
+
+- **Executor:** Genie Code. **Depends on:** 44.12.1.
+- **Files in scope:** must edit `main.py`, root `tests/test_main_entrypoint.py`, `planning/REVIEW_44.md`, `planning/STATE_44.md`.
+- **Spec:** C1 (Copilot). `main.py` removes any existing occurrence of `SRC_DIR` from `sys.path` and inserts it at index 0 unconditionally when the directory exists, so a stale installed package ahead of the checkout never wins. Add a test that puts `SRC_DIR` on `sys.path` behind another path, runs `main.py`, and asserts it ends up at index 0; the existing no-duplicate test must still pass.
+- **Acceptance:** new test fails before the fix and passes after; root `make check` (fresh `/tmp` clone) passes at baseline plus the new test.

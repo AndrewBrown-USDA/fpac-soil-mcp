@@ -8,8 +8,11 @@ from pathlib import Path
 # older deployment's source (same package version), so the running tools would not match
 # the deployed commit.
 SRC_DIR = Path(__file__).resolve().parent / "src"
-if SRC_DIR.is_dir() and str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+if SRC_DIR.is_dir():
+    src_path = str(SRC_DIR)
+    if src_path in sys.path:
+        sys.path.remove(src_path)
+    sys.path.insert(0, src_path)
 
 
 def main() -> None:

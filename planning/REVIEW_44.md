@@ -42,3 +42,11 @@ No high-severity findings.
 - **Deferred to `MASTER_PLAN.md` follow-ups at close-out:** R7 (serve the AOI vertex limit from the server so the frontend uses the same value; user: "a follow up to serve limit from server would be good"), R14, R15.
 
 Fix task specs are in `EXECUTION_PLAN_44.md` (44.11.2, 44.11.3).
+
+## Code review (PR)
+
+Review comments on the PR to `main` (branch `feature/agent-app-map2`). Each comment is numbered `C1`, `C2`, ... with source, summary, axis (Standards or Spec), severity (high blocks merge; medium fix before merge; low fix or accept; info no action), and proposed disposition.
+
+| # | Source | Summary | Axis | Severity | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| C1 | Copilot, `main.py:11-12` | `SRC_DIR` is only inserted when absent from `sys.path`. If the checkout's `src` is already on `sys.path` behind an installed package (e.g. an editable install), the guard skips the insert, leaving the installed copy first so stale code can be imported, defeating the entrypoint's purpose. | Standards | medium | Fix (44.13.1): remove any existing occurrence and insert at index 0 unconditionally when the directory exists |

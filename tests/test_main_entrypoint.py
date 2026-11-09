@@ -27,6 +27,20 @@ def test_entrypoint_does_not_duplicate_src(clean_path):
     assert sys.path.count(str(ROOT / "src")) == 1
 
 
+def test_entrypoint_promotes_src_to_front_when_already_present(monkeypatch):
+    """If src is already on sys.path behind an installed copy, it must move to front."""
+    src = str(ROOT / "src")
+    # Simulate an installed package ahead of the checkout's src.
+    fake_site = str(ROOT / "fake-site-packages")
+    monkeypatch.setattr(
+        sys,
+        "path",
+        [fake_site, src] + [p for p in sys.path if p not in (src, fake_site)],
+    )
+    runpy.run_path(str(ROOT / "main.py"), run_name="entrypoint_test")
+    assert sys.path[0] == src
+
+
 def test_package_resolves_to_this_checkout(tmp_path):
     # Fresh interpreter, started outside the repo, so nothing is already imported.
     code = (
