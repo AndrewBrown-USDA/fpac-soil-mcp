@@ -1,12 +1,12 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-03
-Source State: `planning/STATE_43.md`; `planning/MASTER_PLAN.md`
+Last Updated: 2026-11-09
+Source State: `planning/STATE_44.md`; `planning/MASTER_PLAN.md`
 
 ## Circled Goal (Active)
 
 - **[G1]** Criterion 2 awards verified agricultural-adjacency points only when an authoritative spatial source confirms current agricultural land use along the project perimeter.
-  - Why now: PR #74 delivers the non-urban screening scaffold and safety guardrails, but authoritative current agricultural land-use evidence remains the closure requirement.
+  - Why now: Plan 44 and PR #79 are treated as complete for prioritization; the remaining highest-leverage bottleneck is authoritative current agricultural-land-use evidence, which unblocks Criterion 2 scoring and its regression/evaluation contracts.
   - Exit criteria: an authoritative source and provenance contract are integrated for site and corridor geometries; perimeter intersections produce explicit measured/unavailable/error states; LESA scoring accepts only validated agricultural evidence; privacy/compliance constraints are enforced; focused offline tests and repository checks pass.
   - First action: inventory candidate authoritative spatial agricultural-land-use datasets and select one with sufficient coverage, provenance, privacy posture, and deterministic testability.
 
@@ -34,6 +34,8 @@ Source State: `planning/STATE_43.md`; `planning/MASTER_PLAN.md`
 - **[G10]** The agent-app map MVP remains deployable, tested, and documented with stable AOI session-context behavior.
 - **[G11]** The deployed agent app passes the core chat/map acceptance cases with trace evidence and regulatory notices.
 - **[G12]** The project planning artifacts remain consolidated into one current dependency-ordered goal graph.
+
+Plan 44 / Track A M3-M5 and PR #79 are complete for prioritization and are not circled as active goals.
 
 ## Deferred
 
