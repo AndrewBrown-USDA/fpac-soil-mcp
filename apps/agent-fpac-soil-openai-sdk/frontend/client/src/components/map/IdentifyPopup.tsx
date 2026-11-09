@@ -67,7 +67,8 @@ export function IdentifyPopup({
     <div className="flex max-h-64 w-60 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pr-6 text-popover-foreground text-xs shadow-md">
       {sections.map((section) => (
         <section key={section.overlay.id} aria-label={section.overlay.title}>
-          <h3 className="font-medium">{section.overlay.title}</h3>
+          {/* Explicit size: index.css gives bare h3 a larger base size. */}
+          <h3 className="font-semibold text-xs leading-tight">{section.overlay.title}</h3>
           {section.state === 'loading' && <p className="text-muted-foreground">Loading...</p>}
           {section.state === 'error' && <p className="text-destructive">Could not load.</p>}
           {section.state === 'done' && section.soil && (
