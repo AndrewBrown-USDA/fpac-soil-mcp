@@ -70,6 +70,8 @@
 
 15. **A6, 2026-11-07, amendment (user direction: "add show on map"), revises D3 for one tool:** `get_soil_polygons_by_geometry` also takes `include_map: bool = False` (same "Leave false." description) so POLY-02 tool cards get "Show on map". Its existing FeatureCollection keys stay as they are; it gains the same additive `schema_version`, `data_mode`, `authority` and `map` keys, with descriptor-only layers by default, on success and on error. Layers are `aoi` and `farmland_classes` (same id, `style_key` and legend as the analyze tools, so the renderer needs no change); `farmland_classes` is built from the rows already fetched (`features_from_sda_rows`), with simplification and the size cap. No extra upstream call. The app adds the tool to `geo.MAP_TOOLS` and the frontend `MAP_TOOLS`. LESA and point/mukey lookups stay unchanged.
 
+16. **A7, 2026-11-09, amendment (user approved):** result polygons get a click popup from `include_map` data. The `farmland_classes` features of both analyze tools also carry the map unit's `productivity_rating`, `productivity_rating_class` and `productivity_rating_source` (the generic names the response's map units use), copied from the ratings the analyzers already fetch; no new upstream call. Present only when ratings were fetched; `get_soil_polygons_by_geometry` adds none. The map panel opens the identify popup on a click on a drawn farmland polygon (no drawing tool active), with a "Result" section (map unit name, symbol, farmland class, acres, productivity when present) from the feature properties, above any overlay sections. The no-layer hint shows only when a click hits neither. Deferred to `MASTER_PLAN.md` at close-out: component summary (drainage, hydric rating, slope; needs a new SDA query, which `include_map` must not add) and richer SSURGO overlay identify outside a result.
+
 ## Wave & Dependency Table
 
 Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `apps/agent-fpac-soil-openai-sdk/`; `src/` and root `tests/` are the MCP server.
@@ -96,8 +98,10 @@ Paths under `frontend/`, `agent_server/` and `tests/` (app) are relative to `app
 | 11 | Genie Code | 44.11.2 | Review doc fixes | app `AGENTS.md`, `docs/decisions/0016-out-of-band-aoi-screening-handoff.md`, root `.env.example`, `planning/STATE_44.md` | 44.11.1 |
 | 11 | Genie Code | 44.11.4 | Map result on `get_soil_polygons_by_geometry` (A6) | `src/fpac_soil_mcp/tools/soil_lookup_tools.py`, root `tests/test_map_tool_contracts.py`, root `tests/test_soil_polygons_map.py` (new), root `README.md` (tool row), ADR 0017 | 44.11.1 |
 | 11 | Genie Code | 44.11.5 | "Show on map" for soil polygon cards (A6) | `agent_server/geo.py`, app `tests/test_geo_map.py`, `components/map/ShowOnMapButton.tsx`, app `AGENTS.md`, app `README.md`, ADR 0015 (`message.tsx` entry), ADR 0016 (the 2026-11-07 amendment) | 44.11.4 |
+| 11 | Genie Code | 44.11.6 | Productivity on farmland features (A7) | `src/fpac_soil_mcp/map_contract.py`, `polygon_analysis.py`, `corridor_analysis.py`, root `tests/test_map_tool_contracts.py`, ADR 0017 | 44.11.4 |
+| 11 | Genie Code | 44.11.7 | Result polygon popup (A7) | `components/map/MapPanel.tsx`, `components/map/IdentifyPopup.tsx`, app `README.md` | 44.11.6 |
 | 11 | User + Genie Code | 44.11.3 | POLY-01 and POLY-02 eval cases | `planning/evidence/44.11.3-eval.md` (new), `planning/STATE_44.md` | 44.11.5 |
-| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1-44.11.5 |
+| 12 | Genie Code + User | 44.12.1 | Close-out | ADR 0017, `docs/decisions/README.md`, `planning/MASTER_PLAN.md`, `planning/SPATIAL_VISUALIZATION_STRATEGY.md` (status note only), `planning/STATE_44.md` | 44.11.1-44.11.7 |
 
 Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 44.9.1; `geo.py`: 44.5.1, 44.6.1; `spatial_analysis_tools.py`: 44.4.1 only), and no task depends on another task in its own wave. Execution is serial anyway (D8); file scopes are disjoint within each wave so a worker-capable tool could run them in parallel. Review findings that need code become numbered fix tasks (44.11.2, 44.11.3, ...) added to this table before close-out.
 
@@ -285,6 +289,19 @@ Same-file tasks are in different waves (`MapPanel.tsx`: 44.6.1, 44.7.1, 44.8.2, 
 - **Files in scope:** must edit `agent_server/geo.py` (`MAP_TOOLS`, `MapRequest`), app `tests/test_geo_map.py`, `frontend/client/src/components/map/ShowOnMapButton.tsx` (`MAP_TOOLS`), app `AGENTS.md`, app `README.md`, `docs/decisions/0015-vendored-agent-app-frontend.md` (`message.tsx` entry), `docs/decisions/0016-out-of-band-aoi-screening-handoff.md` (the 2026-11-07 amendment written on this branch).
 - **Spec:** Add `get_soil_polygons_by_geometry` to both allowlists; `/api/geo/map` substitutes `aoi_ref` in `geojson` and forces `include_map=True` as for the others. Docs say "the map tools" instead of "the two analyze tools" where they describe the allowlist.
 - **Acceptance:** `make app-check` and `make app-frontend-check` pass (fresh `/tmp` clone); a test asserts the soil tool is accepted with substitution and the forced flag; no new `tsc` errors in `components/map/`.
+
+### 44.11.6 -- Productivity on farmland features (A7)
+
+- **Executor:** Genie Code. **Depends on:** 44.11.4.
+- **Files in scope:** must edit `src/fpac_soil_mcp/map_contract.py` (`features_from_sda_rows` passes the three productivity keys through when a row has them; a `with_productivity(rows, ratings)` helper), `polygon_analysis.py`, `corridor_analysis.py` (primary segments and alternatives), root `tests/test_map_tool_contracts.py`, `docs/decisions/0017-server-map-result-contract.md` (feature properties).
+- **Acceptance:** for both tools with `include_map=True`, each `farmland_classes` feature's productivity values equal the response map unit's for the same mukey; SDA call counts unchanged; default responses unchanged; root `make check` and `make test-live` pass (fresh `/tmp` clone).
+
+### 44.11.7 -- Result polygon popup (A7)
+
+- **Executor:** Genie Code. **Depends on:** 44.11.6.
+- **Files in scope:** must edit `components/map/MapPanel.tsx`, `components/map/IdentifyPopup.tsx`, app `README.md`.
+- **Spec:** query the rendered `result-farmland_classes-fill` features at the click; values shown as sent (no browser re-classification). One popup for result and overlay sections.
+- **Acceptance:** `make app-frontend-check` passes; no new `tsc` errors in `components/map/`; user browser check.
 
 ### 44.12.1 -- Close-out
 
