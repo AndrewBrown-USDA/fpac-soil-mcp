@@ -272,6 +272,35 @@ def test_include_map_does_not_change_numbers(mcp, call):
             assert plain[key] == mapped[key]
 
 
+PRODUCTIVITY_KEYS = (
+    "productivity_rating",
+    "productivity_rating_class",
+    "productivity_rating_source",
+)
+
+
+def _response_units(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    if "county_segments" in payload:
+        return [u for seg in payload["county_segments"] for u in seg["map_units"]]
+    return payload["map_units"]
+
+
+@pytest.mark.parametrize("call", [_polygon, _corridor])
+def test_farmland_features_carry_map_unit_productivity(mcp, call):
+    """Plan 44 A7: popup data comes from the ratings the analyzer already fetched."""
+    payload = call(mcp, include_map=True)
+    units = {u["mukey"]: u for u in _response_units(payload)}
+    layers = {layer["id"]: layer for layer in payload["map"]["layers"]}
+    features = layers["farmland_classes"]["feature_collection"]["features"]
+    assert features
+    for feature in features:
+        props = feature["properties"]
+        unit = units[props["mukey"]]
+        assert {k: props[k] for k in PRODUCTIVITY_KEYS} == {k: unit[k] for k in PRODUCTIVITY_KEYS}
+    rated = {f["properties"]["mukey"]: f["properties"]["productivity_rating"] for f in features}
+    assert rated == {"3001": 0.8, "3002": 0.4}
+
+
 @pytest.mark.parametrize("call", [_polygon, _corridor])
 def test_default_response_size_within_fixed_margin(mcp, call):
     payload = call(mcp)

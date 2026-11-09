@@ -51,7 +51,9 @@ from fpac_soil_mcp.map_contract import (
     build_map_block,
     farmland_legend,
     features_from_sda_rows,
+    productivity_by_mukey,
     single_legend,
+    with_productivity,
 )
 from fpac_soil_mcp.models import (
     SUPPORTED_INDEX_MSG,
@@ -100,6 +102,26 @@ def _normalize_corridor_rating(value: Any, is_rated: Any, productivity_index: st
     if rating is None or not math.isfinite(rating) or rating < 0 or rating in sentinels:
         return None
     return rating
+
+
+def _feature_ratings(
+    interp_map: dict[str, dict[str, Any]], productivity_index: str
+) -> dict[str, dict[str, Any]]:
+    """Map feature productivity keys per mukey, as the primary map units derive them."""
+    out: dict[str, dict[str, Any]] = {}
+    for mukey, info in interp_map.items():
+        rating = _normalize_corridor_rating(
+            info.get("numeric_rating"), info.get("is_rated"), productivity_index
+        )
+        out[mukey] = {
+            "productivity_rating": rating,
+            "productivity_rating_class": info.get("rating_class") if rating is not None else None,
+            "productivity_rating_source": info.get(
+                "productivity_rating_source",
+                _INDEX_SOURCES.get(productivity_index, f"SDA:{productivity_index.upper()}"),
+            ),
+        }
+    return out
 
 
 def _get_corridor_ratings(
@@ -579,7 +601,9 @@ class CorridorAnalyzer:
                 coverage_status = "covered"
 
             if include_map:
-                map_soil_rows.extend(raw_units)
+                map_soil_rows.extend(
+                    with_productivity(raw_units, productivity_by_mukey(unit_models, interp_map))
+                )
                 map_county_features.append(
                     (
                         seg_geom,
@@ -796,9 +820,6 @@ class CorridorAnalyzer:
                                 exc,
                             )
 
-                        if include_map:
-                            alt_soil_rows.extend(alt_raw_units)
-
                         alt_mukeys = list(
                             {str(r.get("mukey")) for r in alt_raw_units if r.get("mukey")}
                         )
@@ -817,6 +838,13 @@ class CorridorAnalyzer:
                                     norm_idx,
                                     exc,
                                 )
+
+                        if include_map:
+                            alt_soil_rows.extend(
+                                with_productivity(
+                                    alt_raw_units, _feature_ratings(alt_interp_map, norm_idx)
+                                )
+                            )
 
                         alt_partition_max: dict[str, float] = {}
                         if ratings_requested and max_county_rating_override is None:

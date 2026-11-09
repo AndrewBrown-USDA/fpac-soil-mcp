@@ -139,7 +139,7 @@ Layer ids:
 | Id | Tool | Content |
 |---|---|---|
 | `aoi` | polygon | the screened AOI |
-| `farmland_classes` | both | soil map-unit fragments clipped to the AOI or direct footprint; properties `mukey`, `musym`, `muname`, `farmlndcl`, `farmland_class`, `area_ac` |
+| `farmland_classes` | both | soil map-unit fragments clipped to the AOI or direct footprint; properties `mukey`, `musym`, `muname`, `farmlndcl`, `farmland_class`, `area_ac`; from the analyze tools also `productivity_rating`, `productivity_rating_class`, `productivity_rating_source` when ratings were fetched, copied from the ratings already queried (Plan 44 A7, for the map popup) |
 | `urban_context` | both | Census 2020 urban areas that intersect the input; property `name` |
 | `corridor_direct` | corridor | direct right-of-way footprint |
 | `corridor_indirect` | corridor | indirect area, when present |

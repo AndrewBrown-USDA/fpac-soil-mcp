@@ -35,7 +35,9 @@ from fpac_soil_mcp.map_contract import (
     build_map_block,
     farmland_legend,
     features_from_sda_rows,
+    productivity_by_mukey,
     single_legend,
+    with_productivity,
 )
 from fpac_soil_mcp.models import (
     SUPPORTED_INDEX_MSG,
@@ -471,7 +473,12 @@ class PolygonAnalyzer:
             ),
             limitations=limitations,
             regulatory_notice=REGULATORY_NOTICE,
-            map=self._polygon_map(include_map, geom, raw_units, urban_geometries),
+            map=self._polygon_map(
+                include_map,
+                geom,
+                with_productivity(raw_units, productivity_by_mukey(unit_models, rating_map)),
+                urban_geometries,
+            ),
         )
 
     @staticmethod

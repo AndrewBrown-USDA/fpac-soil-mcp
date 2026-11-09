@@ -362,6 +362,21 @@ def test_alternative_reports_class_breakdown_like_the_primary():
 OVERLAPPING_ALT = [{"alternative_id": "C", "centerline": "LINESTRING(0.0 0.0055, 0.01 0.0055)"}]
 
 
+def test_alternative_farmland_features_carry_productivity():
+    """Plan 44 A7: alternative features use the alternative's own rating query."""
+    result, _, _ = _run(True, alternatives=OVERLAPPING_ALT)
+    features = _layers(result)["farmland_classes"].feature_collection["features"]
+    alt_features = [f for f in features if f["properties"].get("alignment") == "C"]
+    assert alt_features
+    expected = {"2001": (0.8, "High"), "2002": (0.5, "Moderate")}
+    for feature in alt_features:
+        props = feature["properties"]
+        assert (props["productivity_rating"], props["productivity_rating_class"]) == expected[
+            props["mukey"]
+        ]
+        assert props["productivity_rating_source"]
+
+
 def test_alternative_farmland_is_drawn_outside_the_primary_footprint():
     result, _, _ = _run(True, alternatives=OVERLAPPING_ALT)
     layer = _layers(result)["farmland_classes"]

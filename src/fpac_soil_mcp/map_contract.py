@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Container, Iterable, Mapping, Sequence
 from typing import Any, Literal
 
 import shapely
@@ -278,11 +278,46 @@ def build_map_block(layers: Sequence[MapLayer], max_bytes: int) -> MapBlock:
     return enforce_size_cap(MapBlock(layers=list(layers)), max_bytes)
 
 
+# Map unit productivity keys a farmland feature carries when the analyzer fetched
+# ratings (Plan 44 A7); same names as ``SoilMapUnitAcreage``.
+PRODUCTIVITY_PROPERTIES = (
+    "productivity_rating",
+    "productivity_rating_class",
+    "productivity_rating_source",
+)
+
+
+def with_productivity(
+    rows: Iterable[Mapping[str, Any]],
+    ratings: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Copies of ``rows`` with each map unit's productivity keys from ``ratings`` (by mukey).
+
+    Rows whose mukey has no rating are copied unchanged.
+    """
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        rating = ratings.get(str(row.get("mukey", "")))
+        extra = {key: rating.get(key) for key in PRODUCTIVITY_PROPERTIES} if rating else {}
+        out.append({**row, **extra})
+    return out
+
+
+def productivity_by_mukey(units: Iterable[Any], rated: Container[str]) -> dict[str, dict[str, Any]]:
+    """Productivity keys of the response map units whose mukey is in ``rated``."""
+    return {
+        unit.mukey: {key: getattr(unit, key) for key in PRODUCTIVITY_PROPERTIES}
+        for unit in units
+        if unit.mukey in rated
+    }
+
+
 def features_from_sda_rows(rows: Iterable[Mapping[str, Any]]) -> list[GeometryWithProperties]:
     """Convert SDA ``get_spatial_intersection(return_geom=True)`` rows to map features.
 
     Rows without a parseable WKT ``geom`` are skipped. Properties: ``mukey``,
-    ``musym``, ``muname``, ``farmlndcl``, ``farmland_class`` and ``area_ac``.
+    ``musym``, ``muname``, ``farmlndcl``, ``farmland_class`` and ``area_ac``,
+    plus the ``PRODUCTIVITY_PROPERTIES`` a row carries (see ``with_productivity``).
     Ported from ``tools.soil_lookup_tools.get_soil_polygons_by_geometry``.
     """
     from fpac_soil_mcp.polygon_analysis import categorize_farmland_class
@@ -314,6 +349,7 @@ def features_from_sda_rows(rows: Iterable[Mapping[str, Any]]) -> list[GeometryWi
                     "farmlndcl": farmlndcl,
                     "farmland_class": categorize_farmland_class(farmlndcl),
                     "area_ac": round(area_val, 2),
+                    **{key: row[key] for key in PRODUCTIVITY_PROPERTIES if key in row},
                 },
             )
         )
