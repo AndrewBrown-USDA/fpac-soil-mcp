@@ -6,9 +6,9 @@ Source State: `planning/STATE_44.md`; `planning/MASTER_PLAN.md`
 ## Circled Goal (Active)
 
 - **[G1]** Criterion 2 awards verified agricultural-adjacency points only when an authoritative spatial source confirms current agricultural land use along the project perimeter.
-  - Why now: Plan 44 and PR #79 are treated as complete for prioritization; the remaining highest-leverage bottleneck is authoritative current agricultural-land-use evidence, which unblocks Criterion 2 scoring and its regression/evaluation contracts.
-  - Exit criteria: an authoritative source and provenance contract are integrated for site and corridor geometries; perimeter intersections produce explicit measured/unavailable/error states; LESA scoring accepts only validated agricultural evidence; privacy/compliance constraints are enforced; focused offline tests and repository checks pass.
-  - First action: inventory candidate authoritative spatial agricultural-land-use datasets and select one with sufficient coverage, provenance, privacy posture, and deterministic testability.
+  - Why now: Plan 44 and PR #79 are complete for prioritization; PR #79 supplies the NASS ImageServer cropland layer and AOI histogram MCP tool, leaving formal Criterion 2 validation and integration as the highest-leverage bottleneck.
+  - Exit criteria: the PR #79 cropland evidence has a documented provenance, coverage, privacy, and uncertainty contract; site and corridor analyses produce explicit measured/unavailable/error states; LESA scoring accepts only validated agricultural evidence; focused offline tests and repository checks pass.
+  - First action: trace the PR #79 histogram response into the site/corridor evidence models and define the verified-adjacency contract used by Criterion 2.
 
 ## Sequenced Goals (Dependency DAG)
 
@@ -35,7 +35,7 @@ Source State: `planning/STATE_44.md`; `planning/MASTER_PLAN.md`
 - **[G11]** The deployed agent app passes the core chat/map acceptance cases with trace evidence and regulatory notices.
 - **[G12]** The project planning artifacts remain consolidated into one current dependency-ordered goal graph.
 
-Plan 44 / Track A M3-M5 and PR #79 are complete for prioritization and are not circled as active goals.
+Plan 44 / Track A M3-M5 and PR #79, including the NASS ImageServer cropland source and AOI histogram tool, are complete for prioritization and are not circled as active goals.
 
 ## Deferred
 
