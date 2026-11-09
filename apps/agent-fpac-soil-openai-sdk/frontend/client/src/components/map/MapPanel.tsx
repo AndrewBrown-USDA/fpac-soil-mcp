@@ -74,6 +74,9 @@ export function MapPanel() {
   const [overlayError, setOverlayError] = useState<OverlayFlags>(NO_OVERLAYS);
   const [overlayLoading, setOverlayLoading] = useState<OverlayFlags>(NO_OVERLAYS);
   const [zoom, setZoom] = useState(3);
+  const [layersOpen, setLayersOpen] = useState(false);
+  // Short hint when a click has nothing to identify (no layer on, or none in range).
+  const [identifyHint, setIdentifyHint] = useState<string | null>(null);
   // Identify popup (D6): MapLibre popup whose content is rendered through a portal.
   const popupRef = useRef<Popup | null>(null);
   const identifyAbort = useRef<AbortController | null>(null);
@@ -307,10 +310,17 @@ export function MapPanel() {
     if (!map) return;
     const onClick = (event: MapMouseEvent) => {
       if (mode !== 'static') return;
-      const active = OVERLAYS.filter(
-        (overlay) => overlayOn[overlay.id] && map.getZoom() >= overlay.minzoom,
-      );
-      if (active.length === 0) return;
+      const on = OVERLAYS.filter((overlay) => overlayOn[overlay.id]);
+      const active = on.filter((overlay) => map.getZoom() >= overlay.minzoom);
+      if (active.length === 0) {
+        setIdentifyHint(
+          on.length === 0
+            ? 'Turn on a context layer to identify what is here.'
+            : 'Zoom in to identify the layers that are on.',
+        );
+        return;
+      }
+      setIdentifyHint(null);
       identifyAbort.current?.abort();
       const controller = new AbortController();
       identifyAbort.current = controller;
@@ -369,6 +379,18 @@ export function MapPanel() {
       map.off('click', onClick);
     };
   }, [mapReady, mode, overlayOn]);
+
+  // The hint clears itself after a few seconds.
+  useEffect(() => {
+    if (!identifyHint) return;
+    const timer = window.setTimeout(() => setIdentifyHint(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [identifyHint]);
+
+  const openLayers = () => {
+    setLayersOpen(true);
+    setIdentifyHint(null);
+  };
 
   // MapLibre picks the popup anchor from the content size when it is added, but the
   // portal fills the content afterwards. Re-anchor once the sections render (and
@@ -479,19 +501,33 @@ export function MapPanel() {
             Clear
           </Button>
         </div>
-        <div
-          ref={containerRef}
-          className="min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border"
-        />
+        <div className="relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border">
+          {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
+          <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+          <OverlayControl
+            on={overlayOn}
+            errors={overlayError}
+            loading={overlayLoading}
+            zoom={zoom}
+            open={layersOpen}
+            onOpenChange={setLayersOpen}
+            onToggle={toggleOverlay}
+          />
+          <div aria-live="polite" className="absolute bottom-2 left-2 z-10 max-w-[18rem]">
+            {identifyHint && (
+              <p className="flex items-center gap-2 rounded-md border border-border bg-popover px-2 py-1 text-popover-foreground text-xs shadow-md">
+                {identifyHint}
+                {!layersOpen && (
+                  <button type="button" className="font-medium underline" onClick={openLayers}>
+                    Layers
+                  </button>
+                )}
+              </p>
+            )}
+          </div>
+        </div>
         {popupNode &&
           createPortal(<IdentifyPopup sections={sections} onUseAsAoi={applyAreaAsAoi} />, popupNode)}
-        <OverlayControl
-          on={overlayOn}
-          errors={overlayError}
-          loading={overlayLoading}
-          zoom={zoom}
-          onToggle={toggleOverlay}
-        />
         <GeoJsonInput onGeometry={onPasted} />
         <div className="flex flex-wrap items-center gap-3">
           <Button

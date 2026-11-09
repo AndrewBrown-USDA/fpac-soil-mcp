@@ -87,13 +87,15 @@ Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)
   those tools are allowed (400 otherwise), `include_map` is forced on, and an AOI reference in the
   arguments is replaced only by the matching active AOI. Like
   `/api/geo/screen`, it is untraced and logs no request bodies.
-* Context layers (collapsed "Context layers" control, all off by default):
+* Context layers ("Layers" button in the map's top-right corner, all off by
+  default):
   SSURGO map units (SDA WMS, from zoom 12), TIGERweb counties (from zoom 6) and
   Census 2020 urban areas (from zoom 7). The catalog is fixed in
   `overlays.ts`; the browser loads these public services directly, so map tile
   bounds and clicked points go to USDA NRCS and the Census Bureau.
 * Clicking the map with a context layer on (no drawing tool active) shows an
-  identify popup. County and urban results offer "Use as AOI", which loads the
+  identify popup. With no layer on, or none in zoom range, a short hint says
+  so and links to the Layers control. County and urban results offer "Use as AOI", which loads the
   exact outline and refuses it above 2000 vertices instead of simplifying.
   SSURGO identify has no farmland class; run screening for that.
 
