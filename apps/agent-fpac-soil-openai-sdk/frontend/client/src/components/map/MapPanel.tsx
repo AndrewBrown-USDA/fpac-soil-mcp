@@ -58,6 +58,16 @@ const BASE_STYLE: StyleSpecification = {
 
 type DrawMode = 'polygon' | 'rectangle' | 'select' | 'static';
 
+// Terra Draw treats right clicks as clicks by default; only the left button draws.
+const LEFT_BUTTON_ONLY = {
+  leftClick: true,
+  rightClick: false,
+  contextMenu: false,
+  onDragStart: true,
+  onDrag: true,
+  onDragEnd: true,
+};
+
 const emptyCollection = { type: 'FeatureCollection' as const, features: [] };
 
 export function MapPanel() {
@@ -161,8 +171,8 @@ export function MapPanel() {
       const draw = new TerraDraw({
         adapter: new TerraDrawMapLibreGLAdapter({ map }),
         modes: [
-          new TerraDrawPolygonMode(),
-          new TerraDrawRectangleMode(),
+          new TerraDrawPolygonMode({ pointerEvents: LEFT_BUTTON_ONLY }),
+          new TerraDrawRectangleMode({ pointerEvents: LEFT_BUTTON_ONLY }),
           new TerraDrawSelectMode({
             flags: {
               polygon: {
@@ -194,6 +204,16 @@ export function MapPanel() {
           }
         }
         replaceAoi(geometry);
+        // One AOI at a time: a finished polygon or rectangle ends drawing, so the next
+        // click does not start another shape. Edit (select) mode stays on. Deferred
+        // so Terra Draw finishes its own event first.
+        const finished = draw.getMode();
+        if (finished === 'polygon' || finished === 'rectangle') {
+          window.setTimeout(() => {
+            draw.setMode('static');
+            setMode('static');
+          }, 0);
+        }
       });
       drawRef.current = draw;
       setMapReady(true);
