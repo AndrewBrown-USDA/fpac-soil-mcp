@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import type { PolygonGeometry } from './geojson';
+import type { MapBlock } from './mapLayers';
 
 export type SoilFeatureCollection = {
   type: 'FeatureCollection';
@@ -33,7 +34,8 @@ export type ScreeningResponse = {
   aoi_ref: string;
   display: {
     analysis?: DisplayAnalysis;
-    soil_polygons?: SoilFeatureCollection;
+    // ADR 0017 map block from the server, drawn by mapLayers.renderMapBlock.
+    map?: MapBlock | null;
     regulatory_notice?: string | null;
     error?: string;
   };

@@ -1,5 +1,7 @@
 # Spatial Visualization and Client Experience Strategy
 
+> **Status (2026-11-09):** the section 4 contract is implemented in part by [ADR 0017](../docs/decisions/0017-server-map-result-contract.md) (Accepted, [Plan 44](EXECUTION_PLAN_44.md)): an opt-in `map` block on the two analyze tools and `get_soil_polygons_by_geometry`, with additive `schema_version`, `data_mode` and `authority` fields. ADR 0017 maps each section 4 field to what the tools return; the full envelope restructure and offline testbeds remain open in `MASTER_PLAN.md` Phase 8.
+
 ## 1. Context and Purpose
 This document specifies the architectural blueprint and delivery strategy for adding an interactive, open-source GIS visualization client and structured MCP response contract to the **FPAC Soil MCP Server**.
 

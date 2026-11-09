@@ -1,15 +1,20 @@
 """Tests for agent_server.config (env getters and the chat system prompt)."""
 
+from unittest.mock import MagicMock
+
 import pytest
 from agent_server import config
 
-ENV_NAMES = ("AGENT_MODEL", "FPAC_MCP_URL", "FPAC_MCP_TIMEOUT_SECONDS")
+ENV_NAMES = ("AGENT_MODEL", "FPAC_MCP_URL", "FPAC_MCP_APP", "FPAC_MCP_TIMEOUT_SECONDS")
+DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
+DEV_BASE = "https://mcp-fpac-soil-dev-0000.aws.databricksapps.com"
 
 
 @pytest.fixture(autouse=True)
 def _clear_env(monkeypatch):
     for name in ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(config, "_RESOLVED_MCP_URLS", {})
 
 
 def _assert_defaults():
@@ -91,3 +96,47 @@ def test_prompt_does_not_steer(phrase):
 
 def test_prompt_is_cached():
     assert config.load_system_prompt() is config.load_system_prompt()
+
+
+def test_mcp_app_resolves_through_lookup_once(monkeypatch):
+    monkeypatch.setenv("FPAC_MCP_APP", " mcp-fpac-soil-dev ")
+    calls = []
+
+    def lookup(name):
+        calls.append(name)
+        return DEV_BASE + "/"
+
+    assert config.fpac_mcp_url(lookup) == DEV_BASE + "/mcp"
+    assert config.fpac_mcp_url(lookup) == DEV_BASE + "/mcp"
+    assert calls == ["mcp-fpac-soil-dev"]
+
+
+def test_explicit_url_wins_over_mcp_app(monkeypatch):
+    monkeypatch.setenv("FPAC_MCP_APP", "mcp-fpac-soil-dev")
+    monkeypatch.setenv("FPAC_MCP_URL", "https://example.com/mcp")
+    lookup = MagicMock()
+    assert config.fpac_mcp_url(lookup) == "https://example.com/mcp"
+    lookup.assert_not_called()
+
+
+def test_default_without_mcp_app_does_not_look_up():
+    lookup = MagicMock()
+    assert config.fpac_mcp_url(lookup) == DEFAULT_URL
+    lookup.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("lookup", "message"),
+    [
+        (None, "no app lookup"),
+        (MagicMock(side_effect=RuntimeError("PERMISSION_DENIED R6-MARKER")), "Could not resolve"),
+        (MagicMock(return_value=None), "https URL"),
+        (MagicMock(return_value="http://insecure.example"), "https URL"),
+    ],
+)
+def test_mcp_app_lookup_failures_never_fall_back(monkeypatch, lookup, message):
+    monkeypatch.setenv("FPAC_MCP_APP", "mcp-fpac-soil-dev")
+    with pytest.raises(config.McpServerLookupError, match=message) as excinfo:
+        config.fpac_mcp_url(lookup)
+    assert "R6-MARKER" not in str(excinfo.value)
+    assert config._RESOLVED_MCP_URLS == {}

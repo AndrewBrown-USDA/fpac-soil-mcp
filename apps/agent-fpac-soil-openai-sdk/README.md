@@ -15,7 +15,8 @@ Answers are preliminary screening only. They are based on SSURGO soil inventory 
 | Name | Default | Purpose |
 | --- | --- | --- |
 | `AGENT_MODEL` | `models.ai.gpt-5-6-luna` | Unity Catalog model service, called through AI Gateway (`/ai-gateway/mlflow/v1`). In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
-| `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | URL of the fpac-soil-mcp server. |
+| `FPAC_MCP_APP` | unset | Name of the fpac-soil-mcp server app. In `app.yaml` it comes from the `mcp_server` app resource (`valueFrom`), and the app looks up that app's URL once per process and adds `/mcp`, so production and dev agent apps differ only in their `mcp_server` resource. If set but not resolvable, the agent runs without tools rather than using another server. |
+| `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | Explicit MCP URL for local runs and tests; overrides `FPAC_MCP_APP`. Not set in the deploy files. |
 | `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
 
 GPT-5 models are called with `reasoning_effort="none"`, which they need for tool calling.
@@ -72,6 +73,46 @@ so you can ask follow-up questions (for example a preliminary LESA) without
 pasting GeoJSON. Geometry appears in chat traces and app logs; do not draw or
 paste personal data or Section 1619 producer data outside an environment
 approved for it.
+
+Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)):
+
+* `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and
+  `get_soil_polygons_by_geometry` return a `map` block. The model's calls use
+  `include_map=false` (layer list, legends and sources, no geometry). `/api/geo/screen` and `/api/geo/map` ask for
+  `include_map=true` and the panel draws the server's layers with the server's
+  legends, simplification notes and size-limit warnings. Corridor results
+  include each alternative's footprint and farmland.
+* `POST /api/geo/map` backs "Show on map" on completed tool cards for those
+  three tools (`geo.MAP_TOOLS`): body `{tool, arguments, active_aoi}`; only
+  those tools are allowed (400 otherwise), `include_map` is forced on, and an AOI reference in the
+  arguments is replaced only by the matching active AOI. Like
+  `/api/geo/screen`, it is untraced and logs no request bodies.
+* Context layers ("Layers" button in the map's top-right corner, all off by
+  default):
+  SSURGO map units (SDA WMS, from zoom 12), TIGERweb counties (from zoom 6) and
+  Census 2020 urban areas (from zoom 7). The catalog is fixed in
+  `overlays.ts`; the browser loads these public services directly, so map tile
+  bounds and clicked points go to USDA NRCS and the Census Bureau.
+* Clicking the map (no drawing tool active) shows an identify popup for a drawn
+  farmland polygon under the click (map unit name, symbol, farmland class,
+  acres and productivity, as the server sent them) and for each context layer
+  that is on. With neither, a short hint says so and links to the Layers
+  control. County and urban results offer "Use as AOI", which loads the
+  exact outline and refuses it above 2000 vertices instead of simplifying.
+  SSURGO identify has no farmland class; run screening for that.
+
+### Dev trial apps
+
+Branch trials use two dev apps deployed from git on the feature branch, so the
+production apps stay on `main`:
+
+* `mcp-fpac-soil-dev`: the MCP server from the branch.
+* `agent-fpac-soil-dev`: this app from the branch, with its `mcp_server`
+  resource pointing at `mcp-fpac-soil-dev` (`CAN_USE`). `FPAC_MCP_APP` comes
+  from that resource, so `app.yaml` needs no branch-specific URL.
+
+Both have auto-deploy on; every push to the branch redeploys both. Record
+trial deployments and results under `planning/evidence/`.
 
 ### MCP timeout
 
