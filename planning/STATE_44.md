@@ -51,7 +51,7 @@
 | 11 | Genie Code | 44.11.6 | done, 34bf2c7 |
 | 11 | Genie Code | 44.11.7 | done, 9d035c9; draw fix 44.11.7a 83f142f; user browser check passed |
 | 11 | User + Genie Code | 44.11.3 | done: POLY-01 passes; POLY-02 fails on WKT input (follow-up in MASTER_PLAN.md) (planning/evidence/44.11.3-eval.md) |
-| 12 | Genie Code + User | 44.12.1 | in progress: docs and gates done; push, PR, merge and production deploy pending (user approval) |
+| 12 | Genie Code + User | 44.12.1 | done: merged as 7e44602 (PR #81); both production apps RUNNING on 7e44602; production browser check passed |
 | 12 | gate | all suites | passed on the close-out tree (root 704 / 3 skipped; live 43 / 3 skipped; app 175; frontend rc 0, 10 warnings) |
 | 13 | Genie Code | 44.13.1 | done, 3e2df3d |
 
@@ -222,7 +222,10 @@
 
 ## 44.12.1
 
-- **Status:** in progress. Docs and gates done; push, PR, merge and production steps wait for user approval.
+- **Status:** done, merged as `7e44602` via PR #81 on 2026-11-09 (includes 44.13.1).
+- **Production:** `mcp-fpac-soil` and `agent-fpac-soil-openai-sdk` are both RUNNING, with active deployment SUCCEEDED on `7e44602`; both deploy from GitHub `main` with `auto_deploy: true`.
+- **Production check:** a direct MCP `include_map=true` call from compute returned 401 at `initialize` because the app rejects workspace PAT auth; the user instead ran POLY-01 in the production agent app, where “Show on map” drew `aoi`, `farmland_classes`, and `urban_context` with legend, source, authority, and notice, and the result polygon popup worked.
+- **Review:** no comment deferred; `planning/MASTER_PLAN.md` is unchanged.
 - **Files:** ADR 0017 `Accepted`; `docs/decisions/README.md` (row and era paragraph, now naming `get_soil_polygons_by_geometry`); `planning/MASTER_PLAN.md` (Phase 8 status and remaining items; Track A M3-M5 delivered, follow-ups: WKT input, server-served vertex limit (R7), component summary, richer SSURGO identify and app-drawn labels (R13, R14), efficiency review (R15)); `planning/SPATIAL_VISUALIZATION_STRATEGY.md` status note; trial and eval results set.
 - **Gate (fresh `/tmp/c44` clone):** root `make check` 704 passed / 3 skipped; `make test-live` 43 / 3 skipped; `make app-check` 175; `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK.
 - **Acceptance grep:** `mcp-fpac-soil-dev` appears outside `planning/` only in the app `AGENTS.md`, app `README.md` and app tests that use it as an `FPAC_MCP_APP` override value; no deploy config names it.
