@@ -10,6 +10,39 @@ export type IdentifySection =
 
 export type UseAsAoiResult = { ok: true } | { ok: false; message: string };
 
+// A clicked result polygon: the server's feature properties (ADR 0017, Plan 44 A7),
+// shown as sent.
+export type ResultInfo = {
+  muname: string | null;
+  musym: string | null;
+  farmlndcl: string | null;
+  acres: string | null;
+  productivity: string | null;
+  productivitySource: string | null;
+  alignment: string | null;
+};
+
+function text(value: unknown): string | null {
+  if (typeof value === 'string') return value.trim() || null;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+export function resultInfo(props: Record<string, unknown> | null | undefined): ResultInfo | null {
+  if (!props) return null;
+  const rating = text(props.productivity_rating);
+  const ratingClass = text(props.productivity_rating_class);
+  return {
+    muname: text(props.muname),
+    musym: text(props.musym),
+    farmlndcl: text(props.farmlndcl),
+    acres: text(props.area_ac),
+    productivity: rating ? (ratingClass ? `${rating} (${ratingClass})` : rating) : null,
+    productivitySource: rating ? text(props.productivity_rating_source) : null,
+    alignment: text(props.alignment),
+  };
+}
+
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
@@ -57,14 +90,31 @@ function AreaActions({
 // the popup follows light and dark mode; MapLibre's own white box is cleared in
 // MapPanel.
 export function IdentifyPopup({
+  result,
   sections,
   onUseAsAoi,
 }: {
+  result: ResultInfo | null;
   sections: IdentifySection[];
   onUseAsAoi: (section: IdentifySection, area: AreaInfo) => Promise<UseAsAoiResult>;
 }) {
   return (
     <div className="flex max-h-64 w-60 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pr-6 text-popover-foreground text-xs shadow-md">
+      {result && (
+        <section aria-label="Result">
+          <h3 className="font-semibold text-xs leading-tight">Result: map unit</h3>
+          {result.muname && <p>{result.muname}</p>}
+          <dl className="grid grid-cols-[auto_1fr] gap-x-2">
+            <Row label="Symbol" value={result.musym} />
+            <Row label="Farmland" value={result.farmlndcl} />
+            <Row label="Acres" value={result.acres} />
+            <Row label="Productivity" value={result.productivity} />
+            <Row label="Index" value={result.productivitySource} />
+            <Row label="Alignment" value={result.alignment} />
+          </dl>
+          <p className="text-muted-foreground">Preliminary machine estimate.</p>
+        </section>
+      )}
       {sections.map((section) => (
         <section key={section.overlay.id} aria-label={section.overlay.title}>
           {/* Explicit size: index.css gives bare h3 a larger base size. */}
@@ -95,7 +145,9 @@ export function IdentifyPopup({
           )}
         </section>
       ))}
-      <p className="text-muted-foreground">Context layers, not analysis results.</p>
+      {sections.length > 0 && (
+        <p className="text-muted-foreground">Context layers, not analysis results.</p>
+      )}
     </div>
   );
 }

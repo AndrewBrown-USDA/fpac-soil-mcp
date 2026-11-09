@@ -93,9 +93,11 @@ Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)
   Census 2020 urban areas (from zoom 7). The catalog is fixed in
   `overlays.ts`; the browser loads these public services directly, so map tile
   bounds and clicked points go to USDA NRCS and the Census Bureau.
-* Clicking the map with a context layer on (no drawing tool active) shows an
-  identify popup. With no layer on, or none in zoom range, a short hint says
-  so and links to the Layers control. County and urban results offer "Use as AOI", which loads the
+* Clicking the map (no drawing tool active) shows an identify popup for a drawn
+  farmland polygon under the click (map unit name, symbol, farmland class,
+  acres and productivity, as the server sent them) and for each context layer
+  that is on. With neither, a short hint says so and links to the Layers
+  control. County and urban results offer "Use as AOI", which loads the
   exact outline and refuses it above 2000 vertices instead of simplifying.
   SSURGO identify has no farmland class; run screening for that.
 

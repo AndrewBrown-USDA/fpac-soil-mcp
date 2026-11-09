@@ -21,14 +21,14 @@ import {
   geometryBounds,
   toPolygonGeometry,
 } from './geojson';
-import { IdentifyPopup } from './IdentifyPopup';
-import type { IdentifySection, UseAsAoiResult } from './IdentifyPopup';
+import { IdentifyPopup, resultInfo } from './IdentifyPopup';
+import type { IdentifySection, ResultInfo, UseAsAoiResult } from './IdentifyPopup';
 import { fetchOutline, identifyArea, identifySoil } from './identify';
 import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
-import { clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
+import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
 import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
 import type { OverlayFlags } from './OverlayControl';
@@ -82,6 +82,7 @@ export function MapPanel() {
   const identifyAbort = useRef<AbortController | null>(null);
   const [popupNode, setPopupNode] = useState<HTMLDivElement | null>(null);
   const [sections, setSections] = useState<IdentifySection[]>([]);
+  const [resultHit, setResultHit] = useState<ResultInfo | null>(null);
   // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
   // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
   const { chatId, activeAoi, setGeometry, setSummary } = useActiveAoi();
@@ -302,8 +303,9 @@ export function MapPanel() {
     setOverlayError((prev) => ({ ...prev, [id]: false }));
   }, []);
 
-  // A click identifies the overlays that are on and in range, only when no drawing
-  // tool is active (Terra Draw owns clicks in the other modes).
+  // A click identifies the drawn result polygon under it (A7) and the overlays that are
+  // on and in range, only when no drawing tool is active (Terra Draw owns clicks in
+  // the other modes).
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -312,7 +314,11 @@ export function MapPanel() {
       if (mode !== 'static') return;
       const on = OVERLAYS.filter((overlay) => overlayOn[overlay.id]);
       const active = on.filter((overlay) => map.getZoom() >= overlay.minzoom);
-      if (active.length === 0) {
+      const hit = map.getLayer(IDENTIFY_HIT_LAYER)
+        ? map.queryRenderedFeatures(event.point, { layers: [IDENTIFY_HIT_LAYER] })[0]
+        : undefined;
+      const result = resultInfo(hit?.properties);
+      if (active.length === 0 && !result) {
         setIdentifyHint(
           on.length === 0
             ? 'Turn on a context layer to identify what is here.'
@@ -348,6 +354,7 @@ export function MapPanel() {
       });
       popupRef.current = popup;
       setPopupNode(node);
+      setResultHit(result);
       setSections(active.map((overlay) => ({ overlay, state: 'loading' as const })));
       const { lng, lat } = event.lngLat;
       for (const overlay of active) {
@@ -527,7 +534,10 @@ export function MapPanel() {
           </div>
         </div>
         {popupNode &&
-          createPortal(<IdentifyPopup sections={sections} onUseAsAoi={applyAreaAsAoi} />, popupNode)}
+          createPortal(
+            <IdentifyPopup result={resultHit} sections={sections} onUseAsAoi={applyAreaAsAoi} />,
+            popupNode,
+          )}
         <GeoJsonInput onGeometry={onPasted} />
         <div className="flex flex-wrap items-center gap-3">
           <Button

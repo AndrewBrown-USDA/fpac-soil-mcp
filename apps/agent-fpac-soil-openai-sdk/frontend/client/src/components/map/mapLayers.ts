@@ -224,8 +224,19 @@ export function clearMapBlock(map: MapLibreMap) {
   }
 }
 
+// The result layer whose features open the identify popup (Plan 44 A7). Its hit layer
+// is an invisible fill over every feature, so outline-only classes are clickable too.
+export const IDENTIFY_RESULT_LAYER = 'farmland_classes';
+export const IDENTIFY_HIT_LAYER = `${PREFIX}${IDENTIFY_RESULT_LAYER}-hit`;
+
 function addPolygonLayers(map: MapLibreMap, layer: MapLayer, source: string, beforeId?: string) {
   const id = `${PREFIX}${layer.id}`;
+  if (layer.id === IDENTIFY_RESULT_LAYER) {
+    map.addLayer(
+      { id: IDENTIFY_HIT_LAYER, type: 'fill', source, paint: { 'fill-opacity': 0 } },
+      beforeId,
+    );
+  }
   const fill = filterFor(layer, (item) => !isOutline(item.pattern), true);
   if (fill) {
     map.addLayer(
