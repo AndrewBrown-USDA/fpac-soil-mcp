@@ -43,16 +43,16 @@
 | 9 | Genie Code | 44.9.1 | done (not yet seen in a browser) |
 | 9 | Genie Code | 44.9.2 | done |
 | 9 | gate | root check, app-check, app-frontend-check | pending |
-| 10 | User + Genie Code | 44.10.1 | in progress (planning/evidence/44.10.1-trial.md) |
+| 10 | User + Genie Code | 44.10.1 | done, trial passed 2026-11-09 (planning/evidence/44.10.1-trial.md) |
 | 11 | Genie Code | 44.11.1 | done, 95e78d1 (`planning/REVIEW_44.md`) |
 | 11 | Genie Code | 44.11.2 | done, 0d607d4 |
 | 11 | Genie Code | 44.11.4 | done, 83887aa |
 | 11 | Genie Code | 44.11.5 | done, e1a544e |
 | 11 | Genie Code | 44.11.6 | done, 34bf2c7 |
-| 11 | Genie Code | 44.11.7 | done, 9d035c9; user browser check pending |
-| 11 | User + Genie Code | 44.11.3 | in progress: T1 done (POLY-01 ok, POLY-02 blocked on WKT follow-up); browser check pending (planning/evidence/44.11.3-eval.md) |
-| 12 | Genie Code + User | 44.12.1 | pending |
-| 12 | gate | all suites | pending |
+| 11 | Genie Code | 44.11.7 | done, 9d035c9; draw fix 44.11.7a 83f142f; user browser check passed |
+| 11 | User + Genie Code | 44.11.3 | done: POLY-01 passes; POLY-02 fails on WKT input (follow-up in MASTER_PLAN.md) (planning/evidence/44.11.3-eval.md) |
+| 12 | Genie Code + User | 44.12.1 | in progress: docs and gates done; push, PR, merge and production deploy pending (user approval) |
+| 12 | gate | all suites | passed on the close-out tree (root 704 / 3 skipped; live 43 / 3 skipped; app 175; frontend rc 0, 10 warnings) |
 
 ## Task Reports
 
@@ -208,12 +208,20 @@
 
 ## 44.11.7
 
-- **Status:** done (code). Commit 9d035c9 (`feat(agent-app): identify drawn farmland polygons on click`); user browser check pending.
+- **Status:** done (code). Commit 9d035c9 (`feat(agent-app): identify drawn farmland polygons on click`); user browser check passed 2026-11-09.
 - **Files:** `mapLayers.ts` (invisible `result-farmland_classes-hit` fill so outline-only classes are clickable), `IdentifyPopup.tsx` (`resultInfo`, "Result: map unit" section: name, symbol, farmland class, acres, productivity and index, alignment for corridor alternatives; footer line only with overlay sections), `MapPanel.tsx` (queries the hit layer on click; the hint only when neither a result nor an in-range layer), app `README.md`.
 - **Checks:** `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`. No frontend unit test.
 - **Browser check (user, 2026-11-09, dev apps at 7223df4):** "looks good". POLY-02 fails as expected (WKT not converted to GeoJSON; follow-up). Two draw issues found: right click also starts drawing; after finishing an AOI a new draw sometimes starts.
 
 ## 44.11.7a (draw fix from the browser check)
 
-- **Status:** done (code); see the `fix(agent-app): draw only with the left button and stop after one shape` commit. User browser check pending. Polygon and rectangle modes take `pointerEvents` with `rightClick: false`, `contextMenu: false`; on `finish` from polygon or rectangle mode the panel switches to `static` (deferred one tick). Edit mode is unchanged.
+- **Status:** done (code); see the `fix(agent-app): draw only with the left button and stop after one shape` commit (83f142f). Polygon and rectangle modes take `pointerEvents` with `rightClick: false`, `contextMenu: false`; on `finish` from polygon or rectangle mode the panel switches to `static` (deferred one tick). Edit mode is unchanged.
+- **Browser check:** user, 2026-11-09: "draw fix works".
 - **Checks:** terra-draw 1.39.0 `.d.ts` defaults `rightClick: true` (the cause) and types `pointerEvents` entries as `AllowPointerEvent`. Fresh `/tmp/d44` clone: `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`.
+
+## 44.12.1
+
+- **Status:** in progress. Docs and gates done; push, PR, merge and production steps wait for user approval.
+- **Files:** ADR 0017 `Accepted`; `docs/decisions/README.md` (row and era paragraph, now naming `get_soil_polygons_by_geometry`); `planning/MASTER_PLAN.md` (Phase 8 status and remaining items; Track A M3-M5 delivered, follow-ups: WKT input, server-served vertex limit (R7), component summary, richer SSURGO identify and app-drawn labels (R13, R14), efficiency review (R15)); `planning/SPATIAL_VISUALIZATION_STRATEGY.md` status note; trial and eval results set.
+- **Gate (fresh `/tmp/c44` clone):** root `make check` 704 passed / 3 skipped; `make test-live` 43 / 3 skipped; `make app-check` 175; `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK.
+- **Acceptance grep:** `mcp-fpac-soil-dev` appears outside `planning/` only in the app `AGENTS.md`, app `README.md` and app tests that use it as an `FPAC_MCP_APP` override value; no deploy config names it.

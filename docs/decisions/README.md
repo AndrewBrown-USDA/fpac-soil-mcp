@@ -28,7 +28,7 @@ and refined through `adr-distillation`.
 | [0014](0014-registry-validated-sdv-metadata-contract.md) | Registry-Validated SDV Metadata Rating Contract | Accepted | 2026-10-27 | - | - | EXECUTION_PLAN_39 |
 | [0015](0015-vendored-agent-app-frontend.md) | Vendor the Full Pinned Chat Template for the Agent App Frontend | Accepted (2026-10-31, EP42) | 2026-10-28 | - | - | EXECUTION_PLAN_40, 41, 42 |
 | [0016](0016-out-of-band-aoi-screening-handoff.md) | Map AOI as Chat Session Context | Accepted (2026-10-31, EP42) | 2026-10-30 | - | - | EXECUTION_PLAN_40, 42 |
-| [0017](0017-server-map-result-contract.md) | Server Map Result Contract for the Analyze Tools | Proposed | 2026-11-04 | - | - | EXECUTION_PLAN_44 |
+| [0017](0017-server-map-result-contract.md) | Server Map Result Contract for the Analyze Tools | Accepted (2026-11-09, EP44) | 2026-11-04 | - | - | EXECUTION_PLAN_44 |
 
 ## Architectural Eras
 
@@ -56,9 +56,10 @@ agent app's chat frontend to a vendored upstream template commit. ADR 0016
 (2026-10-30, proposed; amended 2026-10-31) makes the map AOI chat session
 context: the browser keeps one AOI per conversation and sends it with each
 turn, and the agent server swaps the geometry into tool calls that name the
-AOI reference. ADR 0017 (2026-11-04, proposed) adds an opt-in map
-result to the two analyze tools: descriptors by default, inline GeoJSON with
-server legends when the app asks for it.
+AOI reference. ADR 0017 (2026-11-04, accepted 2026-11-09) adds an opt-in map
+result to the two analyze tools and `get_soil_polygons_by_geometry`:
+descriptors by default, inline GeoJSON with server legends when the app asks
+for it, built only from data the tool already fetched.
 
 **Rating Contract (2026-10-27)**: ADR 0014 limited SDV metadata ratings to a
 registry of validated records that follow the SDV aggregation method, and ran

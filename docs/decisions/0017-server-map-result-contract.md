@@ -1,7 +1,7 @@
 ---
 id: "0017"
 title: "Server Map Result Contract for the Analyze Tools"
-status: "Proposed"
+status: "Accepted"
 date: 2026-11-04
 authors:
   - "Andrew G. Brown"
