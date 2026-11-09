@@ -48,6 +48,8 @@
 | 11 | Genie Code | 44.11.2 | done, 0d607d4 |
 | 11 | Genie Code | 44.11.4 | done, 83887aa |
 | 11 | Genie Code | 44.11.5 | done, e1a544e |
+| 11 | Genie Code | 44.11.6 | done, 34bf2c7 |
+| 11 | Genie Code | 44.11.7 | done, 9d035c9; user browser check pending |
 | 11 | User + Genie Code | 44.11.3 | in progress: T1 done (POLY-01 ok, POLY-02 blocked on WKT follow-up); browser check pending (planning/evidence/44.11.3-eval.md) |
 | 12 | Genie Code + User | 44.12.1 | pending |
 | 12 | gate | all suites | pending |
@@ -193,3 +195,19 @@
 - **Status:** done. Commit e1a544e (`feat(agent-app): show soil polygon results on the map`).
 - **Files:** `geo.py` (`SOIL_POLYGONS_TOOL` in `MAP_TOOLS` and `MapRequest`); app `tests/test_geo_map.py` (soil tool accepted with `aoi_ref` substitution and forced flag; removed from the reject list); `ShowOnMapButton.tsx` `MAP_TOOLS`; app `README.md`; ADR 0015 `message.tsx` entry; ADR 0016 2026-11-07 amendment.
 - **Checks:** new test fails with the old `geo.py` (1 failed) and passes with the new one. Fresh `/tmp/g44` clone: `make app-check` 175 passed (one test added, one reject case removed); `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`.
+
+## A7 (user approved, 2026-11-09): result polygon popup from `include_map`
+
+- Plan Decision Log 16 and tasks 44.11.6, 44.11.7 (315915c). Also from the browser check: popup headings sized to the content (516f80f).
+
+## 44.11.6
+
+- **Status:** done. Commit 34bf2c7 (`feat(map): add map unit productivity to farmland features`).
+- **Files:** `map_contract.py` (`PRODUCTIVITY_PROPERTIES`, `with_productivity`, `productivity_by_mukey`; `features_from_sda_rows` passes the keys through); `polygon_analysis.py` (from `unit_models` for rated mukeys); `corridor_analysis.py` (primary from segment `unit_models`; alternatives from their own rating query via `_feature_ratings`; the alternative rows are now collected after that query); tests in `test_map_tool_contracts.py` (2) and `test_corridor_map.py` (1); ADR 0017 layer table. Scope note: `test_corridor_map.py` added to the task's files for the alternative case.
+- **Checks:** the 3 new tests fail with the old analyzers. Fresh `/tmp/g44` clone: root `make check` 704 passed / 3 skipped (701 + 3); `make test-live` 43 passed / 3 skipped. Existing call-count and "numbers unchanged" tests still pass.
+
+## 44.11.7
+
+- **Status:** done (code). Commit 9d035c9 (`feat(agent-app): identify drawn farmland polygons on click`); user browser check pending.
+- **Files:** `mapLayers.ts` (invisible `result-farmland_classes-hit` fill so outline-only classes are clickable), `IdentifyPopup.tsx` (`resultInfo`, "Result: map unit" section: name, symbol, farmland class, acres, productivity and index, alignment for corridor alternatives; footer line only with overlay sections), `MapPanel.tsx` (queries the hit layer on click; the hint only when neither a result nor an in-range layer), app `README.md`.
+- **Checks:** `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK; `tsc` 5 errors, none in `components/map/`. No frontend unit test. Browser check pending.
