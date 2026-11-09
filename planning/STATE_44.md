@@ -53,6 +53,7 @@
 | 11 | User + Genie Code | 44.11.3 | done: POLY-01 passes; POLY-02 fails on WKT input (follow-up in MASTER_PLAN.md) (planning/evidence/44.11.3-eval.md) |
 | 12 | Genie Code + User | 44.12.1 | in progress: docs and gates done; push, PR, merge and production deploy pending (user approval) |
 | 12 | gate | all suites | passed on the close-out tree (root 704 / 3 skipped; live 43 / 3 skipped; app 175; frontend rc 0, 10 warnings) |
+| 13 | Genie Code | 44.13.1 | done, 3e2df3d |
 
 ## Task Reports
 
@@ -226,3 +227,10 @@
 - **Gate (fresh `/tmp/c44` clone):** root `make check` 704 passed / 3 skipped; `make test-live` 43 / 3 skipped; `make app-check` 175; `make app-frontend-check` rc 0 (10 biome warnings, baseline), build OK.
 - **Acceptance grep:** `mcp-fpac-soil-dev` appears outside `planning/` only in the app `AGENTS.md`, app `README.md` and app tests that use it as an `FPAC_MCP_APP` override value; no deploy config names it.
 - **Production deploy source (checked 2026-11-09, Apps API):** the user moved `mcp-fpac-soil` to git. Both production apps now deploy from GitHub `main` with `auto_deploy: true`: `mcp-fpac-soil` (repo root) and `agent-fpac-soil-openai-sdk` (`apps/agent-fpac-soil-openai-sdk`), both RUNNING on 87e0a75 (#80); the agent app's `mcp_server` resource is `mcp-fpac-soil` (`CAN_USE`). The plan's team-03 clone refresh step is no longer needed: after merge, check that both apps show the merge commit, then smoke-test `include_map=true`.
+
+## 44.13.1
+
+- **Status:** done. Commit 3e2df3d (`fix(main): prioritize checkout src over installed package on sys.path`).
+- **Files:** `main.py` (remove existing `SRC_DIR` from `sys.path` and insert at index 0 unconditionally when the directory exists); `tests/test_main_entrypoint.py` (new `test_entrypoint_promotes_src_to_front_when_already_present`); `planning/REVIEW_44.md` (C1); `planning/EXECUTION_PLAN_44.md` (wave 13 row, 44.13.1 spec).
+- **Checks:** new test fails before the fix (`sys.path[0]` stays `fake-site-packages`), passes after (4/4 entrypoint tests green). Fresh `/tmp/c44r` clone: `make check` 705 passed / 3 skipped (baseline 704 + 1); `make app-check` 175 passed (unchanged, no app files touched). Frontend and tsc unchanged (no frontend files touched).
+- **Deviations:** none.
