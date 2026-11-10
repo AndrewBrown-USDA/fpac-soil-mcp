@@ -386,6 +386,22 @@ def test_semantic_checks_are_separate_from_runner_health_status() -> None:
     assert any("latency" in failure for failure in failures)
 
 
+def test_structured_status_ignores_mcp_call_progress_statuses() -> None:
+    events = [
+        {
+            "type": "tool_execution_update",
+            "partialResult": {"details": {"calls": [{"status": "running"}]}},
+        },
+        {
+            "type": "tool_execution_end",
+            "result": {"details": {"calls": [{"status": "ok"}]}},
+        },
+    ]
+
+    assert run_evals._structured_status(events) is None
+    assert run_evals._structured_status([{"result": {"status": "covered"}}]) == "covered"
+
+
 def test_run_case_capture_is_non_retaining_when_opt_in_root_is_absent(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

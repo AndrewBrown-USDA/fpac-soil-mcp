@@ -536,18 +536,22 @@ def should_retry_missing_tools(
     )
 
 
-def _structured_status(value: Any) -> Any:
+def _structured_status(value: Any, *, in_call_details: bool = False) -> Any:
     if isinstance(value, dict):
-        for key in ("status", "coverage_status", "result_status"):
-            if key in value and isinstance(value[key], str):
-                return value[key]
-        for child in value.values():
-            found = _structured_status(child)
+        if not in_call_details:
+            for key in ("status", "coverage_status", "result_status"):
+                if key in value and isinstance(value[key], str):
+                    return value[key]
+        for key, child in value.items():
+            found = _structured_status(
+                child,
+                in_call_details=in_call_details or key in {"calls", "nestedCalls"},
+            )
             if found is not None:
                 return found
     elif isinstance(value, list):
         for child in value:
-            found = _structured_status(child)
+            found = _structured_status(child, in_call_details=in_call_details)
             if found is not None:
                 return found
     return None

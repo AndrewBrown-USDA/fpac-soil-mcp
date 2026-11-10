@@ -124,6 +124,7 @@ evaluation setup/results evidence.
 | 7 | 46.7.1 | Migrate Pi eval runner to built-in MCP | `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | none | 46.5 gate |
 | 7 gate | - | Pi native-MCP contract gate | none | none | 46.7.1 |
 | 8 | 46.8.1 | Re-test Pi auth and evaluation | evidence report only | `planning\evidence\46.8.1-pi-auth-eval.md` | 46.7 gate |
+| 8 | 46.8.2 | Diagnose representative Pi evaluation failures | evidence report and state only unless artifacts prove a code defect | `planning\evidence\46.8.2-pi-failure-diagnostics.md`; `planning\tasks\46.8.2.todo.md` | 46.8.1 |
 | 8 gate | - | Pi auth and evaluation evidence gate | none | none | 46.8.1 |
 
 Tasks in the same wave have disjoint edit sets. Wave 1 tasks use the
@@ -489,6 +490,33 @@ user direction; do not duplicate or inspect its Plan 44 follow-up.
   Commands: `pi auth check --model github-copilot/gpt-5.6-luna --json --no-refresh`;
   `uv run python eval\pi\run_evals.py --case-id POINT-01 --no-show-output`;
   then `make test-eval` only if POINT-01 passes.
+
+### 46.8.2 — Diagnose representative Pi evaluation failures
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** this task checklist, `planning\STATE_46.md`, and a
+  sanitized evidence report; code/tests only if captured evidence establishes
+  a reproducible repository defect.
+- **Can create:** `planning\evidence\46.8.2-pi-failure-diagnostics.md`;
+  `planning\tasks\46.8.2.todo.md`.
+- **Depends on:** 46.8.1 Pi auth/evaluation evidence.
+- **Spec:** Individually rerun only `PROMPT-03`, `SA-MA-01`,
+  `ADV-INJECTION-01`, `ADV-OUTAGE-01`, and `ADV-PRIVACY-01` with artifact
+  capture enabled, qualified model `github-copilot/gpt-5.6-luna`, and a new
+  timestamped external artifact root. Inspect each case's structured events
+  and diagnostics; distinguish observations from hypotheses. Do not rerun
+  passing reruns unless needed to verify a code fix.
+- **Reference:** `planning\evidence\46.8.1-pi-auth-eval.md`; Pi eval skill and
+  the runner's `--help`. Preserve privacy: keep artifacts outside the repo,
+  never expose raw prompts, responses, coordinates, geometry, credentials, or
+  producer data in committed content, filenames, or metadata.
+- **Checklist (5 steps max):** verify capture options and clean branch context;
+  run the five listed cases individually into a fresh external root; inspect
+  captured events/diagnostics locally; make and test a minimal fix only if a
+  repository defect is established; write sanitized evidence and update state.
+- **Acceptance:** report exact commands, per-case outcomes, observed causes
+  versus hypotheses, artifact location and retention limits; no full eval or
+  unrelated cases are run, and the report does not claim full-eval success.
 
 ## Hazard Notes
 
