@@ -126,6 +126,7 @@ evaluation setup/results evidence.
 | 8 | 46.8.1 | Re-test Pi auth and evaluation | evidence report only | `planning\evidence\46.8.1-pi-auth-eval.md` | 46.7 gate |
 | 8 | 46.8.2 | Diagnose representative Pi evaluation failures | evidence report and state only unless artifacts prove a code defect | `planning\evidence\46.8.2-pi-failure-diagnostics.md`; `planning\tasks\46.8.2.todo.md` | 46.8.1 |
 | 8 | 46.8.3 | Consolidate policy delivery and honor safety-case budgets | evaluation runners, shared dataset/scorers, focused tests | `planning\evidence\46.8.3-pi-safety-followup.md`; `planning\tasks\46.8.3.todo.md` | 46.8.2 |
+| 8 | 46.8.4 | Rerun the previously failed Pi cases | individual Pi runner executions and sanitized evidence | `planning\evidence\46.8.4-pi-failed-case-rerun.md`; `planning\tasks\46.8.4.todo.md` | 46.8.3 |
 | 8 gate | - | Pi auth and evaluation evidence gate | none | none | 46.8.1 |
 
 Tasks in the same wave have disjoint edit sets. Wave 1 tasks use the
@@ -545,6 +546,27 @@ user direction; do not duplicate or inspect its Plan 44 follow-up.
   cases are reported with exact outcomes and structured evidence; no full
   evaluation is run, and no raw prompts, responses, coordinates, geometry,
   credentials, or producer data are committed.
+
+### 46.8.4 — Rerun the previously failed Pi cases
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** individual Pi runner executions and sanitized Plan 46
+  evidence/state; no source changes unless captured evidence establishes a
+  reproducible defect and the work is separately scoped.
+- **Can create:** `planning\evidence\46.8.4-pi-failed-case-rerun.md`;
+  `planning\tasks\46.8.4.todo.md`.
+- **Depends on:** 46.8.3 safety-policy and scoring follow-up.
+- **Spec:** Individually rerun only the 14 case IDs recorded as failed in
+  `planning\evidence\46.8.1-pi-auth-eval.md`, using
+  `github-copilot/gpt-5.6-luna` and `--no-show-output`. Do not run
+  `make test-eval` or another full evaluation. Do not retain raw artifacts
+  unless separately required for diagnosis.
+- **Checklist (4 steps max):** verify Pi and qualified auth readiness; run the
+  14 cases serially; record each outcome and any available sanitized
+  diagnostics; update the evidence report and state.
+- **Acceptance:** report exact per-case outcomes, command/model, and limits;
+  make clear that this subset is not a full-suite result. If failures remain
+  without diagnostics, record that and stop rather than rerunning cases.
 
 ## Hazard Notes
 

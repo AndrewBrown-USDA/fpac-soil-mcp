@@ -302,3 +302,13 @@ Ensure Pi eval, Databricks eval, the Databricks app, and the MCP prompt all expo
 **Commands:** `uv run pytest eval\common\test_common_matching.py eval\common\test_common_dataset.py eval\pi\test_agent_eval.py eval\databricks\test_databricks_agent.py eval\databricks\test_databricks_scorers.py -m "not agent_eval" -q`; individual `uv run python eval\pi\run_evals.py --case-id <case-id> --model github-copilot/gpt-5.6-luna --capture-artifacts --artifact-root <external-root>` runs.
 **Artifacts:** `D:\workspace\fpac-soil-mcp-eval-artifacts\zero-budget-rescore-ADV-INJECTION-01-20261110T163334Z` and `D:\workspace\fpac-soil-mcp-eval-artifacts\zero-budget-rescore-ADV-PRIVACY-01-20261110T163401Z`.
 **Limitations:** only these two selected Pi cases were rerun; no full Pi or Databricks evaluation was run, and the passing reruns are not evidence that the full suite passes.
+
+## Plan 46.8.4 — Rerun the previously failed Pi cases
+
+- [x] Run the 14 case IDs from the 2026-11-10 failure list individually and sequentially with the catalog-qualified model; do not run a full evaluation.
+- [x] Suppress response display and avoid retaining raw artifacts.
+- [x] Record exact outcomes and limitations in the Plan 46 evidence report and state.
+
+**Results:** 9 PASS, 5 FAIL. Passed: `SA-MA-01`, `ADV-UNRELATED-01`, `ADV-RELOCATE-01`, `ADV-CORRIDOR-01`, `ADV-URBAN-01`, `ADV-MISSING-01`, `ADV-PARTIAL-01`, `ADV-INJECTION-01`, `ADV-PRIVACY-01`. Failed: `PROMPT-03`, `SA-MA-03`, `ADV-NONPRIME-01`, `ADV-CONDITIONAL-01`, `ADV-OUTAGE-01`.
+**Limitations:** no per-case diagnostics were retained for the five failures, so their causes remain unresolved. The original full-evaluation result remains 24/38; this targeted rerun does not establish a new full-suite result.
+**Evidence:** `planning\evidence\46.8.4-pi-failed-case-rerun.md`.

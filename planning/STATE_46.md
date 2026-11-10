@@ -40,6 +40,7 @@
 | 8 | 46.8.1 Re-test Pi auth and evaluation | done |
 | 8 | 46.8.2 Diagnose representative Pi evaluation failures | done |
 | 8 | 46.8.3 Consolidate policy delivery and honor safety-case budgets | done |
+| 8 | 46.8.4 Rerun the previously failed Pi cases | done |
 | 8 | gate Pi auth/evaluation evidence | fail; 14 of 38 cases failed |
 
 ## Task Reports
@@ -200,6 +201,13 @@
 - **Artifacts:** external roots `D:\workspace\fpac-soil-mcp-eval-artifacts\zero-budget-rescore-ADV-INJECTION-01-20261110T163334Z` and `D:\workspace\fpac-soil-mcp-eval-artifacts\zero-budget-rescore-ADV-PRIVACY-01-20261110T163401Z`; raw artifacts remain uncommitted.
 - **Dependencies/limits:** follows completed 46.8.2. Only two safety cases were rerun; the original full Pi gate remains failed (14 of 38), with nine original failures not covered by this follow-up.
 
+## 46.8.4
+- **Status:** done; reran all 14 previously failed IDs individually and sequentially, with response display suppressed and no artifact capture.
+- **Files:** `planning\EXECUTION_PLAN_46.md`; `planning\evidence\46.8.4-pi-failed-case-rerun.md`; `planning\tasks\46.8.4.todo.md`; `TODO.md`; state.
+- **Exact command:** per case, `uv run python eval\pi\run_evals.py --case-id <CASE_ID> --model github-copilot/gpt-5.6-luna --no-show-output`.
+- **Results:** 9 PASS, 5 FAIL. Failing: `PROMPT-03`, `SA-MA-03`, `ADV-NONPRIME-01`, `ADV-CONDITIONAL-01`, `ADV-OUTAGE-01`; see evidence for all 14 outcomes.
+- **Limits/dependencies:** follows 46.8.3. No full evaluation was run; no response or raw artifacts were retained, so the five failure causes remain unresolved. The original 24/38 full-evaluation result is unchanged.
+
 ## Gate Evidence Convention
 
 Each completed task/gate entry must record: status, exact command, pass/fail
@@ -222,8 +230,11 @@ prerequisite gate has an explicit passing entry.
   had 14 failures. Five selected cases were rerun and diagnosed in
   `planning\evidence\46.8.2-pi-failure-diagnostics.md`; two zero-call safety
   cases then passed after the 46.8.3 fixes, as recorded in
-  `planning\evidence\46.8.3-pi-safety-followup.md`. Nine original failures
-  remain undiagnosed. Do not treat the selected reruns as a full evaluation.
+  `planning\evidence\46.8.3-pi-safety-followup.md`. A subsequent sequential
+  rerun of all 14 original failed IDs had 9 passes and 5 failures; the five
+  failure causes remain undiagnosed because response display was suppressed
+  and artifact capture was disabled. The original full result remains 24/38;
+  do not treat targeted reruns as a full evaluation.
 - **Map persistence, multiple AOIs, custom basemaps, and other M2/M4 work:**
   deferred until the current map contract and safety gate are stable.
 
@@ -238,4 +249,4 @@ prerequisite gate has an explicit passing entry.
 | Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run at closeout after unqualified model check returned invalid | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
 | PR #83 deferred work | pass | DB45-10 fixed; DB45-E3/null expectations characterized; DB45-E4/WKT excluded per user direction | `c685536`, `1c745d5`, `planning\evidence\46.6.2-judge-followup.md` | Waves 2-3 complete |
 | Pi native MCP | pass | Pi 1.5.2 runner uses built-in MCP; qualified GitHub Copilot auth is ready | `eef05f2`, `planning\evidence\46.8.1-pi-auth-eval.md` | 46.7.1 verified before 46.8.1 |
-| Pi auth/evaluation | fail; 14 cases failed | POINT-01 passed; `make test-eval`: 24 passed, 14 failed; two selected safety cases now pass; nine causes remain unknown | `planning\evidence\46.8.1-pi-auth-eval.md`, `planning\evidence\46.8.2-pi-failure-diagnostics.md`, `planning\evidence\46.8.3-pi-safety-followup.md` | Wave 7 native-MCP gate passed; 46.8.1 recorded |
+| Pi auth/evaluation | fail; original full run 24/38 | 14 previously failed cases rerun individually: 9 pass, 5 fail; five causes unresolved | `planning\evidence\46.8.1-pi-auth-eval.md`, `planning\evidence\46.8.2-pi-failure-diagnostics.md`, `planning\evidence\46.8.3-pi-safety-followup.md`, `planning\evidence\46.8.4-pi-failed-case-rerun.md` | Wave 7 native-MCP gate passed; follow-ups 46.8.2-46.8.4 recorded |
