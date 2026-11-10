@@ -119,7 +119,7 @@ evaluation setup/results evidence.
 | 5 | 46.5.1 | Synchronize planning and submission documentation | `planning\GOALS.md`; `planning\MASTER_PLAN.md`; `README.md`; `eval\databricks\README.md`; `apps\agent-fpac-soil-openai-sdk\README.md`; `eval\fpac_soil_mcp_harness\README.md` | `planning\evidence\46.5.1-closeout.md` | 46.2 gate, 46.3 gate, 46.4 gate |
 | 5 gate | - | Final serial validation and review | none | none | 46.5.1 |
 | 6 | 46.6.1 | Correct unavailable Site Assessment completion status | `src\fpac_soil_mcp\lesa.py`; `tests\test_lesa.py` | none | 46.3 gate |
-| 6 | 46.6.2 | Characterize DB45-E3 judge noise and null scores | `eval\prompt_test_cases.json`; `eval\databricks\scorers.py`; `eval\databricks\test_databricks_scorers.py`; `tests\eval\test_phase4_databricks_contract.py` | `planning\evidence\46.6.2-judge-followup.md` | 46.2 gate |
+| 6 | 46.6.2 | Characterize DB45-E3 judge noise and null scores | `eval\databricks\test_databricks_scorers.py`; `tests\eval\test_phase4_databricks_contract.py` | `planning\evidence\46.6.2-judge-followup.md` | 46.2 gate |
 | 6 gate | - | PR #83 evaluation follow-up gate | none | none | 46.6.1, 46.6.2 |
 | 7 | 46.7.1 | Migrate Pi eval runner to built-in MCP | `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | none | 46.5 gate |
 | 7 gate | - | Pi native-MCP contract gate | none | none | 46.7.1 |
@@ -419,26 +419,26 @@ user direction; do not duplicate or inspect its Plan 44 follow-up.
 ### 46.6.2 — Characterize DB45-E3 judge noise and null scores
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
-- **Files in scope:** `eval\prompt_test_cases.json`,
-  `eval\databricks\scorers.py`,
-  `eval\databricks\test_databricks_scorers.py`,
-  `tests\eval\test_phase4_databricks_contract.py`.
+- **Files in scope:** `eval\databricks\test_databricks_scorers.py` and
+  `tests\eval\test_phase4_databricks_contract.py`; scorer implementation and
+  the case dataset are read-only references.
 - **Can create:** `planning\evidence\46.6.2-judge-followup.md`.
 - **Depends on:** completed Wave 2 adversarial-evaluation gate.
-- **Spec:** Preserve a synthetic regression for the DB45-E3 compliant response
-  that received a false-negative `fppa_compliance` judge result, and clarify
-  why correctness/guideline scores are null when expected facts are absent.
-  Correct judge guidance or expectation mapping only where supported by the
-  case contract. Keep judge outputs model-assisted observations, separate from
-  deterministic safety checks; do not hide genuine failures or claim a
+- **Spec:** Add offline synthetic contract coverage for the DB45-E3 compliant
+  response that received a false-negative `fppa_compliance` judge result, and
+  clarify why correctness/guideline scores are null when expected facts are
+  absent. Do not change judge guidance or the evaluation corpus based on this
+  one observation. Keep judge outputs model-assisted observations, separate
+  from deterministic safety checks; do not hide genuine failures or claim a
   deterministic result from one model-judge observation.
 - **Anchors:** `FPPA_COMPLIANCE_GUIDELINE`, `judge_scorers`,
   `test_phase4_databricks_contract.py`, and existing SA-MA cases.
 - **Reference:** PR #83 body and DB45-E3 review finding;
   `planning\evidence\46-pr83-followup-research.md`.
-- **Checklist (6 steps max):** trace expected-fact/null mapping; add or amend a
-  synthetic case; add offline contract/scorer regression; adjust rubric only
-  if evidence warrants; record model-assisted limitations; run targeted tests.
+- **Checklist (6 steps max):** trace expected-fact/null mapping; add a
+  synthetic response fixture in the test; assert it aligns with the constructed
+  rubric and evidence tier; test absent expectation semantics; record the
+  model-assisted limitation; run targeted tests.
 - **Acceptance:** offline tests preserve the compliant-disclaimer case and
   explicit null-score semantics without invoking a judge or changing
   deterministic gates. Commands:

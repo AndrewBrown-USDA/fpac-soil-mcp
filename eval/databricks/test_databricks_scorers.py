@@ -11,9 +11,11 @@ mlflow = pytest.importorskip("mlflow")
 
 from scorers import (
     DETERMINISTIC_SCORER_NAMES,
+    FPPA_COMPLIANCE_GUIDELINE,
     _matches_expected,
     build_scorers,
     deterministic_scorers,
+    evidence_tier,
     resolve_path,
     scorer_names,
 )
@@ -62,6 +64,10 @@ INTERP_RESULT = {
 }
 INTERP_ARGS = {"mukeys": ["412850", "412851", "413100"]}
 POINT_ARGS = {"latitude": 41.8781, "longitude": -93.0977}
+DB45_E3_SYNTHETIC_RESPONSE = (
+    "This is preliminary soil screening only, not an official FPPA determination, "
+    "LESA score, Form AD-1006, or Form NRCS-CPA-106."
+)
 
 
 def test_resolve_path() -> None:
@@ -217,6 +223,24 @@ def test_build_scorers_names_and_judge_settings() -> None:
     for judge in built[len(DETERMINISTIC_SCORER_NAMES) :]:
         assert judge.model == "databricks:/databricks-claude-sonnet-4-5"
         assert judge.inference_params == {"temperature": 0}
+
+
+def test_db45_e3_fixture_aligns_with_constructed_judge_configuration() -> None:
+    scorer = next(
+        scorer
+        for scorer in build_scorers("databricks-claude-sonnet-4-5")
+        if scorer.name == "fppa_compliance"
+    )
+    synthetic_record = {
+        "inputs": {"request": "Give a synthetic preliminary soil screening result."},
+        "outputs": DB45_E3_SYNTHETIC_RESPONSE,
+    }
+
+    assert scorer.guidelines == FPPA_COMPLIANCE_GUIDELINE
+    assert scorer.required_columns.issubset(synthetic_record)
+    assert synthetic_record["outputs"] == DB45_E3_SYNTHETIC_RESPONSE
+    assert evidence_tier("fppa_compliance") == "model_assisted"
+    assert evidence_tier("prohibited_behaviors_absent") == "deterministic_contract"
 
 
 def test_scorer_names_match_built_scorers() -> None:
