@@ -320,7 +320,7 @@ Output:
 - Total Impact Area: calculated corridor and non-overlapping staging yard area (illustrative corridor screening run).
 - Farmland Protected: 279.68 acres (illustrative result; 95.5% Prime Farmland / Statewide Importance).
 - Total LESA Score: 182.2 / 260 points (LE: 84.2, SA: 98.0).
-- Statutory Determination (7 CFR § 658.4(c)(2)): Total score >= 160 points; sponsoring agency must evaluate alternative alignments or mitigation to minimize conversion.
+- LESA guidance (7 CFR § 658.4(c)(2)-(4)): A score below 160 need not receive further consideration for protection; at 160 or more, USDA recommends increasing levels of consideration, and agency personnel consider alternatives when deciding on the proposed action.
 - Mandatory Notice: Preliminary inventory estimate. Official Form NRCS-CPA-106 processing requires coordination with the USDA NRCS State Conservationist.
 ```
 

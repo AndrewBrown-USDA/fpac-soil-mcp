@@ -18,6 +18,11 @@ def test_site_assessment_uses_registry_wording_and_part_vi() -> None:
     assert any(item.startswith("Part V: Land Evaluation") for item in required)
     assert any(item.startswith("Part VI: Site Assessment") for item in required)
     assert "Part VI" in REGULATORY_NOTICE
+    threshold_guidance = next(item for item in required if item.startswith("Total LESA Score"))
+    assert "7 CFR § 658.4(c)(2)" in threshold_guidance
+    assert "§ 658.4(c)(3)-(4)" in threshold_guidance
+    assert "USDA recommends" in threshold_guidance
+    assert "must provide in-depth consideration" not in threshold_guidance
 
 
 def test_threshold_language_is_authoritative_without_siting_recommendation() -> None:
@@ -31,5 +36,8 @@ def test_threshold_language_is_authoritative_without_siting_recommendation() -> 
     ):
         assert "preliminary" in text.lower() or "screening" in text.lower()
         assert "recommend" in text.lower() or "does not prescribe" in text.lower()
-    assert "in-depth consideration" in exceeded
-    assert "does not trigger" in below
+    assert "USDA recommends" in exceeded
+    assert "§ 658.4(c)(3)" in exceeded
+    assert "agency personnel consider" in exceeded
+    assert "need not receive further consideration for protection" in below
+    assert "no additional sites need to be evaluated" in below

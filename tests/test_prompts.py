@@ -15,4 +15,8 @@ async def test_site_assessment_prompt_uses_registry_and_preserves_authority_boun
     assert "never guess facts or invent points" in text
     assert "Never propose a site, footprint, alignment, project design" in text
     assert "not an official FPPA determination" in text
+    assert "USDA recommends increasingly higher levels of consideration" in text
+    assert "§ 658.4(c)(3)" in text
+    assert "agency personnel consider" in text
+    assert "must provide in-depth consideration" not in text
     assert "Consider alternative sites if available" not in text

@@ -80,7 +80,7 @@ def register_tools(mcp: FastMCP) -> None:
             "preserves unavailable and indeterminate criteria, and reports authority/provenance. Performs spatial "
             "SSURGO soil clipping across the AOI geometry, computes area-weighted Land Evaluation (LE, 0-100), "
             "evaluates Site Assessment (SA, 0-160) criteria for Form AD-1006 (site) or Form NRCS-CPA-106 (corridor), "
-            "and applies the preliminary 160-point alternatives-consideration threshold under 7 CFR § 658.4(c)(2) "
+            "and applies the preliminary 160-point consideration guidance under 7 CFR § 658.4(c)(2)-(4) "
             "without issuing an official determination."
         ),
     )(calculate_preliminary_lesa)
