@@ -307,7 +307,7 @@ def test_parse_histogram_payload_derives_integer_classes_from_valid_edges():
                 {
                     "min": -0.5,
                     "max": 2.5,
-                    "size": 1,
+                    "size": 3,
                     "counts": [2, 8, 3],
                 }
             ]
@@ -322,9 +322,10 @@ def test_parse_histogram_payload_derives_integer_classes_from_valid_edges():
     "histogram",
     [
         {"min": -0.5, "max": 3.5, "size": 2, "counts": [2, 8]},
-        {"min": -0.5, "max": 2.5, "size": 1, "counts": [2, 8]},
-        {"min": 0, "max": 2, "size": 1, "counts": [2, 8]},
-        {"min": -0.5, "max": 2.5, "size": 1, "counts": [2, 8, 3, 1]},
+        {"min": -0.5, "max": 2.5, "size": 2, "counts": [2, 8, 3]},
+        {"min": 0, "max": 3, "size": 3, "counts": [2, 8, 3]},
+        {"min": -0.5, "max": 2.5, "size": 3.0, "counts": [2, 8, 3]},
+        {"min": -0.5, "max": 2.5, "size": 3, "counts": [2, 8, 3, 1]},
     ],
 )
 def test_parse_histogram_payload_rejects_ambiguous_count_edges(histogram):

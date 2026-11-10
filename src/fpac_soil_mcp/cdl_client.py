@@ -386,20 +386,25 @@ def parse_histogram_payload(
             and not isinstance(minimum, bool)
             and isinstance(maximum, (int, float))
             and not isinstance(maximum, bool)
-            and isinstance(size, (int, float))
+            and isinstance(size, int)
             and not isinstance(size, bool)
         ):
-            raise TypeError("Histogram counts require numeric min, max, and size metadata.")
-        if not all(math.isfinite(value) for value in (minimum, maximum, size)):
-            raise ValueError("Histogram min, max, and size metadata must be finite.")
-        if size != 1 or not _is_integer_center(minimum) or not _is_integer_center(maximum):
+            raise TypeError(
+                "Histogram counts require numeric min and max and integer size metadata."
+            )
+        if not all(math.isfinite(value) for value in (minimum, maximum)):
+            raise ValueError("Histogram min and max metadata must be finite.")
+        if size <= 0 or size != len(raw_counts):
+            raise ValueError("Histogram size must equal the positive count-array length.")
+        if (
+            maximum <= minimum
+            or not math.isclose((maximum - minimum) / size, 1, rel_tol=0, abs_tol=1e-9)
+            or not _is_integer_center(minimum)
+            or not _is_integer_center(maximum)
+        ):
             raise ValueError(
                 "Histogram counts must use unit-width buckets centered on integer classes."
             )
-        if maximum <= minimum or not math.isclose(
-            maximum - minimum, len(raw_counts) * size, rel_tol=0, abs_tol=1e-9
-        ):
-            raise ValueError("Histogram count length is inconsistent with min, max, and size.")
         items = ((int(minimum + offset + 0.5), count) for offset, count in enumerate(raw_counts))
     else:
         raise TypeError("Histogram must expose explicit bins or validated counts metadata.")

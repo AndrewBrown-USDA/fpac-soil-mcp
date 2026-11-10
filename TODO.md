@@ -143,3 +143,31 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 - Preserve existing user changes and completed TODO history.
 - Keep the configured ImageServer as the only supported source; do not add arbitrary URL or query passthrough.
 - Do not modify remote pull-request state or create a commit.
+
+---
+
+# TODO: PR #79 Histogram `size` Review
+
+## Goal
+Correct count-array histogram validation to interpret ArcGIS `size` as the number of bins while deriving CDL integer class values only when bins have width one.
+
+## Tasks
+
+### 1. Correct histogram metadata validation
+- [x] Require `size` to be a positive integer equal to the count-array length.
+- [x] Require the finite range `(max - min) / size` to equal one and retain the half-integer edge alignment needed to map bins to integer class values.
+- [x] Derive each class value from its corresponding bin position only after all metadata checks pass.
+
+### 2. Update focused histogram tests
+- [x] Change the valid three-count fixture to use `size=3`.
+- [x] Add or adjust rejection cases for mismatched size/count length and non-unit bin width.
+- [x] Preserve coverage for malformed edges and invalid counts.
+
+### 3. Validate and prepare review response
+- [x] Run focused CDL tests and relevant lint/format checks.
+- [x] Summarize why requiring unit-width bins preserves exact integer-key mapping without assuming numeric adjacency implies a relationship between CDL classes.
+
+## Notes
+- Treat numeric CDL codes as identifiers; neighboring codes are not assumed to be semantically related.
+- Do not map any count array to class codes unless its bin geometry supports one-to-one unit-width integer classes.
+- Preserve completed TODO history and do not modify remote pull-request state; commit locally only when requested.
