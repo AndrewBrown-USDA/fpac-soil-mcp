@@ -124,6 +124,22 @@ class SoilMapUnitAcreage(BaseModel):
         default=None,
         description="SDA interpretation rule or catalog provenance used for the productivity rating",
     )
+    productivity_coverage_status: str = Field(
+        default="unknown",
+        description="Selected productivity interpretation coverage status within this map unit",
+    )
+    productivity_rated_pct: float | None = Field(
+        default=None,
+        description="Percent of map-unit component area supporting the selected productivity rating",
+    )
+    productivity_total_pct: float | None = Field(
+        default=None,
+        description="Percent of map-unit component area included in the coverage calculation",
+    )
+    productivity_coverage_caveats: list[str] = Field(
+        default_factory=list,
+        description="Selected productivity interpretation coverage caveats for this map unit",
+    )
 
 
 class FarmlandCategoryBreakdown(BaseModel):
@@ -241,6 +257,22 @@ class CorridorCountySegment(BaseModel):
     coverage_status: str = Field(
         default="covered",
         description="Soil coverage status: 'covered', 'partially_covered', or 'unmapped'",
+    )
+    productivity_coverage_status: str = Field(
+        default="unknown",
+        description="Selected productivity rating coverage, independent of mapped-soil coverage",
+    )
+    component_rated_acres: float = Field(
+        default=0.0,
+        description="Map-unit acreage weighted by the share of components supporting the rating",
+    )
+    component_coverage_percent: float = Field(
+        default=0.0,
+        description="Percent of the county segment with rated productivity-component coverage",
+    )
+    productivity_coverage_caveats: list[str] = Field(
+        default_factory=list,
+        description="Selected productivity rating coverage caveats for this county segment",
     )
     urban_screening: dict[str, Any] = Field(
         default_factory=dict,
@@ -627,7 +659,7 @@ class SiteAssessmentSummary(BaseModel):
         description="Detailed breakdown of individual site assessment criteria",
     )
     evaluation_status: Literal["complete", "incomplete", "indeterminate"] = Field(
-        default="complete",
+        default="incomplete",
         description="Whether required Site Assessment inputs support evaluation",
     )
 
@@ -659,7 +691,11 @@ class PreliminaryLESAResponse(BaseModel):
     )
     mandatory_alternatives_required: bool | None = Field(
         default=False,
-        description="Statutory trigger under 7 CFR 658.4: true if total LESA score >= 160",
+        description=(
+            "True when the score is 160 or more, indicating the increased-protection "
+            "consideration guidance in 7 CFR § 658.4(c)(3)-(4); this does not require selecting "
+            "an alternative."
+        ),
     )
     threshold_status: Literal["evaluated", "not_evaluated"] = Field(
         default="evaluated",

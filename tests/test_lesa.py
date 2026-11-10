@@ -278,6 +278,7 @@ class TestLandEvaluationEvaluation:
         assert summary.rated_acreage == 80.0
         assert summary.unrated_acreage == 20.0
         assert summary.coverage_percent == 80.0
+        assert summary.coverage_status == "partial"
         # Weighted RR = (0.9468*50 + 0.9149*30) / 80 = (47.34 + 27.447) / 80 = 74.787 / 80 = 0.9348
         assert summary.aoi_relative_rating == 0.9348
         assert summary.candidate_le_score == 93.48
@@ -301,6 +302,7 @@ class TestLandEvaluationEvaluation:
         assert summary.rated_acreage == 0.0
         assert summary.unrated_acreage == 25.0
         assert summary.coverage_percent == 0.0
+        assert summary.coverage_status == "unrated"
         assert summary.aoi_relative_rating is None
         assert summary.candidate_le_score is None
         assert any("No rated soil map units found" in n for n in summary.notices)
@@ -315,7 +317,7 @@ class TestSiteAssessmentRules:
             project_farm_acres=250.0, county_average_farm_acres=200.0
         )
         assert pts == 10.0
-        assert "at least 100%" in desc
+        assert "As large as or larger than average" in desc
 
         # CFR deduction schedule: one point per complete 5% below average.
         for farm_acres, expected in (
@@ -328,7 +330,7 @@ class TestSiteAssessmentRules:
                 project_farm_acres=farm_acres, county_average_farm_acres=200.0
             )
             assert pts == expected
-            assert "deducted" in desc
+            assert "points awarded" in desc
 
         # Preserve the nonzero behavior for farms at or above the county average.
         pts, desc = calculate_criterion_7_score(
@@ -336,12 +338,30 @@ class TestSiteAssessmentRules:
         )
         assert pts == 10.0
 
-        # Invalid county average
-        pts, desc = calculate_criterion_7_score(
-            project_farm_acres=100.0, county_average_farm_acres=0.0
-        )
-        assert pts == 0.0
-        assert "Invalid or unavailable" in desc
+    @pytest.mark.parametrize(
+        ("project_acres", "county_average"),
+        [
+            (-1.0, 200.0),
+            (100.0, 0.0),
+            (100.0, -1.0),
+            (float("nan"), 200.0),
+            (float("inf"), 200.0),
+            (100.0, float("inf")),
+        ],
+    )
+    def test_criterion_7_rejects_invalid_farm_sizes(
+        self, project_acres: float, county_average: float
+    ) -> None:
+        with pytest.raises(ValueError):
+            calculate_criterion_7_score(project_acres, county_average)
+
+    def test_criterion_7_rejects_competing_acreage_and_explicit_inputs(self) -> None:
+        with pytest.raises(ValueError, match="cannot combine farm-acreage"):
+            evaluate_site_assessment(
+                {7: {"awarded_points": 8, "justification": "Verified size."}},
+                project_farm_acres=184.0,
+                county_average_farm_acres=200.0,
+            )
 
     def test_site_vs_corridor_evaluators(self) -> None:
         site_evals = get_criterion_evaluators("site")
@@ -497,6 +517,27 @@ class TestSiteAssessmentRules:
         assert criterion.evidence_status == "unavailable"
         assert criterion.is_verified is False
 
+    def test_criterion_2_measured_evidence_without_ratio_is_unavailable(self) -> None:
+        summary = evaluate_site_assessment(
+            {
+                2: {
+                    "perimeter_evidence": {
+                        "evidence_status": "measured",
+                        "is_agricultural": True,
+                        "is_verified": True,
+                        "source_provenance": ["verified agricultural source"],
+                    }
+                }
+            }
+        )
+        criterion = next(c for c in summary.criteria if c.criterion_number == 2)
+
+        assert criterion.awarded_points == 0.0
+        assert criterion.evidence_status == "unavailable"
+        assert criterion.input_authority == "unavailable"
+        assert criterion.is_verified is False
+        assert criterion.normalized_ratio is None
+
     def test_criterion_2_omitted_evidence_is_not_provided(self) -> None:
         summary = evaluate_site_assessment({2: {}})
         criterion = next(c for c in summary.criteria if c.criterion_number == 2)
@@ -509,6 +550,61 @@ class TestSiteAssessmentRules:
         summary = evaluate_site_assessment({})
         assert summary.evaluation_status == "incomplete"
         assert summary.total_points == 0.0
+
+    def test_missing_criteria_remain_incomplete_with_farm_size_inputs(self) -> None:
+        summary = evaluate_site_assessment(
+            None,
+            project_farm_acres=100.0,
+            county_average_farm_acres=200.0,
+        )
+
+        assert summary.evaluation_status == "incomplete"
+        assert sum(c.input_authority == "unavailable" for c in summary.criteria) == 11
+
+    def test_bare_float_site_assessment_does_not_evaluate_threshold(self) -> None:
+        response = evaluate_lesa(
+            project_name="Unstructured SA",
+            land_evaluation=90.0,
+            site_assessment=70.0,
+        )
+
+        assert response.site_assessment.evaluation_status == "indeterminate"
+        assert response.total_lesa_score is None
+        assert response.threshold_status == "not_evaluated"
+        assert response.mandatory_alternatives_required is None
+
+    def test_missing_land_evaluation_does_not_become_zero(self) -> None:
+        complete_site_assessment = {
+            number: {"awarded_points": 0, "justification": "Documented zero-point input."}
+            for number in range(1, 13)
+        }
+        response = evaluate_lesa(
+            project_name="Missing LE",
+            land_evaluation=None,
+            site_assessment=complete_site_assessment,
+        )
+
+        assert response.site_assessment.evaluation_status == "complete"
+        assert response.land_evaluation.candidate_le_score is None
+        assert response.total_lesa_score is None
+        assert response.threshold_status == "not_evaluated"
+        assert response.mandatory_alternatives_required is None
+
+        evaluated = evaluate_lesa(
+            project_name="Complete LESA",
+            land_evaluation=90.0,
+            site_assessment=complete_site_assessment,
+        )
+        assert evaluated.threshold_status == "evaluated"
+        assert evaluated.total_lesa_score == 90.0
+
+    def test_automated_flag_without_score_does_not_make_criterion_available(self) -> None:
+        summary = evaluate_site_assessment({1: {"is_automated": True}})
+        criterion = next(c for c in summary.criteria if c.criterion_number == 1)
+
+        assert criterion.input_authority == "unavailable"
+        assert criterion.is_automated is False
+        assert summary.evaluation_status == "incomplete"
 
     def test_analyst_override_requires_rationale(self) -> None:
         with pytest.raises(ValueError, match="require a rationale"):
@@ -540,20 +636,23 @@ class TestLESAThresholdEvaluation:
     def test_threshold_exceeded_site(self) -> None:
         exceeded, det, actions = evaluate_lesa_threshold(168.55, project_type="site")
         assert exceeded is True
-        assert "EQUALS OR EXCEEDS STATUTORY THRESHOLD (160)" in det
+        assert "IS 160 OR MORE" in det
+        assert "§ 658.4(c)(3)" in det
         assert any("Form AD-1006" in a for a in actions)
-        assert any("avoid or minimize" in a for a in actions)
+        assert any("increasing" in a.lower() for a in actions)
 
     def test_threshold_exceeded_corridor(self) -> None:
         exceeded, det, actions = evaluate_lesa_threshold(160.0, project_type="corridor")
         assert exceeded is True
-        assert "EQUALS OR EXCEEDS STATUTORY THRESHOLD (160)" in det
+        assert "IS 160 OR MORE" in det
+        assert "§ 658.4(c)(4)" in det
         assert any("Form NRCS-CPA-106" in a for a in actions)
 
     def test_threshold_not_exceeded(self) -> None:
         exceeded, det, actions = evaluate_lesa_threshold(138.88, project_type="site")
         assert exceeded is False
-        assert "IS BELOW STATUTORY THRESHOLD (160)" in det
+        assert "IS BELOW 160" in det
+        assert "need not receive further consideration for protection" in det
         assert any("Retain this preliminary screening score" in a for a in actions)
 
 
@@ -573,6 +672,7 @@ class TestUnifiedLESARouter:
         sa_summary = SiteAssessmentSummary(
             total_points=92.0,
             criteria=[],
+            evaluation_status="complete",
         )
         resp = evaluate_lesa(
             project_name="Story County Site",
@@ -592,10 +692,12 @@ class TestUnifiedLESARouter:
             site_assessment=80.0,
             project_type="site",
         )
-        assert resp.total_lesa_score == 150.0
-        assert resp.mandatory_alternatives_required is False
+        assert resp.total_lesa_score is None
+        assert resp.threshold_status == "not_evaluated"
+        assert resp.mandatory_alternatives_required is None
         assert resp.land_evaluation.candidate_le_score == 70.0
         assert resp.site_assessment.total_points == 80.0
+        assert resp.site_assessment.evaluation_status == "indeterminate"
 
     def test_zero_rated_acreage_le_does_not_evaluate_threshold(self) -> None:
         le_summary = LandEvaluationSummary(
@@ -672,7 +774,10 @@ class TestBenchmarkSuiteValidation:
                 resp = evaluate_lesa(
                     project_name=case["name"],
                     land_evaluation=le_sum,
-                    site_assessment=sa_data.get("total_sa_score", 0.0),
+                    site_assessment=SiteAssessmentSummary(
+                        total_points=sa_data.get("total_sa_score", 0.0),
+                        evaluation_status="complete",
+                    ),
                     project_type=proj_type,
                 )
 

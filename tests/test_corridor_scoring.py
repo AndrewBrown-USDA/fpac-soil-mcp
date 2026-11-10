@@ -92,33 +92,31 @@ def test_criterion_7_farm_size_calculation():
         project_farm_acres=350.0, county_average_farm_acres=200.0
     )
     assert pts == 10.0
-    assert "at least 100%" in desc
+    assert "as large as or larger than average" in desc.lower()
 
     # Farm exactly 100% of county average -> 10 pts
     pts, desc = calculate_criterion_7_score(
         project_farm_acres=200.0, county_average_farm_acres=200.0
     )
     assert pts == 10.0
-    assert "at least 100%" in desc
+    assert "100.0% of county average" in desc
 
     # Farm 40% below the county average -> 2 pts (one deduction per complete 5%)
     pts, desc = calculate_criterion_7_score(
         project_farm_acres=120.0, county_average_farm_acres=200.0
     )
     assert pts == 2.0
-    assert "8 point(s) deducted for each complete 5% below average" in desc
+    assert "60% to less than 65% of county average" in desc
 
     # Farm 50% or more below the county average -> 0 pts
     pts, desc = calculate_criterion_7_score(
         project_farm_acres=40.0, county_average_farm_acres=200.0
     )
     assert pts == 0.0
-    assert "10 point(s) deducted for each complete 5% below average" in desc
+    assert "50% or more below average" in desc
 
-    # Invalid county average
-    pts, desc = calculate_criterion_7_score(project_farm_acres=100.0, county_average_farm_acres=0.0)
-    assert pts == 0.0
-    assert "Invalid or unavailable" in desc
+    with pytest.raises(ValueError, match="county_average_farm_acres must be positive"):
+        calculate_criterion_7_score(project_farm_acres=100.0, county_average_farm_acres=0.0)
 
 
 def test_calculate_composite_le_supports_iterable_and_scalar_forms():
@@ -228,7 +226,7 @@ def test_lesa_threshold_evaluation_below_160():
     assert lesa_res.land_evaluation_score == 72.0
     assert lesa_res.total_lesa_score == 86.0
     assert lesa_res.threshold_exceeded is False
-    assert "BELOW STATUTORY THRESHOLD" in lesa_res.statutory_determination
+    assert "IS BELOW 160" in lesa_res.statutory_determination
     assert any("administrative record" in act for act in lesa_res.recommended_actions)
     assert any("NRCS-CPA-106" in act for act in lesa_res.recommended_actions)
 
@@ -293,7 +291,7 @@ def test_strategy_evaluator_dispatch():
 
 
 def test_lesa_threshold_evaluation_above_160():
-    """Test combined LESA score >= 160 triggering mandatory alternatives review."""
+    """Test 160+ scores receive the regulatory protection-consideration guidance."""
     # LE score of 85.0
     # SA score of 95.0 -> Total = 180.0 (>= 160)
     criteria_inputs = {
@@ -312,9 +310,7 @@ def test_lesa_threshold_evaluation_above_160():
     assert lesa_res.land_evaluation_score == 85.0
     assert lesa_res.total_lesa_score == 180.0
     assert lesa_res.threshold_exceeded is True
-    assert "EQUALS OR EXCEEDS STATUTORY THRESHOLD" in lesa_res.statutory_determination
-    assert any(
-        "Assess alternative corridor alignments" in act for act in lesa_res.recommended_actions
-    )
-    assert any("Evaluate corridor designs" in act for act in lesa_res.recommended_actions)
+    assert "IS 160 OR MORE" in lesa_res.statutory_determination
+    assert any("USDA recommends" in act for act in lesa_res.recommended_actions)
+    assert any("convert fewer acres" in act for act in lesa_res.recommended_actions)
     assert any("Form NRCS-CPA-106" in act for act in lesa_res.recommended_actions)

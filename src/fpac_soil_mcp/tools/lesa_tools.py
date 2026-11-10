@@ -94,6 +94,7 @@ def _score_registry_facts(
                 for band in definition.bands
                 if (
                     definition.answer_type == "qualitative"
+                    and value is not None
                     and str(value).strip().lower() in {band.band_id.lower(), band.label.lower()}
                 )
                 or (
@@ -182,7 +183,7 @@ def calculate_preliminary_lesa(
     preserves unavailable and indeterminate criteria, and reports authority/provenance. Performs spatial SSURGO
     soil clipping across the AOI geometry, computes area-weighted Land Evaluation (LE, 0-100), evaluates Site
     Assessment (SA, 0-160) criteria for Form AD-1006 (site) or Form NRCS-CPA-106 (corridor), and applies the
-    preliminary 160-point alternatives-consideration threshold under 7 CFR § 658.4(c)(2) without issuing an
+    preliminary 160-point consideration guidance under 7 CFR § 658.4(c)(2)-(4) without issuing an
     official determination.
 
     Args:
@@ -203,7 +204,7 @@ def calculate_preliminary_lesa(
 
     Returns:
         PreliminaryLESAResponse containing Land Evaluation summary, Site Assessment criteria breakdown,
-        total LESA score (0-260) when evaluable, mandatory alternatives threshold state, and regulatory citations.
+        total LESA score (0-260) when evaluable, threshold indicator, and regulatory citations.
     """
     analysis_geometry: dict[str, Any] | str = geometry
     norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
@@ -264,12 +265,18 @@ def calculate_preliminary_lesa(
                 if unit.get("productivity_rating") is not None:
                     rated_acreage += acres
         rated_acreage = float(
-            reconciliation.get("rated_productivity_acres", round(rated_acreage, 2))
+            reconciliation.get(
+                "component_rated_productivity_acres",
+                reconciliation.get("rated_productivity_acres", round(rated_acreage, 2)),
+            )
         )
         unrated_acreage = float(
             reconciliation.get(
-                "unrated_productivity_acres",
-                round(max(0.0, total_acreage - rated_acreage), 2),
+                "component_unrated_productivity_acres",
+                reconciliation.get(
+                    "unrated_productivity_acres",
+                    round(max(0.0, total_acreage - rated_acreage), 2),
+                ),
             )
         )
         coverage_percent = (
@@ -477,38 +484,10 @@ def calculate_preliminary_lesa(
         productivity_index=normalized_productivity_index,
     )
 
-    registry_facts = scored_registry_facts
     for criterion in lesa_response.site_assessment.criteria:
-        raw_fact = registry_facts.get(criterion.criterion_number) or registry_facts.get(
-            str(criterion.criterion_number)
-        )
-        if isinstance(raw_fact, dict):
-            definition = SITE_ASSESSMENT_REGISTRY.criterion(criterion.criterion_number)
-            if (
-                raw_fact.get("input_authority") != "unavailable"
-                and not criterion.is_statutorily_zeroed
-            ):
-                value = raw_fact.get(
-                    "value",
-                    raw_fact.get(
-                        "answer",
-                        raw_fact.get(
-                            "percentage"
-                            if definition.answer_type == "percentage"
-                            else "distance_miles"
-                            if definition.answer_type == "distance_miles"
-                            else "category"
-                        ),
-                    ),
-                )
-                has_value = value is not None
-                criterion.input_authority = "analyst_proposed" if has_value else "unavailable"
-                criterion.is_automated = False
-                criterion.is_verified = bool(raw_fact.get("is_verified")) and has_value
-                criterion.justification = raw_fact.get("justification", criterion.justification)
-                criterion.source_provenance = raw_fact.get("source_provenance", [])
-            criterion.rule_reference = definition.citation
-            criterion.rule_version = SITE_ASSESSMENT_REGISTRY.schema_version
+        definition = SITE_ASSESSMENT_REGISTRY.criterion(criterion.criterion_number)
+        criterion.rule_reference = definition.citation
+        criterion.rule_version = SITE_ASSESSMENT_REGISTRY.schema_version
 
     # Append any polygon limitations or warnings
     if polygon_response is not None and polygon_response.limitations:
