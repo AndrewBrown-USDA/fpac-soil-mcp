@@ -35,6 +35,7 @@ V2_FIELDS = frozenset(
         "guidelines",
         "force_tool_use",
         "live_data_sensitive",
+        "evidence_tier",
         "verified_on",
     }
 )
@@ -44,7 +45,13 @@ ALLOWED_FIELDS = frozenset(REQUIRED_V1_FIELDS) | OPTIONAL_V1_FIELDS | V2_FIELDS
 SYNTHETIC_TOOLS = frozenset({"read_resource", "get_prompt"})
 
 # v2 fields copied into MLflow `expectations` when present and non-empty (contract C3).
-EXPECTATION_FIELDS = ("expected_tool_calls", "expected_facts", "numeric_expectations", "guidelines")
+EXPECTATION_FIELDS = (
+    "expected_tool_calls",
+    "expected_facts",
+    "numeric_expectations",
+    "guidelines",
+    "evidence_tier",
+)
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -143,6 +150,12 @@ def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
     for field in ("force_tool_use", "live_data_sensitive"):
         if field in case and not isinstance(case[field], bool):
             err(field, "expected bool")
+
+    if "evidence_tier" in case and (
+        not isinstance(case["evidence_tier"], str)
+        or case["evidence_tier"] not in {"deterministic_contract", "model_assisted"}
+    ):
+        err("evidence_tier", "expected deterministic_contract or model_assisted")
 
     if "verified_on" in case:
         value = case["verified_on"]

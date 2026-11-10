@@ -26,6 +26,22 @@ uv sync --group eval-databricks
 On serverless compute, MLflow is preinstalled. The notebook handles its own
 installs via `%pip`.
 
+### Serverless credentials
+
+The CLI launched from the project `uv` virtual environment may fail on
+serverless with `default auth: cannot configure default credentials`: notebook
+session credentials are not necessarily available inside that environment. Do
+not catch or suppress this failure, report it as an environment limitation, and
+do not treat it as a successful evaluation.
+
+When workspace credentials are available in the serverless notebook session,
+run the evaluation from that session's Python after installing the checked-out
+project plus `mlflow>=3.12,<4` and `databricks-sdk[openai]>=0.122` (the notebook
+wrapper uses `%pip`). After the install/restart, put `eval/databricks`, `eval`,
+and `src` first on `sys.path` before importing the runner. Run the T1 evaluation
+only when the session's Databricks credentials are confirmed available; record
+any authentication or evaluation failure rather than converting it to a pass.
+
 ## Running
 
 ### CLI (local or serverless)
@@ -41,7 +57,10 @@ uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --groun
 # Specific cases
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --cases POINT-01,DISC-01
 
-# All 20 cases
+# Plan 45 model-assisted Site Assessment cases
+uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --cases SA-MA-01,SA-MA-02,SA-MA-03,SA-MA-04
+
+# All 24 cases
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --all
 ```
 
@@ -129,3 +148,7 @@ track across runs, not pass/fail gates.
 
 All results are preliminary screening and are not an official FPPA determination,
 LESA score, Form AD-1006, or NRCS-CPA-106.
+
+Databricks agent and judge scores are model-assisted observations. They are not
+the deterministic contract-test gate, proof of deterministic correctness, or an
+official FPPA determination.

@@ -212,12 +212,12 @@ def scorer_names(judge_model: str | None = None) -> list[str]:
 
 
 def evidence_tier(scorer_name: str) -> str:
-    """Classify scorer output without conflating contract gates and judges."""
+    """Label deterministic checks and model judges as distinct evidence, not interchangeable proof."""
     return (
         "deterministic_contract" if scorer_name in DETERMINISTIC_SCORER_NAMES else "model_assisted"
     )
 
 
 def build_scorers(judge_model: str) -> list[Any]:
-    """Deterministic scorers followed by judges (D9)."""
+    """Return deterministic contract checks followed by non-contract model judges (D9)."""
     return deterministic_scorers() + judge_scorers(judge_model)
