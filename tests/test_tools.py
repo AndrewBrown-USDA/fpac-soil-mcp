@@ -228,6 +228,31 @@ class TestFPPATools:
                 site_assessment_inputs={"criteria_inputs": {"1": {"awarded_points": 15}}},
             )
 
+    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    def test_preliminary_lesa_keeps_unknown_registry_fact_unavailable(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 70.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "manifest": {},
+        }
+
+        response = calculate_preliminary_lesa(
+            project_name="unknown-fact",
+            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            site_assessment_inputs={"criteria_facts": {"1": {"percentage": "unknown"}}},
+        )
+
+        criterion = next(
+            item for item in response.site_assessment.criteria if item.criterion_number == 1
+        )
+        assert criterion.awarded_points == 0.0
+        assert criterion.input_authority == "unavailable"
+        assert criterion.is_automated is False
+        assert response.site_assessment.evaluation_status == "incomplete"
+        assert response.threshold_status == "not_evaluated"
+
     """Tests for explain_fppa_screening_scope and list_farmland_classes."""
 
     def test_explain_fppa_screening_scope(self) -> None:
