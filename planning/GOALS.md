@@ -11,8 +11,10 @@ measured service performance: latency, failure, and retry metrics are null;
 deployed `/mcp` and model-assisted results were not run. Wave 5 synchronizes
 the evaluation and submission documentation. Final serial validation passed:
 `make check` completed with 843 passed and 45 deselected, followed by
-`make app-check` with 177 passed. `make test-eval` remains unrun pending Pi
-provider authentication (`invalid_state`). The PR #79/CDL dependency and
+`make app-check` with 177 passed. `make test-eval` was not run at that gate
+after an unqualified Pi model check returned `invalid_state`; the qualified
+GitHub Copilot model auth check is now ready, but the Pi 1.5.2 runner needs
+its native-MCP update before evaluation can run. The PR #79/CDL dependency and
 adjacency deferral remain in force.
 
 ## Circled Goal (Active)

@@ -118,6 +118,13 @@ evaluation setup/results evidence.
 | 4 gate | - | Criterion 2 evidence gate | none | none | 46.4.2 |
 | 5 | 46.5.1 | Synchronize planning and submission documentation | `planning\GOALS.md`; `planning\MASTER_PLAN.md`; `README.md`; `eval\databricks\README.md`; `apps\agent-fpac-soil-openai-sdk\README.md`; `eval\fpac_soil_mcp_harness\README.md` | `planning\evidence\46.5.1-closeout.md` | 46.2 gate, 46.3 gate, 46.4 gate |
 | 5 gate | - | Final serial validation and review | none | none | 46.5.1 |
+| 6 | 46.6.1 | Correct unavailable Site Assessment completion status | `src\fpac_soil_mcp\lesa.py`; `tests\test_lesa.py` | none | 46.3 gate |
+| 6 | 46.6.2 | Characterize DB45-E3 judge noise and null scores | `eval\prompt_test_cases.json`; `eval\databricks\scorers.py`; `eval\databricks\test_databricks_scorers.py`; `tests\eval\test_phase4_databricks_contract.py` | `planning\evidence\46.6.2-judge-followup.md` | 46.2 gate |
+| 6 gate | - | PR #83 evaluation follow-up gate | none | none | 46.6.1, 46.6.2 |
+| 7 | 46.7.1 | Migrate Pi eval runner to built-in MCP | `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | none | 46.5 gate |
+| 7 gate | - | Pi native-MCP contract gate | none | none | 46.7.1 |
+| 8 | 46.8.1 | Re-test Pi auth and evaluation | evidence report only | `planning\evidence\46.8.1-pi-auth-eval.md` | 46.7 gate |
+| 8 gate | - | Pi auth and evaluation evidence gate | none | none | 46.8.1 |
 
 Tasks in the same wave have disjoint edit sets. Wave 1 tasks use the
 policy requirements recorded in this plan and can run in parallel; the gate
@@ -381,6 +388,107 @@ hand off exact required-rule list to 46.1.2.
 - **Acceptance:** documentation cross-links resolve, scope/deferrals are
   explicit, and the final serial validation commands are recorded.
   Command: `make check`; `make app-check`; `make test-eval`.
+
+## Addendum — PR #83 deferred work and current Pi CLI
+
+This addendum was requested after the original Waves 1–5 closeout. It does not
+reopen completed work. DB45-E4/WKT work remains explicitly out of scope per
+user direction; do not duplicate or inspect its Plan 44 follow-up.
+
+### 46.6.1 — Correct unavailable Site Assessment completion status
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** `src\fpac_soil_mcp\lesa.py`; `tests\test_lesa.py`.
+- **Depends on:** completed 46.3.1 MCP-contract gate.
+- **Spec:** PR #83 defers DB45-10: `evaluate_site_assessment(None, ...)` can
+  report `complete` even though 11 criteria are unavailable. Ensure completion
+  status reflects unavailable criteria for the no-input path. Preserve the
+  existing Criterion 7 machine estimate when acreage inputs are supplied and
+  do not change valid explicit-criteria scoring or public result shapes.
+- **Anchors:** `evaluate_site_assessment`; the `evaluation_status` derivation;
+  `test_missing_site_assessment_is_incomplete` and
+  `test_complete_factual_criterion_seven_remains_scored`.
+- **Reference:** PR #83 body, DB45-10; `planning\evidence\46-pr83-followup-research.md`.
+- **Checklist (5 steps max):** reproduce the direct-call status; define the
+  status invariant; fix status derivation; add regression assertions for
+  unavailable criteria and Criterion 7; run targeted LESA tests.
+- **Acceptance:** a `None`-input assessment with only Criterion 7 estimated
+  cannot report `complete`; explicit complete inputs retain their current
+  behavior. Command: `uv run pytest tests\test_lesa.py -q`.
+
+### 46.6.2 — Characterize DB45-E3 judge noise and null scores
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** `eval\prompt_test_cases.json`,
+  `eval\databricks\scorers.py`,
+  `eval\databricks\test_databricks_scorers.py`,
+  `tests\eval\test_phase4_databricks_contract.py`.
+- **Can create:** `planning\evidence\46.6.2-judge-followup.md`.
+- **Depends on:** completed Wave 2 adversarial-evaluation gate.
+- **Spec:** Preserve a synthetic regression for the DB45-E3 compliant response
+  that received a false-negative `fppa_compliance` judge result, and clarify
+  why correctness/guideline scores are null when expected facts are absent.
+  Correct judge guidance or expectation mapping only where supported by the
+  case contract. Keep judge outputs model-assisted observations, separate from
+  deterministic safety checks; do not hide genuine failures or claim a
+  deterministic result from one model-judge observation.
+- **Anchors:** `FPPA_COMPLIANCE_GUIDELINE`, `judge_scorers`,
+  `test_phase4_databricks_contract.py`, and existing SA-MA cases.
+- **Reference:** PR #83 body and DB45-E3 review finding;
+  `planning\evidence\46-pr83-followup-research.md`.
+- **Checklist (6 steps max):** trace expected-fact/null mapping; add or amend a
+  synthetic case; add offline contract/scorer regression; adjust rubric only
+  if evidence warrants; record model-assisted limitations; run targeted tests.
+- **Acceptance:** offline tests preserve the compliant-disclaimer case and
+  explicit null-score semantics without invoking a judge or changing
+  deterministic gates. Commands:
+  `uv run pytest eval\databricks\test_databricks_scorers.py tests\eval\test_phase4_databricks_contract.py -q`;
+  `uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q`.
+
+### 46.7.1 — Migrate Pi evaluation runner to built-in MCP
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py`.
+- **Depends on:** completed 46.5 final-validation gate.
+- **Spec:** Pi 1.5.2 rejects the runner's legacy `--mcp-config` argument. Use
+  Pi's built-in MCP configuration in the isolated temporary sandbox (project
+  `.pi\mcp.json`) and trust only that runner-controlled project config. Keep
+  the server on stdio via `uv run fpac-soil-mcp`; do not rely on or reinstall
+  `pi-mcp-adapter`, and do not modify global Pi configuration or persist
+  credentials.
+- **Anchors:** `create_sandbox`, `run_case` argument construction, and
+  `sandbox_env`/`test_pi_point_screening_evaluation`.
+- **Reference:** `pi --help`, `pi mcp --help`, and existing temporary-sandbox
+  invariants in `eval\pi\test_agent_eval.py`.
+- **Checklist (6 steps max):** update isolated config layout; use built-in MCP
+  CLI options; retain stdio server command; update command-construction tests;
+  assert no legacy flag; run offline Pi tests.
+- **Acceptance:** tests assert the temporary `.pi\mcp.json` configuration and
+  current Pi invocation without the removed `--mcp-config` flag. Command:
+  `uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q`.
+
+### 46.8.1 — Re-test Pi authentication and evaluation
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** evidence report only.
+- **Can create:** `planning\evidence\46.8.1-pi-auth-eval.md`.
+- **Depends on:** completed 46.7 Pi native-MCP gate.
+- **Spec:** Check the catalog-qualified provider/model without printing or
+  retaining credentials. Run `POINT-01` with the repository Pi runner and
+  `--no-show-output`, without capture. If it passes, run `make test-eval`;
+  otherwise stop after recording sanitized startup/tool diagnostics and do not
+  retry with guessed providers or model names.
+- **Reference:** `pi-mcp-eval` execution rules; current Pi auth check and
+  single-case diagnostics recorded at the addendum start.
+- **Checklist (5 steps max):** record Pi version; check
+  `github-copilot/gpt-5.6-luna` readiness; run one case without output capture;
+  run full eval only if the case passes; record sanitized results and limits.
+- **Acceptance:** evidence includes exact commands, auth readiness, per-case
+  status and tool-evidence classification, and whether the full opt-in suite
+  ran; no credentials, prompt text, coordinates, geometry, or raw artifacts.
+  Commands: `pi auth check --model github-copilot/gpt-5.6-luna --json --no-refresh`;
+  `uv run python eval\pi\run_evals.py --case-id POINT-01 --no-show-output`;
+  then `make test-eval` only if POINT-01 passes.
 
 ## Hazard Notes
 

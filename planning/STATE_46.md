@@ -11,6 +11,8 @@
   `make app-check`, `make test-eval`; deployed measurements opt-in.
 - **Active constraints:** ADR 0002, 0003, 0011, 0012, 0014, 0015, 0016, 0017.
 - **Concurrency limit:** two workers maximum; shared gates run serially.
+- **Addendum opened:** 2026-11-10, at user request; original Waves 1-5 remain
+  closed and their final validation record is unchanged.
 
 ## Wave board
 
@@ -30,6 +32,13 @@
 | 4 | gate Criterion 2 evidence | pass with limits |
 | 5 | 46.5.1 Synchronize documentation | done |
 | 5 | gate final validation | pass with limits |
+| 6 | 46.6.1 Correct unavailable SA completion status | pending |
+| 6 | 46.6.2 Characterize DB45-E3 judge/null behavior | pending |
+| 6 | gate PR #83 follow-ups | pending |
+| 7 | 46.7.1 Migrate Pi eval to built-in MCP | pending |
+| 7 | gate Pi native-MCP contract | pending |
+| 8 | 46.8.1 Re-test Pi auth and evaluation | pending |
+| 8 | gate Pi auth/evaluation evidence | pending |
 
 ## Task Reports
 
@@ -124,11 +133,11 @@
 - **Files:** `planning\GOALS.md`, `planning\MASTER_PLAN.md`, `README.md`, `eval\databricks\README.md`, `apps\agent-fpac-soil-openai-sdk\README.md`, `eval\fpac_soil_mcp_harness\README.md`, `planning\evidence\46.5.1-closeout.md`, task TODO.
 - **Validation:** local Markdown links and `git diff --check` passed; `make check` — 843 passed, 45 deselected; `make app-check` — 177 passed.
 - **Commit:** `94d740d` (`docs(eval): synchronize safety evaluation guidance`); dependency Wave 4 Criterion 2 evidence gate passed with limitations.
-- **Deviations/gotchas:** `make test-eval` was not run because Pi auth check returned `invalid_state`; no model-assisted or deployed performance result is claimed.
+- **Deviations/gotchas:** `make test-eval` was not run after the unqualified Pi model auth check returned `invalid_state`; no model-assisted or deployed performance result is claimed.
 
 ## Wave 5 Final Validation Gate
 - **Status:** pass with limits; serial offline checks passed, Pi model-assisted evaluation remains unavailable.
-- **Exact commands:** `make check` — 843 passed, 45 deselected; then `make app-check` — 177 passed. `make test-eval` not run because `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid_state`.
+- **Exact commands:** `make check` — 843 passed, 45 deselected; then `make app-check` — 177 passed. At that closeout, `make test-eval` was not run after `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid_state`; the model was unqualified.
 - **Evidence:** `planning\evidence\46.5.1-closeout.md`; stale Databricks dry-run assertions corrected in commit `94dd6c8`.
 - **Dependency confirmation:** Waves 2, 3, and 4 gates are complete; Wave 5 documentation is synchronized.
 
@@ -146,9 +155,13 @@ prerequisite gate has an explicit passing entry.
 - **Deployed `/mcp` measurements:** blocked when credentials, deployment, or
   upstream services are unavailable; record explicit unavailable fields rather
   than substituting local timings.
-- **Pi `make test-eval`:** not run because `pi auth check --model gpt-5.6-luna
-  --json --no-refresh` returned `invalid_state`; rerun when provider auth is
-  available.
+- **Pi built-in MCP follow-up:** Pi 1.5.2 is installed. The unqualified
+  `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid`,
+  but the catalog-qualified `pi auth check --model
+  github-copilot/gpt-5.6-luna --json --no-refresh` returned `ready` with OAuth.
+  One POINT-01 run failed before provider use because the runner passed the
+  removed `--mcp-config` option. Waves 7-8 track native MCP migration and
+  re-test; no credentials or evaluation artifacts were retained.
 - **Map persistence, multiple AOIs, custom basemaps, and other M2/M4 work:**
   deferred until the current map contract and safety gate are stable.
 
@@ -160,4 +173,6 @@ prerequisite gate has an explicit passing entry.
 | Adversarial evaluation | pass | dataset: 116 passed; scorer Python: 163 passed, 2 deselected; harness: 13 passed; check passed | `00f7e8f`, `62a2286` | 46.2.1 then 46.2.2 verified |
 | MCP/map safety | pass | MCP contract pytest: 83 passed, 3 deselected; app-check: 177 passed; targeted map: 59 passed | `0000eef`, `b50e30a` | both dependencies verified; frontend bundle unavailable under installed Node v26 |
 | Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, `e75de91` | 46.4.1 and 46.4.2 verified |
-| Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run (Pi auth unavailable) | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
+| Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run at closeout after unqualified model check returned invalid | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
+| PR #83 deferred work | pending | DB45-10 and DB45-E3 follow-ups planned; DB45-E4/WKT excluded per user direction | `planning\evidence\46-pr83-followup-research.md` | Original Waves 2-3 complete |
+| Pi native MCP | blocked pending runner update | Pi 1.5.2 rejects `--mcp-config`; qualified GitHub Copilot auth is ready | Wave 7-8 task evidence pending | Depends on 46.7.1 before eval rerun |
