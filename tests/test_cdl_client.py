@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from fpac_soil_mcp.cdl_client import CDLClient
+from fpac_soil_mcp.cdl_client import CDLClient, parse_histogram_payload
 from fpac_soil_mcp.cdl_models import CDLAnalysisStatus
 
 
@@ -232,7 +232,55 @@ def test_cdl_client_rejects_ambiguous_histogram_shape():
     )
 
     assert response.status is CDLAnalysisStatus.AMBIGUOUS
-    assert "explicit bins" in response.error_message
+    assert "Histogram counts require" in response.error_message
+
+
+def test_parse_histogram_payload_derives_integer_classes_from_valid_edges():
+    bins = parse_histogram_payload(
+        {
+            "histograms": [
+                {
+                    "min": -0.5,
+                    "max": 2.5,
+                    "size": 1,
+                    "counts": [2, 8, 3],
+                }
+            ]
+        },
+        nodata_class_values={0},
+    )
+
+    assert [(item.class_value, item.pixel_count) for item in bins] == [(0, 2), (1, 8), (2, 3)]
+
+
+@pytest.mark.parametrize(
+    "histogram",
+    [
+        {"min": -0.5, "max": 3.5, "size": 2, "counts": [2, 8]},
+        {"min": -0.5, "max": 2.5, "size": 1, "counts": [2, 8]},
+        {"min": 0, "max": 2, "size": 1, "counts": [2, 8]},
+        {"min": -0.5, "max": 2.5, "size": 1, "counts": [2, 8, 3, 1]},
+    ],
+)
+def test_parse_histogram_payload_rejects_ambiguous_count_edges(histogram):
+    with pytest.raises((TypeError, ValueError)):
+        parse_histogram_payload(
+            {"histograms": [histogram]},
+            nodata_class_values={0},
+        )
+
+
+@pytest.mark.parametrize("count", [8.9, -1, -0.5, True])
+def test_parse_histogram_payload_rejects_invalid_counts(count):
+    with pytest.raises((TypeError, ValueError)):
+        parse_histogram_payload(
+            {
+                "histograms": [
+                    {"bins": [{"value": 1, "count": count}]},
+                ]
+            },
+            nodata_class_values={0},
+        )
 
 
 @pytest.mark.parametrize("failure", ["status", "request", "malformed"])

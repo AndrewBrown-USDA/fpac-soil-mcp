@@ -117,9 +117,9 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 - [x] Add mocked tests proving different vintages produce different selectors and unverifiable vintages do not produce success.
 
 ### 2. Validate histogram semantics
-- [ ] Require explicit bins or validate count-array `min`, `max`, `size`, integer-centered unit-width buckets, and count length before deriving class values.
-- [ ] Reject fractional, negative, non-finite, or inconsistent counts without coercing them through `int()`.
-- [ ] Add regression tests for grouped bins, malformed edges, fractional counts, negative counts, and valid edge-based CDL bins.
+- [x] Require explicit bins or validate count-array `min`, `max`, `size`, integer-centered unit-width buckets, and count length before deriving class values.
+- [x] Reject fractional, negative, non-finite, or inconsistent counts without coercing them through `int()`.
+- [x] Add regression tests for grouped bins, malformed edges, fractional counts, negative counts, and valid edge-based CDL bins.
 
 ### 3. Enforce NoData and coverage boundaries
 - [ ] Remove effective NoData classes from the qualifying set before marking bins or calculating the agricultural numerator.

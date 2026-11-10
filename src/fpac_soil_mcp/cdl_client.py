@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -353,7 +354,12 @@ def parse_histogram_payload(
                 raise TypeError("Histogram bins must be objects.")
             class_value = raw_bin.get("value", raw_bin.get("classValue"))
             pixel_count = raw_bin.get("count", raw_bin.get("pixelCount"))
-            if not isinstance(class_value, int) or not isinstance(pixel_count, int):
+            if (
+                not isinstance(class_value, int)
+                or isinstance(class_value, bool)
+                or not isinstance(pixel_count, int)
+                or isinstance(pixel_count, bool)
+            ):
                 raise TypeError("Histogram bins must expose integer value and count fields.")
             parsed.append(
                 CDLHistogramBin(
@@ -366,21 +372,42 @@ def parse_histogram_payload(
 
     raw_counts = histogram.get("counts")
     minimum = histogram.get("min")
+    maximum = histogram.get("max")
+    size = histogram.get("size")
     if isinstance(raw_counts, dict):
         items = raw_counts.items()
-    elif isinstance(raw_counts, list) and isinstance(minimum, (int, float)):
-        class_centers = (minimum + offset + 0.5 for offset in range(len(raw_counts)))
-        items = ((round(center), count) for center, count in zip(class_centers, raw_counts))
+    elif isinstance(raw_counts, list):
+        if not (
+            isinstance(minimum, (int, float))
+            and not isinstance(minimum, bool)
+            and isinstance(maximum, (int, float))
+            and not isinstance(maximum, bool)
+            and isinstance(size, (int, float))
+            and not isinstance(size, bool)
+        ):
+            raise TypeError("Histogram counts require numeric min, max, and size metadata.")
+        if not all(math.isfinite(value) for value in (minimum, maximum, size)):
+            raise ValueError("Histogram min, max, and size metadata must be finite.")
+        if size != 1 or not _is_integer_center(minimum) or not _is_integer_center(maximum):
+            raise ValueError(
+                "Histogram counts must use unit-width buckets centered on integer classes."
+            )
+        if maximum <= minimum or not math.isclose(
+            maximum - minimum, len(raw_counts) * size, rel_tol=0, abs_tol=1e-9
+        ):
+            raise ValueError("Histogram count length is inconsistent with min, max, and size.")
+        items = ((int(minimum + offset + 0.5), count) for offset, count in enumerate(raw_counts))
     else:
-        raise TypeError("Histogram must expose explicit bins or counts with an integer min.")
+        raise TypeError("Histogram must expose explicit bins or validated counts metadata.")
 
     parsed = []
     for raw_value, raw_count in items:
-        try:
-            class_value = int(raw_value)
-            pixel_count = int(raw_count)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("Histogram class values and counts must be integers.") from exc
+        if not isinstance(raw_value, int) or isinstance(raw_value, bool):
+            raise TypeError("Histogram class values must be integers.")
+        if not isinstance(raw_count, int) or isinstance(raw_count, bool):
+            raise TypeError("Histogram counts must be integers.")
+        class_value = raw_value
+        pixel_count = raw_count
         parsed.append(
             CDLHistogramBin(
                 class_value=class_value,
@@ -389,3 +416,8 @@ def parse_histogram_payload(
             )
         )
     return parsed
+
+
+def _is_integer_center(edge: float) -> bool:
+    """Return whether a half-pixel edge is centered on an integer class."""
+    return math.isclose(edge - 0.5, round(edge - 0.5), rel_tol=0, abs_tol=1e-9)
