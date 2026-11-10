@@ -400,6 +400,13 @@ Track A M3 and required before Track A M4.
 
 **Goal**: Deliver a structured, machine-readable MCP visualization contract and an interactive map client (the agent-app map, [Track A](#track-a-agent-app)) enabling bi-directional map interaction, geometry staging, layer rendering, and resilient live/offline presentation.
 
+**Status (2026-11-09):** Track A M3-M5 delivered by [Plan 44](EXECUTION_PLAN_44.md) and [ADR 0017](../docs/decisions/0017-server-map-result-contract.md): an opt-in `map` block (descriptors by default, inline GeoJSON with server legends) on `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and `get_soil_polygons_by_geometry`; results drawn on the agent-app map from that block, with "Show on map" on tool cards and a click popup on result polygons; fixed context overlays (SSURGO WMS, TIGERweb counties and 2020 urban areas) with identify and "Use as AOI". Remaining Phase 8 items:
+- The full section 4 envelope (`analysis_id`, `status`, `summary`, `metrics`, `provenance`, `privacy` as top-level objects; ADR 0017 maps what exists today).
+- Offline fixture mode (`demo_testbeds.gpkg`, `data_mode: "fixture"` banners) and the two benchmark testbeds.
+- Drawing corridor centerlines and alternatives on the map; multiple labelled AOIs.
+- The 0.1% map-to-table tolerance exit check as an automated test.
+- Track A M6 (more formats, including WKT input) and M7 (hardening).
+
 **Scope & Deliverables** (referencing `planning/SPATIAL_VISUALIZATION_STRATEGY.md`):
 1. **Structured MCP Visualization Response Envelope & Layer Contract**:
    - Standardize a versioned JSON output envelope (`schema_version: "1.0"`) across spatial tools returning:
@@ -484,14 +491,21 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 
 - **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and keeps the preliminary-screening boundary ([ADR 0003](../docs/decisions/0003-preliminary-screening-authority-boundary.md)).
 - **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat.
-- **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md) and [42](EXECUTION_PLAN_42.md); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md).
+- **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md), [42](EXECUTION_PLAN_42.md) and [44](EXECUTION_PLAN_44.md) (M3-M5, [ADR 0017](../docs/decisions/0017-server-map-result-contract.md)); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md).
 - **Backlog:**
   - Delivered: M0, vendor and pin the chat UI (ADR 0015).
   - Resolved: M1 AOI handoff, by ADR 0016 (a single AOI per conversation as session context, not pre-trace redaction). Multiple or labelled AOIs stay in the backlog.
   - Delivered (MVP): M2, polygon and rectangle drawing and GeoJSON paste or upload ([Plan 42](EXECUTION_PLAN_42.md)).
-  - Next: M3, the server `map` envelope, tracked in [Phase 8](#phase-8-spatial-visualization--interactive-client-demo); it must precede M4.
-  - Proposed: remaining M2 items: lines and corridors, points, WKT and other formats, an AOI list, custom basemaps.
-  - Proposed: M4-M7, scoped after M3.
+  - Delivered: M3, the server `map` result ([ADR 0017](../docs/decisions/0017-server-map-result-contract.md), [Plan 44](EXECUTION_PLAN_44.md)); see [Phase 8](#phase-8-spatial-visualization--interactive-client-demo) for what remains of the full envelope.
+  - Delivered: M4, results on the map from the `map` result, "Show on map" on tool cards (both analyze tools and `get_soil_polygons_by_geometry`), and a click popup on result polygons with the map unit, farmland class, acres and productivity the server sent ([Plan 44](EXECUTION_PLAN_44.md) A6, A7).
+  - Delivered: M5, a fixed context-overlay catalog (SSURGO WMS, TIGERweb counties and 2020 urban areas) loaded by the browser, a Layers control on the map, identify popups and "Use as AOI" for counties and urban areas under the vertex cap ([Plan 44](EXECUTION_PLAN_44.md) D5, D6; [trial](evidence/44.10.1-trial.md)).
+  - Proposed: remaining M2 items: lines and corridors, points, an AOI list, custom basemaps.
+  - Proposed: WKT input for `get_soil_polygons_by_geometry` (POLY-02 passes WKT; the tool takes GeoJSON only; [44.11.3 eval](evidence/44.11.3-eval.md)), with other formats in M6.
+  - Proposed: serve the AOI vertex limit from the server so the frontend uses the same value as `GEO_MAX_VERTICES` ([Plan 44 review](REVIEW_44.md) R7).
+  - Proposed: map unit component summary in the result popup (drainage class, hydric rating, slope); needs a new SDA query, so not part of `include_map` ([ADR 0017](../docs/decisions/0017-server-map-result-contract.md)).
+  - Proposed: richer SSURGO overlay identify outside a result (map unit name, farmland class; SDA WMS returns `mukey` and `musym` only) and app-drawn SSURGO labels (WMS labels are small at native size) ([Plan 44 review](REVIEW_44.md) R13, R14).
+  - Proposed: the efficiency review ([handoff](HANDOFF_EFFICIENCY_REVIEW.md)).
+  - Proposed: M6 (more formats) and M7 (hardening).
   - Proposed: opt-in chat history and stored sessions (template chat database, for example Lakebase) for users who opt in or deployments in approved secure environments, including whether the AOI is stored with the chat ([Plan 42](EXECUTION_PLAN_42.md) deferral).
   - Delivered: one AOI reference for the map screening and the chat (the map panel sends the chat's reference to the screening route; [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md), [42.6.1 evidence](evidence/42.6.1-trial.md)).
   - Proposed: an agent-guided Site Assessment with formalized, rule-based scoring for consistent LESA results: server-side § 658.5(b) scoring from facts, a shared question schema, system-instruction and prompt updates, prefill from NASS and TIGERweb, a multi-turn consistency eval ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md)). The server work belongs on the server roadmap.

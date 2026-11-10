@@ -7,7 +7,6 @@ from ruamel.yaml import YAML
 
 APP_DIR = Path(__file__).resolve().parent.parent
 APP_NAME = "agent-fpac-soil-openai-sdk"
-MCP_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
 MODEL = "models.ai.gpt-5-6-luna"
 
 
@@ -32,14 +31,17 @@ def bundle_app() -> dict:
 def test_app_yaml_env(app_yaml):
     env = _env_by_name(app_yaml["env"])
     assert env["AGENT_MODEL"]["valueFrom"] == "llm-endpoint"
-    assert env["FPAC_MCP_URL"]["value"] == MCP_URL
+    assert env["FPAC_MCP_APP"] == {"name": "FPAC_MCP_APP", "valueFrom": "mcp_server"}
+    # An explicit URL would override the resource, so the deploy files never set one.
+    assert "FPAC_MCP_URL" not in env
     assert env["FPAC_MCP_TIMEOUT_SECONDS"]["value"] == "180"
 
 
 def test_bundle_env(bundle_app):
     env = _env_by_name(bundle_app["config"]["env"])
     assert env["AGENT_MODEL"]["value_from"] == "llm-endpoint"
-    assert env["FPAC_MCP_URL"]["value"] == MCP_URL
+    assert env["FPAC_MCP_APP"] == {"name": "FPAC_MCP_APP", "value_from": "mcp_server"}
+    assert "FPAC_MCP_URL" not in env
     assert env["FPAC_MCP_TIMEOUT_SECONDS"]["value"] == "180"
 
 
@@ -50,6 +52,7 @@ def test_bundle_resources(bundle_app):
         "securable_type": "MODEL_SERVICE",
         "permission": "EXECUTE",
     }
+    # Production server; dev apps set their own ``mcp_server`` resource in the Apps UI.
     assert resources["mcp_server"]["app"] == {"name": "mcp-fpac-soil", "permission": "CAN_USE"}
 
 

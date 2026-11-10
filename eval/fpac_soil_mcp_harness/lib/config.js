@@ -58,7 +58,7 @@ const isLoopback = ["127.0.0.1", "localhost", "::1"].includes(host);
 
 export const config = {
   host,
-  port: int(env.HARNESS_PORT, 3030),
+  port: int(env.DATABRICKS_APP_PORT || env.HARNESS_PORT, 3030),
   autoConnect: bool(env.HARNESS_AUTOCONNECT, true),
   // Allow the browser to change the spawned command / cwd / env. Defaults to
   // enabled only when bound to loopback, because it permits process execution.

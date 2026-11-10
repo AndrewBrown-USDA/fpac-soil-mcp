@@ -99,7 +99,10 @@ def test_corridor_analysis_two_counties():
 
     # Mock TIGERweb Client
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
     mock_tiger.get_perimeter_evidence.return_value = {
         "evidence_status": "measured",
         "normalized_ratio": 0.9,
@@ -210,7 +213,10 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives(alternative_ra
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
     mock_tiger.get_intersecting_counties.return_value = [
         {"state_fips": "17", "county_fips": "037", "county_name": "DeKalb", "state_name": "IL"},
         {"state_fips": "17", "county_fips": "089", "county_name": "Kane", "state_name": "IL"},
@@ -339,7 +345,10 @@ def test_corridor_analysis_reconciliation_failure_warning(caplog):
     mock_sda.get_productivity_ratings.return_value = []
 
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
     mock_tiger.get_intersecting_counties.return_value = [
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]
@@ -412,7 +421,10 @@ def test_corridor_analysis_empty_counties_fallback():
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
 
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
@@ -453,7 +465,10 @@ def test_corridor_centerline_hash_invariance_with_buffer():
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
 
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
@@ -487,7 +502,10 @@ def test_corridor_wkt_indirect_geometry_support():
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
 
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
@@ -571,7 +589,10 @@ def test_corridor_unavailable_productivity_rating_preserves_map_unit():
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
         county.county_name, county.state_fips, county.county_fips
@@ -619,7 +640,10 @@ def test_corridor_direct_ratings_preserve_zero_and_filter_sentinels(numeric_rati
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
 
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
@@ -676,7 +700,10 @@ def test_corridor_partially_covered_status():
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
 
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
@@ -746,7 +773,10 @@ def test_corridor_analysis_with_county_partition_geometry_models():
         )
     ]
     mock_tiger.partition_geometry_by_counties.return_value = partition_models
-    mock_tiger.check_urban_exemption.side_effect = lambda geom: mock_urban_record()
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
 
     mock_nass = MagicMock()
     mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
@@ -786,7 +816,7 @@ def test_corridor_all_validated_selectors_accepted(index):
     mock_tiger = MagicMock(spec=TigerwebClient)
     mock_tiger.get_intersecting_counties.return_value = []
     mock_tiger.partition_geometry_by_counties.return_value = []
-    mock_tiger.check_urban_exemption.return_value = None
+    mock_tiger.check_urban_exemption_with_geometries.return_value = (None, [])
     mock_nass = MagicMock()
     analyzer = CorridorAnalyzer(
         sda_client=mock_sda, tigerweb_client=mock_tiger, nass_client=mock_nass

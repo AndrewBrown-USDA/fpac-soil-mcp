@@ -17,8 +17,10 @@ from typing import Any
 from shapely import wkt as shapely_wkt
 from shapely.errors import GEOSException
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
+from shapely.ops import unary_union
 
 from fpac_soil_mcp.config import Settings
+from fpac_soil_mcp.config import settings as map_settings
 from fpac_soil_mcp.constants import (
     REGULATORY_LIMITATIONS,
     REGULATORY_NOTICE,
@@ -37,6 +39,22 @@ from fpac_soil_mcp.geometry import (
 )
 from fpac_soil_mcp.integration_models import CountyIdentifier, CountyPartitionGeometry
 from fpac_soil_mcp.lesa import _normalize_productivity_index as _normalize_fixed_productivity_index
+from fpac_soil_mcp.map_contract import (
+    ALTERNATIVE_COLORS,
+    CORRIDOR_DIRECT_COLOR,
+    NEUTRAL_OUTLINE_COLOR,
+    URBAN_CONTEXT_COLOR,
+    GeometryWithProperties,
+    MapBlock,
+    MapLayer,
+    build_layer,
+    build_map_block,
+    farmland_legend,
+    features_from_sda_rows,
+    productivity_by_mukey,
+    single_legend,
+    with_productivity,
+)
 from fpac_soil_mcp.models import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
@@ -84,6 +102,26 @@ def _normalize_corridor_rating(value: Any, is_rated: Any, productivity_index: st
     if rating is None or not math.isfinite(rating) or rating < 0 or rating in sentinels:
         return None
     return rating
+
+
+def _feature_ratings(
+    interp_map: dict[str, dict[str, Any]], productivity_index: str
+) -> dict[str, dict[str, Any]]:
+    """Map feature productivity keys per mukey, as the primary map units derive them."""
+    out: dict[str, dict[str, Any]] = {}
+    for mukey, info in interp_map.items():
+        rating = _normalize_corridor_rating(
+            info.get("numeric_rating"), info.get("is_rated"), productivity_index
+        )
+        out[mukey] = {
+            "productivity_rating": rating,
+            "productivity_rating_class": info.get("rating_class") if rating is not None else None,
+            "productivity_rating_source": info.get(
+                "productivity_rating_source",
+                _INDEX_SOURCES.get(productivity_index, f"SDA:{productivity_index.upper()}"),
+            ),
+        }
+    return out
 
 
 def _get_corridor_ratings(
@@ -147,6 +185,7 @@ class CorridorAnalyzer:
         include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
+        include_map: bool = False,
     ) -> CorridorFarmlandAnalysisResponse:
         """Execute full multi-county corridor farmland screening and reconciliation.
 
@@ -160,6 +199,8 @@ class CorridorAnalyzer:
             include_nccpi: Whether to retrieve component-weighted interpretations.
             productivity_index: Soil productivity index type ('nccpi').
             max_county_rating_override: Optional positive county maximum benchmark.
+            include_map: Include display geometry in the ``map`` layers (ADR 0017).
+                Numbers are computed from exact geometry either way.
 
         Returns:
             CorridorFarmlandAnalysisResponse with partitioned county segments, composite LE, and sum audit.
@@ -224,6 +265,7 @@ class CorridorAnalyzer:
                 ),
                 limitations=[*limitations, f"Centerline error: {exc}"],
                 regulatory_notice=REGULATORY_NOTICE,
+                map=_corridor_map(include_map=False),
             )
 
         # 2. Process indirect staging geometry if supplied (support Polygon/MultiPolygon, GeoJSON, or WKT)
@@ -315,6 +357,11 @@ class CorridorAnalyzer:
         # 4. Analyze each county segment
         settings = Settings()
         county_segment_models: list[CorridorCountySegment] = []
+        map_soil_rows: list[dict[str, Any]] = []
+        map_county_features: list[GeometryWithProperties] = []
+        map_urban_by_name: dict[str, Polygon | MultiPolygon] = {}
+        map_alternatives: list[tuple[str, Polygon | MultiPolygon]] = []
+        map_alternative_soil_rows: list[list[dict[str, Any]]] = []
         total_le_sum = 0.0
         total_le_weight = 0.0
         total_segment_acres_sum = 0.0
@@ -364,8 +411,12 @@ class CorridorAnalyzer:
             )
 
             # Urban screening for segment
-            urban_rec = self.tigerweb_client.check_urban_exemption(seg_geom)
+            urban_rec, seg_urban_geometries = (
+                self.tigerweb_client.check_urban_exemption_with_geometries(seg_geom)
+            )
             urban_dict = urban_rec.model_dump(mode="json")
+            for urban_name, urban_geom in seg_urban_geometries:
+                map_urban_by_name.setdefault(urban_name, urban_geom)
 
             # SDA soils query for segment
             seg_wkt = geometry_to_wkt(seg_geom)
@@ -375,7 +426,7 @@ class CorridorAnalyzer:
                     seg_wkt,
                     clip=True,
                     geom_acres=True,
-                    return_geom=False,
+                    return_geom=include_map,
                 )
             except SDAClientError as exc:
                 logger.error("SDA spatial query failed for county %s: %s", seg_county_name, exc)
@@ -549,6 +600,21 @@ class CorridorAnalyzer:
             else:
                 coverage_status = "covered"
 
+            if include_map:
+                map_soil_rows.extend(
+                    with_productivity(raw_units, productivity_by_mukey(unit_models, interp_map))
+                )
+                map_county_features.append(
+                    (
+                        seg_geom,
+                        {
+                            "county_name": seg_county_name,
+                            "geoid": f"{seg_state_fips}{seg_county_fips}",
+                            "state_fips": seg_state_fips,
+                            "county_fips": seg_county_fips,
+                        },
+                    )
+                )
             county_segment_models.append(
                 CorridorCountySegment(
                     state_fips=seg_state_fips,
@@ -711,6 +777,16 @@ class CorridorAnalyzer:
                         ]
 
                     alt_fppa_ac = 0.0
+                    alt_category_acres: dict[str, float] = {
+                        "prime": 0.0,
+                        "conditional_prime": 0.0,
+                        "statewide": 0.0,
+                        "local": 0.0,
+                        "unique": 0.0,
+                        "not_prime": 0.0,
+                        "unmapped": 0.0,
+                    }
+                    alt_soil_rows: list[dict[str, Any]] = []
                     alt_total_le_sum = 0.0
                     alt_total_le_weight = 0.0
                     alt_total_seg_acres = 0.0
@@ -732,7 +808,10 @@ class CorridorAnalyzer:
                         alt_raw_units: list[dict[str, Any]] = []
                         try:
                             alt_raw_units = self.sda_client.get_spatial_intersection(
-                                alt_seg_wkt, clip=True, geom_acres=True, return_geom=False
+                                alt_seg_wkt,
+                                clip=True,
+                                geom_acres=True,
+                                return_geom=include_map,
                             )
                         except SDAClientError as exc:
                             logger.warning(
@@ -759,6 +838,13 @@ class CorridorAnalyzer:
                                     norm_idx,
                                     exc,
                                 )
+
+                        if include_map:
+                            alt_soil_rows.extend(
+                                with_productivity(
+                                    alt_raw_units, _feature_ratings(alt_interp_map, norm_idx)
+                                )
+                            )
 
                         alt_partition_max: dict[str, float] = {}
                         if ratings_requested and max_county_rating_override is None:
@@ -794,6 +880,7 @@ class CorridorAnalyzer:
                                 area_val = 0.0
 
                             fcat = categorize_farmland_class(au.get("farmlndcl"))
+                            alt_category_acres[fcat] = alt_category_acres.get(fcat, 0.0) + area_val
                             if fcat in (
                                 "prime",
                                 "conditional_prime",
@@ -835,6 +922,18 @@ class CorridorAnalyzer:
                         round((alt_fppa_ac / alt_tot_ac * 100.0), 2) if alt_tot_ac > 0 else 0.0
                     )
 
+                    # Footprint area SDA did not map (water, gaps) counts as unmapped, as
+                    # for the primary corridor's county segments.
+                    alt_mapped_ac = sum(alt_category_acres.values())
+                    alt_category_acres["unmapped"] += max(0.0, alt_tot_ac - alt_mapped_ac)
+                    alt_not_prime_pct = (
+                        round(alt_category_acres["not_prime"] / alt_tot_ac * 100.0, 2)
+                        if alt_tot_ac > 0
+                        else 0.0
+                    )
+
+                    map_alternatives.append((alt_id, alt_footprint))
+                    map_alternative_soil_rows.append(alt_soil_rows)
                     alternative_comparisons.append(
                         CorridorAlternativeComparison(
                             alternative_id=alt_id,
@@ -844,6 +943,16 @@ class CorridorAnalyzer:
                             indirect_acres=round(alt_indirect_ac, 2),
                             total_fppa_protected_acres=round(alt_fppa_ac, 2),
                             total_fppa_protected_pct=alt_fppa_pct,
+                            prime_farmland_acres=round(alt_category_acres["prime"], 2),
+                            conditional_prime_acres=round(
+                                alt_category_acres["conditional_prime"], 2
+                            ),
+                            statewide_importance_acres=round(alt_category_acres["statewide"], 2),
+                            local_importance_acres=round(alt_category_acres["local"], 2),
+                            unique_farmland_acres=round(alt_category_acres["unique"], 2),
+                            not_prime_acres=round(alt_category_acres["not_prime"], 2),
+                            not_prime_pct=alt_not_prime_pct,
+                            unmapped_acres=round(alt_category_acres["unmapped"], 2),
                             composite_relative_rating=alt_composite_relative_rating,
                             counties_traversed=alt_county_names,
                         )
@@ -926,4 +1035,207 @@ class CorridorAnalyzer:
             ),
             limitations=limitations,
             regulatory_notice=REGULATORY_NOTICE,
+            map=_corridor_map(
+                include_map=include_map,
+                direct_poly=direct_poly,
+                indirect_poly=indirect_poly,
+                alternatives=map_alternatives,
+                alternative_soil_rows=map_alternative_soil_rows,
+                soil_rows=map_soil_rows,
+                county_features=map_county_features,
+                urban_by_name=map_urban_by_name,
+            ),
         )
+
+
+def _alternative_layer_suffix(alt_id: str) -> str:
+    """Lower-case the alternative id and keep only ``[a-z0-9_]``."""
+    suffix = "".join(ch if ch.isascii() and ch.isalnum() else "_" for ch in alt_id.lower())
+    return suffix or "alt"
+
+
+def _alternative_layer_ids(alt_ids: list[str]) -> list[str]:
+    """Return one unique ``corridor_alternative_<suffix>`` layer id per alternative.
+
+    Ids that clean up to the same suffix get ``_2``, ``_3``, ... in input order,
+    skipping any suffix already taken.
+    """
+    used: set[str] = set()
+    out: list[str] = []
+    for alt_id in alt_ids:
+        base = _alternative_layer_suffix(alt_id)
+        suffix, n = base, 1
+        while suffix in used:
+            n += 1
+            suffix = f"{base}_{n}"
+        used.add(suffix)
+        out.append(f"corridor_alternative_{suffix}")
+    return out
+
+
+def _polygonal(geom) -> Polygon | MultiPolygon | None:
+    """Keep only the polygon parts of an overlay result; ``None`` when nothing is left."""
+    if geom is None or geom.is_empty:
+        return None
+    if isinstance(geom, (Polygon, MultiPolygon)):
+        return geom if geom.area > 0 else None
+    parts = [g for g in getattr(geom, "geoms", []) if isinstance(g, (Polygon, MultiPolygon))]
+    if not parts:
+        return None
+    merged = unary_union(parts)
+    return merged if isinstance(merged, (Polygon, MultiPolygon)) and merged.area > 0 else None
+
+
+def _farmland_features(
+    primary_rows: list[dict[str, Any]],
+    primary_footprints: list[Polygon | MultiPolygon],
+    alternatives: list[tuple[str, Polygon | MultiPolygon]],
+    alternative_rows: list[list[dict[str, Any]]],
+) -> list[GeometryWithProperties]:
+    """Primary farmland features plus each alternative's farmland outside earlier alignments."""
+    features = features_from_sda_rows(primary_rows)
+    drawn = unary_union(primary_footprints) if primary_footprints else None
+    for (alt_id, alt_geom), rows in zip(alternatives, alternative_rows, strict=False):
+        mask = _polygonal(alt_geom.difference(drawn) if drawn is not None else alt_geom)
+        if mask is not None:
+            for geom, props in features_from_sda_rows(rows):
+                piece = _polygonal(geom.intersection(mask))
+                if piece is None:
+                    continue
+                kept = {k: v for k, v in props.items() if k != "area_ac"}
+                features.append((piece, {**kept, "alignment": alt_id}))
+        drawn = alt_geom if drawn is None else drawn.union(alt_geom)
+    return features
+
+
+def _corridor_map(
+    *,
+    include_map: bool,
+    direct_poly: Polygon | MultiPolygon | None = None,
+    indirect_poly: Polygon | MultiPolygon | None = None,
+    alternatives: list[tuple[str, Polygon | MultiPolygon]] | None = None,
+    alternative_soil_rows: list[list[dict[str, Any]]] | None = None,
+    soil_rows: list[dict[str, Any]] | None = None,
+    county_features: list[GeometryWithProperties] | None = None,
+    urban_by_name: dict[str, Polygon | MultiPolygon] | None = None,
+) -> MapBlock:
+    """Build the ADR 0017 corridor map block; geometry only when ``include_map`` is true.
+
+    Layer order is the size-cap drop priority: urban context, then county
+    segments, then farmland classes are dropped before the footprints.
+
+    The farmland layer covers the primary footprint and each alternative. An
+    alternative contributes only where it lies outside the primary footprint and
+    earlier alternatives, so shared ground is drawn once; clipped pieces carry
+    ``alignment`` and no ``area_ac`` (acreage stays in the exact tool numbers).
+    """
+    include = include_map and direct_poly is not None
+    tolerance = map_settings.map_simplify_tolerance_m
+
+    def footprint(
+        layer_id: str, title: str, geom, color: str, pattern: str = "outline"
+    ) -> MapLayer:
+        return build_layer(
+            layer_id=layer_id,
+            title=title,
+            kind="polygon",
+            authority="machine_estimate",
+            source="Buffered corridor footprint",
+            features=[(geom, {})] if include else None,
+            include_map=include,
+            legend=single_legend(layer_id, title, color, pattern),
+        )
+
+    layers = [
+        footprint(
+            "corridor_direct", "Direct corridor footprint", direct_poly, CORRIDOR_DIRECT_COLOR
+        )
+    ]
+    if indirect_poly is not None and not indirect_poly.is_empty:
+        layers.append(
+            footprint(
+                "corridor_indirect",
+                "Indirect area",
+                indirect_poly,
+                CORRIDOR_DIRECT_COLOR,
+                "dashed_outline",
+            )
+        )
+    alt_list = alternatives or []
+    alt_layer_ids = _alternative_layer_ids([alt_id for alt_id, _ in alt_list])
+    for index, ((alt_id, alt_geom), alt_layer_id) in enumerate(
+        zip(alt_list, alt_layer_ids, strict=True)
+    ):
+        layers.append(
+            footprint(
+                alt_layer_id,
+                f"Alternative {alt_id} footprint",
+                alt_geom,
+                ALTERNATIVE_COLORS[index % len(ALTERNATIVE_COLORS)],
+                "dashed_outline",
+            )
+        )
+    layers.append(
+        build_layer(
+            layer_id="farmland_classes",
+            title=(
+                "Farmland classification (all alignments)"
+                if any(alternative_soil_rows or [])
+                else "Farmland classification"
+            ),
+            kind="polygon",
+            authority="machine_estimate",
+            source="USDA NRCS Soil Data Access (SDA)",
+            features=(
+                _farmland_features(
+                    soil_rows or [],
+                    [g for g in (direct_poly, indirect_poly) if g is not None and not g.is_empty],
+                    alt_list,
+                    alternative_soil_rows or [],
+                )
+                if include
+                else None
+            ),
+            include_map=include,
+            style_key="farmland_class",
+            legend=farmland_legend(),
+            simplify_tolerance_m=tolerance,
+        )
+    )
+    layers.append(
+        build_layer(
+            layer_id="county_segments",
+            title="County segments",
+            kind="polygon",
+            authority="reference_data",
+            source="US Census Bureau TIGERweb",
+            features=list(county_features or []) if include else None,
+            include_map=include,
+            data_vintage="TIGERweb counties (current)",
+            legend=single_legend(
+                "county_segment", "County segment", NEUTRAL_OUTLINE_COLOR, "dashed_outline"
+            ),
+            simplify_tolerance_m=tolerance,
+        )
+    )
+    layers.append(
+        build_layer(
+            layer_id="urban_context",
+            title="Census 2020 urban areas",
+            kind="polygon",
+            authority="reference_data",
+            source="US Census Bureau TIGERweb",
+            features=(
+                [(geom, {"name": name}) for name, geom in (urban_by_name or {}).items()]
+                if include
+                else None
+            ),
+            include_map=include,
+            data_vintage="Census 2020 Urban Areas",
+            legend=single_legend(
+                "urban", "Census 2020 urban area", URBAN_CONTEXT_COLOR, "dashed_outline"
+            ),
+            simplify_tolerance_m=tolerance,
+        )
+    )
+    return build_map_block(layers, map_settings.map_max_geojson_bytes)

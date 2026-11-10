@@ -518,6 +518,7 @@ class TestCorridorTools:
             alternatives=None,
             include_nccpi=True,
             productivity_index="NCCPI",
+            include_map=False,
         )
 
     @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
@@ -566,6 +567,7 @@ class TestCorridorTools:
             include_nccpi=True,
             productivity_index="NCCPI",
             max_county_rating_override=88.0,
+            include_map=False,
         )
 
     @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
@@ -594,6 +596,7 @@ class TestCorridorTools:
             alternatives=None,
             include_nccpi=False,
             productivity_index="CSR2",
+            include_map=False,
         )
 
     @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
@@ -678,3 +681,30 @@ class TestCorridorTools:
         crit7 = next(c for c in sa["criteria"] if c["criterion_number"] == 7)
         assert crit7["awarded_points"] == 10
         assert "350.0" in crit7["justification"] or "100.0%" in crit7["justification"]
+
+
+@pytest.mark.parametrize("include_map", [False, True])
+@patch("fpac_soil_mcp.tools.spatial_analysis_tools.PolygonAnalyzer")
+def test_analyze_farmland_by_polygon_forwards_include_map(
+    mock_analyzer_cls: MagicMock, include_map: bool
+) -> None:
+    analyze_farmland_by_polygon({"type": "Polygon", "coordinates": []}, include_map=include_map)
+    kwargs = mock_analyzer_cls.return_value.analyze_polygon.call_args.kwargs
+    assert kwargs["include_map"] is include_map
+
+
+@pytest.mark.parametrize("include_map", [False, True])
+@patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+def test_analyze_corridor_fppa_forwards_include_map(
+    mock_analyzer_cls: MagicMock, include_map: bool
+) -> None:
+    mock_response = MagicMock()
+    mock_response.model_dump.return_value = {"query_type": "corridor"}
+    mock_analyzer_cls.return_value.analyze_corridor.return_value = mock_response
+    analyze_corridor_fppa(
+        centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
+        buffer_distance=50.0,
+        include_map=include_map,
+    )
+    kwargs = mock_analyzer_cls.return_value.analyze_corridor.call_args.kwargs
+    assert kwargs["include_map"] is include_map

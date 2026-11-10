@@ -822,3 +822,85 @@ def test_esri_rings_to_geometry_non_standard_all_cw_winding_fallback():
     assert geom.is_valid
     assert len(geom.interiors) == 1
     assert pytest.approx(geom.area, 1e-6) == 96.0
+
+
+# --- Urban geometries returned with the screening record (synthetic geometry) ---
+
+_SYNTHETIC_AOI = {
+    "type": "Polygon",
+    "coordinates": [[[0.0, 0.0], [0.01, 0.0], [0.01, 0.01], [0.0, 0.01], [0.0, 0.0]]],
+}
+_SYNTHETIC_URBAN_RESPONSE = {
+    "features": [
+        {
+            "attributes": {"NAME": "R6-MARKER Urban A"},
+            "geometry": {
+                "rings": [[[0.005, 0.0], [0.005, 0.01], [0.02, 0.01], [0.02, 0.0], [0.005, 0.0]]]
+            },
+        },
+        {
+            "attributes": {"BASENAME": "R6-MARKER Urban B"},
+            "geometry": {
+                "rings": [[[0.0, 0.005], [0.0, 0.02], [0.004, 0.02], [0.004, 0.005], [0.0, 0.005]]]
+            },
+        },
+    ]
+}
+
+
+def _counting_client(response: dict) -> tuple[TigerwebClient, list[httpx.Request]]:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json=response)
+
+    client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+    return client, calls
+
+
+def test_urban_geometries_returned_from_single_request():
+    client, calls = _counting_client(_SYNTHETIC_URBAN_RESPONSE)
+    record, geometries = client.check_urban_exemption_with_geometries(_SYNTHETIC_AOI)
+
+    assert len(calls) == 1
+    assert parse_qs(calls[0].content.decode("utf-8"))["returnGeometry"] == ["true"]
+    assert record.status == IntegrationStatus.SUCCESS
+    assert [name for name, _ in geometries] == ["R6-MARKER Urban A", "R6-MARKER Urban B"]
+    assert all(geom.geom_type in {"Polygon", "MultiPolygon"} for _, geom in geometries)
+    assert all(not geom.is_empty for _, geom in geometries)
+
+
+def test_urban_record_identical_from_both_methods():
+    client_a, calls_a = _counting_client(_SYNTHETIC_URBAN_RESPONSE)
+    client_b, calls_b = _counting_client(_SYNTHETIC_URBAN_RESPONSE)
+
+    plain = client_a.check_urban_exemption(_SYNTHETIC_AOI)
+    with_geometries, _ = client_b.check_urban_exemption_with_geometries(_SYNTHETIC_AOI)
+
+    assert len(calls_a) == len(calls_b) == 1
+    exclude = {"provenance"}
+    assert plain.model_dump(exclude=exclude) == with_geometries.model_dump(exclude=exclude)
+    assert plain.screened_acreage and plain.screened_acreage > 0
+
+
+def test_urban_geometries_empty_for_point_input():
+    response = {"features": [{"attributes": {"NAME": "R6-MARKER Urban A"}}]}
+    client, calls = _counting_client(response)
+    record, geometries = client.check_urban_exemption_with_geometries(
+        {"type": "Point", "coordinates": [0.005, 0.005]}
+    )
+
+    assert len(calls) == 1
+    assert parse_qs(calls[0].content.decode("utf-8"))["returnGeometry"] == ["false"]
+    assert record.is_urban_intersected is True
+    assert geometries == []
+
+
+def test_urban_geometries_empty_on_service_error():
+    client, calls = _counting_client({"error": {"message": "R6-MARKER failure"}})
+    record, geometries = client.check_urban_exemption_with_geometries(_SYNTHETIC_AOI)
+
+    assert len(calls) == 1
+    assert record.status == IntegrationStatus.ERROR
+    assert geometries == []

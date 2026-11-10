@@ -13,6 +13,7 @@ MCP protocol surface that LLM hosts use.
 ```
 eval/fpac_soil_mcp_harness/
   package.json          Node dependencies and scripts
+  app.yaml              Databricks Apps startup configuration
   server.js             Express server + REST API bridging the browser to MCP
   lib/config.js         Environment/.env configuration
   lib/mcpBridge.js      MCP client wrapper (stdio, SSE, Streamable HTTP)
@@ -26,8 +27,8 @@ eval/fpac_soil_mcp_harness/
 ## Prerequisites
 
 * Node.js 18.18+ (20 LTS recommended)
-* The Python server installed per the repository README (`uv sync` at the repo root)
-* Run the workbench locally; it is not a hosted or production deployment
+* For local stdio mode, the Python server installed per the repository README (`uv sync` at the repo root)
+* The workbench is a developer/admin tool, not a production end-user application
 
 ## Run
 
@@ -58,6 +59,28 @@ For a quick syntax check without starting the server:
 npm run check
 ```
 
+## Databricks Apps
+
+Use this directory as the Databricks App source root. The included [app.yaml](app.yaml)
+starts `node server.js` on `0.0.0.0` using the platform-provided `DATABRICKS_APP_PORT`.
+That port takes precedence over `HARNESS_PORT`; local runs still default to port 3030.
+Dependencies are declared in `package.json` and locked in `package-lock.json`.
+
+The app starts disconnected in HTTP mode and disables browser command/cwd/environment
+overrides. In the connection bar, enter the existing MCP server's reachable Streamable HTTP
+URL ending in `/mcp`, supply a bearer token if required, and connect. Alternatively, configure
+`MCP_URL` and enable `HARNESS_AUTOCONNECT` in the deployment environment. Do not commit tokens;
+use a Databricks secret resource for `MCP_AUTH_TOKEN` if configuring it server-side.
+The hosted harness does not install or launch the Python MCP server.
+
+The Eval Cases tab needs the shared [prompt_test_cases.json](../prompt_test_cases.json).
+When deploying only this directory, include a copy in the deployment source root and set
+`EVAL_CASES_PATH=prompt_test_cases.json`; the normal repository layout uses the parent file.
+
+Restrict app access to trusted developers/admins. Connections, bearer tokens, and call
+history are process-wide, not isolated per user; disabling command overrides alone does
+not make the harness a production authorization boundary.
+
 ## Features
 
 | Tab | What it does |
@@ -82,7 +105,8 @@ construction and only keyword coverage and tool errors are scored. Arguments com
 Use `eval/run_evals.py` / `eval/test_agent_eval.py` for agent tool-selection behaviour.
 Those Python evaluations and the T0/T1 contract and Databricks evaluation paths are separate
 from this browser workbench. This harness does not provide model-based scoring, production
-readiness, or a Databricks App deployment; those are separate forthcoming work.
+readiness. The Databricks startup configuration above does not add model-based scoring
+or production security hardening.
 
 ## REST API (used by the UI)
 
