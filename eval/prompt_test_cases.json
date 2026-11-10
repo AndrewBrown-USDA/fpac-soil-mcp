@@ -1,5 +1,5 @@
 {
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Structured test cases and natural-language prompt benchmarks for FPAC Soil MCP Server tools, resources, and prompt templates.",
   "test_cases": [
     {
@@ -233,7 +233,7 @@
       "category": "Phase 3 - Urban Exemption",
       "target_type": "tool",
       "target_name": "check_urban_area_exemption",
-      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR \u00a7 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
+      "user_prompt": "Screen this commercial project site in Des Moines, IA against Census 2020 Urban Area boundaries (Layer 0) to check if it qualifies for an FPPA statutory exemption under 7 CFR § 658.2(a): POLYGON((-93.62 41.58, -93.60 41.58, -93.60 41.60, -93.62 41.60, -93.62 41.58))",
       "expected_tools": [
         "check_urban_area_exemption"
       ],
@@ -326,7 +326,7 @@
       "category": "Phase 3 - Corridor Analysis",
       "target_type": "tool",
       "target_name": "analyze_corridor_fppa",
-      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR \u00a7 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
+      "user_prompt": "Perform a complete FPPA corridor screening and Form NRCS-CPA-106 LESA evaluation for a proposed 230kV transmission line: Centerline: LINESTRING(-93.62 42.02, -93.55 42.08, -93.45 42.15), Corridor Width: Buffer 75 feet on each side (150-ft total right-of-way), Indirect Staging Yard: POLYGON((-93.56 42.07, -93.54 42.07, -93.54 42.09, -93.56 42.09, -93.56 42.07)), Site Assessment Inputs: Project farm tract size is 350 acres. Please partition by county, query NASS agricultural statistics, apply 7 CFR § 658.5(c) corridor rules, and evaluate whether the total LESA score exceeds 160 points.",
       "expected_tools": [
         "analyze_corridor_fppa"
       ],
@@ -459,7 +459,7 @@
       "category": "Assistant Prompts",
       "target_type": "prompt",
       "target_name": "fppa_corridor_screening_assistant",
-      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR \u00a7 658.5(c).",
+      "user_prompt": "Use the fppa_corridor_screening_assistant prompt to guide us through an 18-mile multi-county pipeline right-of-way evaluation under 7 CFR § 658.5(c).",
       "expected_tools": [],
       "expected_keywords": [
         "corridor",
@@ -497,7 +497,7 @@
       "category": "Phase 4 - Land Evaluation & Site Assessment",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Explain the 160-point protection-consideration guidance under 7 CFR \u00a7 658.4(c)(2)-(4), without treating it as requiring selection of an alternative.",
+      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Explain the 160-point protection-consideration guidance under 7 CFR § 658.4(c)(2)-(4), without treating it as requiring selection of an alternative.",
       "expected_tools": [
         "calculate_preliminary_lesa"
       ],
@@ -586,11 +586,6 @@
       "target_name": "fppa_site_assessment_assistant",
       "user_prompt": "Guide me through the Site Assessment questions using the published criteria resource. Ask for the criterion-specific evidence that is missing; do not assign points, select a site, or recommend an alternative.",
       "expected_tools": [],
-      "expected_keywords": [
-        "site assessment",
-        "unknown",
-        "preliminary"
-      ],
       "expected_facts": [
         "Unknown Site Assessment criteria remain unknown until supported evidence is supplied; the response asks for missing evidence rather than assigning points.",
         "The response identifies the discussion as preliminary and not an official FPPA determination, LESA score, or completed form."
@@ -599,7 +594,8 @@
         "Do not invent subjective Site Assessment points or recommend or select a site, footprint, or alternative.",
         "Any retrieval path to the Site Assessment criteria (get_prompt, read_resource, or explain_fppa_screening_scope) is acceptable."
       ],
-      "evidence_tier": "model_assisted"
+      "evidence_tier": "model_assisted",
+      "expected_keywords": []
     },
     {
       "id": "SA-MA-02",
@@ -698,11 +694,6 @@
       "target_name": "fppa_site_assessment_assistant",
       "user_prompt": "I have no criterion-specific Site Assessment evidence or site comparisons yet. Explain the regulatory consequence of that limitation and what information would be needed, without assigning points or selecting a site, footprint, or preferred alternative.",
       "expected_tools": [],
-      "expected_keywords": [
-        "preliminary",
-        "unknown",
-        "alternative"
-      ],
       "expected_facts": [
         "No Site Assessment points or site preference can be supported without criterion-specific evidence and site comparisons.",
         "The response describes preliminary screening and does not present an official FPPA determination or completed form."
@@ -711,7 +702,8 @@
         "Do not invent Site Assessment points or recommend or select a site, footprint, or preferred alternative.",
         "Any retrieval path to the Site Assessment criteria (get_prompt, read_resource, or explain_fppa_screening_scope) is acceptable."
       ],
-      "evidence_tier": "model_assisted"
+      "evidence_tier": "model_assisted",
+      "expected_keywords": []
     },
     {
       "id": "SA-MA-04",

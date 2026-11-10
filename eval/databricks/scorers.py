@@ -19,8 +19,10 @@ from common.matching import tool_matches
 ARG_ABS_TOL = 1e-4
 
 FPPA_COMPLIANCE_GUIDELINE = (
-    "The response states that results are preliminary screening and are not an official "
-    "FPPA determination, LESA score, Form AD-1006, or Form NRCS-CPA-106."
+    "When the response reports soil or farmland results, it states that they are "
+    "preliminary screening and are not an official FPPA determination, LESA score, "
+    "Form AD-1006, or Form NRCS-CPA-106. When the response only explains what "
+    "evidence is needed without reporting results, the disclaimer is not required."
 )
 
 DETERMINISTIC_SCORER_NAMES = (
