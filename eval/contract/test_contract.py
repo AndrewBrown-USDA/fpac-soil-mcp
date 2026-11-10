@@ -87,7 +87,7 @@ def _payload(result: Any) -> dict[str, Any]:
 
 def test_manifest_parser_reads_expected_counts(manifest: dict[str, set[str]]) -> None:
     assert len(manifest["tools"]) == 10
-    assert len(manifest["resources"]) == 3
+    assert len(manifest["resources"]) == 4
     assert len(manifest["prompts"]) == 4
 
 

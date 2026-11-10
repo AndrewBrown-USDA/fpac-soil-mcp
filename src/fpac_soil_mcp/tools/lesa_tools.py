@@ -22,6 +22,60 @@ from fpac_soil_mcp.models import (
     ProductivityIndexType,
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
+from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
+
+
+def _score_registry_facts(facts: dict[str, Any] | None) -> dict[int, dict[str, Any]]:
+    scored: dict[int, dict[str, Any]] = {}
+    for raw_number, raw_input in (facts or {}).items():
+        try:
+            number = int(raw_number)
+        except (TypeError, ValueError):
+            continue
+        if not 1 <= number <= 12 or not isinstance(raw_input, dict):
+            continue
+        definition = SITE_ASSESSMENT_REGISTRY.criterion(number)
+        value = raw_input.get("value", raw_input.get("answer"))
+        if value is None:
+            value = raw_input.get(
+                "percentage"
+                if definition.answer_type == "percentage"
+                else "distance_miles"
+                if definition.answer_type == "distance_miles"
+                else "category"
+            )
+        selected = next(
+            (
+                band
+                for band in definition.bands
+                if (
+                    definition.answer_type == "qualitative"
+                    and str(value).strip().lower() in {band.band_id.lower(), band.label.lower()}
+                )
+                or (
+                    definition.answer_type != "qualitative"
+                    and value is not None
+                    and band.minimum is not None
+                    and float(value) >= band.minimum
+                    and (band.maximum is None or float(value) <= band.maximum)
+                )
+            ),
+            None,
+        )
+        scored[number] = {
+            **raw_input,
+            "awarded_points": selected.points if selected and selected.points is not None else 0.0,
+            "is_automated": True,
+            "justification": (
+                f"Registry rule {definition.citation}: {selected.label} -> "
+                f"{selected.points:g}/{definition.max_points:g} points."
+                if selected and selected.points is not None
+                else "Registry fact is unknown or unavailable; not scored."
+            ),
+        }
+    return scored
+
+
 from fpac_soil_mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
 
 
@@ -48,7 +102,8 @@ def calculate_preliminary_lesa(
         project_type: Project geometry type ('site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106).
         productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
-        site_assessment_inputs: Optional dictionary of Part V/VI Site Assessment parameters:
+        site_assessment_inputs: Optional dictionary of Part VI Site Assessment parameters:
+            - 'criteria_facts': dict mapping criterion numbers to registry-defined values
             - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
             - 'project_farm_acres': float (size of affected farm holding)
             - 'county_average_farm_acres': float (county average farm holding size)
@@ -141,7 +196,12 @@ def calculate_preliminary_lesa(
 
     # Extract farm acres and criteria inputs if present
     sa_inputs = site_assessment_inputs or {}
-    criteria_inputs = sa_inputs.get("criteria_inputs", sa_inputs)
+    criteria_inputs = dict(sa_inputs.get("criteria_inputs", {}))
+    criteria_inputs.update(_score_registry_facts(sa_inputs.get("criteria_facts")))
+    if not criteria_inputs and not any(
+        key in sa_inputs for key in ("criteria_inputs", "criteria_facts")
+    ):
+        criteria_inputs = sa_inputs
     result_manifest = (
         polygon_response.manifest
         if polygon_response is not None
@@ -165,6 +225,39 @@ def calculate_preliminary_lesa(
         county_average_farm_acres=county_average_farm_acres,
         productivity_index=normalized_productivity_index,
     )
+
+    registry_facts = sa_inputs.get("criteria_facts") or {}
+    for criterion in lesa_response.site_assessment.criteria:
+        raw_fact = registry_facts.get(criterion.criterion_number) or registry_facts.get(
+            str(criterion.criterion_number)
+        )
+        if isinstance(raw_fact, dict):
+            definition = SITE_ASSESSMENT_REGISTRY.criterion(criterion.criterion_number)
+            value = raw_fact.get(
+                "value",
+                raw_fact.get(
+                    "answer",
+                    raw_fact.get(
+                        "percentage"
+                        if definition.answer_type == "percentage"
+                        else "distance_miles"
+                        if definition.answer_type == "distance_miles"
+                        else "category"
+                    ),
+                ),
+            )
+            has_value = value is not None
+            criterion.input_authority = (
+                "verified"
+                if raw_fact.get("is_verified") and has_value
+                else "machine_estimate"
+                if has_value
+                else "unavailable"
+            )
+            criterion.is_automated = has_value
+            criterion.is_verified = bool(raw_fact.get("is_verified")) and has_value
+            criterion.rule_reference = definition.citation
+            criterion.rule_version = SITE_ASSESSMENT_REGISTRY.schema_version
 
     # Append any polygon limitations or warnings
     if polygon_response is not None and polygon_response.limitations:

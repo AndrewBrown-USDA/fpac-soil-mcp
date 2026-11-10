@@ -35,6 +35,9 @@ resources:
   - uri: fppa://farmland-classes
     name: Farmland Classes Reference
     description: Reference listing of SSURGO farmland classification categories and statutory criteria.
+  - uri: fppa://site-assessment-criteria
+    name: Site Assessment Criteria
+    description: Validated Site Assessment questions, answer forms, scoring rules, citations, and unavailable semantics.
 prompts:
   - name: fppa_screening_assistant
     description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 10 tools, and regulatory disclaimers.

@@ -183,6 +183,51 @@ class TestSoilTools:
 
 
 class TestFPPATools:
+    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    def test_preliminary_lesa_scores_registry_facts_deterministically(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 70.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "manifest": {},
+        }
+
+        response = calculate_preliminary_lesa(
+            project_name="facts",
+            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            site_assessment_inputs={
+                "criteria_facts": {
+                    "1": {"percentage": 95, "is_verified": True},
+                    "8": {"category": "minor", "is_verified": True},
+                }
+            },
+        )
+
+        criteria = {item.criterion_number: item for item in response.site_assessment.criteria}
+        assert criteria[1].awarded_points == 15
+        assert criteria[1].rule_reference == "7 CFR § 658.5(b)(1)"
+        assert criteria[8].awarded_points == 5
+        assert response.site_assessment.evaluation_status == "incomplete"
+        assert all("siting" not in item.lower() for item in response.limitations)
+
+    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    def test_preliminary_lesa_preserves_analyst_override_rationale_requirement(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 70.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "manifest": {},
+        }
+
+        with pytest.raises(ValueError, match="rationale"):
+            calculate_preliminary_lesa(
+                project_name="override",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                site_assessment_inputs={"criteria_inputs": {"1": {"awarded_points": 15}}},
+            )
+
     """Tests for explain_fppa_screening_scope and list_farmland_classes."""
 
     def test_explain_fppa_screening_scope(self) -> None:
