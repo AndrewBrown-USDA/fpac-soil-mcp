@@ -260,7 +260,7 @@ def _gold_scenario(case_id: str) -> dict[str, Any]:
 
 
 def test_manifest_parser_reads_expected_counts(manifest: dict[str, set[str]]) -> None:
-    assert len(manifest["tools"]) == 10
+    assert len(manifest["tools"]) == 11
     assert len(manifest["resources"]) == 4
     assert len(manifest["prompts"]) == 4
 

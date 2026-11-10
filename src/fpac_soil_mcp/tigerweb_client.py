@@ -32,8 +32,10 @@ from fpac_soil_mcp.geometry import (
     calculate_acreage,
     calculate_geodesic_length,
     compute_geometry_hash,
+    normalize_ring_winding,
     parse_geojson_geometry,
 )
+from fpac_soil_mcp.geometry import polygon_to_esri_rings as _polygon_to_esri_rings
 from fpac_soil_mcp.http_client import (
     HttpRequestError,
     HttpStatusError,
@@ -47,52 +49,16 @@ from fpac_soil_mcp.integration_models import (
 
 logger = logging.getLogger(__name__)
 
+
+def _normalize_ring_winding(ring: LinearRing, clockwise: bool = True) -> list[list[float]]:
+    """Preserve the historical TIGERweb helper name for callers and tests."""
+    return normalize_ring_winding(ring, clockwise=clockwise)
+
+
 # Default TIGERweb State and County Boundaries MapServer (Layer 1: Counties)
 DEFAULT_TIGERWEB_COUNTY_URL = (
     "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1"
 )
-
-
-def _normalize_ring_winding(ring: LinearRing, clockwise: bool = True) -> list[list[float]]:
-    """Normalize ring coordinate winding for ArcGIS REST JSON polygon specification.
-
-    ArcGIS polygon JSON requires exterior rings to be clockwise (cw) and interior
-    rings (holes) to be counterclockwise (ccw).
-
-    Args:
-        ring: Shapely LinearRing.
-        clockwise: If True, orient clockwise; if False, orient counterclockwise.
-
-    Returns:
-        List of [x, y] or [x, y, z] coordinate lists.
-    """
-    coords = list(ring.coords)
-    is_ccw = ring.is_ccw
-    if (clockwise and is_ccw) or (not clockwise and not is_ccw):
-        coords.reverse()
-    return [list(c) for c in coords]
-
-
-def _polygon_to_esri_rings(geom: Polygon | MultiPolygon) -> list[list[list[float]]]:
-    """Convert Polygon or MultiPolygon to ArcGIS REST rings with normalized winding.
-
-    Args:
-        geom: Shapely Polygon or MultiPolygon.
-
-    Returns:
-        List of rings where exterior rings are clockwise and interior rings are counterclockwise.
-    """
-    rings: list[list[list[float]]] = []
-    polygons = [geom] if isinstance(geom, Polygon) else list(geom.geoms)
-
-    for poly in polygons:
-        # Exterior ring -> Clockwise
-        rings.append(_normalize_ring_winding(poly.exterior, clockwise=True))
-        # Interior rings (holes) -> Counterclockwise
-        for interior in poly.interiors:
-            rings.append(_normalize_ring_winding(interior, clockwise=False))
-
-    return rings
 
 
 def _lineal_parts(geom: Any) -> list[LineString | MultiLineString]:

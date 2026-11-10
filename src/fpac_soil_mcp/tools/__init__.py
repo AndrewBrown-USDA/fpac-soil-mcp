@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fpac_soil_mcp.tools.cdl_tools import analyze_cdl_histogram
 from fpac_soil_mcp.tools.exemption_tools import check_urban_area_exemption
 from fpac_soil_mcp.tools.fppa_tools import (
     explain_fppa_screening_scope,
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 __all__ = [
+    "analyze_cdl_histogram",
     "analyze_corridor_fppa",
     "analyze_farmland_by_polygon",
     "calculate_preliminary_lesa",
@@ -105,6 +107,14 @@ def register_tools(mcp: FastMCP) -> None:
             "from USDA NRCS Soil Data Access (SDA) for a list of map unit keys (mukeys)."
         ),
     )(get_soil_interpretations)
+    mcp.tool(
+        name="analyze_cdl_histogram",
+        description=(
+            "Compute preliminary USDA NASS Cropland Data Layer categorical histogram evidence for a Polygon or "
+            "MultiPolygon AOI. Results describe recent mapped land cover only and do not establish active farming "
+            "or constitute an official FPPA or LESA determination."
+        ),
+    )(analyze_cdl_histogram)
     mcp.tool(
         name="analyze_corridor_fppa",
         description=(
