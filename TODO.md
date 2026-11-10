@@ -127,7 +127,7 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 - [x] Add tests for NoData configured as qualifying, partial/out-of-extent AOIs, and unavailable coverage metadata.
 
 ### 4. Harden metadata and geometry submission
-- [ ] Reject incomplete or nonnumeric `fullExtent` values before caching them and ensure public extent access cannot raise `KeyError`.
+- [x] Reject incomplete or nonnumeric `fullExtent` values before caching them and ensure public extent access cannot raise `KeyError`.
 - [x] Extract or reuse the existing Esri ring-winding normalization utility so CDL polygon exteriors are clockwise and holes counterclockwise.
 - [x] Add focused tests for incomplete extents and Polygon/MultiPolygon exterior and hole winding.
 

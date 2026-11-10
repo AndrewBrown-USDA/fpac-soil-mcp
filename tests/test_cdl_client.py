@@ -41,6 +41,23 @@ def test_cdl_client_discovers_and_caches_service_metadata():
     assert calls == 1
 
 
+def test_cdl_client_does_not_cache_partial_service_extent_as_usable():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"fullExtent": {"xmin": -1, "ymin": -2, "xmax": 3}},
+        )
+
+    client = CDLClient(
+        base_url="https://example.test/ImageServer",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    metadata = client.get_service_metadata()
+
+    assert metadata.full_extent is None
+
+
 def test_cdl_client_inspects_catalog_and_posts_histogram_request():
     requests: list[httpx.Request] = []
 
