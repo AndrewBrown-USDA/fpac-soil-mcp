@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Iterable
+from typing import Any
 
 _DASHES = re.compile(r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]")
 _SPACES = re.compile(r"[\u00a0\u2000-\u200b\u202f\u205f\u3000]")
@@ -61,3 +62,44 @@ def keywords_present(text: str, keywords: Iterable[str]) -> tuple[bool, list[str
     haystack = _keyword_form(text)
     missing = [kw for kw in keywords if not _keyword_pattern(_keyword_form(kw)).search(haystack)]
     return not missing, missing
+
+
+def value_at_path(payload: Any, path: str) -> Any:
+    """Read a dotted path from mappings and list indexes."""
+    current = payload
+    for part in path.split("."):
+        if isinstance(current, dict):
+            if part not in current:
+                raise KeyError(path)
+            current = current[part]
+        elif isinstance(current, list) and part.isdigit():
+            try:
+                current = current[int(part)]
+            except IndexError as exc:
+                raise KeyError(path) from exc
+        else:
+            raise KeyError(path)
+    return current
+
+
+def match_expected(actual: Any, expected: dict[str, Any]) -> tuple[bool, str]:
+    """Match one deterministic gold-set expectation."""
+    path = expected["path"]
+    try:
+        value = value_at_path(actual, path)
+    except KeyError:
+        return False, f"{path}: missing"
+    if "equals" in expected:
+        return (
+            value == expected["equals"],
+            f"{path}: expected {expected['equals']!r}, got {value!r}",
+        )
+    if "approx" in expected:
+        target = expected["approx"]["value"]
+        tolerance = expected["approx"]["abs_tol"]
+        ok = isinstance(value, int | float) and abs(value - target) <= tolerance
+        return ok, f"{path}: expected {target} ± {tolerance}, got {value!r}"
+    if "is_null" in expected:
+        ok = (value is None) is expected["is_null"]
+        return ok, f"{path}: expected null={expected['is_null']}, got {value!r}"
+    raise ValueError(f"{path}: expectation must contain equals, approx, or is_null")

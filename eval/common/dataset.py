@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "prompt_test_cases.json"
+GOLD_SET_PATH = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "phase4_gold_set.json"
 
 REQUIRED_V1_FIELDS: dict[str, type] = {
     "id": str,
@@ -51,6 +52,65 @@ _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 def _read(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _validate_gold_case(case: Any, index: int) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(case, dict):
+        return [f"case[{index}]: expected an object"]
+    case_id = case.get("id", f"case[{index}]")
+    if not isinstance(case_id, str) or not case_id:
+        errors.append(f"case[{index}].id: expected a non-empty string")
+    for field in ("category", "description", "status"):
+        if not isinstance(case.get(field), str):
+            errors.append(f"{case_id}.{field}: expected a string")
+    if case.get("status") not in {"covered", "indeterminate", "error"}:
+        errors.append(f"{case_id}.status: expected covered, indeterminate, or error")
+    expectations = case.get("expectations")
+    if not isinstance(expectations, list) or not expectations:
+        errors.append(f"{case_id}.expectations: expected a non-empty list")
+    else:
+        for item_index, expectation in enumerate(expectations):
+            where = f"{case_id}.expectations[{item_index}]"
+            if not isinstance(expectation, dict):
+                errors.append(f"{where}: expected an object")
+                continue
+            if not isinstance(expectation.get("path"), str) or not expectation["path"]:
+                errors.append(f"{where}.path: expected a non-empty string")
+            modes = {"equals", "approx", "is_null"} & set(expectation)
+            if len(modes) != 1:
+                errors.append(f"{where}: expected exactly one matching mode")
+    return errors
+
+
+def validate_gold_set(data: Any) -> None:
+    """Validate the versioned deterministic Phase 4 gold-set contract."""
+    if not isinstance(data, dict):
+        raise TypeError("Gold set: top-level JSON must be an object")
+    if data.get("schema") != "phase4-gold-set":
+        raise ValueError("Gold set: unsupported schema")
+    if not isinstance(data.get("version"), str) or not data["version"]:
+        raise ValueError("Gold set: version must be a non-empty string")
+    cases = data.get("cases")
+    if not isinstance(cases, list) or not cases:
+        raise ValueError("Gold set: cases must be a non-empty list")
+    errors: list[str] = []
+    seen: set[str] = set()
+    for index, case in enumerate(cases):
+        errors.extend(_validate_gold_case(case, index))
+        if isinstance(case, dict) and isinstance(case.get("id"), str):
+            if case["id"] in seen:
+                errors.append(f"{case['id']}.id: duplicate id")
+            seen.add(case["id"])
+    if errors:
+        raise ValueError("Invalid Phase 4 gold set:\n  " + "\n  ".join(errors))
+
+
+def load_gold_set(path: Path | str = GOLD_SET_PATH) -> list[dict[str, Any]]:
+    """Load the deterministic Phase 4 gold set in file order."""
+    data = _read(Path(path))
+    validate_gold_set(data)
+    return list(data["cases"])
 
 
 def _is_number(value: Any) -> bool:

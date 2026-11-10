@@ -1,0 +1,103 @@
+{
+  "schema": "phase4-gold-set",
+  "version": "45.4.1",
+  "cases": [
+    {
+      "id": "strategy-cointerp",
+      "category": "source-table-strategy",
+      "description": "COINTERP metadata route preserves selected property and provenance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "selected_property", "equals": "nccpi"},
+        {"path": "provenance.id", "equals": "SDA:NCCPI_V3"},
+        {"path": "coverage_status", "equals": "covered"}
+      ]
+    },
+    {
+      "id": "strategy-mapunit",
+      "category": "source-table-strategy",
+      "description": "MAPUNIT metadata route remains exact and rated.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "selected_property", "equals": "csr2"},
+        {"path": "provenance.table", "equals": "mapunit"},
+        {"path": "rating", "equals": 96}
+      ]
+    },
+    {
+      "id": "strategy-component",
+      "category": "source-table-strategy",
+      "description": "Component route preserves explicit precision tolerance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "selected_property", "equals": "cpi"},
+        {"path": "rating", "approx": {"value": 71.0, "abs_tol": 0.01}},
+        {"path": "provenance.nulls_as_zero", "equals": true}
+      ]
+    },
+    {
+      "id": "multi-county-selected-property",
+      "category": "aggregation",
+      "description": "County partitions use the selected property and stable provenance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "selected_property", "equals": "nccpi"},
+        {"path": "county_maxima.IL019", "equals": 0.933},
+        {"path": "county_maxima.IN097", "equals": 0.812},
+        {"path": "provenance.spec_id", "equals": "nccpi"}
+      ]
+    },
+    {
+      "id": "partial-rated-coverage",
+      "category": "coverage",
+      "description": "Partial rated acreage remains explicit and is not treated as full coverage.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "coverage_status", "equals": "partial"},
+        {"path": "rated_acreage", "approx": {"value": 60.0, "abs_tol": 0.001}},
+        {"path": "unrated_acreage", "approx": {"value": 40.0, "abs_tol": 0.001}}
+      ]
+    },
+    {
+      "id": "urban-partial-overlap",
+      "category": "coverage",
+      "description": "Urban overlap is reconciled separately from rated and unrated acreage.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "urban_overlap_status", "equals": "partial"},
+        {"path": "acreage_reconciliation.total", "equals": 100.0},
+        {"path": "acreage_reconciliation.unmapped", "equals": 0.0}
+      ]
+    },
+    {
+      "id": "missing-subjective-inputs",
+      "category": "subjective-inputs",
+      "description": "Missing Site Assessment facts remain indeterminate with no fabricated points.",
+      "status": "indeterminate",
+      "deterministic": true,
+      "expectations": [
+        {"path": "site_assessment.status", "equals": "incomplete"},
+        {"path": "site_assessment.awarded_points", "is_null": true},
+        {"path": "site_assessment.authority", "equals": "preliminary"}
+      ]
+    },
+    {
+      "id": "upstream-failure",
+      "category": "failure-semantics",
+      "description": "Upstream failure is explicit and unavailable values are not zero.",
+      "status": "error",
+      "deterministic": true,
+      "expectations": [
+        {"path": "coverage_status", "equals": "error"},
+        {"path": "rating", "is_null": true},
+        {"path": "error.code", "equals": "upstream_error"}
+      ]
+    }
+  ]
+}

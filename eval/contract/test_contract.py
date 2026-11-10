@@ -16,6 +16,7 @@ from unittest.mock import patch
 import fastmcp
 import httpx
 import pytest
+from common.dataset import load_gold_set
 
 from fpac_soil_mcp.app import create_mcp_server
 from fpac_soil_mcp.constants import REGULATORY_NOTICE
@@ -197,3 +198,10 @@ async def test_regulatory_notice_resource_cites_parts_657_and_658() -> None:
     text = "\n".join(getattr(item, "text", "") for item in contents)
     assert "7 CFR Part 657" in text
     assert "7 CFR Part 658" in text
+
+
+def test_phase4_gold_set_is_registered_as_deterministic_contract() -> None:
+    cases = load_gold_set()
+    assert len(cases) >= 8
+    assert {case["status"] for case in cases} == {"covered", "indeterminate", "error"}
+    assert all(case["deterministic"] is True for case in cases)
