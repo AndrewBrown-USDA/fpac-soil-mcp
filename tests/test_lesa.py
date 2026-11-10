@@ -547,7 +547,7 @@ class TestSiteAssessmentRules:
         assert criterion.normalized_ratio is None
 
     def test_missing_site_assessment_is_incomplete(self) -> None:
-        summary = evaluate_site_assessment({})
+        summary = evaluate_site_assessment(None)
         assert summary.evaluation_status == "incomplete"
         assert summary.total_points == 0.0
 
@@ -621,11 +621,12 @@ class TestSiteAssessmentRules:
         assert resp.threshold_status == "not_evaluated"
         assert resp.mandatory_alternatives_required is None
 
-    def test_complete_factual_criterion_seven_remains_scored(self) -> None:
+    def test_criterion_seven_estimate_does_not_complete_unavailable_assessment(self) -> None:
         summary = evaluate_site_assessment(
-            {}, project_farm_acres=100.0, county_average_farm_acres=200.0
+            None, project_farm_acres=100.0, county_average_farm_acres=200.0
         )
         criterion = next(c for c in summary.criteria if c.criterion_number == 7)
+        assert summary.evaluation_status == "incomplete"
         assert criterion.input_authority == "machine_estimate"
         assert criterion.awarded_points == 0.0
 
