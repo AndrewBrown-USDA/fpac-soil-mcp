@@ -255,6 +255,50 @@ def test_run_case_returns_structured_failure_when_subprocess_startup_raises(
     assert result["error"] == "OSError: unable to start pi"
 
 
+def test_create_sandbox_writes_builtin_project_mcp_config(tmp_path: Path) -> None:
+    run_evals.create_sandbox(tmp_path)
+
+    config_path = tmp_path / ".pi" / "mcp.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    server = config["mcpServers"]["fpac-soil"]
+    assert server["command"] == "uv"
+    assert server["args"] == ["--directory", str(REPO_ROOT), "run", "fpac-soil-mcp"]
+    assert server["env"] == {"MCP_TRANSPORT": "stdio"}
+    assert not (tmp_path / ".mcp.json").exists()
+    assert not (tmp_path / "mcp_config.json").exists()
+
+
+def test_run_case_uses_builtin_mcp_approval_without_legacy_config_flag(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class Completed:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def capture_command(cmd: list[str], **kwargs: Any) -> Completed:
+        captured["cmd"] = cmd
+        captured.update(kwargs)
+        return Completed()
+
+    monkeypatch.setattr(run_evals.subprocess, "run", capture_command)
+    run_evals.run_case(
+        _capture_case(),
+        tmp_path,
+        model=None,
+        timeout=1,
+        verbose=False,
+        artifact_root=tmp_path / "artifacts",
+    )
+
+    command = captured["cmd"]
+    assert "--approve" in command
+    assert "--mcp-config" not in command
+    assert captured["cwd"] == str(tmp_path)
+
+
 def _capture_case(**overrides: Any) -> dict[str, Any]:
     case = {
         "id": "CAPTURE-01",
@@ -1056,11 +1100,11 @@ def prompt_dataset() -> list[dict[str, Any]]:
 
 @pytest.fixture
 def sandbox_env() -> Generator[Path, None, None]:
-    """Create an isolated temporary sandbox directory with ephemeral .mcp.json."""
+    """Create an isolated temporary project with ephemeral built-in MCP config."""
     with tempfile.TemporaryDirectory(prefix="pi_mcp_eval_") as tmp_dir:
         sandbox_path = Path(tmp_dir)
 
-        # Create ephemeral .mcp.json pointing back to repository using uv run
+        # Create project-local MCP config pointing back to the repository.
         mcp_config = {
             "mcpServers": {
                 "fpac-soil": {
@@ -1078,12 +1122,9 @@ def sandbox_env() -> Generator[Path, None, None]:
             }
         }
 
-        mcp_config_path = sandbox_path / ".mcp.json"
-        with open(mcp_config_path, "w", encoding="utf-8") as f:
-            json.dump(mcp_config, f, indent=2)
-
-        mcp_custom_path = sandbox_path / "mcp_config.json"
-        with open(mcp_custom_path, "w", encoding="utf-8") as f:
+        project_config_dir = sandbox_path / ".pi"
+        project_config_dir.mkdir()
+        with open(project_config_dir / "mcp.json", "w", encoding="utf-8") as f:
             json.dump(mcp_config, f, indent=2)
 
         yield sandbox_path
@@ -1152,11 +1193,10 @@ def test_pi_point_screening_evaluation(
     model_override = os.environ.get("AGENT_EVAL_MODEL", "gpt-5.6-luna")
     cmd = [
         pi_exe,
+        "--approve",
         "--no-session",
         "--mode",
         "json",
-        "--mcp-config",
-        str(sandbox_env / "mcp_config.json"),
         "--append-system-prompt",
         pi_system_prompt(),
         "-p",

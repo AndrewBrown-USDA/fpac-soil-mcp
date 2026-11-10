@@ -260,12 +260,9 @@ def create_sandbox(sandbox_dir: Path) -> None:
             }
         }
     }
-    with open(sandbox_dir / ".mcp.json", "w", encoding="utf-8") as f:
-        json.dump(mcp_config, f, indent=2)
-
-    # Also generate an explicit mcp-config.json for pi --mcp-config
-    mcp_file = sandbox_dir / "mcp_config.json"
-    with open(mcp_file, "w", encoding="utf-8") as f:
+    project_config_dir = sandbox_dir / ".pi"
+    project_config_dir.mkdir(parents=True, exist_ok=True)
+    with open(project_config_dir / "mcp.json", "w", encoding="utf-8") as f:
         json.dump(mcp_config, f, indent=2)
 
 
@@ -622,11 +619,10 @@ def run_case(
 
     cmd = [
         pi_exe,
+        "--approve",
         "--no-session",
         "--mode",
         "json",
-        "--mcp-config",
-        str(sandbox_dir / "mcp_config.json"),
         "--append-system-prompt",
         pi_system_prompt(),
         "-p",
