@@ -25,7 +25,7 @@
 | 3 | 46.3.1 Harden MCP contracts | done |
 | 3 | 46.3.2 Preserve map semantics | done |
 | 3 | gate MCP/map safety | done |
-| 4 | 46.4.1 Instrument benchmarks | pending |
+| 4 | 46.4.1 Instrument benchmarks | done |
 | 4 | 46.4.2 Run performance evidence | pending |
 | 4 | gate Criterion 2 evidence | pending |
 | 5 | 46.5.1 Synchronize documentation | pending |
@@ -92,6 +92,13 @@
 - **Status:** pass; MCP contract tests and map uncertainty/privacy checks pass.
 - **Exact tests:** `uv run pytest tests\test_tools.py tests\test_models.py tests\test_server.py eval\contract\test_contract.py -q` — 83 passed, 3 deselected; `make app-check` — 177 passed.
 - **Dependency confirmation:** 46.3.1 follows prompt-policy gate 46.1; 46.3.2 follows adversarial corpus gate 46.2.
+
+## 46.4.1
+- **Status:** done.
+- **Files:** `eval\criterion2_benchmark.py` (1-300); `tests\test_criterion2_benchmark.py` (1-126); `tests\fixtures\criterion2_benchmark.v1.json` (1-158); `Makefile` (11, 19, 70-72); task TODO.
+- **Validation:** `uv run pytest tests\test_criterion2_benchmark.py -q` — 7 passed; one-run manifest dry run emitted all four fixtures and full aggregate schema; Ruff, format, and `git diff --check` passed.
+- **Commit:** pending; adversarial evaluation and MCP/map safety gates passed.
+- **Deviations/gotchas:** dry-run labels outcomes unmeasured; exact fixture arguments are preserved, and concurrent runs do not claim per-case tracemalloc memory.
 
 ## Gate Evidence Convention
 

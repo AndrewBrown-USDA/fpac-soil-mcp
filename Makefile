@@ -11,6 +11,7 @@ MCP_HOST    ?= 127.0.0.1
 MCP_PORT    ?= 8000
 IMAGE_NAME  ?= fpac-soil-mcp
 EVAL_ARTIFACT_ROOT ?= ../fpac-soil-mcp-eval-artifacts
+CRITERION2_ARGS ?=
 
 # Databricks agent app (separate uv project; root Ruff/pytest skip apps/)
 APP_DIR     ?= apps/agent-fpac-soil-openai-sdk
@@ -18,7 +19,7 @@ APP_PYTHON  ?= 3.11
 # Files this repo owns in the app; the remaining template runtime files are not linted.
 APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/aoi_context.py agent_server/config.py agent_server/geo.py agent_server/history.py tests)
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check ecfr ecfr-check
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval criterion2-benchmark eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check ecfr ecfr-check
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -68,6 +69,9 @@ test-live: ## Run live network integration tests (requires network)
 
 test-eval: ## Run Pi agent evaluation benchmark suite
 	$(PYTHON) eval/pi/run_evals.py --capture-artifacts --artifact-root "$(EVAL_ARTIFACT_ROOT)"
+
+criterion2-benchmark: ## Run Criterion 2 MCP benchmark (pass options with CRITERION2_ARGS)
+	$(UV) run python eval/criterion2_benchmark.py $(CRITERION2_ARGS)
 
 eval: test-eval ## Alias for test-eval
 
