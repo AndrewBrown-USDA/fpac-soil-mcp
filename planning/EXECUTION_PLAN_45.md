@@ -254,7 +254,8 @@ their scores.
 - Must edit: `src\fpac_soil_mcp\tools\lesa_tools.py`,
   `src\fpac_soil_mcp\resources\fppa_resources.py`,
   `src\fpac_soil_mcp\resources\__init__.py`,
-  `src\fpac_soil_mcp\app.py`, `tests\test_tools.py`
+  `src\fpac_soil_mcp\app.py`, `tests\test_tools.py`,
+  `manifest.yaml`, `eval\contract\test_contract.py`
 - Must create: `tests\test_site_assessment_resource.py`
 - Can create: `planning\tasks\45.2.1.todo.md`
 - Do not touch: frontend or agent-app code
@@ -287,7 +288,7 @@ return an indeterminate result; no siting recommendation is emitted.
 - Must edit: `src\fpac_soil_mcp\constants.py`,
   `src\fpac_soil_mcp\fppa.py`,
   `src\fpac_soil_mcp\prompts\fppa_prompts.py`,
-  `tests\test_fppa.py`, `tests\test_prompts.py`
+  `tests\test_fppa.py`, `tests\test_prompts.py`, `tests\test_server.py`
 - Can create: `planning\tasks\45.2.2.todo.md`
 - Do not touch: scoring engine or data clients
 

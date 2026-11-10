@@ -32,10 +32,10 @@
 | 3 | 45.3.1 Preserve selected property through aggregation | done |
 | 3 | 45.3.2 Reconcile coverage, maxima, and provenance | done |
 | 3 | gate aggregation and relevant live tests | passed |
-| 4 | 45.4.1 Build deterministic gold-set evidence | pending |
-| 4 | 45.4.2 Separate model-assisted evidence and diagnostics | pending |
-| 4 | 45.4.3 Synchronize docs and closeout evidence | pending |
-| 4 | gate final validation and review | pending |
+| 4 | 45.4.1 Build deterministic gold-set evidence | done |
+| 4 | 45.4.2 Separate model-assisted evidence and diagnostics | done |
+| 4 | 45.4.3 Synchronize docs and closeout evidence | done |
+| 4 | gate final validation and review | passed |
 
 ## Task Reports
 
@@ -101,4 +101,36 @@
   compiles cleanly; full gate 731 passed, 3 skipped, 45 deselected.
 - **Deviations:** none.
 - **Gotchas:** missing/partial coverage and provenance are explicit states.
+
+## 45.4.1
+
+- **Status:** done.
+- **Files:** deterministic gold-set fixture, common dataset/matching support,
+  contract registration, focused gold-set tests, and TODO.
+- **Checks:** targeted contract suite 17 passed in 1.58 seconds.
+- **Deviations:** none; deterministic evidence remains separate from model judges.
+- **Gotchas:** unavailable and subjective inputs remain explicit indeterminate states.
+
+## 45.4.2
+
+- **Status:** done.
+- **Files:** Pi/Databricks evaluation handling, four model-assisted cases,
+  sanitized evidence report, and TODO.
+- **Checks:** targeted model-assisted tests 34 passed, 1 skipped, 2 deselected
+  in 0.34 seconds with `PYTHONPATH=.`.
+- **Deviations:** `make test-eval` requires `PYTHONPATH=.` in this checkout;
+  Databricks execution requires configured workspace credentials.
+- **Gotchas:** no case rewards fabricated points or siting recommendations.
+
+## 45.4.3
+
+- **Status:** done.
+- **Files:** synchronized milestone/public documentation, closeout evidence,
+  independent review, and TODO.
+- **Checks:** `make check` passed: 737 passed, 3 skipped, 45 deselected;
+  targeted model-assisted tests passed as above.
+- **Deviations:** `make test-eval` collection failed without `PYTHONPATH=`;
+  `make eval-databricks` was blocked by missing default Databricks credentials.
+- **Gotchas:** live-network tests were not required because implementation files
+  and upstream request behavior were unchanged; deferred adjacency remains explicit.
 
