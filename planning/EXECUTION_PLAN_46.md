@@ -108,7 +108,7 @@ evaluation setup/results evidence.
 | 1 | 46.1.2 | Add cross-surface policy assertions | `eval\common\matching.py`; `eval\common\test_common_matching.py`; `tests\test_prompts.py`; `apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py`; `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | `eval\common\policy_rules.v1.json` | none |
 | 1 gate | - | Prompt policy gate | none | none | 46.1.1, 46.1.2 |
 | 2 | 46.2.1 | Add adversarial case corpus and status schema | `eval\eval_cases.v1.json`; `eval\prompt_test_cases.json`; `eval\common\dataset.py`; `eval\common\test_common_dataset.py`; `eval\fpac_soil_mcp_harness\lib\evalCases.js` | none | 46.1 gate |
-| 2 | 46.2.2 | Add deterministic safety and reliability scorers | `eval\common\matching.py`; `eval\databricks\scorers.py`; `eval\fpac_soil_mcp_harness\lib\evalAssertions.js`; `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | none | 46.2.1 |
+| 2 | 46.2.2 | Add deterministic safety and reliability scorers | `eval\common\matching.py`; `eval\common\test_common_matching.py`; `eval\databricks\scorers.py`; `eval\databricks\test_databricks_scorers.py`; `eval\fpac_soil_mcp_harness\lib\evalAssertions.js`; `eval\fpac_soil_mcp_harness\test\harness.test.js`; `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | none | 46.2.1 |
 | 2 gate | - | Adversarial evaluation gate | none | none | 46.2.1, 46.2.2 |
 | 3 | 46.3.1 | Harden public MCP input/error contracts and tool metadata | `src\fpac_soil_mcp\tools\__init__.py`; `src\fpac_soil_mcp\tools\soil_lookup_tools.py`; `src\fpac_soil_mcp\tools\spatial_analysis_tools.py`; `src\fpac_soil_mcp\tools\lesa_tools.py`; `src\fpac_soil_mcp\tools\exemption_tools.py`; `src\fpac_soil_mcp\tools\fppa_tools.py`; `src\fpac_soil_mcp\models.py`; `src\fpac_soil_mcp\case_models.py`; `src\fpac_soil_mcp\integration_models.py`; `tests\test_tools.py`; `tests\test_models.py`; `tests\test_server.py`; `eval\contract\test_contract.py`; no prompt files | `planning\evidence\46.3.1-tool-surface-review.md` | 46.1 gate |
 | 3 | 46.3.2 | Preserve map uncertainty and non-prime semantics | `apps\agent-fpac-soil-openai-sdk\agent_server\geo.py`; `apps\agent-fpac-soil-openai-sdk\frontend\client\src\components\map\farmlandClasses.ts`; `apps\agent-fpac-soil-openai-sdk\tests\test_geo_screen.py`; `apps\agent-fpac-soil-openai-sdk\tests\test_geo_map.py` | `apps\agent-fpac-soil-openai-sdk\tests\fixtures\geo_semantics.json` | 46.2.1 |
@@ -208,8 +208,9 @@ hand off exact required-rule list to 46.1.2.
 ### 46.2.2 — Add deterministic safety and reliability scorers
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
-- **Files in scope:** common matching, Databricks scorers, harness assertions,
-  Pi result/test handling listed in the wave table.
+- **Files in scope:** common matching and its tests, Databricks scorers and
+  their tests, harness assertions and tests, and Pi result/test handling
+  listed in the wave table.
 - **Depends on:** 46.2.1.
 - **Spec:** Add negation-aware prohibited-claim checks, required behavior/status
   checks, provenance/disclosure checks, privacy non-echo, max tool/retry
@@ -226,7 +227,8 @@ hand off exact required-rule list to 46.1.2.
   focused scorer tests.
 - **Acceptance:** scorer tests cover affirmative forbidden claims and properly
   negated safety statements. Command:
-  `uv run pytest eval\common eval\databricks\test_databricks_scorers.py eval\pi\test_agent_eval.py -q`.
+  `uv run pytest eval\common eval\databricks\test_databricks_scorers.py eval\pi\test_agent_eval.py -q`;
+  from `eval\fpac_soil_mcp_harness`, `npm test` and `npm run check`.
 
 ### 46.3.1 — Harden public MCP input/error contracts
 

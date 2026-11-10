@@ -250,6 +250,7 @@ def test_run_case_returns_structured_failure_when_subprocess_startup_raises(
     )
 
     assert result["status"] == "ERROR"
+    assert result["semantic_status"] == "SKIP"
     assert result["elapsed_sec"] >= 0
     assert result["error"] == "OSError: unable to start pi"
 
@@ -295,6 +296,7 @@ def test_run_case_capture_success_separates_stderr_malformed_lines_and_metadata(
 
     assert result["status"] == "PASS"
     assert result["evidence_tier"] == "model_assisted"
+    assert result["semantic_status"] == "SKIP"
     assert result["evidence_classification"] == "recognized"
     assert result["attempts"][0]["model"] == "test-model"
     assert result["attempts"][0]["provider"] == "pi"
@@ -303,6 +305,41 @@ def test_run_case_capture_success_separates_stderr_malformed_lines_and_metadata(
     assert (artifact_dir / "malformed-lines.txt").read_text(encoding="utf-8").strip() == "not-json"
     assert "attempt_1_stdout_path" in result["artifact_paths"]
     assert "diagnostic only" not in result["error"]
+
+
+def test_semantic_checks_are_separate_from_runner_health_status() -> None:
+    case = {
+        "expected_status": "covered",
+        "required_behaviors": ["Do not recommend a site."],
+        "prohibited_behaviors": ["siting_recommendation"],
+        "source_disclosure": ["USDA NRCS SDA"],
+        "max_tool_calls": 1,
+        "max_retries": 0,
+        "latency_budget_ms": 1000,
+    }
+    failures = run_evals._semantic_failures(
+        case,
+        "This does not establish suitability. I do not recommend a site. Source: USDA NRCS SDA.",
+        [{"result": {"status": "covered"}}],
+        elapsed_sec=0.5,
+        attempt_count=1,
+        tool_call_count=1,
+    )
+    assert failures == []
+
+    failures = run_evals._semantic_failures(
+        case,
+        "I recommend this site.",
+        [{"result": {"status": "indeterminate"}}],
+        elapsed_sec=2,
+        attempt_count=2,
+        tool_call_count=2,
+    )
+    assert any("status expected" in failure for failure in failures)
+    assert any("prohibited behavior" in failure for failure in failures)
+    assert any("tool calls" in failure for failure in failures)
+    assert any("retries" in failure for failure in failures)
+    assert any("latency" in failure for failure in failures)
 
 
 def test_run_case_capture_is_non_retaining_when_opt_in_root_is_absent(

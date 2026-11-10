@@ -20,8 +20,8 @@
 | 1 | 46.1.2 Add policy assertions | done |
 | 1 | gate prompt policy | done |
 | 2 | 46.2.1 Add adversarial corpus | done |
-| 2 | 46.2.2 Add deterministic scorers | pending |
-| 2 | gate adversarial evaluation | pending |
+| 2 | 46.2.2 Add deterministic scorers | done |
+| 2 | gate adversarial evaluation | done |
 | 3 | 46.3.1 Harden MCP contracts | pending |
 | 3 | 46.3.2 Preserve map semantics | pending |
 | 3 | gate MCP/map safety | pending |
@@ -62,6 +62,18 @@
 - **Commit:** pending; dependencies: Wave 1 prompt-policy gate passed.
 - **Deviations/gotchas:** `evalCases.js` needed no change because the existing deterministic mapping accepts the new cases; all examples are synthetic.
 
+## 46.2.2
+- **Status:** done.
+- **Files:** common matcher/tests (87-158, 85-130); Databricks scorers/tests (26-38, 201-290; tests 140-195); harness assertions/tests (30-120; tests 76-118); Pi runner/tests (23-32, 530-595, 908-950; tests 250-350); task TODO.
+- **Validation:** `PYTHONPATH=apps\agent-fpac-soil-openai-sdk;eval uv run pytest eval\common eval\databricks\test_databricks_scorers.py eval\pi\test_agent_eval.py -q` — 163 passed, 2 deselected; harness `npm test` — 13 passed; `npm run check`, Ruff, and `git diff --check` passed.
+- **Commit:** pending; dependency 46.2.1 passed and committed.
+- **Deviations/gotchas:** Pi reports semantic status separately from runner health status; Databricks retry scoring counts repeated identical tool calls as retries, and latency scoring requires trace timing.
+
+## Wave 2 Gate
+- **Status:** pass; adversarial corpus loads deterministically and semantic/reliability scorers pass focused Python and harness tests.
+- **Exact tests:** `uv run pytest eval\common eval\contract -q` — 116 passed; Python scorer suite — 163 passed, 2 deselected; harness `npm test` — 13 passed; `npm run check` passed.
+- **Dependency confirmation:** 46.2.1 completed before 46.2.2; Wave 2 dependencies for Wave 3 are satisfied.
+
 ## Gate Evidence Convention
 
 Each completed task/gate entry must record: status, exact command, pass/fail
@@ -84,7 +96,7 @@ prerequisite gate has an explicit passing entry.
 | Gate | Status | Exact command | Counts/artifact | Dependency confirmation |
 |---|---|---|---|---|
 | Prompt policy | pass | targeted prompt/app/Pi/common pytest: 151 passed, 2 deselected; Ruff check/format pass | `64a0e3b`, `c92e462` | both Wave 1 tasks verified |
-| Adversarial evaluation | pending | - | - | - |
+| Adversarial evaluation | pass | dataset: 116 passed; scorer Python: 163 passed, 2 deselected; harness: 13 passed; check passed | pending | 46.2.1 then 46.2.2 verified |
 | MCP/map safety | pending | - | - | - |
 | Criterion 2 evidence | pending | - | - | - |
 | Final validation | pending | - | - | - |

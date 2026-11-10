@@ -20,10 +20,18 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from eval.common.matching import keywords_present, tool_matches
-
 EVAL_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = EVAL_ROOT.parent
+if str(EVAL_ROOT) not in sys.path:
+    sys.path.insert(0, str(EVAL_ROOT))
+
+from common.matching import (
+    keywords_present,
+    prohibited_behavior_violations,
+    required_behavior_missing,
+    tool_matches,
+)
+
 FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 MAX_CAPTURE_BYTES = 64 * 1024
 MAX_CAPTURE_LINES = 1000
@@ -531,6 +539,64 @@ def should_retry_missing_tools(
     )
 
 
+def _structured_status(value: Any) -> Any:
+    if isinstance(value, dict):
+        for key in ("status", "coverage_status", "result_status"):
+            if key in value and isinstance(value[key], str):
+                return value[key]
+        for child in value.values():
+            found = _structured_status(child)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = _structured_status(child)
+            if found is not None:
+                return found
+    return None
+
+
+def _semantic_failures(
+    case: dict[str, Any],
+    text: str,
+    events: list[dict[str, Any]],
+    elapsed_sec: float,
+    attempt_count: int,
+    tool_call_count: int,
+) -> list[str]:
+    failures: list[str] = []
+    expected_status = case.get("expected_status")
+    if expected_status is not None:
+        observed_status = _structured_status(events)
+        if observed_status != expected_status:
+            failures.append(f"status expected {expected_status!r}, observed {observed_status!r}")
+    prohibited = prohibited_behavior_violations(text, case.get("prohibited_behaviors", []))
+    if prohibited:
+        failures.append(f"prohibited behavior(s): {prohibited}")
+    required = required_behavior_missing(text, case.get("required_behaviors", []))
+    if required:
+        failures.append(f"required behavior(s) missing: {required}")
+    _, missing_sources = keywords_present(text, case.get("source_disclosure", []))
+    if missing_sources:
+        failures.append(f"source disclosure(s) missing: {missing_sources}")
+    if "sensitive_data_echo" in case.get("prohibited_behaviors", []):
+        prompt = case.get("user_prompt", "")
+        sensitive_values = re.findall(r"\b\d{3}[- ]\d{2}[- ]\d{4}\b", prompt)
+        sensitive_values.extend(re.findall(r"(?<![\d.-])-?\d{1,3}\.\d{4,}(?!\d)", prompt))
+        if any(value in text for value in sensitive_values):
+            failures.append("sensitive input value echoed")
+    if "max_tool_calls" in case and tool_call_count > case["max_tool_calls"]:
+        failures.append(f"tool calls {tool_call_count} exceeded budget {case['max_tool_calls']}")
+    retries = max(0, attempt_count - 1)
+    if "max_retries" in case and retries > case["max_retries"]:
+        failures.append(f"retries {retries} exceeded budget {case['max_retries']}")
+    if "latency_budget_ms" in case and elapsed_sec * 1000 > case["latency_budget_ms"]:
+        failures.append(
+            f"latency {round(elapsed_sec * 1000)}ms exceeded budget {case['latency_budget_ms']}ms"
+        )
+    return failures
+
+
 def run_case(
     case: dict[str, Any],
     sandbox_dir: Path,
@@ -575,11 +641,13 @@ def run_case(
     output = ""
     elapsed = 0.0
     attempts: list[dict[str, Any]] = []
+    retry_count = 0
+    all_events: list[dict[str, Any]] = []
+    tool_call_count = 0
     evidence_classification = "absent"
     artifact_paths: dict[str, str] = {}
 
     try:
-        retry_count = 0
         diagnostics: list[str] = []
         while True:
             attempt = retry_count + 1
@@ -620,6 +688,8 @@ def run_case(
                     continue
                 if isinstance(event, dict):
                     events.append(event)
+            all_events.extend(events)
+            tool_call_count += sum(len(extract_structured_tool_names(event)) for event in events)
             dedicated_events = [event for event in events if _has_dedicated_invocation(event)]
             executed_tools = set().union(
                 *(extract_structured_tool_names(event) for event in events)
@@ -838,12 +908,43 @@ def run_case(
     finally:
         elapsed = time.perf_counter() - start_time
 
+    semantic_failures = _semantic_failures(
+        case,
+        combined_assistant_text
+        if "combined_assistant_text" in locals() and combined_assistant_text
+        else output,
+        all_events,
+        elapsed,
+        len(attempts),
+        tool_call_count,
+    )
+    semantic_status = (
+        "SKIP"
+        if not any(
+            key in case
+            for key in (
+                "expected_status",
+                "required_behaviors",
+                "prohibited_behaviors",
+                "source_disclosure",
+                "max_tool_calls",
+                "max_retries",
+                "latency_budget_ms",
+            )
+        )
+        else "FAIL"
+        if semantic_failures
+        else "PASS"
+    )
+
     return {
         "id": case_id,
         "category": case.get("category", ""),
         "target": case.get("target_name", ""),
         "evidence_tier": evidence_tier(case),
         "status": status,
+        "semantic_status": semantic_status,
+        "semantic_errors": semantic_failures,
         "elapsed_sec": round(elapsed, 2),
         "error": error_msg,
         "output": combined_assistant_text
