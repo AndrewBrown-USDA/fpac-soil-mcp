@@ -71,6 +71,22 @@ def test_checked_in_dataset_validates() -> None:
     cases = load_cases()
     assert len(cases) >= 20
     assert dataset_version(DEFAULT_PATH).split(".")[0] in {"1", "2"}
+    by_id = {case["id"]: case for case in cases}
+    for case_id in ("SA-MA-01", "SA-MA-03"):
+        assert by_id[case_id]["expected_tool_calls"] == [
+            {
+                "name": "get_prompt",
+                "arguments": {
+                    "name": "fppa_site_assessment_assistant",
+                    "arguments": {},
+                },
+            }
+        ]
+    lesa_case = by_id["SA-MA-02"]
+    assert "project Synthetic SA-MA-02" in lesa_case["user_prompt"]
+    assert "project_type site" in lesa_case["user_prompt"]
+    assert lesa_case["expected_tool_calls"][0]["arguments"]["project_name"] == "Synthetic SA-MA-02"
+    assert lesa_case["expected_tool_calls"][0]["arguments"]["project_type"] == "site"
 
 
 def test_v1_row_and_full_v2_row_validate() -> None:

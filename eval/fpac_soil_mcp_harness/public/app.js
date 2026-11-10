@@ -1077,6 +1077,9 @@
     );
     if (!r || r.running) return;
     if (r.error) box.append(el("div", { class: "callout err prewrap", text: r.error.message }));
+    if (r.assertions) {
+      box.append(el("details", { class: "subsection" }, el("summary", { text: "Assertion results" }), jsonBlock(r.assertions)));
+    }
     const out = r.output;
     if (!out) return;
     const holder = el("div", {});

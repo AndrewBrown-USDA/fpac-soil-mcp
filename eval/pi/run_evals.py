@@ -218,6 +218,19 @@ def load_test_cases(category: str, case_id: str | None) -> list[dict[str, Any]]:
     return cases
 
 
+def evidence_tier(case: dict[str, Any]) -> str:
+    """Prefer a case's declared evidence tier, with a category-based legacy fallback."""
+    declared = case.get("evidence_tier")
+    if isinstance(declared, str) and declared.strip():
+        return declared.strip()
+    category = case.get("category", "").lower()
+    return (
+        "deterministic_contract"
+        if any(marker in category for marker in ("deterministic", "contract"))
+        else "model_assisted"
+    )
+
+
 def create_sandbox(sandbox_dir: Path) -> None:
     # The temporary working directory keeps the agent away from the repository
     # files. A future hardening step can replace this with pi-sandbox/container
@@ -815,6 +828,7 @@ def run_case(
         "id": case_id,
         "category": case.get("category", ""),
         "target": case.get("target_name", ""),
+        "evidence_tier": evidence_tier(case),
         "status": status,
         "elapsed_sec": round(elapsed, 2),
         "error": error_msg,
@@ -869,7 +883,8 @@ def main() -> None:
 
         for idx, case in enumerate(cases, 1):
             print(
-                f"[{idx:02d}/{len(cases):02d}] Running {case['id']} ({case['target_name']})... ",
+                f"[{idx:02d}/{len(cases):02d}] Running {case['id']} ({case['target_name']}, "
+                f"tier={evidence_tier(case)})... ",
                 end="",
                 flush=True,
             )
@@ -906,13 +921,16 @@ def main() -> None:
             results.append(res)
 
     print("\n" + "=" * 70)
-    print(f"{'ID':<10} | {'Category':<22} | {'Target':<20} | {'Status':<7} | {'Time (s)':<8}")
-    print("-" * 70)
+    print(
+        f"{'ID':<10} | {'Tier':<22} | {'Category':<22} | {'Target':<20} | {'Status':<7} | {'Time (s)':<8}"
+    )
+    print("-" * 96)
     for r in results:
         print(
-            f"{r['id']:<10} | {r['category'][:22]:<22} | {r['target'][:20]:<20} | {r['status']:<7} | {r['elapsed_sec']:<8}"
+            f"{r['id']:<10} | {r['evidence_tier'][:22]:<22} | {r['category'][:22]:<22} | "
+            f"{r['target'][:20]:<20} | {r['status']:<7} | {r['elapsed_sec']:<8}"
         )
-    print("=" * 70)
+    print("=" * 96)
 
     passed = sum(1 for r in results if r["status"] == "PASS")
     failed = sum(1 for r in results if r["status"] in ("FAIL", "ERROR", "TIMEOUT"))

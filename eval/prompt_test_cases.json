@@ -497,7 +497,7 @@
       "category": "Phase 4 - Land Evaluation & Site Assessment",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Check if the total score triggers the 160-point statutory threshold under 7 CFR \u00a7 658.4(c)(2).",
+      "user_prompt": "Calculate a preliminary LESA score for the 'Maple Valley Substation' site project using NCCPI productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Site assessment inputs include 120 awarded points across Part VI criteria with project farm size of 180 acres and county average farm size of 320 acres. Explain the 160-point protection-consideration guidance under 7 CFR \u00a7 658.4(c)(2)-(4), without treating it as requiring selection of an alternative.",
       "expected_tools": [
         "calculate_preliminary_lesa"
       ],
@@ -586,6 +586,15 @@
       "target_name": "fppa_site_assessment_assistant",
       "user_prompt": "Guide me through the Site Assessment questions using the published criteria resource. Ask for the criterion-specific evidence that is missing; do not assign points, select a site, or recommend an alternative.",
       "expected_tools": [],
+      "expected_tool_calls": [
+        {
+          "name": "get_prompt",
+          "arguments": {
+            "name": "fppa_site_assessment_assistant",
+            "arguments": {}
+          }
+        }
+      ],
       "expected_keywords": [
         "site assessment",
         "unknown",
@@ -605,7 +614,7 @@
       "category": "Phase 4 model-assisted missing-input handling",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "For this synthetic site AOI, calculate the preliminary LESA result using NCCPI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Report missing criteria as unavailable or incomplete, not zero; do not invent points or claim a threshold result from an unevaluable total.",
+      "user_prompt": "For project Synthetic SA-MA-02, use project_type site and calculate the preliminary LESA result using NCCPI for this AOI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Report missing criteria as unavailable or incomplete, not zero; do not invent points or claim a threshold result from an unevaluable total.",
       "expected_tools": [
         "calculate_preliminary_lesa"
       ],
@@ -696,6 +705,15 @@
       "target_name": "fppa_site_assessment_assistant",
       "user_prompt": "I have no criterion-specific Site Assessment evidence or site comparisons yet. Explain the regulatory consequence of that limitation and what information would be needed, without assigning points or selecting a site, footprint, or preferred alternative.",
       "expected_tools": [],
+      "expected_tool_calls": [
+        {
+          "name": "get_prompt",
+          "arguments": {
+            "name": "fppa_site_assessment_assistant",
+            "arguments": {}
+          }
+        }
+      ],
       "expected_keywords": [
         "preliminary",
         "unknown",

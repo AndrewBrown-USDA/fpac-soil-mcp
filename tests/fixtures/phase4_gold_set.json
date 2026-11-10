@@ -9,9 +9,9 @@
       "status": "covered",
       "deterministic": true,
       "expectations": [
-        {"path": "selected_property", "equals": "nccpi"},
-        {"path": "provenance.id", "equals": "SDA:NCCPI_V3"},
-        {"path": "coverage_status", "equals": "covered"}
+        {"path": "spec_id", "equals": "nccpi"},
+        {"path": "sdv_provenance.id", "equals": "SDA:NCCPI_V3"},
+        {"path": "coverage_status", "equals": "rated"}
       ]
     },
     {
@@ -21,9 +21,9 @@
       "status": "covered",
       "deterministic": true,
       "expectations": [
-        {"path": "selected_property", "equals": "csr2"},
-        {"path": "provenance.table", "equals": "mapunit"},
-        {"path": "rating", "equals": 96}
+        {"path": "spec_id", "equals": "csr2"},
+        {"path": "sdv_provenance.table", "equals": "mapunit"},
+        {"path": "numeric_rating", "equals": 96}
       ]
     },
     {
@@ -33,9 +33,9 @@
       "status": "covered",
       "deterministic": true,
       "expectations": [
-        {"path": "selected_property", "equals": "cpi"},
-        {"path": "rating", "approx": {"value": 71.0, "abs_tol": 0.01}},
-        {"path": "provenance.nulls_as_zero", "equals": true}
+        {"path": "spec_id", "equals": "cpi"},
+        {"path": "numeric_rating", "approx": {"value": 71.0, "abs_tol": 0.01}},
+        {"path": "sdv_provenance.nulls_as_zero", "equals": true}
       ]
     },
     {
@@ -45,10 +45,10 @@
       "status": "covered",
       "deterministic": true,
       "expectations": [
-        {"path": "selected_property", "equals": "nccpi"},
+        {"path": "ratings.0.spec_id", "equals": "nccpi"},
         {"path": "county_maxima.IL019", "equals": 0.933},
         {"path": "county_maxima.IN097", "equals": 0.812},
-        {"path": "provenance.spec_id", "equals": "nccpi"}
+        {"path": "ratings.0.sdv_provenance.spec_id", "equals": "nccpi"}
       ]
     },
     {
@@ -58,7 +58,7 @@
       "status": "covered",
       "deterministic": true,
       "expectations": [
-        {"path": "coverage_status", "equals": "partial"},
+        {"path": "coverage_percent", "approx": {"value": 60.0, "abs_tol": 0.001}},
         {"path": "rated_acreage", "approx": {"value": 60.0, "abs_tol": 0.001}},
         {"path": "unrated_acreage", "approx": {"value": 40.0, "abs_tol": 0.001}}
       ]
@@ -66,13 +66,13 @@
     {
       "id": "urban-partial-overlap",
       "category": "coverage",
-      "description": "Urban overlap is reconciled separately from rated and unrated acreage.",
+      "description": "Urban-screened acreage and soil rating coverage are reported separately.",
       "status": "covered",
       "deterministic": true,
       "expectations": [
-        {"path": "urban_overlap_status", "equals": "partial"},
-        {"path": "acreage_reconciliation.total", "equals": 100.0},
-        {"path": "acreage_reconciliation.unmapped", "equals": 0.0}
+        {"path": "urban_screening.is_urban_intersected", "equals": true},
+        {"path": "urban_screening.screened_acreage", "equals": 25.0},
+        {"path": "manifest.land_evaluation.coverage_percent", "approx": {"value": 60.0, "abs_tol": 0.2}}
       ]
     },
     {
@@ -82,9 +82,9 @@
       "status": "indeterminate",
       "deterministic": true,
       "expectations": [
-        {"path": "site_assessment.status", "equals": "incomplete"},
-        {"path": "site_assessment.awarded_points", "is_null": true},
-        {"path": "site_assessment.authority", "equals": "preliminary"}
+        {"path": "site_assessment.evaluation_status", "equals": "incomplete"},
+        {"path": "total_lesa_score", "is_null": true},
+        {"path": "site_assessment.criteria.0.input_authority", "equals": "unavailable"}
       ]
     },
     {
@@ -94,9 +94,8 @@
       "status": "error",
       "deterministic": true,
       "expectations": [
-        {"path": "coverage_status", "equals": "error"},
-        {"path": "rating", "is_null": true},
-        {"path": "error.code", "equals": "upstream_error"}
+        {"path": "error.type", "equals": "SDAQueryError"},
+        {"path": "rating", "is_null": true}
       ]
     }
   ]

@@ -22,7 +22,7 @@
       "category": "Phase 4 model-assisted missing-input handling",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "For this synthetic site AOI, calculate the preliminary LESA result using NCCPI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Report missing criteria as unavailable or incomplete, not zero; do not invent points or claim a threshold result from an unevaluable total.",
+      "user_prompt": "For project Synthetic SA-MA-02, use project_type site and calculate the preliminary LESA result using NCCPI for this AOI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Report missing criteria as unavailable or incomplete, not zero; do not invent points or claim a threshold result from an unevaluable total.",
       "expected_keywords": ["incomplete", "unavailable", "preliminary"],
       "expected_facts": [
         "The requested calculator input is a GeoJSON site polygon with no Site Assessment facts or farm-size inputs supplied.",
