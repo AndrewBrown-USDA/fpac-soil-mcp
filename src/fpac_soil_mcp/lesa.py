@@ -384,11 +384,20 @@ def evaluate_land_evaluation(
             is_rated = item.is_rated
             rr = item.normalized_relative_rating
             unrated_reason = item.unrated_reason
+            item_caveats: list[str] = []
         else:
             mukey = str(item.get("mukey", ""))
             is_rated = item.get("is_rated", True)
             rr = item.get("normalized_relative_rating")
             unrated_reason = item.get("unrated_reason")
+            item_caveats = [str(c) for c in item.get("caveats", []) if c]
+            source = item.get("productivity_rating_source")
+            if source:
+                item_caveats.append(f"Productivity rating provenance: {source}")
+
+        for caveat in item_caveats:
+            if caveat not in notices:
+                notices.append(caveat)
 
         acres = acre_map.get(mukey)
         if acres is None and isinstance(item, dict):

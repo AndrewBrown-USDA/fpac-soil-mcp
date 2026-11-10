@@ -171,6 +171,11 @@ def test_corridor_analysis_two_counties():
     assert response.reconciliation_summary["reconciliation_passed"] is True
     assert response.reconciliation_summary["variance_pct"] <= 0.1
     assert response.composite_relative_rating is not None
+    assert all(
+        unit.productivity_rating_source == "SDA:NCCPI_V3"
+        for segment in response.county_segments
+        for unit in segment.map_units
+    )
     assert response.tabular_csv != ""
     assert "Story" in response.tabular_csv
     assert "Boone" in response.tabular_csv

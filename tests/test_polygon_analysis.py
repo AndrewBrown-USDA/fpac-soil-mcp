@@ -464,9 +464,10 @@ def test_polygon_forwards_selected_productivity_index(index):
     ]
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
-    _analyzer(mock_sda).analyze_polygon(GEOJSON, productivity_index=index)
+    result = _analyzer(mock_sda).analyze_polygon(GEOJSON, productivity_index=index)
 
     mock_sda.get_productivity_ratings.assert_called_once_with(mukeys=["1"], index_type=index)
     mock_sda.get_county_max_productivity_rating.assert_called_once_with(
         areasymbol="IA169", index_type=index
     )
+    assert result.map_units[0].productivity_rating_source

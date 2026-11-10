@@ -116,10 +116,8 @@ def _feature_ratings(
         out[mukey] = {
             "productivity_rating": rating,
             "productivity_rating_class": info.get("rating_class") if rating is not None else None,
-            "productivity_rating_source": info.get(
-                "productivity_rating_source",
-                _INDEX_SOURCES.get(productivity_index, f"SDA:{productivity_index.upper()}"),
-            ),
+            "productivity_rating_source": info.get("productivity_rating_source")
+            or _INDEX_SOURCES.get(productivity_index, f"SDA:{productivity_index.upper()}"),
         }
     return out
 
@@ -517,7 +515,7 @@ class CorridorAnalyzer:
                     try:
                         benchmark = partition_max.get(
                             str(u.get("areasymbol")).strip(),
-                            max_county_rating_override or 1.0,
+                            max_county_rating_override or (1.0 if norm_idx == "nccpi" else 100.0),
                         )
                         le_score = min(1.0, max(0.0, numeric_rating / benchmark)) * 100.0
                         segment_le_sum += calc_ac * le_score
