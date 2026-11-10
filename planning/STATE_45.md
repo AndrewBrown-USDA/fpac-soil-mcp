@@ -26,9 +26,9 @@
 | 1 | 45.1.1 Define Site Assessment question and scoring registry | done |
 | 1 | 45.1.2 Add typed incomplete/authority result semantics | done |
 | 1 | gate Site Assessment contract | passed |
-| 2 | 45.2.1 Wire fact-based inputs and question resource | pending |
-| 2 | 45.2.2 Correct wording and authority gaps | pending |
-| 2 | gate Site Assessment integration | pending |
+| 2 | 45.2.1 Wire fact-based inputs and question resource | done |
+| 2 | 45.2.2 Correct wording and authority gaps | done |
+| 2 | gate Site Assessment integration | passed |
 | 3 | 45.3.1 Preserve selected property through aggregation | pending |
 | 3 | 45.3.2 Reconcile coverage, maxima, and provenance | pending |
 | 3 | gate aggregation and relevant live tests | pending |
@@ -59,4 +59,26 @@
   3 skipped, 45 deselected; Ruff check and format clean.
 - **Deviations:** dependent fixture gained required override rationale.
 - **Gotchas:** analyst-proposed point overrides now require non-empty rationale.
+
+## 45.2.1
+
+- **Status:** done.
+- **Files:** LESA tool/resource wiring, registry export helper, tool/resource
+  tests, manifest/contract parity updates, and TODO.
+- **Checks:** targeted contract/resource tests 33 passed; full gate 724 passed,
+  3 skipped, 45 deselected; Ruff clean.
+- **Deviations:** dependent manifest and contract assertions updated for the
+  new public resource.
+- **Gotchas:** resource URI is `fppa://site-assessment-criteria`.
+
+## 45.2.2
+
+- **Status:** done.
+- **Files:** constants, FPPA scope/prompt text, focused FPPA/prompt tests,
+  dependent server expectations, and TODO.
+- **Checks:** targeted wording tests 3 passed; server tests 19 passed/3
+  deselected; full gate 724 passed, 3 skipped, 45 deselected.
+- **Deviations:** stale “220 points” and resource expectations were updated.
+- **Gotchas:** prompts now require registry questions, unknown handling, and
+  non-prescriptive consequences.
 
