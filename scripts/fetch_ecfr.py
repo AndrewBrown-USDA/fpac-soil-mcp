@@ -155,6 +155,50 @@ def fetch_part(title: int, part: int, date: str) -> dict:
     }
 
 
+def _read_manifest(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise TypeError(f"{path} must contain a JSON object")
+    if not isinstance(manifest.get("parts", []), list):
+        raise TypeError(f"{path} has an invalid 'parts' list")
+    return manifest
+
+
+def _check_local_copies(
+    out_dir: Path, title: int, fetched: list[dict], manifest: dict
+) -> list[str]:
+    stored_parts = {
+        item.get("part"): item
+        for item in manifest.get("parts", [])
+        if isinstance(item, dict) and isinstance(item.get("part"), int)
+    }
+    if manifest.get("title", title) != title:
+        stored_parts = {}
+    stale: list[str] = []
+    for item in fetched:
+        part = item["part"]
+        stored = stored_parts.get(part)
+        reasons = []
+        if stored is None:
+            reasons.append("missing manifest entry")
+        elif stored.get("sha256") != item["sha256"]:
+            reasons.append("eCFR XML differs from manifest")
+
+        xml_path = out_dir / f"title-{title}-part-{part}.xml"
+        if not xml_path.is_file():
+            reasons.append("missing local XML")
+        elif stored is not None:
+            local_hash = hashlib.sha256(xml_path.read_bytes()).hexdigest()
+            if local_hash != stored.get("sha256"):
+                reasons.append("local XML differs from manifest")
+
+        if reasons:
+            stale.append(f"{part} ({', '.join(reasons)})")
+    return stale
+
+
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--title", type=int, default=DEFAULT_TITLE)
@@ -185,11 +229,12 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest_path = args.out / "manifest.json"
     if args.check:
-        stored = (
-            json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
-        )
-        stored_hashes = {p["part"]: p["sha256"] for p in stored.get("parts", [])}
-        stale = [f["part"] for f in fetched if stored_hashes.get(f["part"]) != f["sha256"]]
+        try:
+            stored = _read_manifest(manifest_path)
+        except (OSError, json.JSONDecodeError, TypeError) as error:
+            print(f"Invalid eCFR manifest: {error}", file=sys.stderr)
+            return 2
+        stale = _check_local_copies(args.out, args.title, fetched, stored)
         if stale:
             print(f"Stale or missing eCFR copies for title {args.title} parts: {stale}")
             return 1
@@ -197,7 +242,20 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     args.out.mkdir(parents=True, exist_ok=True)
-    manifest_parts = []
+    try:
+        stored = _read_manifest(manifest_path)
+    except (OSError, json.JSONDecodeError, TypeError) as error:
+        print(f"Invalid eCFR manifest: {error}", file=sys.stderr)
+        return 2
+    requested_parts = {item["part"] for item in fetched}
+    manifest_parts = [
+        item
+        for item in stored.get("parts", [])
+        if isinstance(item, dict)
+        and isinstance(item.get("part"), int)
+        and item["part"] not in requested_parts
+        and stored.get("title", args.title) == args.title
+    ]
     for item in fetched:
         stem = f"title-{args.title}-part-{item['part']}"
         xml_bytes = item.pop("_xml")
