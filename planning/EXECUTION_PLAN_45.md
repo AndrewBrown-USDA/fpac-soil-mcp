@@ -137,6 +137,19 @@ agricultural-land adjacency data stream is explicitly deferred.
    ADR 0014, and ADR 0011. No ADR is superseded by this plan. If a necessary
    implementation decision conflicts with an accepted ADR, stop and record a
    new decision before coding.
+9. **D9 — 2026-11-10 — Databricks regulatory review:** Use the checked-in
+   eCFR copies under `docs\cfr\` as the source for Site Assessment wording and
+   point schedules. Keep criterion 2 spatial adjacency deferred, but accept an
+   analyst-supplied percentage when its provenance is explicit. Registry facts
+   requiring human judgment are analyst-proposed/user-provided inputs, not
+   machine estimates, and must preserve rationale and verification state.
+10. **D10 — 2026-11-10 — criterion 7 correction:** Align all criterion 7
+    paths with the 7 CFR 658.5(b)(7) deduction schedule rather than preserving
+    the legacy three-band approximation.
+11. **D11 — 2026-11-10 — geometry/type validation:** Reject a LineString
+    submitted with the default site project type; callers must explicitly
+    declare corridor analysis rather than receiving mixed corridor LE and site
+    SA semantics.
 
 ## Wave & Dependency Table
 
@@ -158,6 +171,47 @@ agricultural-land adjacency data stream is explicitly deferred.
 
 Tasks in the same wave have pairwise-disjoint edit sets except where the table
 explicitly assigns a later task to the next wave. Full gates run serially.
+
+## Databricks Review Amendment — Remediation Waves 5-6
+
+The Databricks review in `planning\REVIEW_45_DATABRICKS.md` supersedes the
+earlier no-findings closeout review. The pulled review commit `6549d26` adds
+the reusable eCFR fetch/check workflow and checked-in Part 657/658 reference
+copies. These references are inputs to the remediation tasks below; generated
+XML/Markdown files must not be edited by hand.
+
+| Wave | Task | Title | Files in scope | Depends on |
+|---|---|---|---|---|
+| 5 | 45.5.1 | Correct registry mappings against eCFR | `src\fpac_soil_mcp\data\site_assessment.v1.json`, `src\fpac_soil_mcp\site_assessment.py`, `tests\test_site_assessment_contract.py`, `tests\fixtures\site_assessment_cfr_cases.json` (new) | 45.1.1 |
+| 5 | 45.5.2 | Align LESA criterion 7 and unavailable LE semantics | `src\fpac_soil_mcp\lesa.py`, `src\fpac_soil_mcp\polygon_analysis.py`, `tests\test_lesa.py`, `tests\test_polygon_analysis.py` | 45.1.2, 45.3.1 |
+| 5 | 45.5.3 | Enforce fact authority, conflicts, and corridor variants | `src\fpac_soil_mcp\tools\lesa_tools.py`, `src\fpac_soil_mcp\models.py`, `tests\test_tools.py` | 45.2.1, 45.5.1 |
+| 6 | 45.5.4 | Reconcile coverage, provenance, and geometry/type validation | `src\fpac_soil_mcp\corridor_analysis.py`, `src\fpac_soil_mcp\tools\lesa_tools.py`, `src\fpac_soil_mcp\models.py`, `tests\test_corridor_analysis.py`, `tests\test_tools.py` | 45.5.3 |
+| 6 | 45.5.5 | Repair Databricks evaluation coverage and evidence | `eval\common\dataset.py`, `eval\databricks\README.md`, `eval\eval_cases.v1.json`, `eval\prompt_test_cases.json`, `eval\databricks\scorers.py`, `tests\eval\test_phase4_databricks_contract.py` (new) | 45.5.3 |
+| 6 gate | - | Databricks remediation validation | no feature files | 45.5.4, 45.5.5 |
+
+### Wave 5 acceptance bar
+
+- Run `make ecfr-check` before regulatory edits; use
+  `docs\cfr\title-7-part-658.md` for wording and schedules.
+- Correct criteria 1-12 mappings, including CFR endpoint direction,
+  binary/multi-service/quantitative representations, and explicit
+  representative-point conventions where the CFR gives a range.
+- Keep criterion 2 spatial evidence unavailable until the planned adjacency
+  stream is integrated, while accepting an analyst percentage with provenance.
+- Never score zero-coverage LE as a valid zero or evaluate the threshold from
+  an unavailable LE.
+- Reject conflicting fact/override inputs and out-of-range analyst points;
+  preserve explicit authority, rationale, verification, and provenance.
+- Apply corridor statutory maxima/zeroing and reject geometry/project-type
+  mismatches rather than mixing corridor and site semantics.
+- Populate one documented coverage vocabulary and carry rating-source
+  provenance into LESA summaries/notices.
+- Ensure SA-MA cases are included in the Databricks dataset with geometry and
+  expected facts sufficient to exercise the intended tools; keep judge evidence
+  separate from deterministic contract evidence.
+- Run `make check`; run `uv run pytest -m live_network` for changed upstream
+  integration behavior; run the Databricks evaluation only where credentials
+  are available, recording environment limitations without masking failures.
 
 ## Hazard Notes
 

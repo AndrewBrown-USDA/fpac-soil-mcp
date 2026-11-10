@@ -150,7 +150,7 @@
 - **Recommendation:** blocked for deployment trial; ready for refinement after
   DB45-01 and DB45-02 are fixed and DB45-05, DB45-08, DB45-11 are decided.
 
-### Triage board
+### Original triage board (superseded by the amendment below)
 
 | ID | Severity | Summary | Suggested triage | Disposition |
 |---|---|---|---|---|
@@ -178,4 +178,43 @@
 
 - **Deployment:** no app runs this branch; a deployed check needs a dev app
   pointed at `feature/semiquant-sa1` plus a browser check.
+
+## Databricks review amendment
+
+- **Review commit pulled:** `6549d26`; reusable `scripts\fetch_ecfr.py`,
+  `make ecfr`, `make ecfr-check`, and checked-in Part 657/658 references are
+  now available.
+- **Decision status:** DB45-05 resolved by D9 (analyst percentage accepted with
+  explicit provenance while spatial adjacency remains deferred); DB45-08
+  resolved by D9 (human-entered facts are analyst-proposed/user-provided, not
+  machine estimates); DB45-11 resolved by D10 (align criterion 7 to CFR);
+  DB45-15 resolved by D11 (reject LineString/site mismatch).
+- **Remediation wave:** 45.5.1-45.5.5 added to `EXECUTION_PLAN_45.md`;
+  implementation is pending.
+
+### Updated triage board
+
+| ID | Disposition after amendment |
+|---|---|
+| DB45-01 | Wave 5 / 45.5.1 |
+| DB45-02 | Wave 5 / 45.5.2 |
+| DB45-03 | Wave 5 / 45.5.3 |
+| DB45-04 | Wave 5 / 45.5.3 |
+| DB45-05 | Resolved by D9; implement in 45.5.1/45.5.3 |
+| DB45-06 | Wave 5 / 45.5.3 |
+| DB45-07 | Wave 5 / 45.5.3 |
+| DB45-08 | Resolved by D9; implement in 45.5.3 |
+| DB45-09 | Wave 5 / 45.5.4 |
+| DB45-10 | Wave 5 / 45.5.2 |
+| DB45-11 | Resolved by D10; implement in 45.5.2 |
+| DB45-12 | Wave 5 / 45.5.4 |
+| DB45-13 | Wave 5 / 45.5.1 |
+| DB45-14 | Wave 5 / 45.5.4 |
+| DB45-15 | Resolved by D11; implement in 45.5.4 |
+| DB45-E1 | Wave 5 / 45.5.5 |
+| DB45-E2 | Wave 5 / 45.5.5 |
+| DB45-E3 | Wave 5 / 45.5.5 |
+| DB45-E4 | Out of scope; retained as Plan 44 follow-up |
+| DB45-N1 | Documented in Databricks review; validate when credentials exist |
+| DB45-N2 | Recorded existing limitation |
 
