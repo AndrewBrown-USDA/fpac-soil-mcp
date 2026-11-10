@@ -108,6 +108,16 @@ from this browser workbench. This harness does not provide model-based scoring, 
 readiness. The Databricks startup configuration above does not add model-based scoring
 or production security hardening.
 
+The shared adversarial corpus is in [`../eval_cases.v1.json`](../eval_cases.v1.json)
+and the browser's deterministic MCP cases are in
+[`../prompt_test_cases.json`](../prompt_test_cases.json). Deterministic
+assertions check configured expected status/behavior and response evidence;
+they do not assess model judgment or establish production readiness. The
+versioned cross-surface prompt policy and its limits are summarized in the
+[repository evaluation overview](../../README.md#prompt-policy-and-adversarial-cases).
+See [Orchestration 46 state](../../planning/STATE_46.md) for the scorer gate
+results and limitations.
+
 ## REST API (used by the UI)
 
 | Method | Path | Purpose |

@@ -247,6 +247,21 @@ uv run pytest tests -q
 
 Agent evaluation lives in the repository's `eval/databricks/` (T1), not in this app.
 
+The app's native system prompt follows the versioned FPPA screening policy
+asserted across the app, FastMCP prompts, Databricks prompts, and Pi's
+constructed prompt path. It preserves FPPA-only scope, refuses unrelated
+requests, avoids official/legal determinations and siting recommendations,
+does not overinterpret farmland classes or urban screening, and keeps
+unknown/partial/unavailable information explicit without inventing values.
+Shared adversarial cases
+and deterministic policy assertions are documented in the
+[repository evaluation overview](../../README.md#prompt-policy-and-adversarial-cases).
+
+Orchestration 46's benchmark artifact is a manifest-only dry run, not
+deployed-app or service performance evidence; model-assisted results were
+not run. See the [46.4.2 evidence](../../planning/evidence/46.4.2-performance.md)
+and [state report](../../planning/STATE_46.md).
+
 ## Querying the deployed app
 
 Deploy through the app's git source as described in [Deploying](#deploying). The deployed app uses `app.yaml`; `databricks.yml` documents the same env vars and resources.

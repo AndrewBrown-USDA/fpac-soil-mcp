@@ -1,7 +1,19 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-09
-Source State: `planning/STATE_45.md`; `planning/MASTER_PLAN.md`; `planning/EXECUTION_PLAN_46.md`
+Last Updated: 2026-11-10
+Source State: `planning/STATE_46.md`; `planning/MASTER_PLAN.md`; `planning/EXECUTION_PLAN_46.md`
+
+## Current Milestone (Orchestration 46)
+
+Waves 2 and 3 passed; the Wave 4 Criterion 2 evidence gate passed with
+limitations. Task 46.4.2 is a five-run/two-worker manifest-only dry run, not
+measured service performance: latency, failure, and retry metrics are null;
+deployed `/mcp` and model-assisted results were not run. Wave 5 synchronizes
+the evaluation and submission documentation. Final serial validation passed:
+`make check` completed with 843 passed and 45 deselected, followed by
+`make app-check` with 177 passed. `make test-eval` remains unrun pending Pi
+provider authentication (`invalid_state`). The PR #79/CDL dependency and
+adjacency deferral remain in force.
 
 ## Circled Goal (Active)
 
