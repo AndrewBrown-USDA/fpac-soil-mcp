@@ -32,9 +32,9 @@
 | 4 | gate Criterion 2 evidence | pass with limits |
 | 5 | 46.5.1 Synchronize documentation | done |
 | 5 | gate final validation | pass with limits |
-| 6 | 46.6.1 Correct unavailable SA completion status | pending |
-| 6 | 46.6.2 Characterize DB45-E3 judge/null behavior | pending |
-| 6 | gate PR #83 follow-ups | pending |
+| 6 | 46.6.1 Correct unavailable SA completion status | done |
+| 6 | 46.6.2 Characterize DB45-E3 judge/null behavior | done |
+| 6 | gate PR #83 follow-ups | pass |
 | 7 | 46.7.1 Migrate Pi eval to built-in MCP | pending |
 | 7 | gate Pi native-MCP contract | pending |
 | 8 | 46.8.1 Re-test Pi auth and evaluation | pending |
@@ -141,6 +141,26 @@
 - **Evidence:** `planning\evidence\46.5.1-closeout.md`; stale Databricks dry-run assertions corrected in commit `94dd6c8`.
 - **Dependency confirmation:** Waves 2, 3, and 4 gates are complete; Wave 5 documentation is synchronized.
 
+## 46.6.1
+- **Status:** done; unavailable criteria keep no-input Site Assessment incomplete.
+- **Files:** `src\fpac_soil_mcp\lesa.py` (765-769); `tests\test_lesa.py` (508-535); task TODO.
+- **Validation:** `uv run pytest tests\test_lesa.py -q` — 47 passed; `git diff --check` passed.
+- **Commit:** `c685536` (`fix(lesa): preserve incomplete status for unavailable criteria`); dependency 46.3.1 gate passed.
+- **Deviations/gotchas:** Criterion 7's machine estimate remains, but does not make the other unavailable criteria complete.
+
+## 46.6.2
+- **Status:** done; DB45-E3 is characterized with a synthetic contract fixture, not an exact reproduction of the judge event.
+- **Files:** Databricks scorer tests (228-246); phase-4 contract test (135-143); `planning\evidence\46.6.2-judge-followup.md`; task TODO.
+- **Validation:** scorer/contract tests — 20 passed; offline Pi tests — 36 passed, 2 deselected; Ruff, format, and `git diff --check` passed.
+- **Commit:** `1c745d5` (`test(eval): characterize DB45-E3 judge limitations`); dependency Wave 2 gate passed.
+- **Deviations/gotchas:** Existing rubric was not retuned; null judge scores mean absent case-grounded expectations, not pass or fail.
+
+## Wave 6 PR #83 Follow-up Gate
+- **Status:** pass; DB45-10 status semantics are fixed and DB45-E3/null expectations have offline contract coverage.
+- **Exact combined command:** `uv run pytest tests\test_lesa.py eval\databricks\test_databricks_scorers.py tests\eval\test_phase4_databricks_contract.py eval\pi\test_agent_eval.py -m "not agent_eval" -q` — 103 passed, 2 deselected.
+- **Lint/format:** Ruff check and format check passed for all changed Python files; `git diff --check` passed.
+- **Dependency confirmation:** completed 46.3.1 and Wave 2 gates; no WKT/DB45-E4 work included per user direction.
+
 ## Gate Evidence Convention
 
 Each completed task/gate entry must record: status, exact command, pass/fail
@@ -174,5 +194,5 @@ prerequisite gate has an explicit passing entry.
 | MCP/map safety | pass | MCP contract pytest: 83 passed, 3 deselected; app-check: 177 passed; targeted map: 59 passed | `0000eef`, `b50e30a` | both dependencies verified; frontend bundle unavailable under installed Node v26 |
 | Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, `e75de91` | 46.4.1 and 46.4.2 verified |
 | Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run at closeout after unqualified model check returned invalid | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
-| PR #83 deferred work | pending | DB45-10 and DB45-E3 follow-ups planned; DB45-E4/WKT excluded per user direction | `planning\evidence\46-pr83-followup-research.md` | Original Waves 2-3 complete |
+| PR #83 deferred work | pass | DB45-10 fixed; DB45-E3/null expectations characterized; DB45-E4/WKT excluded per user direction | `c685536`, `1c745d5`, `planning\evidence\46.6.2-judge-followup.md` | Waves 2-3 complete |
 | Pi native MCP | blocked pending runner update | Pi 1.5.2 rejects `--mcp-config`; qualified GitHub Copilot auth is ready | Wave 7-8 task evidence pending | Depends on 46.7.1 before eval rerun |
