@@ -296,7 +296,8 @@ def test_requested_index_sentinels_are_unrated(index, sentinel):
     result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index=index)
     assert result.map_units[0].productivity_rating is None
     assert result.manifest["land_evaluation"]["rated_acreage"] == 0
-    assert result.manifest["candidate_le_score"] == 0.0
+    assert result.manifest["candidate_le_score"] is None
+    assert result.manifest["land_evaluation"]["aoi_relative_rating"] is None
 
 
 def test_requested_index_calls_are_partitioned_for_nccpi():

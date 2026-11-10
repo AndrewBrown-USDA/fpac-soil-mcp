@@ -310,26 +310,31 @@ class TestSiteAssessmentRules:
     """Test Site Assessment (Form AD-1006 vs NRCS-CPA-106) scoring rules."""
 
     def test_criterion_7_farm_size_tiers(self) -> None:
-        # > 100% of county avg (10 pts)
+        # At least 100% of county average (10 points)
         pts, desc = calculate_criterion_7_score(
             project_farm_acres=250.0, county_average_farm_acres=200.0
         )
         assert pts == 10.0
-        assert ">=100%" in desc
+        assert "at least 100%" in desc
 
-        # 50% - 99% of county avg (5 pts)
-        pts, desc = calculate_criterion_7_score(
-            project_farm_acres=150.0, county_average_farm_acres=200.0
-        )
-        assert pts == 5.0
-        assert "50%-99%" in desc
+        # CFR deduction schedule: one point per complete 5% below average.
+        for farm_acres, expected in (
+            (190.0, 9.0),
+            (180.0, 8.0),
+            (150.0, 5.0),
+            (100.0, 0.0),
+        ):
+            pts, desc = calculate_criterion_7_score(
+                project_farm_acres=farm_acres, county_average_farm_acres=200.0
+            )
+            assert pts == expected
+            assert "deducted" in desc
 
-        # < 50% of county avg (0 pts)
+        # Preserve the nonzero behavior for farms at or above the county average.
         pts, desc = calculate_criterion_7_score(
-            project_farm_acres=80.0, county_average_farm_acres=200.0
+            project_farm_acres=200.0, county_average_farm_acres=200.0
         )
-        assert pts == 0.0
-        assert "<50%" in desc
+        assert pts == 10.0
 
         # Invalid county average
         pts, desc = calculate_criterion_7_score(
@@ -526,7 +531,7 @@ class TestSiteAssessmentRules:
         )
         criterion = next(c for c in summary.criteria if c.criterion_number == 7)
         assert criterion.input_authority == "machine_estimate"
-        assert criterion.awarded_points == 5.0
+        assert criterion.awarded_points == 0.0
 
 
 class TestLESAThresholdEvaluation:
@@ -591,6 +596,25 @@ class TestUnifiedLESARouter:
         assert resp.mandatory_alternatives_required is False
         assert resp.land_evaluation.candidate_le_score == 70.0
         assert resp.site_assessment.total_points == 80.0
+
+    def test_zero_rated_acreage_le_does_not_evaluate_threshold(self) -> None:
+        le_summary = LandEvaluationSummary(
+            productivity_index=ProductivityIndexType.NCCPI,
+            aoi_relative_rating=None,
+            candidate_le_score=None,
+            rated_acreage=0.0,
+            unrated_acreage=100.0,
+            total_acreage=100.0,
+            coverage_percent=0.0,
+        )
+        resp = evaluate_lesa(
+            project_name="No Rated Acreage",
+            land_evaluation=le_summary,
+            site_assessment=160.0,
+        )
+        assert resp.total_lesa_score is None
+        assert resp.threshold_status == "not_evaluated"
+        assert resp.mandatory_alternatives_required is None
 
 
 class TestBenchmarkSuiteValidation:

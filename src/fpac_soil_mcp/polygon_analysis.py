@@ -354,8 +354,8 @@ class PolygonAnalyzer:
             candidate_le = round(aoi_rr * 100.0, 2)
             cov_pct = round((rated_le_acres / total_acres * 100.0) if total_acres > 0 else 0.0, 2)
         else:
-            aoi_rr = 0.0
-            candidate_le = 0.0
+            aoi_rr = None
+            candidate_le = None
             cov_pct = 0.0
 
         if county_max != (1.0 if norm_idx == "nccpi" else 100.0):
@@ -369,8 +369,10 @@ class PolygonAnalyzer:
 
         le_summary = LandEvaluationSummary(
             productivity_index=idx_enum,
-            aoi_relative_rating=min(1.0, max(0.0, aoi_rr)),
-            candidate_le_score=min(100.0, max(0.0, candidate_le)),
+            aoi_relative_rating=(min(1.0, max(0.0, aoi_rr)) if aoi_rr is not None else None),
+            candidate_le_score=(
+                min(100.0, max(0.0, candidate_le)) if candidate_le is not None else None
+            ),
             county_farmland_percentile_higher=None,
             rated_acreage=rated_le_acres,
             unrated_acreage=unrated_le_acres,

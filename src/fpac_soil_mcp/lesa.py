@@ -453,10 +453,9 @@ def calculate_criterion_7_score(
 ) -> tuple[float, str]:
     """Calculate Criterion 7 (farm size compared to county average) score under 7 CFR § 658.5(b)(7).
 
-    Statutory scale (Max 10 points):
-    - Farm size is > 100% of county average: 10 points
-    - Farm size is 50% - 100% of county average: 5 points
-    - Farm size is < 50% of county average: 0 points
+    The farm unit receives 10 points when it is at least the county average.
+    Deduct one point for each complete 5 percent below average, to a floor of
+    zero when it is 50 percent or more below average.
     """
     if county_average_farm_acres <= 0 or project_farm_acres < 0:
         return 0.0, "Invalid or unavailable county average farm size; awarded 0 points."
@@ -466,13 +465,16 @@ def calculate_criterion_7_score(
 
     if ratio >= 1.0:
         points = 10.0
-        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (>=100%): 10 points awarded."
-    elif ratio >= 0.5:
-        points = 5.0
-        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (50%-99%): 5 points awarded."
+        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (at least 100%): 10 points awarded."
     else:
-        points = 0.0
-        desc = f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of county average ({county_average_farm_acres:.1f} ac) (<50%): 0 points awarded."
+        deductions = min(10, int(round((1.0 - ratio) * 20.0, 10)))
+        points = float(10 - deductions)
+        desc = (
+            f"Affected farm size ({project_farm_acres:.1f} ac) is {pct:.1f}% of "
+            f"county average ({county_average_farm_acres:.1f} ac); {deductions} "
+            f"point(s) deducted for each complete 5% below average: {points:.0f} "
+            "points awarded."
+        )
 
     return points, desc
 
