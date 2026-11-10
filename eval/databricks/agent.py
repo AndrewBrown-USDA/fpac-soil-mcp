@@ -38,7 +38,7 @@ GET_PROMPT = "get_prompt"
 
 # v1 named fppa://regulatory-notice as an example resource, which led the agent to
 # re-read the notice on every row; v2 drops that line (tool descriptions list URIs).
-DEFAULT_PROMPT_VERSION = "v2"
+DEFAULT_PROMPT_VERSION = "v3"
 
 
 def available_prompt_versions() -> list[str]:

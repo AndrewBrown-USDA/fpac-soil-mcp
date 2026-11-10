@@ -96,7 +96,6 @@ def test_v1_prompt_is_available_and_loads() -> None:
 
 def test_v2_prompt_is_v1_without_the_resource_example_line() -> None:
     assert available_prompt_versions()[:2] == ["v1", "v2"]
-    assert DEFAULT_PROMPT_VERSION == "v2"
     v1, v2 = load_system_prompt("v1"), load_system_prompt("v2")
 
     assert "fppa://regulatory-notice" in v1
@@ -104,6 +103,22 @@ def test_v2_prompt_is_v1_without_the_resource_example_line() -> None:
     removed = [line for line in v1.splitlines() if line not in v2.splitlines()]
     assert len(removed) == 1
     assert removed[0].startswith("Use read_resource")
+
+
+def test_v3_prompt_adds_routing_and_productivity_guidance() -> None:
+    assert DEFAULT_PROMPT_VERSION == "v3"
+    v3 = load_system_prompt("v3")
+
+    assert "preliminary screening" in v3
+    assert "Tool routing guidance" in v3
+    assert "read_resource" in v3
+    assert "get_prompt" in v3
+    assert "Productivity index guidance" in v3
+    assert "NCCPI" in v3
+    assert "nationally comparable" in v3
+    assert "You MUST call" in v3
+    assert "[forced-tool]" not in v3
+    assert "[/forced-tool]" not in v3
 
 
 def test_unknown_prompt_version_is_rejected() -> None:
@@ -141,7 +156,7 @@ def test_agent_calls_tool_then_answers_with_c4_trace() -> None:
     assert first["model"] == "databricks-gpt-5-6-luna"
     assert first["temperature"] == 0
     assert first["reasoning_effort"] == "none"
-    assert first["messages"][0] == {"role": "system", "content": load_system_prompt("v2")}
+    assert first["messages"][0] == {"role": "system", "content": load_system_prompt("v3")}
     assert first["messages"][1] == {"role": "user", "content": "Explain FPPA scope."}
     names = {spec["function"]["name"] for spec in first["tools"]}
     assert {READ_RESOURCE, GET_PROMPT, "get_farmland_classification_by_point"} <= names
