@@ -37,8 +37,8 @@
 | 6 | gate PR #83 follow-ups | pass |
 | 7 | 46.7.1 Migrate Pi eval to built-in MCP | done |
 | 7 | gate Pi native-MCP contract | pass |
-| 8 | 46.8.1 Re-test Pi auth and evaluation | pending |
-| 8 | gate Pi auth/evaluation evidence | pending |
+| 8 | 46.8.1 Re-test Pi auth and evaluation | done |
+| 8 | gate Pi auth/evaluation evidence | fail; 14 of 38 cases failed |
 
 ## Task Reports
 
@@ -173,6 +173,14 @@
 - **Exact command:** `uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q` — 38 passed, 2 deselected; Ruff and format passed.
 - **Dependency confirmation:** completed Wave 5 final-validation gate; Wave 8 runtime/auth evidence can proceed.
 
+## 46.8.1
+- **Status:** done; catalog-qualified auth is ready and POINT-01 passed, but the full Pi evaluation failed 14 of 38 cases.
+- **Evidence:** `planning\evidence\46.8.1-pi-auth-eval.md`; task checklist `planning\tasks\46.8.1.todo.md`.
+- **Exact commands/results:** qualified `pi auth check` — ready with OAuth; POINT-01 runner — 1 passed; `make test-eval` — 24 passed, 14 failed (exit 2).
+- **Artifact review:** the external store contains only older 20-case runs from 2026-10-19 and 2026-10-21; the 2026-11-10 run directory was removed before its contents were reviewed. Failure causes are unavailable; no evaluation was rerun for review.
+- **Diagnostic note:** POINT-01's `recognized` classification is implied by PASS and its expected structured tool, but was not emitted. `outcome=unknown` is the CLI fallback because attempt metadata omits `outcome`.
+- **Deviations/gotchas:** no credentials, prompts, coordinates, geometry, responses, or raw artifacts retained.
+
 ## Gate Evidence Convention
 
 Each completed task/gate entry must record: status, exact command, pass/fail
@@ -191,9 +199,10 @@ prerequisite gate has an explicit passing entry.
   `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid`,
   but the catalog-qualified `pi auth check --model
   github-copilot/gpt-5.6-luna --json --no-refresh` returned `ready` with OAuth.
-  One POINT-01 run failed before provider use because the runner passed the
-  removed `--mcp-config` option. Waves 7-8 track native MCP migration and
-  re-test; no credentials or evaluation artifacts were retained.
+  Wave 7 migrated the runner and Wave 8 verified POINT-01, but the full
+  evaluation had 14 failures. Current-run causes are unavailable because its
+  artifact directory was removed before review; older artifacts are not
+  substitutes.
 - **Map persistence, multiple AOIs, custom basemaps, and other M2/M4 work:**
   deferred until the current map contract and safety gate are stable.
 
@@ -207,4 +216,5 @@ prerequisite gate has an explicit passing entry.
 | Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, `e75de91` | 46.4.1 and 46.4.2 verified |
 | Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run at closeout after unqualified model check returned invalid | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
 | PR #83 deferred work | pass | DB45-10 fixed; DB45-E3/null expectations characterized; DB45-E4/WKT excluded per user direction | `c685536`, `1c745d5`, `planning\evidence\46.6.2-judge-followup.md` | Waves 2-3 complete |
-| Pi native MCP | pass; runtime retest pending | Pi 1.5.2 runner updated; qualified GitHub Copilot auth is ready | `eef05f2`; Wave 8 evidence pending | 46.7.1 verified before 46.8.1 |
+| Pi native MCP | pass | Pi 1.5.2 runner uses built-in MCP; qualified GitHub Copilot auth is ready | `eef05f2`, `planning\evidence\46.8.1-pi-auth-eval.md` | 46.7.1 verified before 46.8.1 |
+| Pi auth/evaluation | fail; 14 cases failed | POINT-01 passed; `make test-eval`: 24 passed, 14 failed; per-case causes unavailable | `planning\evidence\46.8.1-pi-auth-eval.md` | Wave 7 native-MCP gate passed |
