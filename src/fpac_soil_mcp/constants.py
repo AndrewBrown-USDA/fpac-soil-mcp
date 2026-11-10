@@ -17,7 +17,7 @@ REGULATORY_NOTICE: Final[str] = (
     "This query DOES NOT constitute an official FPPA determination, Land Evaluation and Site Assessment "
     "(LESA) score, or completion of USDA Form AD-1006 / NRCS-CPA-106. Formal FPPA determinations require "
     "coordination with the appropriate USDA NRCS State/Local office and assessment of project footprint, "
-    "site assessment criteria (Part V), and local land use conditions."
+    "site assessment criteria (Part VI), and local land use conditions."
 )
 
 REGULATORY_LIMITATIONS: Final[list[str]] = [
@@ -185,12 +185,14 @@ CRITERION_2_MAX_RATIO: Final[float] = 1.0
 
 # Cited LESA action guidance under 7 CFR § 658.4(c)(3)-(4)
 LESA_ACTION_AVOID_MINIMIZE_CONVERSION: Final[str] = (
-    "Assess alternative project designs and configurations that avoid or minimize conversion "
-    "of farmland (7 CFR § 658.4(c)(3))."
+    "The responsible Federal agency must give increasing consideration to alternatives that "
+    "avoid or minimize farmland conversion, as required by 7 CFR § 658.4(c)(3); this screening "
+    "does not identify or recommend a site, footprint, or alternative."
 )
 LESA_ACTION_REDUCE_FOOTPRINT: Final[str] = (
-    "Evaluate options with reduced footprint or alternative access to minimize acreage taken "
-    "(7 CFR § 658.4(c)(4))."
+    "The responsible Federal agency must consider the regulatory consequences of the score and "
+    "complete the applicable official review; this screening does not prescribe a reduced "
+    "footprint, access route, project design, or preferred alternative."
 )
 
 # Statutory Scoring Maximums and Thresholds under 7 CFR Part 658
@@ -203,13 +205,15 @@ LESA_THRESHOLD_SCORE: Final[int] = 160
 STATUTORY_DETERMINATIONS: Final[dict[str, str]] = {
     "THRESHOLD_EXCEEDED": (
         "TOTAL LESA SCORE ({total_lesa:.1f}/260) EQUALS OR EXCEEDS STATUTORY THRESHOLD (160). "
-        "Under 7 CFR § 658.4(c)(2), this project must receive in-depth consideration for alternative "
-        "corridor alignments, avoidance of prime/unique farmlands, and impact mitigation."
+        "Under 7 CFR § 658.4(c)(2), the responsible Federal agency must provide in-depth "
+        "consideration of alternatives and farmland-conversion impacts. This preliminary result "
+        "does not select or recommend any site, footprint, alignment, or alternative."
     ),
     "THRESHOLD_NOT_EXCEEDED": (
         "TOTAL LESA SCORE ({total_lesa:.1f}/260) IS BELOW STATUTORY THRESHOLD (160). "
-        "Under 7 CFR § 658.4(c)(2), sites receiving a total score of less than 160 points require "
-        "no further consideration for protection and no alternative site evaluations."
+        "Under 7 CFR § 658.4(c)(2), the score does not trigger the specified in-depth alternatives "
+        "consideration threshold. This preliminary result is not an official FPPA determination "
+        "and does not authorize or recommend a site."
     ),
     "LE_UNAVAILABLE": (
         "LAND EVALUATION (LE) SCORE UNAVAILABLE (Site Assessment: {total_sa:.1f}/160). "
