@@ -65,9 +65,7 @@ class GeometryValidationError(GeometryError):
     """Raised when geometry format, coordinates, or topology are invalid."""
 
 
-def normalize_ring_winding(
-    ring: LinearRing, clockwise: bool = True
-) -> list[list[float]]:
+def normalize_ring_winding(ring: LinearRing, clockwise: bool = True) -> list[list[float]]:
     """Normalize a ring's winding for an Esri REST polygon."""
     coords = list(ring.coords)
     if (clockwise and ring.is_ccw) or (not clockwise and not ring.is_ccw):
@@ -83,8 +81,7 @@ def polygon_to_esri_rings(geom: Polygon | MultiPolygon) -> list[list[list[float]
     for polygon in polygons:
         rings.append(normalize_ring_winding(polygon.exterior, clockwise=True))
         rings.extend(
-            normalize_ring_winding(interior, clockwise=False)
-            for interior in polygon.interiors
+            normalize_ring_winding(interior, clockwise=False) for interior in polygon.interiors
         )
 
     return rings

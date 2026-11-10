@@ -54,6 +54,7 @@ def _normalize_ring_winding(ring: LinearRing, clockwise: bool = True) -> list[li
     """Preserve the historical TIGERweb helper name for callers and tests."""
     return normalize_ring_winding(ring, clockwise=clockwise)
 
+
 # Default TIGERweb State and County Boundaries MapServer (Layer 1: Counties)
 DEFAULT_TIGERWEB_COUNTY_URL = (
     "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1"

@@ -136,8 +136,8 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 - [x] Preserve the limitation that CDL is mapped land-cover evidence and cannot establish active farming or official FPPA/LESA conclusions.
 
 ### 6. Validate the review fixes
-- [ ] Run focused CDL and geometry tests, then the offline test suite.
-- [ ] Run Ruff lint and format checks and review the final diff for unrelated changes.
+- [x] Run focused CDL and geometry tests, then the offline test suite.
+- [x] Run Ruff lint and format checks and review the final diff for unrelated changes.
 
 ## Notes
 - Preserve existing user changes and completed TODO history.
