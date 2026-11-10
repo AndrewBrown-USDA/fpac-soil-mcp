@@ -712,7 +712,7 @@ def test_contract_multi_county_criterion_7_weighting():
         assert "350.0" in crit7_full["justification"]
         assert "100.0%" in crit7_full["justification"]
 
-        # Test with project farm size = 175.0 acres (50% of weighted average -> 5 points)
+        # Test with project farm size = 175.0 acres (50% below weighted average -> 0 points)
         res_half = analyze_corridor_fppa(
             centerline="LINESTRING(-93.65 42.0, -93.55 42.0)",
             buffer_distance=50.0,
@@ -722,7 +722,7 @@ def test_contract_multi_county_criterion_7_weighting():
         crit7_half = next(
             c for c in lesa_half["site_assessment"]["criteria"] if c["criterion_number"] == 7
         )
-        assert crit7_half["awarded_points"] == 5.0
+        assert crit7_half["awarded_points"] == 0.0
         assert "50.0%" in crit7_half["justification"]
 
         # Test with project farm size = 70.0 acres (20% of weighted average -> 0 points)

@@ -40,9 +40,10 @@
 | 5 | 45.5.2 Align LESA criterion 7 and unavailable LE semantics | done |
 | 5 | 45.5.3 Enforce fact authority, conflicts, and corridor variants | done |
 | 5 gate | Registry, LESA, and fact-authority validation | passed |
-| 6 | 45.5.4 Reconcile coverage, provenance, and geometry/type validation | pending |
-| 6 | 45.5.5 Repair Databricks evaluation coverage and evidence | pending |
-| 6 gate | Databricks remediation validation | pending |
+| 6 | 45.5.4 Reconcile coverage, provenance, and geometry/type validation | done |
+| 6 | 45.5.5 Repair Databricks evaluation coverage and evidence | done |
+| 6 | 45.6.1 Synchronize dependent regression assertions | done |
+| 6 gate | Databricks remediation validation | passed |
 
 ## Task Reports
 
@@ -238,6 +239,22 @@
 - **Deviations:** none; no registry or generated eCFR files changed.
 - **Gotchas:** the first test attempt caught the registry during an intermediate invalid update; final targeted run passed against the updated contract.
 
+## 45.5.4
+
+- **Status:** implemented; targeted acceptance passed.
+- **Files:** `corridor_analysis.py`, `tools\lesa_tools.py`, `models.py`,
+  `tests\test_corridor_analysis.py`, `tests\test_tools.py`, and task TODO.
+- **Changes:** LESA coverage is normalized to `covered`, `partial`, `unrated`,
+  `unmapped`, or `unknown`; polygon and corridor summaries carry acreage,
+  coverage percentage, and selected rating-source provenance/notices.
+- **Geometry:** line geometry with default/site project type is explicitly
+  rejected; valid corridor lines and site polygons remain supported.
+- **Authority:** missing LE remains unavailable and threshold-indeterminate;
+  preliminary-screening limitations remain in force.
+- **Checks:** targeted pytest -> 74 passed; scoped Ruff check and format check
+  passed. Existing pytest-asyncio and Shapely deprecation warnings remain.
+- **Deviations:** none; no commit created.
+
 ## 45.5.2
 
 - **Status:** implemented; targeted acceptance passed.
@@ -262,3 +279,26 @@
 - **Unknowns:** Unknown/unavailable inputs remain unscored; out-of-band numeric values do not match a score band.
 - **Checks:** `uv run pytest tests\test_site_assessment_contract.py -q` -> 12 passed; targeted Ruff check passed; targeted Ruff format check passed.
 - **Deviations:** none; generated eCFR files and unrelated concurrent task changes were untouched.
+
+## 45.5.5
+
+- **Status:** implemented; targeted acceptance passed.
+- **Files:** T1 dataset loader, Databricks scorer labels and README, both evaluation catalogs, offline contract test, and task TODO.
+- **Cases:** SA-MA-01..04 now load in T1; tool cases carry matching GeoJSON, expected tool arguments, grounded facts, and model-assisted labels.
+- **Safety:** missing Site Assessment inputs remain unavailable/incomplete; no case rewards fabricated points or siting advice.
+- **Dataset:** `evidence_tier` is validated and preserved in MLflow expectations; dataset version is 2.0.2.
+- **Evidence:** deterministic scorer outputs remain `deterministic_contract`; judge outputs remain `model_assisted`.
+- **Checks:** `uv run pytest tests\eval\test_phase4_databricks_contract.py eval\databricks\test_databricks_scorers.py -q` -> 16 passed.
+- **Checks:** `uv run pytest eval\common\test_common_dataset.py eval\databricks\test_databricks_dry_run.py -q` -> 30 passed.
+- **Independent gate:** `uv run pytest eval\contract\test_contract.py -q` -> 13 passed.
+- **Lint/format:** scoped Ruff check passed; all three changed Python files passed format check.
+- **Databricks:** evaluation not invoked because credentials were not confirmed; README records the serverless uv/session-Python limitation without masking failures.
+- **Deviations:** none; DB45-E4 remains out of scope and no commit was made.
+
+## 45.6.1
+
+- **Status:** implemented; targeted acceptance passed.
+- **Files:** three dependent regression test files and task TODO.
+- **Changes:** criterion-7 description and deduction assertions now match the CFR schedule; exactly 50% below average expects 0 points; T1 `--all` dry run expects 24 records.
+- **Checks:** targeted pytest -> 27 passed; `make check` -> 783 passed, 45 deselected; Ruff check and format passed.
+- **Deviations:** none; no commit created.

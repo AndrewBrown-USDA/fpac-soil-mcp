@@ -187,7 +187,8 @@ XML/Markdown files must not be edited by hand.
 | 5 | 45.5.3 | Enforce fact authority, conflicts, and corridor variants | `src\fpac_soil_mcp\tools\lesa_tools.py`, `src\fpac_soil_mcp\models.py`, `tests\test_tools.py` | 45.2.1, 45.5.1 |
 | 6 | 45.5.4 | Reconcile coverage, provenance, and geometry/type validation | `src\fpac_soil_mcp\corridor_analysis.py`, `src\fpac_soil_mcp\tools\lesa_tools.py`, `src\fpac_soil_mcp\models.py`, `tests\test_corridor_analysis.py`, `tests\test_tools.py` | 45.5.3 |
 | 6 | 45.5.5 | Repair Databricks evaluation coverage and evidence | `eval\common\dataset.py`, `eval\databricks\README.md`, `eval\eval_cases.v1.json`, `eval\prompt_test_cases.json`, `eval\databricks\scorers.py`, `tests\eval\test_phase4_databricks_contract.py` (new) | 45.5.3 |
-| 6 gate | - | Databricks remediation validation | no feature files | 45.5.4, 45.5.5 |
+| 6 | 45.6.1 | Synchronize dependent regression assertions | `tests\test_corridor_scoring.py`, `tests\test_phase3_contracts.py`, `eval\databricks\test_databricks_runner.py` | 45.5.2, 45.5.5 |
+| 6 gate | - | Databricks remediation validation | no feature files | 45.5.4, 45.5.5, 45.6.1 |
 
 ### Wave 5 acceptance bar
 
@@ -212,6 +213,34 @@ XML/Markdown files must not be edited by hand.
 - Run `make check`; run `uv run pytest -m live_network` for changed upstream
   integration behavior; run the Databricks evaluation only where credentials
   are available, recording environment limitations without masking failures.
+
+### 45.6.1 — Synchronize dependent regression assertions
+
+**Repository:** `D:\workspace\fpac-soil-mcp`
+
+**Files in scope**
+
+- Must edit: `tests\test_corridor_scoring.py`,
+  `tests\test_phase3_contracts.py`, `eval\databricks\test_databricks_runner.py`
+- Can create: `planning\tasks\45.6.1.todo.md`
+- Do not touch: production scoring, evaluation case catalogs, or generated CFR
+  files
+
+**Depends on:** 45.5.2 and 45.5.5.
+
+**Specification:** Align stale downstream assertions with the accepted CFR
+criterion-7 deduction schedule and description, and update the Databricks
+`--all` dry-run cardinality for the four newly added SA-MA cases. Keep this
+test-only: do not relax scoring or evidence assertions to make the suite pass.
+
+**Grep anchors:** `>=100%`, criterion-7 awarded-point assertions, and
+`len(result["records"])`.
+
+**Acceptance:** Criterion-7 consumers assert the CFR value/description at the
+relevant 100% and 50%-below cases; the Databricks dry-run asserts the new total
+case count. `make check` passes after this focused synchronization.
+
+**Targeted test:** `uv run pytest tests\test_corridor_scoring.py tests\test_phase3_contracts.py eval\databricks\test_databricks_runner.py -q`
 
 ## Hazard Notes
 

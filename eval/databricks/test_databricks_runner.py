@@ -59,7 +59,7 @@ def test_dry_run_with_specific_cases() -> None:
 
 def test_dry_run_all_cases() -> None:
     result = run(["--dry-run", "--all"])
-    assert len(result["records"]) == 20
+    assert len(result["records"]) == 24
 
 
 def _assessment(name: str, value: object, error: object = None) -> SimpleNamespace:

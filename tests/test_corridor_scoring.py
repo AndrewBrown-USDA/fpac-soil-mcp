@@ -92,28 +92,28 @@ def test_criterion_7_farm_size_calculation():
         project_farm_acres=350.0, county_average_farm_acres=200.0
     )
     assert pts == 10.0
-    assert ">=100%" in desc
+    assert "at least 100%" in desc
 
     # Farm exactly 100% of county average -> 10 pts
     pts, desc = calculate_criterion_7_score(
         project_farm_acres=200.0, county_average_farm_acres=200.0
     )
     assert pts == 10.0
-    assert ">=100%" in desc
+    assert "at least 100%" in desc
 
-    # Farm between 50% and 100% -> 5 pts
+    # Farm 40% below the county average -> 2 pts (one deduction per complete 5%)
     pts, desc = calculate_criterion_7_score(
         project_farm_acres=120.0, county_average_farm_acres=200.0
     )
-    assert pts == 5.0
-    assert "50%-99%" in desc
+    assert pts == 2.0
+    assert "8 point(s) deducted for each complete 5% below average" in desc
 
-    # Farm < 50% -> 0 pts
+    # Farm 50% or more below the county average -> 0 pts
     pts, desc = calculate_criterion_7_score(
         project_farm_acres=40.0, county_average_farm_acres=200.0
     )
     assert pts == 0.0
-    assert "<50%" in desc
+    assert "10 point(s) deducted for each complete 5% below average" in desc
 
     # Invalid county average
     pts, desc = calculate_criterion_7_score(project_farm_acres=100.0, county_average_farm_acres=0.0)
