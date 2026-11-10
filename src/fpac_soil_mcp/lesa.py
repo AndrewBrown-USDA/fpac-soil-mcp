@@ -503,6 +503,7 @@ class ZeroedCriterionStrategy(BaseCriterionEvaluator):
             awarded_points=0.0,
             is_statutorily_zeroed=True,
             is_automated=True,
+            input_authority="machine_estimate",
             justification="Statutorily set to 0 points for corridor projects under 7 CFR § 658.5(c).",
         )
 
@@ -540,12 +541,15 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
             input_data.get("awarded_points"), dict
         )
         if explicit_override:
+            justification = input_data.get("justification", "")
+            if not isinstance(justification, str) or not justification.strip():
+                raise ValueError("Analyst-proposed criterion points require a rationale.")
             try:
                 awarded = max(0.0, min(float(self.max_points), float(input_data["awarded_points"])))
             except (TypeError, ValueError):
                 awarded = 0.0
-            justification = input_data.get("justification", "")
             is_automated = bool(input_data.get("is_automated", False))
+            input_authority = "analyst_proposed"
         else:
             ratio = evidence.get("normalized_ratio")
             has_agricultural_source = evidence.get("is_agricultural", False) is True
@@ -563,6 +567,13 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
                 awarded = 0.0
                 justification = evidence.get("error_message") or justification
             is_automated = status == "measured"
+            input_authority = (
+                "verified"
+                if status == "measured" and is_verified
+                else "machine_estimate"
+                if status == "measured"
+                else "unavailable"
+            )
 
         return SiteAssessmentCriterion(
             criterion_number=self.criterion_number,
@@ -575,6 +586,7 @@ class PerimeterCriterionStrategy(BaseCriterionEvaluator):
             rule_version=evidence.get("rule_version", CRITERION_2_RULE_VERSION),
             source_provenance=evidence.get("source_provenance", []),
             is_verified=bool(evidence.get("is_verified", False)) and status == "measured",
+            input_authority=input_authority,
             is_statutorily_zeroed=False,
             is_automated=is_automated,
             justification=justification,
@@ -596,7 +608,11 @@ class FarmSizeCriterionStrategy(BaseCriterionEvaluator):
                 project_farm_acres, county_average_farm_acres
             )
             is_automated = True
+            input_authority = "machine_estimate"
         else:
+            explicit_override = "awarded_points" in input_data
+            if explicit_override and not str(input_data.get("justification", "")).strip():
+                raise ValueError("Analyst-proposed criterion points require a rationale.")
             raw_pts = input_data.get("awarded_points", 0.0)
             try:
                 awarded = float(raw_pts)
@@ -606,6 +622,7 @@ class FarmSizeCriterionStrategy(BaseCriterionEvaluator):
             awarded = max(0.0, min(float(self.max_points), awarded))
             justification = input_data.get("justification", "")
             is_automated = bool(input_data.get("is_automated", False))
+            input_authority = "analyst_proposed" if explicit_override else "unavailable"
 
             if awarded > 0 and not justification and not is_automated:
                 justification = f"Points ({awarded}/{self.max_points}) entered without explicit justification rationale."
@@ -617,6 +634,7 @@ class FarmSizeCriterionStrategy(BaseCriterionEvaluator):
             awarded_points=awarded,
             is_statutorily_zeroed=False,
             is_automated=is_automated,
+            input_authority=input_authority,
             justification=justification,
         )
 
@@ -632,6 +650,9 @@ class StandardCriterionStrategy(BaseCriterionEvaluator):
     ) -> SiteAssessmentCriterion:
         input_data = crit_input or {}
         raw_pts = input_data.get("awarded_points", 0.0)
+        explicit_override = "awarded_points" in input_data
+        if explicit_override and not str(input_data.get("justification", "")).strip():
+            raise ValueError("Analyst-proposed criterion points require a rationale.")
         try:
             awarded = float(raw_pts)
         except (ValueError, TypeError):
@@ -640,6 +661,13 @@ class StandardCriterionStrategy(BaseCriterionEvaluator):
         awarded = max(0.0, min(float(self.max_points), awarded))
         justification = input_data.get("justification", "")
         is_automated = bool(input_data.get("is_automated", False))
+        input_authority = (
+            "analyst_proposed"
+            if explicit_override
+            else "machine_estimate"
+            if is_automated
+            else "unavailable"
+        )
 
         if awarded > 0 and not justification and not is_automated:
             justification = f"Points ({awarded}/{self.max_points}) entered without explicit justification rationale."
@@ -651,6 +679,7 @@ class StandardCriterionStrategy(BaseCriterionEvaluator):
             awarded_points=awarded,
             is_statutorily_zeroed=False,
             is_automated=is_automated,
+            input_authority=input_authority,
             justification=justification,
         )
 
@@ -722,9 +751,19 @@ def evaluate_site_assessment(
         total_pts += item.awarded_points
 
     total_sa = min(160.0, round(total_pts, 2))
+    evaluation_status = (
+        "complete"
+        if criteria_inputs is None
+        and project_farm_acres is not None
+        and county_average_farm_acres is not None
+        else "complete"
+        if criteria and all(c.input_authority != "unavailable" for c in criteria)
+        else "incomplete"
+    )
     return SiteAssessmentSummary(
         total_points=total_sa,
         criteria=criteria,
+        evaluation_status=evaluation_status,
     )
 
 
@@ -855,9 +894,16 @@ def evaluate_lesa(
         )
 
     # 3. Calculate Total LESA Score and Threshold
-    if le_summary.candidate_le_score is None:
+    if le_summary.candidate_le_score is None or sa_summary.evaluation_status != "complete":
         limitations = list(REGULATORY_LIMITATIONS)
-        limitations.append("Land Evaluation score unavailable; total LESA score is indeterminate.")
+        if le_summary.candidate_le_score is None:
+            limitations.append(
+                "Land Evaluation score unavailable; total LESA score is indeterminate."
+            )
+        else:
+            limitations.append(
+                "Site Assessment inputs incomplete; threshold evaluation is not evaluated."
+            )
         return PreliminaryLESAResponse(
             project_name=project_name,
             project_type=project_type,
@@ -865,6 +911,7 @@ def evaluate_lesa(
             site_assessment=sa_summary,
             total_lesa_score=None,
             mandatory_alternatives_required=None,
+            threshold_status="not_evaluated",
             regulatory_notice=REGULATORY_NOTICE,
             limitations=limitations,
         )

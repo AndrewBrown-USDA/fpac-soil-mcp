@@ -393,9 +393,9 @@ class TestSiteAssessmentRules:
     def test_corridor_zeroed_criteria_evaluation(self) -> None:
         # Attempting to assign points to criteria 5 or 6 in a corridor project must be clamped to 0
         inputs = {
-            5: {"awarded_points": 15.0},
-            6: {"awarded_points": 15.0},
-            8: {"awarded_points": 20.0},
+            5: {"awarded_points": 15.0, "justification": "Analyst-documented corridor input."},
+            6: {"awarded_points": 15.0, "justification": "Analyst-documented corridor input."},
+            8: {"awarded_points": 20.0, "justification": "Analyst-documented corridor input."},
         }
         sa = evaluate_site_assessment(inputs, project_type="corridor")
         c5 = next(c for c in sa.criteria if c.criterion_number == 5)
@@ -499,6 +499,34 @@ class TestSiteAssessmentRules:
         assert criterion.evidence_status == "not_provided"
         assert criterion.awarded_points == 0.0
         assert criterion.normalized_ratio is None
+
+    def test_missing_site_assessment_is_incomplete(self) -> None:
+        summary = evaluate_site_assessment({})
+        assert summary.evaluation_status == "incomplete"
+        assert summary.total_points == 0.0
+
+    def test_analyst_override_requires_rationale(self) -> None:
+        with pytest.raises(ValueError, match="require a rationale"):
+            evaluate_site_assessment({2: {"awarded_points": 4}})
+
+    def test_incomplete_site_assessment_does_not_evaluate_threshold(self) -> None:
+        resp = evaluate_lesa(
+            project_name="Incomplete Site",
+            land_evaluation=90.0,
+            site_assessment={},
+        )
+        assert resp.site_assessment.evaluation_status == "incomplete"
+        assert resp.total_lesa_score is None
+        assert resp.threshold_status == "not_evaluated"
+        assert resp.mandatory_alternatives_required is None
+
+    def test_complete_factual_criterion_seven_remains_scored(self) -> None:
+        summary = evaluate_site_assessment(
+            {}, project_farm_acres=100.0, county_average_farm_acres=200.0
+        )
+        criterion = next(c for c in summary.criteria if c.criterion_number == 7)
+        assert criterion.input_authority == "machine_estimate"
+        assert criterion.awarded_points == 5.0
 
 
 class TestLESAThresholdEvaluation:

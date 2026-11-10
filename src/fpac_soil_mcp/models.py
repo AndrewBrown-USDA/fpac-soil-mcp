@@ -540,6 +540,12 @@ class SiteAssessmentCriterion(BaseModel):
         default=False,
         description="Whether the evidence and point mapping were verified",
     )
+    input_authority: Literal["machine_estimate", "analyst_proposed", "unavailable", "verified"] = (
+        Field(
+            default="unavailable",
+            description="Authority/state of the input supporting this criterion",
+        )
+    )
 
     @field_validator("criterion_number")
     @classmethod
@@ -577,6 +583,12 @@ class SiteAssessmentCriterion(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_analyst_rationale(self) -> SiteAssessmentCriterion:
+        if self.input_authority == "analyst_proposed" and not self.justification.strip():
+            raise ValueError("Analyst-proposed criterion points require a rationale.")
+        return self
+
 
 class SiteAssessmentSummary(BaseModel):
     """Breakdown of Site Assessment (SA) scores across criteria."""
@@ -588,6 +600,10 @@ class SiteAssessmentSummary(BaseModel):
     criteria: list[SiteAssessmentCriterion] = Field(
         default_factory=list,
         description="Detailed breakdown of individual site assessment criteria",
+    )
+    evaluation_status: Literal["complete", "incomplete", "indeterminate"] = Field(
+        default="complete",
+        description="Whether required Site Assessment inputs support evaluation",
     )
 
     @field_validator("total_points")
@@ -620,6 +636,10 @@ class PreliminaryLESAResponse(BaseModel):
         default=False,
         description="Statutory trigger under 7 CFR 658.4: true if total LESA score >= 160",
     )
+    threshold_status: Literal["evaluated", "not_evaluated"] = Field(
+        default="evaluated",
+        description="Whether the statutory threshold was evaluated",
+    )
     regulatory_notice: str = Field(
         description="Official regulatory disclaimer regarding FPPA screening and LESA"
     )
@@ -639,6 +659,13 @@ class PreliminaryLESAResponse(BaseModel):
 
     @model_validator(mode="after")
     def validate_mandatory_alternatives_required(self) -> PreliminaryLESAResponse:
+        if (
+            self.threshold_status == "not_evaluated"
+            and self.mandatory_alternatives_required is not None
+        ):
+            raise ValueError(
+                "mandatory_alternatives_required must be None when threshold_status is not_evaluated"
+            )
         if self.total_lesa_score is None:
             if self.mandatory_alternatives_required is not None:
                 raise ValueError(
