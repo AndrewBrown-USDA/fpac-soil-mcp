@@ -24,6 +24,7 @@ from fpac_soil_mcp.models import (
     ProductivityIndexType,
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
+from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE
 from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
 
 
@@ -188,7 +189,8 @@ def calculate_preliminary_lesa(
         project_name: Project name or tracking identifier.
         geometry: GeoJSON geometry dict or string (Polygon or MultiPolygon for site;
             LineString or MultiLineString for corridor).
-        project_type: Project geometry type ('site' for Form AD-1006 or 'corridor' for Form NRCS-CPA-106).
+        project_type: Project geometry type ('site' requires polygon geometry for Form AD-1006;
+            'corridor' requires LineString or MultiLineString geometry for Form NRCS-CPA-106).
         productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
         site_assessment_inputs: Optional dictionary of Part VI Site Assessment parameters:
@@ -224,6 +226,15 @@ def calculate_preliminary_lesa(
     else:
         parsed_geometry = parse_geojson_geometry(geometry, allow_line=True)
 
+    if (
+        isinstance(parsed_geometry, (LineString, MultiLineString))
+        and norm_project_type != "corridor"
+    ):
+        raise GeometryValidationError(
+            "LineString or MultiLineString geometry requires project_type='corridor'; "
+            "site projects require Polygon or MultiPolygon geometry."
+        )
+
     if isinstance(parsed_geometry, (LineString, MultiLineString)):
         corridor_kwargs: dict[str, Any] = {
             "centerline": geometry,
@@ -235,13 +246,69 @@ def calculate_preliminary_lesa(
         if max_county_rating_override is not None:
             corridor_kwargs["max_county_rating_override"] = max_county_rating_override
         corridor_result = analyze_corridor_fppa(**corridor_kwargs)
-        le_score = float(corridor_result.get("composite_relative_rating") or 0.0)
         reconciliation = corridor_result.get("reconciliation_summary") or {}
+        total_acreage = float(reconciliation.get("buffered_footprint_acres") or 0.0)
+        county_segments = corridor_result.get("county_segments") or []
+        rated_acreage = 0.0
+        mapped_acreage = 0.0
+        source_coverage = []
+        for segment in county_segments:
+            if not isinstance(segment, dict):
+                continue
+            source_coverage.append(segment.get("coverage_status"))
+            for unit in segment.get("map_units") or []:
+                if not isinstance(unit, dict):
+                    continue
+                acres = float(unit.get("calculated_acres") or 0.0)
+                mapped_acreage += acres
+                if unit.get("productivity_rating") is not None:
+                    rated_acreage += acres
+        rated_acreage = float(
+            reconciliation.get("rated_productivity_acres", round(rated_acreage, 2))
+        )
+        unrated_acreage = float(
+            reconciliation.get(
+                "unrated_productivity_acres",
+                round(max(0.0, total_acreage - rated_acreage), 2),
+            )
+        )
+        coverage_percent = (
+            float(
+                reconciliation.get(
+                    "productivity_coverage_percent",
+                    min(100.0, round(rated_acreage / total_acreage * 100.0, 2)),
+                )
+            )
+            if total_acreage > 0
+            else 0.0
+        )
+        coverage_status = reconciliation.get(
+            "productivity_coverage_status",
+            _lesa_coverage_status(rated_acreage, total_acreage, source_coverage, mapped_acreage),
+        )
+        nested_evaluation = corridor_result.get("lesa_evaluation") or {}
+        le_raw = nested_evaluation.get("land_evaluation") or {}
+        le_score = corridor_result.get("composite_relative_rating")
+        if le_score is None:
+            le_score = le_raw.get("candidate_le_score")
+        le_score = float(le_score) if le_score is not None else None
+        rating_provenance = [PRODUCTIVITY_PROVENANCE[normalized_productivity_index.value.lower()]]
+        le_notices = list(le_raw.get("notices") or [])
+        le_notices.append(
+            "Productivity rating source provenance: " + ", ".join(rating_provenance) + "."
+        )
         le_summary = LandEvaluationSummary(
             productivity_index=normalized_productivity_index,
             candidate_le_score=le_score,
-            aoi_relative_rating=round(le_score / 100.0, 4),
-            total_acreage=float(reconciliation.get("buffered_footprint_acres") or 0.0),
+            aoi_relative_rating=round(le_score / 100.0, 4) if le_score is not None else None,
+            rated_acreage=rated_acreage,
+            unrated_acreage=unrated_acreage,
+            total_acreage=total_acreage,
+            coverage_percent=coverage_percent,
+            coverage_status=coverage_status,
+            rating_source_provenance=rating_provenance,
+            reconciliation=reconciliation,
+            notices=le_notices,
         )
         polygon_response = None
     elif norm_project_type == "corridor":
@@ -261,27 +328,64 @@ def calculate_preliminary_lesa(
 
         manifest = polygon_response.manifest or {}
         le_raw = manifest.get("land_evaluation")
+        manifest_le_score = manifest.get("candidate_le_score")
+        fallback_le_score = float(manifest_le_score) if manifest_le_score is not None else None
         if isinstance(le_raw, dict):
             try:
                 le_summary = LandEvaluationSummary(**le_raw)
             except (ValueError, TypeError, KeyError):
                 le_summary = LandEvaluationSummary(
                     productivity_index=normalized_productivity_index,
-                    candidate_le_score=float(manifest.get("candidate_le_score", 0.0) or 0.0),
-                    aoi_relative_rating=round(
-                        float(manifest.get("candidate_le_score", 0.0) or 0.0) / 100.0, 4
+                    candidate_le_score=fallback_le_score,
+                    aoi_relative_rating=(
+                        round(fallback_le_score / 100.0, 4)
+                        if fallback_le_score is not None
+                        else None
                     ),
                     total_acreage=polygon_response.total_aoi_acres,
                 )
         else:
             le_summary = LandEvaluationSummary(
                 productivity_index=normalized_productivity_index,
-                candidate_le_score=float(manifest.get("candidate_le_score", 0.0) or 0.0),
-                aoi_relative_rating=round(
-                    float(manifest.get("candidate_le_score", 0.0) or 0.0) / 100.0, 4
+                candidate_le_score=fallback_le_score,
+                aoi_relative_rating=(
+                    round(fallback_le_score / 100.0, 4) if fallback_le_score is not None else None
                 ),
                 total_acreage=polygon_response.total_aoi_acres,
             )
+        if le_summary.rated_acreage == 0:
+            le_summary.rated_acreage = round(
+                sum(
+                    unit.calculated_acres
+                    for unit in polygon_response.map_units
+                    if unit.productivity_rating is not None
+                ),
+                2,
+            )
+            le_summary.unrated_acreage = round(
+                max(0.0, le_summary.total_acreage - le_summary.rated_acreage), 2
+            )
+            le_summary.coverage_percent = (
+                round(le_summary.rated_acreage / le_summary.total_acreage * 100.0, 2)
+                if le_summary.total_acreage > 0
+                else 0.0
+            )
+        le_summary.coverage_status = _lesa_coverage_status(
+            le_summary.rated_acreage,
+            le_summary.total_acreage,
+            [polygon_response.coverage_status],
+            sum(unit.calculated_acres for unit in polygon_response.map_units),
+        )
+        le_summary.rating_source_provenance = [
+            PRODUCTIVITY_PROVENANCE[normalized_productivity_index.value.lower()]
+        ]
+        provenance_notice = (
+            "Productivity rating source provenance: "
+            + ", ".join(le_summary.rating_source_provenance)
+            + "."
+        )
+        if provenance_notice not in le_summary.notices:
+            le_summary.notices.append(provenance_notice)
 
     # Extract farm acres and criteria inputs if present
     sa_inputs = site_assessment_inputs or {}
@@ -413,3 +517,21 @@ def calculate_preliminary_lesa(
                 lesa_response.limitations.append(lim)
 
     return lesa_response
+
+
+def _lesa_coverage_status(
+    rated_acreage: float,
+    total_acreage: float,
+    source_statuses: list[Any],
+    mapped_acreage: float,
+) -> str:
+    """Normalize analysis-specific coverage outcomes to the public LESA vocabulary."""
+    if total_acreage <= 0:
+        return "unknown"
+    if rated_acreage <= 0:
+        if "unmapped" in source_statuses or mapped_acreage <= 0:
+            return "unmapped"
+        return "unrated"
+    if rated_acreage >= total_acreage:
+        return "covered"
+    return "partial"

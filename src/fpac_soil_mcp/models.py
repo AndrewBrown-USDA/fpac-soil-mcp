@@ -460,12 +460,16 @@ class LandEvaluationSummary(BaseModel):
         default=0.0,
         description="Percentage of AOI footprint with rated soil productivity",
     )
-    coverage_status: str = Field(
+    coverage_status: Literal["covered", "partial", "unrated", "unmapped", "unknown"] = Field(
         default="unknown",
         description=(
-            "Reconciled productivity coverage state: covered, partial, "
-            "unrated, unmapped, or unknown"
+            "Reconciled productivity coverage state: covered, partial, unrated, "
+            "unmapped, or unknown (source states are normalized to this vocabulary)"
         ),
+    )
+    rating_source_provenance: list[str] = Field(
+        default_factory=list,
+        description="Registry provenance identifiers for the selected productivity rating source",
     )
     reconciliation: dict[str, Any] = Field(
         default_factory=dict,

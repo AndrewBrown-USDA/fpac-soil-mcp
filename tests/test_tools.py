@@ -38,6 +38,32 @@ from fpac_soil_mcp.tools.spatial_analysis_tools import (
 )
 
 
+def _polygon_geometry() -> dict[str, Any]:
+    return {
+        "type": "Polygon",
+        "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+    }
+
+
+def _mock_lesa_polygon(mock_analyzer_cls: MagicMock, score: float, acreage: float) -> None:
+    response = MagicMock()
+    response.manifest = {
+        "land_evaluation": {
+            "candidate_le_score": score,
+            "aoi_relative_rating": score / 100,
+            "rated_acreage": acreage,
+            "unrated_acreage": 0.0,
+            "total_acreage": acreage,
+            "coverage_percent": 100.0,
+        }
+    }
+    response.total_aoi_acres = acreage
+    response.limitations = []
+    response.coverage_status = "covered"
+    response.map_units = [MagicMock(calculated_acres=acreage, productivity_rating=score / 100)]
+    mock_analyzer_cls.return_value.analyze_polygon.return_value = response
+
+
 class TestSoilTools:
     """Tests for get_farmland_classification_by_point and get_farmland_classification_by_mukey."""
 
@@ -184,19 +210,15 @@ class TestSoilTools:
 
 
 class TestFPPATools:
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_scores_registry_facts_deterministically(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 70.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
-            "manifest": {},
-        }
+        _mock_lesa_polygon(mock_analyzer_cls, 70.0, 10.0)
 
         response = calculate_preliminary_lesa(
             project_name="facts",
-            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            geometry=_polygon_geometry(),
             site_assessment_inputs={
                 "criteria_facts": {
                     "1": {"percentage": 95, "is_verified": True},
@@ -251,19 +273,15 @@ class TestFPPATools:
             ),
         ],
     )
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_rejects_invalid_facts_and_overrides(
-        self, mock_corridor: MagicMock, inputs: dict[str, Any], message: str
+        self, mock_analyzer_cls: MagicMock, inputs: dict[str, Any], message: str
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 70.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
-            "manifest": {},
-        }
+        _mock_lesa_polygon(mock_analyzer_cls, 70.0, 10.0)
         with pytest.raises(ValueError, match=message):
             calculate_preliminary_lesa(
                 project_name="invalid-input",
-                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                geometry=_polygon_geometry(),
                 site_assessment_inputs=inputs,
             )
 
@@ -273,7 +291,13 @@ class TestFPPATools:
     ) -> None:
         mock_corridor.return_value = {
             "composite_relative_rating": 70.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "reconciliation_summary": {
+                "buffered_footprint_acres": 10.0,
+                "rated_productivity_acres": 8.0,
+                "unrated_productivity_acres": 2.0,
+                "productivity_coverage_percent": 80.0,
+                "productivity_coverage_status": "partial",
+            },
             "manifest": {},
         }
         response = calculate_preliminary_lesa(
@@ -307,6 +331,12 @@ class TestFPPATools:
         assert criteria[8].awarded_points == 12.5
         assert criteria[11].max_points == 25
         assert criteria[11].awarded_points == 25
+        assert response.land_evaluation.coverage_status == "partial"
+        assert response.land_evaluation.coverage_percent == 80.0
+        assert response.land_evaluation.rated_acreage == 8.0
+        assert response.land_evaluation.unrated_acreage == 2.0
+        assert response.land_evaluation.rating_source_provenance == ["SDA:NCCPI_V3"]
+        assert any("SDA:NCCPI_V3" in notice for notice in response.land_evaluation.notices)
         for number in (5, 6):
             assert criteria[number].awarded_points == 0
             assert criteria[number].is_statutorily_zeroed is True
@@ -334,36 +364,28 @@ class TestFPPATools:
                 },
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_preserves_analyst_override_rationale_requirement(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 70.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
-            "manifest": {},
-        }
+        _mock_lesa_polygon(mock_analyzer_cls, 70.0, 10.0)
 
         with pytest.raises(ValueError, match="rationale"):
             calculate_preliminary_lesa(
                 project_name="override",
-                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                geometry=_polygon_geometry(),
                 site_assessment_inputs={"criteria_inputs": {"1": {"awarded_points": 15}}},
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_keeps_unknown_registry_fact_unavailable(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 70.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
-            "manifest": {},
-        }
+        _mock_lesa_polygon(mock_analyzer_cls, 70.0, 10.0)
 
         response = calculate_preliminary_lesa(
             project_name="unknown-fact",
-            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            geometry=_polygon_geometry(),
             site_assessment_inputs={"criteria_facts": {"1": {"percentage": "unknown"}}},
         )
 
@@ -482,11 +504,16 @@ class TestFPPATools:
                 "productivity_index": "NCCPI",
                 "candidate_le_score": 72.0,
                 "aoi_relative_rating": 0.72,
+                "rated_acreage": 1.0,
+                "unrated_acreage": 0.0,
                 "total_acreage": 1.0,
+                "coverage_percent": 100.0,
             }
         }
         mock_response.total_aoi_acres = 1.0
         mock_response.limitations = []
+        mock_response.coverage_status = "covered"
+        mock_response.map_units = [MagicMock(calculated_acres=1.0, productivity_rating=0.8)]
         mock_analyzer_cls.return_value.analyze_polygon.return_value = mock_response
 
         response = calculate_preliminary_lesa(
@@ -495,11 +522,46 @@ class TestFPPATools:
         )
 
         assert response.project_name == "wkt polygon"
+        assert response.land_evaluation.coverage_status == "covered"
+        assert response.land_evaluation.rating_source_provenance == ["SDA:NCCPI_V3"]
+        assert any("SDA:NCCPI_V3" in notice for notice in response.land_evaluation.notices)
         mock_analyzer_cls.return_value.analyze_polygon.assert_called_once()
         assert (
             mock_analyzer_cls.return_value.analyze_polygon.call_args.kwargs["geojson_input"]["type"]
             == "Polygon"
         )
+
+    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    def test_calculate_preliminary_lesa_keeps_unavailable_le_unavailable(
+        self, mock_analyzer_cls: MagicMock
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.manifest = {
+            "land_evaluation": {
+                "candidate_le_score": None,
+                "aoi_relative_rating": None,
+                "rated_acreage": 0.0,
+                "unrated_acreage": 5.0,
+                "total_acreage": 5.0,
+                "coverage_percent": 0.0,
+            }
+        }
+        mock_response.total_aoi_acres = 5.0
+        mock_response.limitations = []
+        mock_response.coverage_status = "unmapped"
+        mock_response.map_units = []
+        mock_analyzer_cls.return_value.analyze_polygon.return_value = mock_response
+
+        response = calculate_preliminary_lesa(
+            project_name="unavailable LE",
+            geometry=_polygon_geometry(),
+        )
+
+        assert response.land_evaluation.candidate_le_score is None
+        assert response.land_evaluation.aoi_relative_rating is None
+        assert response.land_evaluation.coverage_status == "unmapped"
+        assert response.threshold_status == "not_evaluated"
+        assert response.total_lesa_score is None
 
     @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
     def test_calculate_preliminary_lesa_routes_wkt_line_with_buffer_options(
@@ -538,6 +600,13 @@ class TestFPPATools:
                 project_name="polygon corridor",
                 geometry=geometry,
                 project_type="corridor",
+            )
+
+    def test_calculate_preliminary_lesa_rejects_linestring_site(self) -> None:
+        with pytest.raises(GeometryValidationError, match="requires project_type='corridor'"):
+            calculate_preliminary_lesa(
+                project_name="line site",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
             )
 
     def test_calculate_preliminary_lesa_rejects_multipolygon_corridor(self) -> None:

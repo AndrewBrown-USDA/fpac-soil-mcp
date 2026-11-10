@@ -677,6 +677,38 @@ class CorridorAnalyzer:
             "tolerance_pct_limit": 0.1,
             "counties_partitioned_count": len(county_segment_models),
         }
+        mapped_productivity_acres = sum(
+            unit.calculated_acres for segment in county_segment_models for unit in segment.map_units
+        )
+        rated_productivity_acres = sum(
+            unit.calculated_acres
+            for segment in county_segment_models
+            for unit in segment.map_units
+            if unit.productivity_rating is not None
+        )
+        unrated_productivity_acres = max(0.0, total_project_acres - rated_productivity_acres)
+        if total_project_acres <= 0:
+            productivity_coverage_status = "unknown"
+        elif rated_productivity_acres <= 0:
+            productivity_coverage_status = (
+                "unmapped" if mapped_productivity_acres <= 0 else "unrated"
+            )
+        elif rated_productivity_acres >= total_project_acres:
+            productivity_coverage_status = "covered"
+        else:
+            productivity_coverage_status = "partial"
+        reconciliation_summary.update(
+            {
+                "rated_productivity_acres": round(rated_productivity_acres, 2),
+                "unrated_productivity_acres": round(unrated_productivity_acres, 2),
+                "productivity_coverage_percent": (
+                    min(100.0, round(rated_productivity_acres / total_project_acres * 100.0, 2))
+                    if total_project_acres > 0
+                    else 0.0
+                ),
+                "productivity_coverage_status": productivity_coverage_status,
+            }
+        )
 
         # 7. Process Alternatives if provided
         alternative_comparisons: list[CorridorAlternativeComparison] = []

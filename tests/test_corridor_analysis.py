@@ -732,6 +732,11 @@ def test_corridor_partially_covered_status():
     seg = res.county_segments[0]
     assert seg.coverage_status == "partially_covered"
     assert seg.farmland_summary.unmapped_acres > 0
+    coverage = res.reconciliation_summary
+    assert coverage["productivity_coverage_status"] == "partial"
+    assert coverage["rated_productivity_acres"] == 5.0
+    assert coverage["unrated_productivity_acres"] > 0
+    assert 0 < coverage["productivity_coverage_percent"] < 100
 
 
 def test_corridor_analysis_with_county_partition_geometry_models():
