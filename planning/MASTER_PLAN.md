@@ -238,11 +238,11 @@ flowchart TD
 
 ---
 
-### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (Criterion 2 delivered; remaining work open)
+### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (Phase 4 evidence delivered; formal agency review remains out of scope)
 
 **Goal**: Calculate reproducible candidate Land Evaluation (LE) and Site Assessment (SA) estimates integrating state productivity ratings, relative county baselines, and objective physical measurements.
 
-**Delivered**: Plans 17-26 (LE scoring, SDV routing, unified LESA, and PR #9 remediation), Plan 27 (state productivity indexes), Plans 31 and 32 (review remediation); see `planning/EXECUTION_PLAN_N.md` and [ADR 0008](../docs/decisions/0008-nccpi-validated-public-index-with-extensible-sdv-routing.md).
+**Delivered**: Plans 17-26 (historical LE scoring, SDV routing, unified LESA, and PR #9 remediation), Plan 27 (state productivity indexes), Plans 31 and 32 (review remediation), and Plan 45 (validated Site Assessment inputs, metadata-driven productivity aggregation, deterministic gold-set and model-assisted evidence); see `planning/EXECUTION_PLAN_N.md`, `planning/EXECUTION_PLAN_45.md`, and [ADR 0014](../docs/decisions/0014-registry-validated-sdv-metadata-contract.md). Plan 26 is historical context; its earlier single-table/national-index assumptions do not describe the current routing contract.
 
 **Delivered**: Criterion 2 perimeter non-urban screening for site and corridor
 workflows, using existing TIGERweb and geometry abstractions with bounded ratio
@@ -256,9 +256,13 @@ must be integrated before the server can award verified agricultural-adjacency
 Criterion 2 points. The existing preliminary-screening and regulatory
 limitations remain in force.
 
-**Remaining**: Criterion 7 farm-size comparison and other Phase 4 work remain
-open; the next server roadmap item is the Phase 8 map envelope, tracked as
-Track A M3 and required before Track A M4.
+**Remaining**: Formal NRCS review, signed forms, and any verified current
+agricultural-land-use source remain outside this preliminary service. The
+agricultural-adjacency source is intentionally deferred and remains
+`unavailable` unless supplied by an approved source or analyst. Criterion 7
+farm-size comparison is available only from supplied or retrieved county
+baselines and remains preliminary. The next server roadmap item is the Phase 8
+map envelope, tracked as Track A M3 and required before Track A M4.
 
 **Scope & Deliverables** (referencing `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`):
 1. **Relative Land Evaluation (LE) Normalization & Scoring (0–100 Scale)**:
@@ -271,7 +275,7 @@ Track A M3 and required before Track A M4.
      $$\text{Percent Higher} = \left( \frac{A_{\text{qualifying}}}{A_{\text{county\_farmland}}} \right) \times 100$$
    - **Evaluation Rating Null Screening**: Explicitly detect and filter unrated or null values (`[99, 999, None, '']`) from county maximum and weighting calculations, recording explicit data notices rather than skewing averages.
 2. **Metadata-Driven Rating & Property Query Engine (Soil Data Viewer Routing)**:
-   - Support generalized Soil Data Viewer (`sdvattribute`) dynamic query routing across USDA SDA source tables (`cointerp`, `component`, `chorizon`, `cocropyld`) based on `sdvattribute.attributetablename` and `sdvattribute.attributecolumnname`.
+   - Support validated, registry-driven Soil Data Viewer (`sdvattribute`) routing across USDA SDA source tables (`cointerp`, `component`, `chorizon`, `cocropyld`) based on reviewed metadata rather than a single fixed source table or national-index assumption.
    - Support standard national rating schedules (NCCPI v3 / `National Commodity Crop Productivity Index`) and state-specific productivity indexes:
      - Iowa Corn Suitability Rating 2 (CSR2).
      - Minnesota Crop Productivity Index (CPI).
