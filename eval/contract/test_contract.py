@@ -94,6 +94,43 @@ def _payload(result: Any) -> dict[str, Any]:
     return json.loads(result.content[0].text)
 
 
+_SDV_RECORDS: dict[str, dict[str, Any]] = {
+    r["attributename"]: r
+    for r in json.loads(
+        (Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sdv_attribute_records.json")
+        .read_text(encoding="utf-8")
+    )["records"]
+}
+
+
+def _attribute_rating_result(
+    attribute_name: str,
+    mukey: str,
+    numeric_rating: float,
+    constraints: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run a gold-set scenario through the attribute_meta path (chorizon, cocropyld)."""
+    client = SDAClient(max_retries=1)
+    with patch.object(
+        client,
+        "_execute_query",
+        return_value=[
+            {
+                "mukey": mukey,
+                "areasymbol": "IL019",
+                "numeric_rating": numeric_rating,
+                "rated_pct": 100.0,
+                "total_pct": 100.0,
+            }
+        ],
+    ):
+        return client.get_productivity_ratings(
+            [mukey],
+            attribute_meta=_SDV_RECORDS[attribute_name],
+            constraints=constraints,
+        )[0]
+
+
 def _rating_result(index_type: str, mukey: str, numeric_rating: float) -> dict[str, Any]:
     client = SDAClient(max_retries=1)
     with patch.object(
@@ -140,6 +177,15 @@ def _gold_scenario(case_id: str) -> dict[str, Any]:
         return _rating_result("csr2", "2", 96.0)
     if case_id == "strategy-component":
         return _rating_result("cpi", "3", 71.004)
+    if case_id == "strategy-chorizon":
+        return _attribute_rating_result(
+            "Available Water Storage", "4", 15.5,
+        )
+    if case_id == "strategy-cocropyld":
+        return _attribute_rating_result(
+            "Yields of Non-Irrigated Crops (Component)", "5", 145.0,
+            constraints={"cropname": "Corn"},
+        )
     if case_id == "multi-county-selected-property":
         client = SDAClient(max_retries=1)
         with patch.object(

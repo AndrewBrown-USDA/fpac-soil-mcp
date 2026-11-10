@@ -13,6 +13,8 @@ def test_gold_set_has_stable_order_and_unique_ids() -> None:
         "strategy-cointerp",
         "strategy-mapunit",
         "strategy-component",
+        "strategy-chorizon",
+        "strategy-cocropyld",
         "multi-county-selected-property",
         "partial-rated-coverage",
         "urban-partial-overlap",

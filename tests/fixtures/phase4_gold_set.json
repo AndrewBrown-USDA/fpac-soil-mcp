@@ -39,6 +39,32 @@
       ]
     },
     {
+      "id": "strategy-chorizon",
+      "category": "source-table-strategy",
+      "description": "CHORIZON horizon-weighted metadata route preserves depth clipping and provenance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "aws_0_100"},
+        {"path": "sdv_provenance.id", "equals": "SDA:CHORIZON_AWC_R_0_100"},
+        {"path": "sdv_provenance.table", "equals": "chorizon"},
+        {"path": "numeric_rating", "approx": {"value": 15.5, "abs_tol": 0.01}}
+      ]
+    },
+    {
+      "id": "strategy-cocropyld",
+      "category": "source-table-strategy",
+      "description": "COCROPYLD crop-yield metadata route preserves nulls-as-zero and crop constraint.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "nonirr_crop_yield"},
+        {"path": "sdv_provenance.id", "equals": "SDA:COCROPYLD_NONIRRYIELD_R"},
+        {"path": "sdv_provenance.nulls_as_zero", "equals": true},
+        {"path": "numeric_rating", "approx": {"value": 145.0, "abs_tol": 0.01}}
+      ]
+    },
+    {
       "id": "multi-county-selected-property",
       "category": "aggregation",
       "description": "County partitions use the selected property and stable provenance.",
