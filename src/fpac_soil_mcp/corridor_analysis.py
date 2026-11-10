@@ -88,6 +88,26 @@ _INDEX_SENTINELS = {
 }
 _INDEX_SOURCES = dict(PRODUCTIVITY_PROVENANCE)
 _NCCPI_RULE = SDV_RATING_REGISTRY["nccpi"].rule_name
+_CORRIDOR_COVERAGE_TOLERANCE_PCT = 0.1
+
+
+def _coverage_is_complete(total_acres: float, covered_acres: float) -> bool:
+    """Treat residual coverage gaps within the acreage reconciliation tolerance as complete."""
+    if total_acres <= 0:
+        return False
+    gap = max(0.0, total_acres - covered_acres)
+    return gap <= total_acres * _CORRIDOR_COVERAGE_TOLERANCE_PCT / 100.0
+
+
+def _productivity_scale_maximum(productivity_index: str) -> float:
+    """Return the maximum rating defined by the selected index's registry scale."""
+    scale = SDV_RATING_REGISTRY[productivity_index].scale
+    try:
+        return float(scale.rsplit("-", 1)[1])
+    except (IndexError, ValueError) as exc:
+        raise ValueError(
+            f"Productivity index {productivity_index!r} has no numeric maximum in its scale."
+        ) from exc
 
 
 def _normalize_corridor_rating(value: Any, is_rated: Any, productivity_index: str) -> float | None:
@@ -511,11 +531,40 @@ class CorridorAnalyzer:
                     interp_info.get("is_rated"),
                     norm_idx,
                 )
+                try:
+                    rated_pct = float(
+                        interp_info.get("rated_pct", 100.0 if numeric_rating is not None else 0.0)
+                    )
+                    total_pct = float(
+                        interp_info.get("total_pct", 100.0 if numeric_rating is not None else 0.0)
+                    )
+                except (TypeError, ValueError):
+                    rated_pct = 100.0 if numeric_rating is not None else 0.0
+                    total_pct = rated_pct
+                rated_pct = min(100.0, max(0.0, rated_pct))
+                total_pct = min(100.0, max(0.0, total_pct))
+                rating_coverage_status = str(
+                    interp_info.get("coverage_status")
+                    or (
+                        "partial"
+                        if numeric_rating is not None and rated_pct < total_pct
+                        else "rated"
+                        if numeric_rating is not None
+                        else "unrated"
+                        if total_pct > 0
+                        else "no_coverage"
+                    )
+                )
+                rating_coverage_caveats = interp_info.get("caveats")
+                if not isinstance(rating_coverage_caveats, list):
+                    rating_coverage_caveats = []
                 if numeric_rating is not None:
                     try:
                         benchmark = partition_max.get(
                             str(u.get("areasymbol")).strip(),
-                            max_county_rating_override or (1.0 if norm_idx == "nccpi" else 100.0),
+                            max_county_rating_override
+                            if max_county_rating_override is not None
+                            else _productivity_scale_maximum(norm_idx),
                         )
                         le_score = min(1.0, max(0.0, numeric_rating / benchmark)) * 100.0
                         segment_le_sum += calc_ac * le_score
@@ -540,6 +589,10 @@ class CorridorAnalyzer:
                             "productivity_rating_source",
                             _INDEX_SOURCES.get(norm_idx, f"SDA:{norm_idx.upper()}"),
                         ),
+                        productivity_coverage_status=rating_coverage_status,
+                        productivity_rated_pct=rated_pct,
+                        productivity_total_pct=total_pct,
+                        productivity_coverage_caveats=rating_coverage_caveats,
                     )
                 )
 
@@ -593,10 +646,48 @@ class CorridorAnalyzer:
 
             if not unit_models:
                 coverage_status = "unmapped"
-            elif unmapped_rem > 0:
-                coverage_status = "partially_covered"
-            else:
+            elif _coverage_is_complete(seg_total_acres, total_mapped_acres):
                 coverage_status = "covered"
+            else:
+                coverage_status = "partially_covered"
+            segment_component_rated_acres = sum(
+                unit.calculated_acres * (unit.productivity_rated_pct or 0.0) / 100.0
+                for unit in unit_models
+                if unit.productivity_rating is not None
+            )
+            segment_component_coverage_percent = (
+                min(100.0, round(segment_component_rated_acres / seg_total_acres * 100.0, 2))
+                if seg_total_acres > 0
+                else 0.0
+            )
+            segment_productivity_coverage_status = (
+                "unknown"
+                if not ratings_requested or seg_total_acres <= 0
+                else "unmapped"
+                if not unit_models
+                else "unrated"
+                if segment_component_rated_acres <= 0
+                else "covered"
+                if _coverage_is_complete(seg_total_acres, segment_component_rated_acres)
+                else "partial"
+            )
+            segment_productivity_coverage_caveats = list(
+                dict.fromkeys(
+                    caveat for unit in unit_models for caveat in unit.productivity_coverage_caveats
+                )
+            )
+            if unmapped_rem > 0:
+                segment_productivity_coverage_caveats.append(
+                    "Unmapped corridor acreage is not included in productivity ratings."
+                )
+            if (
+                segment_productivity_coverage_status == "covered"
+                and segment_component_rated_acres < seg_total_acres
+            ):
+                segment_productivity_coverage_caveats.append(
+                    f"Productivity coverage gap is within the "
+                    f"{_CORRIDOR_COVERAGE_TOLERANCE_PCT}% reconciliation tolerance."
+                )
 
             if include_map:
                 map_soil_rows.extend(
@@ -624,6 +715,10 @@ class CorridorAnalyzer:
                     total_segment_acres=round(seg_total_acres, 2),
                     segment_weight_pct=seg_weight_pct,
                     coverage_status=coverage_status,
+                    productivity_coverage_status=segment_productivity_coverage_status,
+                    component_rated_acres=round(segment_component_rated_acres, 2),
+                    component_coverage_percent=segment_component_coverage_percent,
+                    productivity_coverage_caveats=segment_productivity_coverage_caveats,
                     urban_screening=urban_dict,
                     farmland_summary=farmland_summary,
                     map_units=unit_models,
@@ -644,11 +739,11 @@ class CorridorAnalyzer:
             if total_project_acres > 0
             else 0.0
         )
-        is_reconciled = delta_pct <= 0.1  # Reconciled within 0.1% tolerance
+        is_reconciled = delta_pct <= _CORRIDOR_COVERAGE_TOLERANCE_PCT
 
         if not is_reconciled:
             rec_warning = (
-                f"Acreage sum reconciliation exceeded 0.1% tolerance limit: "
+                f"Acreage sum reconciliation exceeded {_CORRIDOR_COVERAGE_TOLERANCE_PCT}% tolerance limit: "
                 f"buffered project footprint = {round(total_project_acres, 2)} ac, "
                 f"sum of county partitions = {round(total_segment_acres_sum, 2)} ac "
                 f"(direct = {round(sum_direct_acres, 2)} ac, indirect = {round(sum_indirect_acres, 2)} ac), "
@@ -663,7 +758,7 @@ class CorridorAnalyzer:
                     "indirect_acres_sum": round(sum_indirect_acres, 2),
                     "acreage_delta": round(acreage_delta, 4),
                     "variance_pct": delta_pct,
-                    "tolerance_pct_limit": 0.1,
+                    "tolerance_pct_limit": _CORRIDOR_COVERAGE_TOLERANCE_PCT,
                 },
             )
             limitations.append(rec_warning)
@@ -674,7 +769,7 @@ class CorridorAnalyzer:
             "acreage_delta": round(acreage_delta, 4),
             "variance_pct": delta_pct,
             "reconciliation_passed": is_reconciled,
-            "tolerance_pct_limit": 0.1,
+            "tolerance_pct_limit": _CORRIDOR_COVERAGE_TOLERANCE_PCT,
             "counties_partitioned_count": len(county_segment_models),
         }
         mapped_productivity_acres = sum(
@@ -687,26 +782,58 @@ class CorridorAnalyzer:
             if unit.productivity_rating is not None
         )
         unrated_productivity_acres = max(0.0, total_project_acres - rated_productivity_acres)
-        if total_project_acres <= 0:
+        component_rated_productivity_acres = sum(
+            unit.calculated_acres * (unit.productivity_rated_pct or 0.0) / 100.0
+            for segment in county_segment_models
+            for unit in segment.map_units
+            if unit.productivity_rating is not None
+        )
+        if total_project_acres <= 0 or not ratings_requested:
             productivity_coverage_status = "unknown"
-        elif rated_productivity_acres <= 0:
+        elif component_rated_productivity_acres <= 0:
             productivity_coverage_status = (
                 "unmapped" if mapped_productivity_acres <= 0 else "unrated"
             )
-        elif rated_productivity_acres >= total_project_acres:
+        elif _coverage_is_complete(total_project_acres, component_rated_productivity_acres):
             productivity_coverage_status = "covered"
         else:
             productivity_coverage_status = "partial"
+        productivity_coverage_caveats = list(
+            dict.fromkeys(
+                caveat
+                for segment in county_segment_models
+                for caveat in segment.productivity_coverage_caveats
+            )
+        )
+        if (
+            productivity_coverage_status == "covered"
+            and component_rated_productivity_acres < total_project_acres
+        ):
+            productivity_coverage_caveats.append(
+                f"Productivity coverage gap is within the "
+                f"{_CORRIDOR_COVERAGE_TOLERANCE_PCT}% reconciliation tolerance."
+            )
         reconciliation_summary.update(
             {
                 "rated_productivity_acres": round(rated_productivity_acres, 2),
                 "unrated_productivity_acres": round(unrated_productivity_acres, 2),
+                "component_rated_productivity_acres": round(component_rated_productivity_acres, 2),
+                "component_unrated_productivity_acres": round(
+                    max(0.0, total_project_acres - component_rated_productivity_acres), 2
+                ),
                 "productivity_coverage_percent": (
-                    min(100.0, round(rated_productivity_acres / total_project_acres * 100.0, 2))
+                    min(
+                        100.0,
+                        round(
+                            component_rated_productivity_acres / total_project_acres * 100.0,
+                            2,
+                        ),
+                    )
                     if total_project_acres > 0
                     else 0.0
                 ),
                 "productivity_coverage_status": productivity_coverage_status,
+                "productivity_coverage_caveats": productivity_coverage_caveats,
             }
         )
 
@@ -930,7 +1057,9 @@ class CorridorAnalyzer:
                                 try:
                                     benchmark = alt_partition_max.get(
                                         str(au.get("areasymbol")).strip(),
-                                        max_county_rating_override or 1.0,
+                                        max_county_rating_override
+                                        if max_county_rating_override is not None
+                                        else _productivity_scale_maximum(norm_idx),
                                     )
                                     le_score = min(1.0, max(0.0, num_rating / benchmark)) * 100.0
                                     alt_seg_le_sum += area_val * le_score

@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer, categorize_farmland_class
-from fpac_soil_mcp.sda_client import SDAClient
+from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE, SDAClient
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 GEOJSON = {
@@ -429,6 +429,7 @@ def test_analyze_polygon_fully_covered():
 
     assert res.coverage_status == "covered"
     assert res.farmland_summary.unmapped_acres == 0.0
+    assert res.manifest["land_evaluation"]["coverage_status"] == "covered"
 
 
 @pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
@@ -472,3 +473,6 @@ def test_polygon_forwards_selected_productivity_index(index):
         areasymbol="IA169", index_type=index
     )
     assert result.map_units[0].productivity_rating_source
+    assert result.manifest["land_evaluation"]["rating_source_provenance"] == [
+        PRODUCTIVITY_PROVENANCE[index]
+    ]

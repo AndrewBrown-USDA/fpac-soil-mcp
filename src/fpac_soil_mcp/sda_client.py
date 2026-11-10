@@ -1915,6 +1915,11 @@ class SDAClient:
                 else:
                     row_provenance["yldunits"] = yld_min
 
+            if is_rated:
+                coverage_status = "partial" if total_pct > 0 and rated_pct < total_pct else "rated"
+            else:
+                coverage_status = "unrated" if rated_pct > 0 or total_pct > 0 else "no_coverage"
+
             # Method and scope caveats, fixed order.
             if spec.algorithm == "Dominant Condition":
                 caveats.append(SDV_CAVEATS["dominant_condition"])

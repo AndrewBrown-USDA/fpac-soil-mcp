@@ -378,6 +378,9 @@ class PolygonAnalyzer:
             unrated_acreage=unrated_le_acres,
             total_acreage=round(total_acres, 2),
             coverage_percent=min(100.0, max(0.0, cov_pct)),
+            rating_source_provenance=[
+                PRODUCTIVITY_PROVENANCE.get(norm_idx, f"SDA:{norm_idx.upper()}")
+            ],
             notices=le_notices,
         )
 
@@ -418,6 +421,18 @@ class PolygonAnalyzer:
             coverage_status = "partially_covered"
         else:
             coverage_status = "covered"
+        le_coverage_status = (
+            "unknown"
+            if total_acres <= 0
+            else "unmapped"
+            if not unit_models
+            else "unrated"
+            if rated_le_acres <= 0
+            else "covered"
+            if rated_le_acres >= total_acres
+            else "partial"
+        )
+        le_summary.coverage_status = le_coverage_status
 
         # 6. Generate CSV table
         output_io = io.StringIO()
