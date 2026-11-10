@@ -68,6 +68,73 @@ def test_cdl_client_inspects_catalog_and_posts_histogram_request():
     assert "geometryType=esriGeometryPolygon" in requests[1].content.decode()
 
 
+def test_cdl_client_resolves_vintage_to_locked_catalog_raster():
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/ImageServer"):
+            return httpx.Response(
+                200,
+                json={
+                    "objectIdField": "OBJECTID",
+                    "timeInfo": {"startTimeField": "Year"},
+                },
+            )
+        return httpx.Response(
+            200,
+            json={"features": [{"attributes": {"OBJECTID": 42, "Year": 2025}}]},
+        )
+
+    client = CDLClient(
+        base_url="https://example.test/ImageServer",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    metadata = client.get_service_metadata()
+    mosaic_rule = client.resolve_product_vintage("2025", metadata=metadata)
+
+    assert mosaic_rule == {
+        "mosaicMethod": "esriMosaicLockRaster",
+        "lockRasterIds": [42],
+    }
+    assert requests[1].url.params["where"] == "Year = 2025"
+
+
+@pytest.mark.parametrize(
+    "catalog_payload",
+    [
+        {"features": []},
+        {
+            "features": [
+                {"attributes": {"OBJECTID": 1, "Year": 2024}},
+                {"attributes": {"OBJECTID": 2, "Year": 2025}},
+            ]
+        },
+        {"features": [{"attributes": {"OBJECTID": 42, "Year": 2024}}]},
+    ],
+)
+def test_cdl_client_rejects_unverified_vintage(catalog_payload):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/ImageServer"):
+            return httpx.Response(
+                200,
+                json={
+                    "objectIdField": "OBJECTID",
+                    "timeInfo": {"startTimeField": "Year"},
+                },
+            )
+        return httpx.Response(200, json=catalog_payload)
+
+    client = CDLClient(
+        base_url="https://example.test/ImageServer",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(ValueError, match="ImageServer catalog"):
+        client.resolve_product_vintage("2025")
+
+
 def test_cdl_client_rejects_empty_catalog_filter():
     client = CDLClient(base_url="https://example.test/ImageServer")
 
@@ -78,7 +145,19 @@ def test_cdl_client_rejects_empty_catalog_filter():
 def test_cdl_client_returns_validated_histogram_evidence_with_nodata():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/ImageServer"):
-            return httpx.Response(200, json={"capabilities": "Image"})
+            return httpx.Response(
+                200,
+                json={
+                    "capabilities": "Image",
+                    "objectIdField": "OBJECTID",
+                    "timeInfo": {"startTimeField": "Year"},
+                },
+            )
+        if request.url.path.endswith("/query"):
+            return httpx.Response(
+                200,
+                json={"features": [{"attributes": {"OBJECTID": 42, "Year": 2025}}]},
+            )
         if request.url.path.endswith("/rasterAttributeTable"):
             return httpx.Response(
                 200,
@@ -120,7 +199,19 @@ def test_cdl_client_returns_validated_histogram_evidence_with_nodata():
 def test_cdl_client_rejects_ambiguous_histogram_shape():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/ImageServer"):
-            return httpx.Response(200, json={"capabilities": "Image"})
+            return httpx.Response(
+                200,
+                json={
+                    "capabilities": "Image",
+                    "objectIdField": "OBJECTID",
+                    "timeInfo": {"startTimeField": "Year"},
+                },
+            )
+        if request.url.path.endswith("/query"):
+            return httpx.Response(
+                200,
+                json={"features": [{"attributes": {"OBJECTID": 42, "Year": 2025}}]},
+            )
         if request.url.path.endswith("/rasterAttributeTable"):
             return httpx.Response(
                 200,

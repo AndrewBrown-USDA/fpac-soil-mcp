@@ -66,6 +66,8 @@ class CDLServiceMetadata(BaseModel):
     pixel_size_x: float | None = Field(default=None, gt=0)
     pixel_size_y: float | None = Field(default=None, gt=0)
     full_extent: dict[str, float] | None = None
+    object_id_field: str | None = None
+    time_field: str | None = None
     retrieved_at_utc: datetime = Field(description="Metadata retrieval timestamp")
     response_hash: str = Field(description="SHA-256 hash of the metadata response")
 

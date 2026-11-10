@@ -112,9 +112,9 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 ## Tasks
 
 ### 1. Verify requested product vintage
-- [ ] Discover catalog/time metadata using the configured ImageServer and identify the requested `product_vintage` from verified service fields.
-- [ ] Apply the verified catalog item or mosaic selector to histogram requests and return `unavailable` when the requested vintage cannot be matched or selected.
-- [ ] Add mocked tests proving different vintages produce different selectors and unverifiable vintages do not produce success.
+- [x] Discover catalog/time metadata using the configured ImageServer and identify the requested `product_vintage` from verified service fields.
+- [x] Apply the verified catalog item or mosaic selector to histogram requests and return `unavailable` when the requested vintage cannot be matched or selected.
+- [x] Add mocked tests proving different vintages produce different selectors and unverifiable vintages do not produce success.
 
 ### 2. Validate histogram semantics
 - [ ] Require explicit bins or validate count-array `min`, `max`, `size`, integer-centered unit-width buckets, and count length before deriving class values.

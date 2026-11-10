@@ -24,6 +24,10 @@ from fpac_soil_mcp.http_client import (
 )
 
 
+class CDLVintageUnavailable(ValueError):
+    """Raised when a requested CDL vintage cannot be verified or selected."""
+
+
 class CDLClient:
     """Client for validated NASS CDL ImageServer discovery and requests."""
 
@@ -118,6 +122,40 @@ class CDLClient:
             data["mosaicRule"] = json.dumps(mosaic_rule, separators=(",", ":"))
         return self._post_json(f"{self.base_url}/computeStatisticsHistograms", data=data)
 
+    def resolve_product_vintage(
+        self, product_vintage: str, *, metadata: CDLServiceMetadata | None = None
+    ) -> dict[str, Any]:
+        """Resolve a requested year to one verified ImageServer catalog raster."""
+        if not product_vintage.isdigit():
+            raise CDLVintageUnavailable("product_vintage must be a numeric year.")
+        service_metadata = metadata or self.get_service_metadata()
+        time_field = service_metadata.time_field
+        object_id_field = service_metadata.object_id_field
+        if not time_field or not object_id_field:
+            raise CDLVintageUnavailable(
+                "ImageServer metadata does not expose a verifiable time and object ID field."
+            )
+
+        catalog = self.get_catalog(where=f"{time_field} = {int(product_vintage)}")
+        features = catalog.get("features")
+        if not isinstance(features, list) or len(features) != 1:
+            raise CDLVintageUnavailable(
+                f"ImageServer catalog did not identify exactly one raster for vintage {product_vintage}."
+            )
+        attributes = features[0].get("attributes")
+        if not isinstance(attributes, dict):
+            raise CDLVintageUnavailable("ImageServer catalog item has no valid attributes.")
+        object_id = attributes.get(object_id_field)
+        selected_vintage = attributes.get(time_field)
+        if not isinstance(object_id, int) or selected_vintage != int(product_vintage):
+            raise CDLVintageUnavailable(
+                "ImageServer catalog item did not verify the requested vintage and object ID."
+            )
+        return {
+            "mosaicMethod": "esriMosaicLockRaster",
+            "lockRasterIds": [object_id],
+        }
+
     def analyze_polygon_histogram(
         self,
         *,
@@ -139,8 +177,12 @@ class CDLClient:
         )
         try:
             metadata = self.get_service_metadata()
+            selected_mosaic_rule = self.resolve_product_vintage(product_vintage, metadata=metadata)
             class_names = self.get_raster_attribute_table()
-            payload = self.compute_statistics_histograms(geometry=geometry, mosaic_rule=mosaic_rule)
+            payload = self.compute_statistics_histograms(
+                geometry=geometry,
+                mosaic_rule=mosaic_rule or selected_mosaic_rule,
+            )
             bins = parse_histogram_payload(
                 payload,
                 nodata_class_values=nodata_class_values or {0},
@@ -184,6 +226,14 @@ class CDLClient:
                 qualifying_agricultural_pixel_pct=(qualifying / valid) * 100,
                 service_metadata=metadata,
                 provenance=provenance,
+            )
+        except CDLVintageUnavailable as exc:
+            return CDLHistogramResponse(
+                status=CDLAnalysisStatus.UNAVAILABLE,
+                geometry_hash=geometry_hash,
+                product_vintage=product_vintage,
+                provenance=provenance,
+                error_message=str(exc),
             )
         except (TypeError, ValueError) as exc:
             return CDLHistogramResponse(
@@ -263,6 +313,8 @@ class CDLClient:
         else:
             capability_values = []
         canonical_payload = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        time_info = payload.get("timeInfo") or {}
+        time_field = time_info.get("startTimeField")
         return CDLServiceMetadata(
             endpoint=self.base_url,
             capabilities=capability_values,
@@ -272,6 +324,8 @@ class CDLClient:
             pixel_size_x=payload.get("pixelSizeX"),
             pixel_size_y=payload.get("pixelSizeY"),
             full_extent=selected_extent or None,
+            object_id_field=payload.get("objectIdField"),
+            time_field=time_field if isinstance(time_field, str) else None,
             retrieved_at_utc=retrieved_at,
             response_hash=hashlib.sha256(canonical_payload.encode("utf-8")).hexdigest(),
         )
