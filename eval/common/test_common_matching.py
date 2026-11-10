@@ -3,7 +3,129 @@
 import pytest
 
 from common.dataset import load_cases
-from common.matching import _keyword_form, keywords_present, normalize_text, tool_matches
+from common.matching import (
+    _keyword_form,
+    keywords_present,
+    load_policy_rules,
+    normalize_text,
+    policy_missing_requirements,
+    policy_requirements_present,
+    tool_matches,
+)
+
+
+def test_policy_helper_accepts_complete_policy_and_negated_siting_rule():
+    policy = load_policy_rules()
+    text = (
+        f"{policy['version']} "
+        + " ".join(
+            concept["phrases"][0] for rule in policy["rules"] for concept in rule["concepts"]
+        )
+        + " Do not recommend a site, footprint, or alignment."
+    )
+    assert policy_requirements_present(text, policy)
+
+
+def test_policy_helper_identifies_incomplete_refusal_fixture():
+    policy = {
+        "version": "policy-test-v1",
+        "rules": [
+            {
+                "id": "scope_refusal",
+                "concepts": [{"id": "refusal", "phrases": ["refuse unrelated requests"]}],
+            },
+            {
+                "id": "no_siting_recommendations",
+                "concepts": [{"id": "siting", "phrases": ["do not recommend a site"]}],
+            },
+        ],
+    }
+    missing = policy_missing_requirements(
+        "policy-test-v1. You may help with any request. Recommend a site.", policy
+    )
+    assert missing == [
+        "rule:scope_refusal:refusal",
+        "rule:no_siting_recommendations:siting",
+        "unsafe:siting_recommendation",
+    ]
+
+
+def test_policy_helper_requires_version():
+    policy = {
+        "version": "policy-test-v1",
+        "rules": [
+            {
+                "id": "scope_refusal",
+                "concepts": [{"id": "refusal", "phrases": ["refuse unrelated requests"]}],
+            }
+        ],
+    }
+    assert policy_missing_requirements("Refuse unrelated requests.", policy) == [
+        "version:policy-test-v1"
+    ]
+
+
+def test_policy_helper_distinguishes_siting_prohibition_from_recommendation():
+    policy = {
+        "version": "policy-test-v1",
+        "rules": [
+            {
+                "id": "no_siting_recommendations",
+                "concepts": [{"id": "prohibition", "phrases": ["recommend a site"]}],
+            }
+        ],
+    }
+    assert policy_requirements_present("policy-test-v1. Never recommend a site.", policy)
+    assert "unsafe:siting_recommendation" in policy_missing_requirements(
+        "policy-test-v1. Recommend a site.", policy
+    )
+
+
+_REQUIRED_DIMENSIONS = [
+    ("non_prime_conditional", "non_prime_classification"),
+    ("non_prime_conditional", "conditional_farmland"),
+    ("unknown_partial_unavailable", "unknown"),
+    ("unknown_partial_unavailable", "unmapped"),
+    ("unknown_partial_unavailable", "partial"),
+    ("unknown_partial_unavailable", "unavailable"),
+    ("unknown_partial_unavailable", "error"),
+    ("lesa_thresholds", "threshold_value"),
+    ("lesa_thresholds", "threshold_meaning"),
+    ("lesa_thresholds", "preliminary_not_approval"),
+]
+
+
+@pytest.mark.parametrize(("rule_id", "concept_id"), _REQUIRED_DIMENSIONS)
+def test_policy_helper_requires_each_policy_dimension(rule_id, concept_id):
+    source_policy = load_policy_rules()
+    rule = next(rule for rule in source_policy["rules"] if rule["id"] == rule_id)
+    concepts = [concept for concept in rule["concepts"] if concept["id"] != concept_id]
+    text = source_policy["version"] + " " + " ".join(concept["phrases"][0] for concept in concepts)
+    policy = {
+        "version": source_policy["version"],
+        "rules": [{"id": rule_id, "concepts": rule["concepts"]}],
+    }
+
+    assert policy_missing_requirements(text, policy) == [f"rule:{rule_id}:{concept_id}"]
+
+
+def test_policy_helper_treats_synonyms_as_alternatives_within_a_concept():
+    policy = {
+        "version": "policy-test-v1",
+        "rules": [
+            {
+                "id": "non_prime_conditional",
+                "concepts": [
+                    {
+                        "id": "non_prime_classification",
+                        "phrases": ["not prime farmland", "non-prime farmland"],
+                    }
+                ],
+            }
+        ],
+    }
+
+    assert policy_missing_requirements("policy-test-v1. Non-prime farmland.", policy) == []
 
 
 def _digit_edged_dataset_keywords() -> list[str]:

@@ -2,15 +2,71 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
 
 _DASHES = re.compile(r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]")
 _SPACES = re.compile(r"[\u00a0\u2000-\u200b\u202f\u205f\u3000]")
 # "CFR Part 658", "CFR § 658.5", "CFR §§ 658", "CFR Sec. 658" -> "cfr 658" (lowercased input).
 _CFR_UNIT = re.compile(r"\bc\.?f\.?r\.?\s*(?:parts?\b|§§?|sections?\b|sec\.)?\s*")
+POLICY_RULES_PATH = Path(__file__).with_name("policy_rules.v1.json")
+_SITING_RECOMMENDATION = re.compile(
+    r"\b(?:recommend|propose|select|choose)\b[^.!?;\n]{0,100}"
+    r"\b(?:site|location|footprint|alignment|route|alternative)\b",
+    re.IGNORECASE,
+)
+_NEGATION = re.compile(
+    r"\b(?:do not|don't|never|must not|must never|cannot|should not)\b", re.IGNORECASE
+)
+
+
+def load_policy_rules(path: Path | str = POLICY_RULES_PATH) -> dict[str, Any]:
+    """Load the test-owned, versioned cross-surface policy contract."""
+    with open(path, encoding="utf-8") as handle:
+        policy = json.load(handle)
+    if not isinstance(policy, dict) or not isinstance(policy.get("version"), str):
+        raise TypeError("Policy rules must define a version")
+    if not isinstance(policy.get("rules"), list):
+        raise TypeError("Policy rules must define a rules list")
+    return policy
+
+
+def policy_missing_requirements(text: str, policy: dict[str, Any] | None = None) -> list[str]:
+    """Return missing policy version/rules and any affirmative unsafe siting claims.
+
+    Each semantic rule is represented by phrases in the test-owned policy data.
+    A prohibited siting phrase is only safe when negated in the same sentence.
+    """
+    contract = policy if policy is not None else load_policy_rules()
+    folded = normalize_text(text).casefold()
+    missing: list[str] = []
+    version = contract["version"]
+    if version.casefold() not in folded:
+        missing.append(f"version:{version}")
+    for rule in contract["rules"]:
+        for concept in rule["concepts"]:
+            phrases = concept["phrases"]
+            if not any(normalize_text(phrase).casefold() in folded for phrase in phrases):
+                missing.append(f"rule:{rule['id']}:{concept['id']}")
+
+    for match in _SITING_RECOMMENDATION.finditer(text):
+        sentence_start = (
+            max(text.rfind(mark, 0, match.start()) for mark in (".", "!", "?", ";", "\n")) + 1
+        )
+        lead = text[sentence_start : match.start()]
+        if not _NEGATION.search(lead):
+            missing.append("unsafe:siting_recommendation")
+            break
+    return missing
+
+
+def policy_requirements_present(text: str, policy: dict[str, Any] | None = None) -> bool:
+    """Return whether text carries the policy version/rules without unsafe siting claims."""
+    return not policy_missing_requirements(text, policy)
 
 
 def normalize_text(text: str) -> str:

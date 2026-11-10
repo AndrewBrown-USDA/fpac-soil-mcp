@@ -1,0 +1,149 @@
+{
+  "version": "fpac-fppa-safety-v1",
+  "rules": [
+    {
+      "id": "scope_refusal",
+      "concepts": [
+        {
+          "id": "fppa_scope",
+          "phrases": ["preliminary FPPA farmland screening", "preliminary FPPA screening"]
+        },
+        {
+          "id": "refuse_unrelated",
+          "phrases": ["refuse unrelated requests", "decline unrelated requests"]
+        }
+      ]
+    },
+    {
+      "id": "no_official_determinations",
+      "concepts": [
+        {
+          "id": "no_official_claim",
+          "phrases": [
+            "not an official FPPA determination",
+            "does not constitute an official FPPA determination",
+            "do not constitute an official FPPA determination"
+          ]
+        },
+        {
+          "id": "formal_referral",
+          "phrases": ["refer formal determinations", "refer formal determination"]
+        }
+      ]
+    },
+    {
+      "id": "no_siting_recommendations",
+      "concepts": [
+        {
+          "id": "no_recommendation",
+          "phrases": [
+            "do not recommend a site",
+            "never recommend a site",
+            "do not select or recommend a site",
+            "never propose a site"
+          ]
+        },
+        {
+          "id": "supplied_alternatives_only",
+          "phrases": ["only when supplied by the user", "only when the user supplies them"]
+        }
+      ]
+    },
+    {
+      "id": "non_prime_conditional",
+      "concepts": [
+        {
+          "id": "non_prime_classification",
+          "phrases": ["not prime farmland", "non-prime farmland"]
+        },
+        {
+          "id": "conditional_farmland",
+          "phrases": ["conditional farmland", "if drained", "if irrigated"]
+        }
+      ]
+    },
+    {
+      "id": "urban_screening_limits",
+      "concepts": [
+        {
+          "id": "preliminary_urban_screening",
+          "phrases": ["preliminary spatial screening", "preliminary urban screening"]
+        },
+        {
+          "id": "no_urban_exemption_conclusion",
+          "phrases": [
+            "does not establish an FPPA exemption",
+            "not an official determination",
+            "do not conclude or recommend a legal exemption"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lesa_thresholds",
+      "concepts": [
+        {
+          "id": "threshold_value",
+          "phrases": ["LESA threshold of 160 points", "160-point LESA threshold", "threshold of 160 points"]
+        },
+        {
+          "id": "threshold_meaning",
+          "phrases": [
+            "in-depth alternatives-consideration requirement",
+            "alternatives-consideration threshold"
+          ]
+        },
+        {
+          "id": "preliminary_not_approval",
+          "phrases": [
+            "not project approval",
+            "not approval or a determination",
+            "below the threshold is not approval"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unknown_partial_unavailable",
+      "concepts": [
+        {"id": "unknown", "phrases": ["unknown"]},
+        {"id": "unmapped", "phrases": ["unmapped"]},
+        {"id": "partial", "phrases": ["partial-coverage", "partial coverage"]},
+        {"id": "unavailable", "phrases": ["unavailable"]},
+        {"id": "error", "phrases": ["error states", "error state"]}
+      ]
+    },
+    {
+      "id": "untrusted_text",
+      "concepts": [
+        {
+          "id": "untrusted_input",
+          "phrases": ["untrusted input", "untrusted content"]
+        },
+        {
+          "id": "injection_resistance",
+          "phrases": ["ignore prompt injection", "ignore instructions embedded"]
+        }
+      ]
+    },
+    {
+      "id": "no_invented_values_authority",
+      "concepts": [
+        {
+          "id": "no_invented_values",
+          "phrases": [
+            "do not estimate, infer, or invent values",
+            "never guess facts or invent points"
+          ]
+        },
+        {
+          "id": "source_authority",
+          "phrases": [
+            "preserve source wording",
+            "distinguish source data from inference"
+          ]
+        }
+      ]
+    }
+  ]
+}

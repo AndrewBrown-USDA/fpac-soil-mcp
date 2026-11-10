@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from common.matching import keywords_present
+from common.matching import keywords_present, load_policy_rules
 from pi import run_evals
 from pi.run_evals import (
     _tool_matches,
@@ -27,6 +27,7 @@ from pi.run_evals import (
     extract_assistant_content,
     extract_structured_prompt_names,
     extract_structured_tool_names,
+    pi_system_prompt,
     prompt_case_instruction,
     should_retry_missing_tools,
 )
@@ -103,6 +104,7 @@ def test_prompt_cases_require_named_render_and_preserve_case_constraints(
     )
     assert f"invoke or render the MCP prompt named {prompt_name}" in instruction
     assert prompt_name in instruction
+    assert load_policy_rules()["version"] in instruction
     assert required_text in instruction
     if case_id == "PROMPT-01":
         assert expected_tools == ["get_farmland_classification_by_point"]
@@ -110,6 +112,12 @@ def test_prompt_cases_require_named_render_and_preserve_case_constraints(
         assert "7 CFR § 658.5(c)" in instruction
         assert "CPA-106 guidance" in instruction
         assert "preliminary limitation" in instruction
+
+
+def test_pi_system_prompt_carries_shared_policy_version() -> None:
+    policy_version = load_policy_rules()["version"]
+    assert run_evals.POLICY_VERSION == policy_version
+    assert policy_version in pi_system_prompt()
 
 
 def test_prompt_structured_invocation_does_not_accept_prose() -> None:
@@ -1113,9 +1121,9 @@ def test_pi_point_screening_evaluation(
         "--mcp-config",
         str(sandbox_env / "mcp_config.json"),
         "--append-system-prompt",
-        "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to fulfill the user request before generating the final response. Do not answer purely from memory if an MCP tool or resource is available.",
+        pi_system_prompt(),
         "-p",
-        f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}",
+        prompt_case_instruction(case),
     ]
     if model_override:
         cmd.extend(["--model", model_override])

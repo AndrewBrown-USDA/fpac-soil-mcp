@@ -28,6 +28,7 @@ FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 MAX_CAPTURE_BYTES = 64 * 1024
 MAX_CAPTURE_LINES = 1000
 MAX_CAPTURE_EVENTS = 500
+POLICY_VERSION = "fpac-fppa-safety-v1"
 SAFE_ID = re.compile(r"[^A-Za-z0-9_-]+")
 SENSITIVE = re.compile(
     r"(?i)(?:api[_ -]?key|token|secret|password|authorization|cookie|"
@@ -495,12 +496,24 @@ def prompt_case_instruction(case: dict[str, Any]) -> str:
         )
     if case.get("target_type") == "prompt":
         return (
-            f"First invoke or render the MCP prompt named {prompt_name}; use its rendered "
+            f"[Policy version: {POLICY_VERSION}] First invoke or render the MCP prompt named {prompt_name}; use its rendered "
             f"instructions before answering. Then complete this request: {case['user_prompt']}."
             f"{citation_note}"
         )
     return (
-        f"Call the appropriate fpac-soil MCP tool/resource and {case['user_prompt']}{citation_note}"
+        f"[Policy version: {POLICY_VERSION}] Call the appropriate fpac-soil MCP tool/resource "
+        f"and {case['user_prompt']}{citation_note}"
+    )
+
+
+def pi_system_prompt() -> str:
+    """Build Pi's forced system instruction with the shared policy version."""
+    return (
+        f"[Policy version: {POLICY_VERSION}] "
+        "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. "
+        "You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to "
+        "fulfill the user request before generating the final response. Do not answer purely "
+        "from memory if an MCP tool or resource is available."
     )
 
 
@@ -549,7 +562,7 @@ def run_case(
         "--mcp-config",
         str(sandbox_dir / "mcp_config.json"),
         "--append-system-prompt",
-        "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to fulfill the user request before generating the final response. Do not answer purely from memory if an MCP tool or resource is available.",
+        pi_system_prompt(),
         "-p",
         prompt_case_instruction(case),
     ]
@@ -674,6 +687,7 @@ def run_case(
                 ):
                     retry_count += 1
                     cmd[-1] = (
+                        f"[Policy version: {POLICY_VERSION}] "
                         f"Call the appropriate fpac-soil MCP tool/resource and {prompt} "
                         f"Execute the advertised tool(s) {', '.join(retryable)} now; "
                         "do not substitute prose for a tool call."
