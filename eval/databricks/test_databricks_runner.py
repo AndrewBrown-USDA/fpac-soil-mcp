@@ -14,6 +14,7 @@ import pytest
 
 mlflow = pytest.importorskip("mlflow")
 
+from common.dataset import load_cases
 from run_mlflow_eval import _git_branch, _git_sha, run, summarize_traces
 from scorers import DETERMINISTIC_SCORER_NAMES
 
@@ -45,7 +46,7 @@ def test_dry_run_returns_ground_truth_records_and_scorer_names() -> None:
         assert "case_id" in rec["expectations"]
 
     scorer_names = result["scorer_names"]
-    assert scorer_names[:4] == list(DETERMINISTIC_SCORER_NAMES)
+    assert scorer_names[: len(DETERMINISTIC_SCORER_NAMES)] == list(DETERMINISTIC_SCORER_NAMES)
     assert "correctness" in scorer_names
     assert "safety" in scorer_names
 
@@ -59,7 +60,7 @@ def test_dry_run_with_specific_cases() -> None:
 
 def test_dry_run_all_cases() -> None:
     result = run(["--dry-run", "--all"])
-    assert len(result["records"]) == 24
+    assert len(result["records"]) == len(load_cases())
 
 
 def _assessment(name: str, value: object, error: object = None) -> SimpleNamespace:
