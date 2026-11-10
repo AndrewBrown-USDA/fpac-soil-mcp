@@ -47,6 +47,8 @@ def test_successful_cdl_response_requires_and_preserves_evidence_fields():
         nodata_pixel_count=0,
         coverage_pct=100,
         product_vintage="2025",
+        vintage_verified=True,
+        coverage_verified=True,
         qualifying_agricultural_pixel_pct=80,
         service_metadata=_metadata(),
         provenance=_provenance(),
@@ -54,6 +56,8 @@ def test_successful_cdl_response_requires_and_preserves_evidence_fields():
 
     assert response.status is CDLAnalysisStatus.SUCCESS
     assert response.histogram[0].is_qualifying_agricultural is True
+    assert response.vintage_verified is True
+    assert response.coverage_verified is True
     assert response.limitations[-1].startswith("This result does not constitute")
 
 
@@ -72,6 +76,18 @@ def test_success_status_requires_provenance_and_measurement_fields():
             geometry_hash="d" * 64,
             total_pixel_count=1,
             coverage_pct=100,
+        )
+
+
+def test_success_status_requires_verified_vintage_and_coverage():
+    with pytest.raises(ValidationError, match="vintage_verified and coverage_verified"):
+        CDLHistogramResponse(
+            status=CDLAnalysisStatus.SUCCESS,
+            geometry_hash="e" * 64,
+            total_pixel_count=1,
+            coverage_pct=100,
+            vintage_verified=True,
+            provenance=_provenance(),
         )
 
 

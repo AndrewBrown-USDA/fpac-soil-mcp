@@ -31,6 +31,8 @@ class FakeCDLClient:
             total_pixel_count=4,
             coverage_pct=100,
             product_vintage=kwargs["product_vintage"],
+            vintage_verified=True,
+            coverage_verified=True,
             provenance=Provenance(
                 source_name="USDA NASS CDL ImageServer",
                 source_reference="https://example.test/ImageServer",

@@ -96,6 +96,14 @@ class CDLHistogramResponse(BaseModel):
     nodata_pixel_count: int | None = Field(default=None, ge=0)
     coverage_pct: float | None = Field(default=None, ge=0, le=100)
     product_vintage: str | None = Field(default=None)
+    vintage_verified: bool = Field(
+        default=False,
+        description="Whether the requested product vintage was matched to one catalog raster",
+    )
+    coverage_verified: bool = Field(
+        default=False,
+        description="Whether complete AOI coverage was established from service extent metadata",
+    )
     qualifying_agricultural_pixel_pct: float | None = Field(default=None, ge=0, le=100)
     service_metadata: CDLServiceMetadata | None = None
     provenance: Provenance | None = None
@@ -126,6 +134,10 @@ class CDLHistogramResponse(BaseModel):
             if self.total_pixel_count is None or self.coverage_pct is None:
                 raise ValueError(
                     "total_pixel_count and coverage_pct are required when status is 'success'."
+                )
+            if not self.vintage_verified or not self.coverage_verified:
+                raise ValueError(
+                    "vintage_verified and coverage_verified are required when status is 'success'."
                 )
         elif (
             self.status

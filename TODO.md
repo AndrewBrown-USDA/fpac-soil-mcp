@@ -132,8 +132,8 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 - [x] Add focused tests for incomplete extents and Polygon/MultiPolygon exterior and hole winding.
 
 ### 5. Update contract and documentation
-- [ ] Update CDL response/provenance fields and tool documentation to distinguish verified vintage, complete coverage, ambiguity, and unavailability.
-- [ ] Preserve the limitation that CDL is mapped land-cover evidence and cannot establish active farming or official FPPA/LESA conclusions.
+- [x] Update CDL response/provenance fields and tool documentation to distinguish verified vintage, complete coverage, ambiguity, and unavailability.
+- [x] Preserve the limitation that CDL is mapped land-cover evidence and cannot establish active farming or official FPPA/LESA conclusions.
 
 ### 6. Validate the review fixes
 - [ ] Run focused CDL and geometry tests, then the offline test suite.

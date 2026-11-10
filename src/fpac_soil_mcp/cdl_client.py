@@ -224,6 +224,8 @@ class CDLClient:
                 nodata_pixel_count=nodata,
                 coverage_pct=(valid / total) * 100,
                 product_vintage=product_vintage,
+                vintage_verified=True,
+                coverage_verified=True,
                 qualifying_agricultural_pixel_pct=(qualifying / valid) * 100,
                 service_metadata=metadata,
                 provenance=provenance,
