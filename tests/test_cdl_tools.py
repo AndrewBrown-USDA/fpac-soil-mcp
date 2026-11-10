@@ -53,7 +53,7 @@ class OutOfExtentCDLClient(FakeCDLClient):
 
 def test_cdl_tool_validates_geometry_and_propagates_histogram(monkeypatch):
     fake = FakeCDLClient()
-    monkeypatch.setattr(cdl_tools, "CDLClient", lambda: fake)
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", lambda: fake)
 
     response = cdl_tools.analyze_cdl_histogram(
         {
@@ -72,7 +72,7 @@ def test_cdl_tool_validates_geometry_and_propagates_histogram(monkeypatch):
 
 def test_cdl_tool_combines_all_polygon_features_in_feature_collection(monkeypatch):
     fake = FakeCDLClient()
-    monkeypatch.setattr(cdl_tools, "CDLClient", lambda: fake)
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", lambda: fake)
 
     response = cdl_tools.analyze_cdl_histogram(
         {
@@ -104,7 +104,7 @@ def test_cdl_tool_combines_all_polygon_features_in_feature_collection(monkeypatc
 
 def test_cdl_tool_rejects_feature_collection_with_invalid_later_feature(monkeypatch):
     fake = FakeCDLClient()
-    monkeypatch.setattr(cdl_tools, "CDLClient", lambda: fake)
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", lambda: fake)
 
     response = cdl_tools.analyze_cdl_histogram(
         {
@@ -143,7 +143,7 @@ def test_cdl_tool_rejects_invalid_geometry_and_missing_class_policy():
 
 
 def test_cdl_tool_reports_out_of_extent_aoi(monkeypatch):
-    monkeypatch.setattr(cdl_tools, "CDLClient", OutOfExtentCDLClient)
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", OutOfExtentCDLClient)
 
     response = cdl_tools.analyze_cdl_histogram(
         {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
@@ -160,7 +160,7 @@ def test_cdl_tool_reports_unavailable_without_complete_extent(monkeypatch):
         def get_service_metadata(self):
             return super().get_service_metadata().model_copy(update={"full_extent": None})
 
-    monkeypatch.setattr(cdl_tools, "CDLClient", MissingExtentCDLClient)
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", MissingExtentCDLClient)
 
     response = cdl_tools.analyze_cdl_histogram(
         {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
@@ -170,3 +170,24 @@ def test_cdl_tool_reports_unavailable_without_complete_extent(monkeypatch):
 
     assert response.status is CDLAnalysisStatus.UNAVAILABLE
     assert "Complete AOI coverage" in response.error_message
+
+
+def test_cdl_tool_reuses_client_across_public_calls(monkeypatch, request):
+    cdl_tools._get_cdl_client.cache_clear()
+    request.addfinalizer(cdl_tools._get_cdl_client.cache_clear)
+    fake = FakeCDLClient()
+    created = []
+
+    def factory():
+        created.append(fake)
+        return fake
+
+    monkeypatch.setattr(cdl_tools, "CDLClient", factory)
+    geometry = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]}
+
+    first = cdl_tools.analyze_cdl_histogram(geometry, "2025", [1])
+    second = cdl_tools.analyze_cdl_histogram(geometry, "2025", [1])
+
+    assert first.status is CDLAnalysisStatus.SUCCESS
+    assert second.status is CDLAnalysisStatus.SUCCESS
+    assert created == [fake]

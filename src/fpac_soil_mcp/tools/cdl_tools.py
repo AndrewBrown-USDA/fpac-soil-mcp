@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from typing import Any
 
 from pyproj import Transformer
@@ -18,6 +19,12 @@ from fpac_soil_mcp.geometry import (
     parse_geojson_geometry,
     polygon_to_esri_rings,
 )
+
+
+@lru_cache(maxsize=1)
+def _get_cdl_client() -> CDLClient:
+    """Reuse the client so its metadata and raster-table caches span tool calls."""
+    return CDLClient()
 
 
 def _fallback_geometry_hash(value: Any) -> str:
@@ -83,7 +90,7 @@ def analyze_cdl_histogram(
     try:
         geometry = _parse_cdl_geometry(geojson)
         geometry_hash = compute_geometry_hash(geometry)
-        client = CDLClient()
+        client = _get_cdl_client()
         metadata = client.get_service_metadata()
         spatial_reference = metadata.spatial_reference or "4326"
         if spatial_reference.isdigit() and spatial_reference != "4326":

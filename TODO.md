@@ -175,4 +175,4 @@ Correct count-array histogram validation to interpret ArcGIS `size` as the numbe
 ## Discovered Tasks
 
 - [x] Address unresolved PR #79 review comment: combine and validate all polygon geometries in FeatureCollections so no requested AOI features are silently ignored; add focused tests.
-- [ ] Address unresolved PR #79 review comment: make the configured CDL metadata cache persist across public tool invocations, and add tests proving repeated calls respect the configured TTL.
+- [x] Address unresolved PR #79 review comment: make the configured CDL metadata cache persist across public tool invocations, and add tests proving repeated calls respect the configured TTL.
