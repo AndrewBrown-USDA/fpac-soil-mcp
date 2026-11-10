@@ -154,9 +154,10 @@ def test_mcp_tool_registration_surface():
         "explain_fppa_screening_scope",
         "list_farmland_classes",
         "analyze_corridor_fppa",
+        "analyze_cdl_histogram",
     ]
 
     for expected in expected_tools:
         assert expected in tool_names
-    assert len(tool_names) == 10
+    assert len(tool_names) == 11
     assert set(tool_names) == set(expected_tools)
