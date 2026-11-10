@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from shapely import wkt as shapely_wkt
 from shapely.geometry import LineString, MultiLineString, mapping
 
+from fpac_soil_mcp.constants import CORRIDOR_CRITERIA_MAX_POINTS, SITE_CRITERIA_MAX_POINTS
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     parse_geojson_geometry,
@@ -25,15 +27,25 @@ from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
 
 
-def _score_registry_facts(facts: dict[str, Any] | None) -> dict[int, dict[str, Any]]:
+def _score_registry_facts(
+    facts: dict[str, Any] | None, project_type: str = "site"
+) -> dict[int, dict[str, Any]]:
     scored: dict[int, dict[str, Any]] = {}
-    for raw_number, raw_input in (facts or {}).items():
+    if facts is None:
+        return scored
+    if not isinstance(facts, dict):
+        raise TypeError("criteria_facts must be a mapping of criterion numbers to fact inputs.")
+    for raw_number, raw_input in facts.items():
         try:
             number = int(raw_number)
-        except (TypeError, ValueError):
-            continue
-        if not 1 <= number <= 12 or not isinstance(raw_input, dict):
-            continue
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid Site Assessment criterion number: {raw_number!r}.") from exc
+        if not 1 <= number <= 12 or str(number) != str(raw_number):
+            raise ValueError(f"Invalid Site Assessment criterion number: {raw_number!r}.")
+        if number in scored:
+            raise ValueError(f"Duplicate Site Assessment criterion input: {number}.")
+        if not isinstance(raw_input, dict):
+            raise TypeError(f"Criterion {number} fact input must be a mapping.")
         definition = SITE_ASSESSMENT_REGISTRY.criterion(number)
         value = raw_input.get("value", raw_input.get("answer"))
         if value is None:
@@ -46,10 +58,35 @@ def _score_registry_facts(facts: dict[str, Any] | None) -> dict[int, dict[str, A
             )
         numeric_value: float | None = None
         if definition.answer_type != "qualitative" and value is not None:
+            if isinstance(value, bool):
+                raise ValueError(f"Criterion {number} fact value must be numeric, not boolean.")
             try:
                 numeric_value = float(value)
             except (TypeError, ValueError):
-                numeric_value = None
+                if str(value).strip().lower() not in {
+                    "unknown",
+                    "unavailable",
+                    "not available",
+                    "not provided",
+                }:
+                    raise ValueError(
+                        f"Criterion {number} fact value is not valid for its registry."
+                    )
+        if numeric_value is not None and not math.isfinite(numeric_value):
+            raise ValueError(f"Criterion {number} fact value must be finite.")
+        if (
+            numeric_value is not None
+            and definition.answer_type != "qualitative"
+            and not any(
+                band.minimum is not None
+                and numeric_value >= band.minimum
+                and (band.maximum is None or numeric_value <= band.maximum)
+                for band in definition.bands
+            )
+        ):
+            raise ValueError(
+                f"Criterion {number} fact value is outside the registry's valid range."
+            )
         selected = next(
             (
                 band
@@ -61,9 +98,7 @@ def _score_registry_facts(facts: dict[str, Any] | None) -> dict[int, dict[str, A
                 or (
                     definition.answer_type != "qualitative"
                     and numeric_value is not None
-                    and band.minimum is not None
-                    and numeric_value >= band.minimum
-                    and (band.maximum is None or numeric_value <= band.maximum)
+                    and band.contains(numeric_value)
                 )
             ),
             None,
@@ -77,15 +112,51 @@ def _score_registry_facts(facts: dict[str, Any] | None) -> dict[int, dict[str, A
                 "justification": "Registry fact is unknown or unavailable; not scored.",
             }
             continue
+        is_verified = raw_input.get("is_verified") is True
+        source_provenance = raw_input.get("source_provenance", [])
+        if isinstance(source_provenance, str):
+            source_provenance = [source_provenance]
+        if not isinstance(source_provenance, list) or not all(
+            isinstance(source, str) and source.strip() for source in source_provenance
+        ):
+            raise ValueError(
+                f"Criterion {number} source_provenance must contain non-empty strings."
+            )
+        if definition.requires_verification and not is_verified:
+            raise ValueError(f"Criterion {number} fact requires verification.")
+        if definition.requires_rationale and not str(raw_input.get("justification", "")).strip():
+            raise ValueError(f"Criterion {number} fact requires a rationale.")
+        if number == 2 and not source_provenance:
+            raise ValueError("Criterion 2 analyst-provided percentages require source provenance.")
+        maximum = (
+            CORRIDOR_CRITERIA_MAX_POINTS[number]
+            if project_type == "corridor"
+            else SITE_CRITERIA_MAX_POINTS[number]
+        )
+        selected_points = selected.points
+        if selected.point_range is not None and numeric_value is not None:
+            lower = selected.minimum if selected.minimum is not None else numeric_value
+            upper = selected.maximum if selected.maximum is not None else numeric_value
+            width = upper - lower
+            if width > 0:
+                ratio = (numeric_value - lower) / width
+                selected_points = round(
+                    selected.point_range[0]
+                    + ratio * (selected.point_range[1] - selected.point_range[0])
+                )
+        points = selected_points * maximum / definition.max_points if definition.max_points else 0.0
         scored[number] = {
             **raw_input,
-            "awarded_points": selected.points,
-            "is_automated": True,
-            "input_authority": "machine_estimate",
+            "awarded_points": points,
+            "is_automated": False,
+            "input_authority": "analyst_proposed",
             "evidence_status": "provided",
+            "is_verified": is_verified,
+            "source_provenance": source_provenance,
             "justification": (
-                f"Registry rule {definition.citation}: {selected.label} -> "
-                f"{selected.points:g}/{definition.max_points:g} points."
+                str(raw_input.get("justification") or "").strip()
+                or f"User-provided fact scored by registry rule {definition.citation}: {selected.label} -> "
+                f"{points:g}/{maximum:g} points."
             ),
         }
     return scored
@@ -214,13 +285,70 @@ def calculate_preliminary_lesa(
 
     # Extract farm acres and criteria inputs if present
     sa_inputs = site_assessment_inputs or {}
-    criteria_inputs = dict(sa_inputs.get("criteria_inputs", {}))
-    scored_registry_facts = _score_registry_facts(sa_inputs.get("criteria_facts"))
+    raw_criteria_inputs = sa_inputs.get("criteria_inputs", {})
+    if not isinstance(raw_criteria_inputs, dict):
+        raise TypeError(
+            "criteria_inputs must be a mapping of criterion numbers to point overrides."
+        )
+    criteria_inputs = dict(raw_criteria_inputs)
+    override_numbers: set[int] = set()
+    if "criteria_inputs" in sa_inputs:
+        for raw_number in criteria_inputs:
+            try:
+                number = int(raw_number)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid Site Assessment criterion number: {raw_number!r}."
+                ) from exc
+            if not 1 <= number <= 12:
+                raise ValueError(f"Invalid Site Assessment criterion number: {raw_number!r}.")
+            if number in override_numbers:
+                raise ValueError(f"Duplicate Site Assessment criterion input: {number}.")
+            override_numbers.add(number)
+    fact_inputs = sa_inputs.get("criteria_facts")
+    if isinstance(fact_inputs, dict):
+        fact_numbers = {int(number) for number in fact_inputs if str(number).isdigit()}
+        overlap = fact_numbers & override_numbers
+        if overlap:
+            raise ValueError(
+                f"Conflicting fact and point override for criterion(s): {sorted(overlap)}."
+            )
+    scored_registry_facts = _score_registry_facts(fact_inputs, norm_project_type)
     criteria_inputs.update(scored_registry_facts)
     if not criteria_inputs and not any(
         key in sa_inputs for key in ("criteria_inputs", "criteria_facts")
     ):
         criteria_inputs = sa_inputs
+    if isinstance(criteria_inputs, dict):
+        point_limits = (
+            CORRIDOR_CRITERIA_MAX_POINTS
+            if norm_project_type == "corridor"
+            else SITE_CRITERIA_MAX_POINTS
+        )
+        for raw_number, raw_input in criteria_inputs.items():
+            try:
+                number = int(raw_number)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(raw_input, dict) or "awarded_points" not in raw_input:
+                continue
+            try:
+                points = float(raw_input["awarded_points"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Criterion {number} points must be numeric.") from exc
+            if not math.isfinite(points):
+                raise ValueError(f"Criterion {number} points must be finite.")
+            if not 1 <= number <= 12:
+                raise ValueError(f"Invalid Site Assessment criterion number: {raw_number!r}.")
+            if norm_project_type == "corridor" and number in (5, 6) and points != 0:
+                raise ValueError(
+                    f"Criterion {number} cannot have analyst points for corridor projects; "
+                    "it is statutorily zeroed."
+                )
+            if points < 0 or points > point_limits[number]:
+                raise ValueError(
+                    f"Criterion {number} points must be between 0 and {point_limits[number]}."
+                )
     result_manifest = (
         polygon_response.manifest
         if polygon_response is not None
@@ -252,7 +380,10 @@ def calculate_preliminary_lesa(
         )
         if isinstance(raw_fact, dict):
             definition = SITE_ASSESSMENT_REGISTRY.criterion(criterion.criterion_number)
-            if raw_fact.get("input_authority") != "unavailable":
+            if (
+                raw_fact.get("input_authority") != "unavailable"
+                and not criterion.is_statutorily_zeroed
+            ):
                 value = raw_fact.get(
                     "value",
                     raw_fact.get(
@@ -267,15 +398,11 @@ def calculate_preliminary_lesa(
                     ),
                 )
                 has_value = value is not None
-                criterion.input_authority = (
-                    "verified"
-                    if raw_fact.get("is_verified") and has_value
-                    else "machine_estimate"
-                    if has_value
-                    else "unavailable"
-                )
-                criterion.is_automated = has_value
+                criterion.input_authority = "analyst_proposed" if has_value else "unavailable"
+                criterion.is_automated = False
                 criterion.is_verified = bool(raw_fact.get("is_verified")) and has_value
+                criterion.justification = raw_fact.get("justification", criterion.justification)
+                criterion.source_provenance = raw_fact.get("source_provenance", [])
             criterion.rule_reference = definition.citation
             criterion.rule_version = SITE_ASSESSMENT_REGISTRY.schema_version
 

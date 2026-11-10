@@ -6,6 +6,7 @@ FPPA Scope responses, and Farmland Class listings.
 
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Any, Literal
 
@@ -551,11 +552,11 @@ class SiteAssessmentCriterion(BaseModel):
         default=False,
         description="Whether the evidence and point mapping were verified",
     )
-    input_authority: Literal["machine_estimate", "analyst_proposed", "unavailable", "verified"] = (
-        Field(
-            default="unavailable",
-            description="Authority/state of the input supporting this criterion",
-        )
+    input_authority: Literal[
+        "machine_estimate", "analyst_proposed", "unavailable", "verified", "statutory"
+    ] = Field(
+        default="unavailable",
+        description="Authority/state of the input supporting this criterion",
     )
 
     @field_validator("criterion_number")
@@ -570,6 +571,8 @@ class SiteAssessmentCriterion(BaseModel):
     def validate_max_points(cls, v: float) -> float:
         if v < 0.0:
             raise ValueError(f"max_points cannot be negative, got {v}")
+        if not math.isfinite(v):
+            raise ValueError(f"max_points must be finite, got {v}")
         return v
 
     @field_validator("awarded_points")
@@ -577,6 +580,8 @@ class SiteAssessmentCriterion(BaseModel):
     def validate_awarded_points(cls, v: float) -> float:
         if v < 0.0:
             raise ValueError(f"awarded_points cannot be negative, got {v}")
+        if not math.isfinite(v):
+            raise ValueError(f"awarded_points must be finite, got {v}")
         return v
 
     @field_validator("normalized_ratio")
@@ -592,6 +597,11 @@ class SiteAssessmentCriterion(BaseModel):
             raise ValueError(
                 f"awarded_points ({self.awarded_points}) cannot exceed max_points ({self.max_points}) for criterion {self.criterion_number}"
             )
+        if self.is_statutorily_zeroed:
+            if self.awarded_points != 0:
+                raise ValueError("Statutorily zeroed criteria cannot receive points.")
+            self.input_authority = "statutory"
+            self.is_automated = False
         return self
 
     @model_validator(mode="after")

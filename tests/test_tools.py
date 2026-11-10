@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -199,7 +200,11 @@ class TestFPPATools:
             site_assessment_inputs={
                 "criteria_facts": {
                     "1": {"percentage": 95, "is_verified": True},
-                    "8": {"category": "minor", "is_verified": True},
+                    "8": {
+                        "percentage": 15,
+                        "is_verified": True,
+                        "justification": "The project creates a minor remnant.",
+                    },
                 }
             },
         )
@@ -208,8 +213,126 @@ class TestFPPATools:
         assert criteria[1].awarded_points == 15
         assert criteria[1].rule_reference == "7 CFR § 658.5(b)(1)"
         assert criteria[8].awarded_points == 5
+        assert criteria[1].input_authority == "analyst_proposed"
+        assert criteria[1].is_automated is False
+        assert criteria[8].justification == "The project creates a minor remnant."
         assert response.site_assessment.evaluation_status == "incomplete"
         assert all("siting" not in item.lower() for item in response.limitations)
+
+    @pytest.mark.parametrize(
+        ("inputs", "message"),
+        [
+            (
+                {
+                    "criteria_facts": {"1": {"percentage": 95, "is_verified": True}},
+                    "criteria_inputs": {"1": {"awarded_points": 15, "justification": "Override."}},
+                },
+                "Conflicting fact and point override",
+            ),
+            (
+                {"criteria_facts": {"1": {"percentage": 101, "is_verified": True}}},
+                "outside the registry",
+            ),
+            (
+                {"criteria_facts": {"8": {"percentage": 15, "is_verified": True}}},
+                "requires a rationale",
+            ),
+            (
+                {"criteria_facts": {"1": {"percentage": 95}}},
+                "requires verification",
+            ),
+            (
+                {
+                    "criteria_inputs": {
+                        "8": {"awarded_points": 11, "justification": "Above the site maximum."}
+                    }
+                },
+                "must be between 0 and 10",
+            ),
+        ],
+    )
+    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    def test_preliminary_lesa_rejects_invalid_facts_and_overrides(
+        self, mock_corridor: MagicMock, inputs: dict[str, Any], message: str
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 70.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "manifest": {},
+        }
+        with pytest.raises(ValueError, match=message):
+            calculate_preliminary_lesa(
+                project_name="invalid-input",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                site_assessment_inputs=inputs,
+            )
+
+    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    def test_preliminary_lesa_preserves_fact_provenance_and_corridor_maxima(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 70.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "manifest": {},
+        }
+        response = calculate_preliminary_lesa(
+            project_name="corridor-facts",
+            geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+            project_type="corridor",
+            site_assessment_inputs={
+                "criteria_facts": {
+                    "2": {
+                        "percentage": 95,
+                        "is_verified": True,
+                        "source_provenance": ["Analyst field survey"],
+                    },
+                    "8": {
+                        "percentage": 15,
+                        "is_verified": True,
+                        "justification": "A minor remnant is expected.",
+                    },
+                    "11": {
+                        "category": "substantial_reduction",
+                        "is_verified": True,
+                        "justification": "Substantial demand reduction is expected.",
+                    },
+                }
+            },
+        )
+        criteria = {item.criterion_number: item for item in response.site_assessment.criteria}
+        assert criteria[2].source_provenance == ["Analyst field survey"]
+        assert criteria[2].input_authority == "analyst_proposed"
+        assert criteria[8].max_points == 25
+        assert criteria[8].awarded_points == 12.5
+        assert criteria[11].max_points == 25
+        assert criteria[11].awarded_points == 25
+        for number in (5, 6):
+            assert criteria[number].awarded_points == 0
+            assert criteria[number].is_statutorily_zeroed is True
+            assert criteria[number].input_authority == "statutory"
+            assert criteria[number].is_automated is False
+
+    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    def test_preliminary_lesa_rejects_points_for_statutorily_zeroed_corridor_criterion(
+        self, mock_corridor: MagicMock
+    ) -> None:
+        mock_corridor.return_value = {
+            "composite_relative_rating": 70.0,
+            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+            "manifest": {},
+        }
+        with pytest.raises(ValueError, match="statutorily zeroed"):
+            calculate_preliminary_lesa(
+                project_name="corridor-zeroed",
+                geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
+                project_type="corridor",
+                site_assessment_inputs={
+                    "criteria_inputs": {
+                        "5": {"awarded_points": 1, "justification": "Should not be scored."}
+                    }
+                },
+            )
 
     @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
     def test_preliminary_lesa_preserves_analyst_override_rationale_requirement(

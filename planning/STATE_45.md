@@ -36,6 +36,13 @@
 | 4 | 45.4.2 Separate model-assisted evidence and diagnostics | done |
 | 4 | 45.4.3 Synchronize docs and closeout evidence | done |
 | 4 | gate final validation and review | passed |
+| 5 | 45.5.1 Correct registry mappings against eCFR | done |
+| 5 | 45.5.2 Align LESA criterion 7 and unavailable LE semantics | done |
+| 5 | 45.5.3 Enforce fact authority, conflicts, and corridor variants | done |
+| 5 gate | Registry, LESA, and fact-authority validation | passed |
+| 6 | 45.5.4 Reconcile coverage, provenance, and geometry/type validation | pending |
+| 6 | 45.5.5 Repair Databricks evaluation coverage and evidence | pending |
+| 6 gate | Databricks remediation validation | pending |
 
 ## Task Reports
 
@@ -218,3 +225,40 @@
 | DB45-N1 | Documented in Databricks review; validate when credentials exist |
 | DB45-N2 | Recorded existing limitation |
 
+## 45.5.3
+
+- **Status:** implemented; targeted acceptance passed.
+- **Files:** `tools\lesa_tools.py`, `models.py`, `tests\test_tools.py`, and task TODO.
+- **Checks:** final `uv run pytest tests\test_tools.py -q` -> 40 passed, including rerun after error-message compatibility adjustment.
+- **Lint/format:** scoped `ruff check` passed; `ruff format --check` reports both Python files formatted.
+- **Changes:** human facts retain analyst authority and evidence metadata; conflicts, invalid values, unmet rationale/verification, and out-of-range points are rejected.
+- **Corridor:** criteria 8/11 use corridor maxima; criteria 5/6 remain statutorily zeroed, and nonzero overrides are rejected.
+- **Compatibility:** negative `max_points` retains the established `max_points cannot be negative` error message; non-finite values remain rejected.
+- **Type validation:** non-mapping fact/override inputs raise explicit `TypeError` messages; invalid values otherwise retain validation errors.
+- **Deviations:** none; no registry or generated eCFR files changed.
+- **Gotchas:** the first test attempt caught the registry during an intermediate invalid update; final targeted run passed against the updated contract.
+
+## 45.5.2
+
+- **Status:** implemented; targeted acceptance passed.
+- **Files:** `lesa.py`, `polygon_analysis.py`, `tests/test_lesa.py`,
+  `tests/test_polygon_analysis.py`, and task TODO.
+- **Changes:** criterion 7 now follows the CFR 5%-deduction schedule; zero
+  rated acreage is unavailable and threshold-indeterminate; factual criterion 7
+  awards 0 at exactly 50% below average.
+- **Checks:** `uv run pytest tests\test_lesa.py tests\test_polygon_analysis.py -q`
+  -> 75 passed; targeted `uv run ruff format --check` over all four scoped
+  source/test files passed after formatting `polygon_analysis.py`.
+- **Deviations:** none.
+- **Gotchas:** none.
+
+## 45.5.1
+
+- **Status:** implemented.
+- **Files:** Site Assessment registry, typed validation/scoring helpers, fixture-driven contract tests, CFR fixture, and task TODO.
+- **Mapping:** Criteria 1–12 are anchored to 7 CFR § 658.5(b)(1)–(12), including explicit interval endpoints, score direction, CFR deduction/multi-service schedules, and representative-value conventions.
+- **Criterion 2:** Analyst percentages score only with provenance; spatial evidence remains explicitly deferred/unavailable.
+- **Criterion 9 correction:** All required services = 5, some = representative 3 (4-to-1 range; midpoint 2.5 rounded upward), none = 0; score direction is more services, more points.
+- **Unknowns:** Unknown/unavailable inputs remain unscored; out-of-band numeric values do not match a score band.
+- **Checks:** `uv run pytest tests\test_site_assessment_contract.py -q` -> 12 passed; targeted Ruff check passed; targeted Ruff format check passed.
+- **Deviations:** none; generated eCFR files and unrelated concurrent task changes were untouched.
