@@ -67,7 +67,10 @@ triage table is in `STATE_45.md`:
 
 7 CFR 658.5 text retrieved from the eCFR renderer API on 2026-11-10
 (`/api/renderer/v1/content/enhanced/current/title-7?part=658&section=658.5`).
-The comparison below is against that text.
+The same text is now stored in `docs\cfr\title-7-part-658.md` (eCFR current as
+of 2026-11-06, latest amendment 2016-11-23; XML hash in `docs\cfr\manifest.json`).
+Use that copy when fixing DB45-01, DB45-03, and DB45-11. The comparison below is
+against that text.
 
 | Criterion | 7 CFR 658.5(b) | `site_assessment.v1.json` | Assessment |
 |---|---|---|---|
