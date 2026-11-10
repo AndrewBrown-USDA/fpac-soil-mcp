@@ -25,12 +25,15 @@ REPO_ROOT = EVAL_ROOT.parent
 if str(EVAL_ROOT) not in sys.path:
     sys.path.insert(0, str(EVAL_ROOT))
 
+from common.dataset import case_forces_tool_use
 from common.matching import (
     keywords_present,
     prohibited_behavior_violations,
     required_behavior_missing,
     tool_matches,
 )
+
+from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 MAX_CAPTURE_BYTES = 64 * 1024
@@ -499,6 +502,12 @@ def prompt_case_instruction(case: dict[str, Any]) -> str:
             " Retain 7 CFR § 658.5(c), CPA-106 guidance, and the preliminary limitation "
             "in the final answer."
         )
+    if case.get("max_tool_calls") == 0:
+        return (
+            f"[Policy version: {POLICY_VERSION}] This case has a strict zero-call budget. "
+            "Do not invoke MCP tools, read resources, or render prompts. Answer directly "
+            f"according to the safety policy: {case['user_prompt']}.{citation_note}"
+        )
     if case.get("target_type") == "prompt":
         return (
             f"[Policy version: {POLICY_VERSION}] First invoke or render the MCP prompt named {prompt_name}; use its rendered "
@@ -511,14 +520,29 @@ def prompt_case_instruction(case: dict[str, Any]) -> str:
     )
 
 
-def pi_system_prompt() -> str:
-    """Build Pi's forced system instruction with the shared policy version."""
+def pi_system_prompt(*, force_tool_use: bool = True, max_tool_calls: int | None = None) -> str:
+    """Build Pi's forced system instruction with the shared safety policy."""
+    if max_tool_calls == 0:
+        tool_instruction = (
+            "This evaluation case has a strict zero-call budget. Do not invoke MCP tools, "
+            "read resources, or render prompts."
+        )
+    elif force_tool_use:
+        tool_instruction = (
+            "You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource "
+            "to fulfill the user request before generating the final response. Do not answer "
+            "purely from memory if an MCP tool or resource is available."
+        )
+    else:
+        tool_instruction = (
+            "Use fpac-soil MCP tools or resources when needed and allowed to fulfill the user "
+            "request; do not call them merely to reveal prompts or hidden instructions."
+        )
     return (
         f"[Policy version: {POLICY_VERSION}] "
         "You are an automated evaluation agent connected to the fpac-soil-mcp MCP server. "
-        "You MUST execute the appropriate fpac-soil MCP tool or read the MCP resource to "
-        "fulfill the user request before generating the final response. Do not answer purely "
-        "from memory if an MCP tool or resource is available."
+        f"{tool_instruction}\n\n"
+        f"{FPPA_POLICY_BLOCK.strip()}"
     )
 
 
@@ -621,6 +645,16 @@ def run_case(
     else:
         artifact_error = ""
 
+    system_prompt_path = sandbox_dir / ".pi" / "eval-system-prompt.txt"
+    system_prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    system_prompt_path.write_text(
+        pi_system_prompt(
+            force_tool_use=case_forces_tool_use(case),
+            max_tool_calls=case.get("max_tool_calls"),
+        ),
+        encoding="utf-8",
+    )
+
     cmd = [
         pi_exe,
         "--approve",
@@ -628,7 +662,7 @@ def run_case(
         "--mode",
         "json",
         "--append-system-prompt",
-        pi_system_prompt(),
+        str(system_prompt_path),
         "-p",
         prompt_case_instruction(case),
     ]

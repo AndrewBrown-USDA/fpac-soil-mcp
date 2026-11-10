@@ -125,6 +125,7 @@ evaluation setup/results evidence.
 | 7 gate | - | Pi native-MCP contract gate | none | none | 46.7.1 |
 | 8 | 46.8.1 | Re-test Pi auth and evaluation | evidence report only | `planning\evidence\46.8.1-pi-auth-eval.md` | 46.7 gate |
 | 8 | 46.8.2 | Diagnose representative Pi evaluation failures | evidence report and state only unless artifacts prove a code defect | `planning\evidence\46.8.2-pi-failure-diagnostics.md`; `planning\tasks\46.8.2.todo.md` | 46.8.1 |
+| 8 | 46.8.3 | Consolidate policy delivery and honor safety-case budgets | evaluation runners, shared dataset/scorers, focused tests | `planning\evidence\46.8.3-pi-safety-followup.md`; `planning\tasks\46.8.3.todo.md` | 46.8.2 |
 | 8 gate | - | Pi auth and evaluation evidence gate | none | none | 46.8.1 |
 
 Tasks in the same wave have disjoint edit sets. Wave 1 tasks use the
@@ -517,6 +518,33 @@ user direction; do not duplicate or inspect its Plan 44 follow-up.
 - **Acceptance:** report exact commands, per-case outcomes, observed causes
   versus hypotheses, artifact location and retention limits; no full eval or
   unrelated cases are run, and the report does not claim full-eval success.
+
+### 46.8.3 — Consolidate safety-policy delivery and case scoring
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Files in scope:** Pi and Databricks evaluation prompt composition, shared
+  case-to-runner inputs, shared deterministic safety matching, focused tests,
+  the two affected case assertions, and sanitized Plan 46 evidence/state.
+- **Can create:** `planning\evidence\46.8.3-pi-safety-followup.md`;
+  `planning\tasks\46.8.3.todo.md`.
+- **Depends on:** 46.8.2 diagnostics.
+- **Spec:** Keep the canonical FPPA safety block available to both evaluation
+  suites; pass it to Pi through a temporary sandbox file; disable forced tool
+  use and prompt rendering for zero-call cases; expose case tool-use/budget
+  controls to Databricks; make the injection/privacy assertions recognize
+  equivalent refusal wording while preserving zero-call and non-echo checks.
+- **Reference:** `src\fpac_soil_mcp\prompts\fppa_prompts.py`,
+  `eval\common\dataset.py`, `eval\common\matching.py`, and the retained
+  artifacts recorded in the 46.8.2 evidence report.
+- **Checklist (5 steps max):** inspect the runner/policy conflict; add shared
+  case-level behavior and deterministic cross-suite tests; correct semantic
+  refusal matching without retaining raw outputs; rerun only
+  `ADV-INJECTION-01` and `ADV-PRIVACY-01` individually with fresh external
+  artifacts; update sanitized evidence and state.
+- **Acceptance:** targeted deterministic tests and checks pass; both selected
+  cases are reported with exact outcomes and structured evidence; no full
+  evaluation is run, and no raw prompts, responses, coordinates, geometry,
+  credentials, or producer data are committed.
 
 ## Hazard Notes
 

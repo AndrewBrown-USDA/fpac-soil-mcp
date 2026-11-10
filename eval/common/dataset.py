@@ -325,6 +325,12 @@ def to_mlflow_records(cases: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     """Convert rows to ``mlflow.genai.evaluate`` records (contract C3)."""
     records: list[dict[str, Any]] = []
     for case in cases:
+        inputs: dict[str, Any] = {
+            "request": case["user_prompt"],
+            "force_tool_use": case_forces_tool_use(case),
+        }
+        if "max_tool_calls" in case:
+            inputs["max_tool_calls"] = case["max_tool_calls"]
         expectations: dict[str, Any] = {
             "case_id": case["id"],
             "expected_tools": list(case["expected_tools"]),
@@ -335,5 +341,10 @@ def to_mlflow_records(cases: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                 field in {"max_tool_calls", "max_retries", "latency_budget_ms"} or case[field]
             ):
                 expectations[field] = case[field]
-        records.append({"inputs": {"request": case["user_prompt"]}, "expectations": expectations})
+        records.append({"inputs": inputs, "expectations": expectations})
     return records
+
+
+def case_forces_tool_use(case: dict[str, Any]) -> bool:
+    """Keep the default tool-use contract unless the case explicitly disables it or has no budget."""
+    return case.get("force_tool_use", True) and case.get("max_tool_calls") != 0

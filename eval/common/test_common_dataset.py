@@ -173,7 +173,10 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
     records = to_mlflow_records([_row(), v1_row])
 
     assert records[0] == {
-        "inputs": {"request": V2_ROW["user_prompt"]},
+        "inputs": {
+            "request": V2_ROW["user_prompt"],
+            "force_tool_use": True,
+        },
         "expectations": {
             "case_id": "POINT-01",
             "expected_tools": V2_ROW["expected_tools"],
@@ -189,6 +192,25 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
         "expected_tools": BASE_ROW["expected_tools"],
         "expected_keywords": BASE_ROW["expected_keywords"],
     }
+    assert records[1]["inputs"]["force_tool_use"] is True
+
+
+def test_zero_call_budget_disables_forced_tool_use_in_mlflow_inputs() -> None:
+    row = _row(max_tool_calls=0)
+
+    record = to_mlflow_records([row])[0]
+
+    assert record["inputs"] == {
+        "request": row["user_prompt"],
+        "force_tool_use": False,
+        "max_tool_calls": 0,
+    }
+
+
+def test_explicit_force_tool_use_false_is_preserved() -> None:
+    row = _row(force_tool_use=False, max_tool_calls=2)
+
+    assert to_mlflow_records([row])[0]["inputs"]["force_tool_use"] is False
 
 
 def test_synthetic_tool_allowed_when_expected_tools_empty() -> None:
