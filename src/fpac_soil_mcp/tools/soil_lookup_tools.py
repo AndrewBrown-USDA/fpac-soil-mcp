@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
+from pydantic import Field
 from shapely import wkt as shapely_wkt
 from shapely.errors import GEOSException, ShapelyError
 from shapely.geometry import MultiPolygon, Polygon, mapping
@@ -28,16 +29,21 @@ from fpac_soil_mcp.map_contract import (
     features_from_sda_rows,
     single_legend,
 )
-from fpac_soil_mcp.models import FarmlandClassificationResponse, QuerySource, SoilMapUnit
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.models import (
+    FarmlandClassificationResponse,
+    QuerySource,
+    SoilMapUnit,
+    ToolError,
+)
+from fpac_soil_mcp.sda_client import SDAClient, SDAClientError, SDAValidationError
 from fpac_soil_mcp.tools.spatial_analysis_tools import IncludeMap
 
 logger = logging.getLogger(__name__)
 
 
 def get_farmland_classification_by_point(
-    latitude: float,
-    longitude: float,
+    latitude: Annotated[float, Field(ge=-90, le=90, allow_inf_nan=False)],
+    longitude: Annotated[float, Field(ge=-180, le=180, allow_inf_nan=False)],
 ) -> FarmlandClassificationResponse:
     """Query USDA NRCS Soil Data Access for soil map unit and farmland classification at a point.
 
@@ -70,6 +76,13 @@ def get_farmland_classification_by_point(
             ),
             limitations=[*REGULATORY_LIMITATIONS, f"Query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
+            error=ToolError(
+                code="validation_error"
+                if isinstance(exc, SDAValidationError)
+                else "upstream_error",
+                message=str(exc),
+                source="USDA NRCS Soil Data Access (SDA)",
+            ),
         )
 
     map_units = [
@@ -101,7 +114,7 @@ def get_farmland_classification_by_point(
 
 
 def get_farmland_classification_by_mukey(
-    mukey: str,
+    mukey: Annotated[str, Field(pattern=r"^[1-9][0-9]*$")],
 ) -> FarmlandClassificationResponse:
     """Query USDA NRCS Soil Data Access for soil map unit and farmland classification by mukey.
 
@@ -133,6 +146,13 @@ def get_farmland_classification_by_mukey(
             ),
             limitations=[*REGULATORY_LIMITATIONS, f"Query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
+            error=ToolError(
+                code="validation_error"
+                if isinstance(exc, SDAValidationError)
+                else "upstream_error",
+                message=str(exc),
+                source="USDA NRCS Soil Data Access (SDA)",
+            ),
         )
 
     map_units = [
@@ -164,10 +184,12 @@ def get_farmland_classification_by_mukey(
 
 
 def get_soil_interpretations(
-    mukeys: list[str],
-    rule_name: str = "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)",
-    aggregation_method: str = "Weighted Average",
-) -> list[dict]:
+    mukeys: Annotated[list[str], Field(min_length=1, max_length=1000)],
+    rule_name: Annotated[str, Field(min_length=1, max_length=200)] = (
+        "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
+    ),
+    aggregation_method: Literal["Weighted Average", "Dominant Component"] = "Weighted Average",
+) -> list[dict] | dict[str, Any]:
     """Retrieve component-level soil interpretations from USDA NRCS SDA for a list of map unit keys.
 
     Args:
@@ -179,11 +201,25 @@ def get_soil_interpretations(
         List of interpretation rating dictionaries per map unit key.
     """
     client = SDAClient()
-    return client.get_interpretations(
-        mukeys=mukeys,
-        rule_name=rule_name,
-        aggregation_method=aggregation_method,
-    )
+    try:
+        return client.get_interpretations(
+            mukeys=mukeys,
+            rule_name=rule_name,
+            aggregation_method=aggregation_method,
+        )
+    except SDAClientError as exc:
+        logger.error("SDA interpretation query failed: %s", exc)
+        return {
+            "status": "error",
+            "source": {"service": "USDA NRCS Soil Data Access (SDA)", "endpoint": client.base_url},
+            "error": ToolError(
+                code="upstream_error"
+                if not isinstance(exc, SDAValidationError)
+                else "validation_error",
+                message=str(exc),
+                source="USDA NRCS Soil Data Access (SDA)",
+            ).model_dump(),
+        }
 
 
 def _soil_map_fields(
@@ -267,6 +303,12 @@ def get_soil_polygons_by_geometry(
             "type": "FeatureCollection",
             "features": [],
             "error": str(exc),
+            "status": "error",
+            "error_details": ToolError(
+                code="validation_error",
+                message=str(exc),
+                source="GeoJSON geometry validation",
+            ).model_dump(),
             "source": {
                 "service": "USDA NRCS Soil Data Access",
                 "timestamp_utc": timestamp,
@@ -289,6 +331,12 @@ def get_soil_polygons_by_geometry(
             "type": "FeatureCollection",
             "features": [],
             "error": str(exc),
+            "status": "error",
+            "error_details": ToolError(
+                code="upstream_error",
+                message=str(exc),
+                source="USDA NRCS Soil Data Access (SDA)",
+            ).model_dump(),
             "source": {
                 "service": "USDA NRCS Soil Data Access",
                 "timestamp_utc": timestamp,

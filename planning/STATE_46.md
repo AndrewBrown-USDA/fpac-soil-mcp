@@ -22,8 +22,8 @@
 | 2 | 46.2.1 Add adversarial corpus | done |
 | 2 | 46.2.2 Add deterministic scorers | done |
 | 2 | gate adversarial evaluation | done |
-| 3 | 46.3.1 Harden MCP contracts | pending |
-| 3 | 46.3.2 Preserve map semantics | pending |
+| 3 | 46.3.1 Harden MCP contracts | done |
+| 3 | 46.3.2 Preserve map semantics | in_progress |
 | 3 | gate MCP/map safety | pending |
 | 4 | 46.4.1 Instrument benchmarks | pending |
 | 4 | 46.4.2 Run performance evidence | pending |
@@ -73,6 +73,13 @@
 - **Status:** pass; adversarial corpus loads deterministically and semantic/reliability scorers pass focused Python and harness tests.
 - **Exact tests:** `uv run pytest eval\common eval\contract -q` — 116 passed; Python scorer suite — 163 passed, 2 deselected; harness `npm test` — 13 passed; `npm run check` passed.
 - **Dependency confirmation:** 46.2.1 completed before 46.2.2; Wave 2 dependencies for Wave 3 are satisfied.
+
+## 46.3.1
+- **Status:** done.
+- **Files:** `src\fpac_soil_mcp\models.py` (51-156); `tools\lesa_tools.py` (171-410); `tools\soil_lookup_tools.py` (44-340); `tools\spatial_analysis_tools.py` (32-155); `tests\test_models.py` (new cases); `tests\test_tools.py` (new cases); `eval\contract\test_contract.py` (120-274); `planning\evidence\46.3.1-tool-surface-review.md`; task TODO.
+- **Validation:** `uv run pytest tests\test_tools.py tests\test_models.py tests\test_server.py eval\contract\test_contract.py -q` — 83 passed, 3 deselected; Ruff check/format and `git diff --check` passed.
+- **Commit:** pending; prompt-policy gate 46.1 passed.
+- **Deviations/gotchas:** tool surface inventory covers all ten public tools; no wrapper was deferred.
 
 ## Gate Evidence Convention
 

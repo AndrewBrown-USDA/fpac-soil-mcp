@@ -10,7 +10,7 @@ import math
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from fpac_soil_mcp.map_contract import MAP_SCHEMA_VERSION, MapBlock, ResultAuthority
 
@@ -48,6 +48,92 @@ class QuerySource(BaseModel):
     )
 
 
+class ToolError(BaseModel):
+    """Source-aware description of an expected public tool failure."""
+
+    code: Literal["validation_error", "upstream_error"]
+    message: str
+    source: str
+
+
+class CriterionPointInput(BaseModel):
+    """Analyst-proposed point input for one Site Assessment criterion."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    awarded_points: float = Field(ge=0, le=160, description="Proposed points for this criterion")
+    justification: str = Field(default="", description="Rationale for proposed points")
+    is_verified: bool = False
+    is_automated: bool = False
+    input_authority: str | None = None
+    evidence_status: str | None = None
+    source_provenance: list[str] = Field(default_factory=list)
+
+
+class CriterionFactInput(BaseModel):
+    """Registry-based evidence input for one Site Assessment criterion."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    value: str | float | None = None
+    answer: str | float | None = None
+    percentage: float | str | None = None
+    distance_miles: float | str | None = None
+    category: str | None = None
+    is_verified: bool = False
+    source_provenance: list[str] = Field(default_factory=list)
+    justification: str | None = None
+
+    @model_validator(mode="after")
+    def validate_single_value(self) -> CriterionFactInput:
+        supplied = [
+            field
+            for field in ("value", "answer", "percentage", "distance_miles", "category")
+            if getattr(self, field) is not None
+        ]
+        if len(supplied) > 1:
+            raise ValueError("Provide only one criterion fact value.")
+        return self
+
+
+class SiteAssessmentInputs(BaseModel):
+    """Validated inputs for optional Site Assessment scoring."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    criteria_inputs: dict[int, CriterionPointInput] = Field(default_factory=dict)
+    criteria_facts: dict[int, CriterionFactInput] = Field(default_factory=dict)
+    project_farm_acres: float | None = Field(default=None, ge=0)
+    county_average_farm_acres: float | None = Field(default=None, gt=0)
+
+    @field_validator("criteria_inputs", "criteria_facts")
+    @classmethod
+    def validate_criterion_numbers(cls, value: dict[int, Any]) -> dict[int, Any]:
+        if any(number < 1 or number > 12 for number in value):
+            raise ValueError("Site Assessment criterion numbers must be from 1 through 12.")
+        return value
+
+    @model_validator(mode="after")
+    def reject_conflicting_criteria(self) -> SiteAssessmentInputs:
+        overlap = set(self.criteria_inputs) & set(self.criteria_facts)
+        if overlap:
+            raise ValueError(
+                f"Conflicting fact and point override for criterion(s): {sorted(overlap)}."
+            )
+        return self
+
+
+class CorridorAlternativeInput(BaseModel):
+    """Validated alternative centerline accepted by corridor screening."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    alternative_id: str = Field(min_length=1, max_length=100)
+    centerline: dict[str, Any] | str
+    buffer_distance: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    buffer_units: Literal["feet", "meters", "miles"] | None = None
+
+
 class FarmlandClassificationResponse(BaseModel):
     """Response schema for farmland classification queries (point or mukey)."""
 
@@ -65,6 +151,10 @@ class FarmlandClassificationResponse(BaseModel):
     )
     regulatory_notice: str = Field(
         description="Official regulatory disclaimer regarding FPPA screening"
+    )
+    error: ToolError | None = Field(
+        default=None,
+        description="Structured source-aware error details when the query fails",
     )
 
 

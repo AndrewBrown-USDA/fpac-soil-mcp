@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Annotated, Any, Literal
 
+from pydantic import Field
 from shapely import wkt as shapely_wkt
 from shapely.geometry import LineString, MultiLineString, mapping
 
@@ -22,6 +23,7 @@ from fpac_soil_mcp.models import (
     LandEvaluationSummary,
     PreliminaryLESAResponse,
     ProductivityIndexType,
+    SiteAssessmentInputs,
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE
@@ -168,14 +170,14 @@ from fpac_soil_mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
 
 
 def calculate_preliminary_lesa(
-    project_name: str,
+    project_name: Annotated[str, Field(min_length=1, max_length=200)],
     geometry: dict[str, Any] | str,
-    project_type: str = "site",
+    project_type: Literal["site", "corridor"] = "site",
     productivity_index: str = "nccpi",
-    max_county_rating_override: float | None = None,
-    site_assessment_inputs: dict[str, Any] | None = None,
-    corridor_buffer_distance: float = 100.0,
-    corridor_buffer_units: str = "feet",
+    max_county_rating_override: Annotated[float | None, Field(gt=0, allow_inf_nan=False)] = None,
+    site_assessment_inputs: SiteAssessmentInputs | None = None,
+    corridor_buffer_distance: Annotated[float, Field(gt=0, allow_inf_nan=False)] = 100.0,
+    corridor_buffer_units: Literal["feet", "meters", "miles"] = "feet",
 ) -> PreliminaryLESAResponse:
     """Calculate preliminary Land Evaluation and Site Assessment (LESA) scores and statutory threshold states.
 
@@ -207,7 +209,13 @@ def calculate_preliminary_lesa(
         total LESA score (0-260) when evaluable, threshold indicator, and regulatory citations.
     """
     analysis_geometry: dict[str, Any] | str = geometry
-    norm_project_type = "corridor" if project_type.strip().lower() == "corridor" else "site"
+    validated_sa_inputs = (
+        SiteAssessmentInputs.model_validate(site_assessment_inputs)
+        if site_assessment_inputs is not None
+        else SiteAssessmentInputs()
+    )
+    sa_inputs = validated_sa_inputs.model_dump(mode="python", exclude_none=True)
+    norm_project_type = project_type
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
     if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
         raise ValueError(
@@ -395,7 +403,6 @@ def calculate_preliminary_lesa(
             le_summary.notices.append(provenance_notice)
 
     # Extract farm acres and criteria inputs if present
-    sa_inputs = site_assessment_inputs or {}
     raw_criteria_inputs = sa_inputs.get("criteria_inputs", {})
     if not isinstance(raw_criteria_inputs, dict):
         raise TypeError(

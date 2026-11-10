@@ -347,6 +347,29 @@ async def test_every_tool_exposes_an_input_schema() -> None:
         assert isinstance(tool.input_schema, dict) and tool.input_schema, tool.name
 
 
+async def test_public_tool_metadata_is_complete_and_action_oriented() -> None:
+    expected = {
+        "get_farmland_classification_by_point",
+        "get_farmland_classification_by_mukey",
+        "analyze_farmland_by_polygon",
+        "calculate_preliminary_lesa",
+        "get_soil_polygons_by_geometry",
+        "check_urban_area_exemption",
+        "get_soil_interpretations",
+        "analyze_corridor_fppa",
+        "explain_fppa_screening_scope",
+        "list_farmland_classes",
+    }
+    action_starts = ("query", "execute", "calculate", "retrieve", "screen", "provides", "list")
+    async with fastmcp.Client(create_mcp_server()) as client:
+        tools = await client.list_tools()
+
+    assert {tool.name for tool in tools} == expected
+    for tool in tools:
+        assert tool.description and tool.description.strip(), tool.name
+        assert tool.description.strip().lower().startswith(action_starts), tool.name
+
+
 async def test_scope_tool_carries_regulatory_notice() -> None:
     async with fastmcp.Client(create_mcp_server()) as client:
         result = await client.call_tool("explain_fppa_screening_scope", {})
@@ -416,6 +439,60 @@ async def test_invalid_inputs_return_structured_errors(
     assert payload["map_units"] == []
     assert any(item.startswith("Query error:") for item in payload["limitations"])
     assert payload["regulatory_notice"] == REGULATORY_NOTICE
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments"),
+    [
+        (
+            "get_farmland_classification_by_point",
+            {"latitude": 10, "longitude": 20, "unexpected": True},
+        ),
+        (
+            "get_soil_interpretations",
+            {"mukeys": ["412915"], "aggregation_method": "Unknown"},
+        ),
+        (
+            "calculate_preliminary_lesa",
+            {
+                "project_name": "contract test",
+                "geometry": {"type": "Polygon", "coordinates": []},
+                "site_assessment_inputs": {"criteria_inputs": {"13": {"awarded_points": 2}}},
+            },
+        ),
+        (
+            "analyze_corridor_fppa",
+            {
+                "centerline": "LINESTRING (-93.5 42.0, -93.4 42.1)",
+                "buffer_distance": 50,
+                "alternatives": [
+                    {
+                        "alternative_id": "Alt A",
+                        "centerline": "LINESTRING (-93.6 42.0, -93.5 42.1)",
+                        "unexpected": True,
+                    }
+                ],
+            },
+        ),
+        (
+            "calculate_preliminary_lesa",
+            {
+                "project_name": "contract test",
+                "geometry": {"type": "Polygon", "coordinates": []},
+                "site_assessment_inputs": {
+                    "criteria_inputs": {"1": {"awarded_points": 2, "unexpected": True}}
+                },
+            },
+        ),
+    ],
+)
+async def test_malformed_nested_unknown_and_enum_inputs_are_rejected(
+    tool_name: str, arguments: dict[str, Any]
+) -> None:
+    async with fastmcp.Client(create_mcp_server()) as client:
+        result = await client.call_tool(tool_name, arguments, raise_on_error=False)
+
+    assert result.is_error
 
 
 async def test_regulatory_notice_resource_cites_parts_657_and_658() -> None:
