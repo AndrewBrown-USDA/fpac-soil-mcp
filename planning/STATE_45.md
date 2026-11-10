@@ -134,3 +134,48 @@
 - **Gotchas:** live-network tests were not required because implementation files
   and upstream request behavior were unchanged; deferred adjacency remains explicit.
 
+## Databricks review (2026-11-10)
+
+- **Status:** findings open; awaiting triage and a Plan 45 amendment. Full
+  evidence in `planning\REVIEW_45_DATABRICKS.md`, which supersedes the
+  "no unresolved findings" disposition in `REVIEW_45.md`.
+- **Commit:** `e1645ce` on Databricks serverless (uv 0.13.4, venv Python 3.11).
+- **Checks:** offline 738 passed / 3 skipped / 45 deselected (764 / 0 with the
+  `eval-databricks` group); live 43 passed; Ruff check and format clean; wheel
+  packages `site_assessment.v1.json`; local HTTP discovery shows the new
+  resource, prompt, and LESA schema.
+- **Real data:** 10 live SDA/TIGERweb LESA calls; T1 MLflow run
+  `da4613f3256e4ddf9e474e196b480608` (20 cases); ad hoc SA-MA run
+  `127a5e18cab443559f15300acb815cb8`.
+- **Recommendation:** blocked for deployment trial; ready for refinement after
+  DB45-01 and DB45-02 are fixed and DB45-05, DB45-08, DB45-11 are decided.
+
+### Triage board
+
+| ID | Severity | Summary | Suggested triage | Disposition |
+|---|---|---|---|---|
+| DB45-01 | High | Registry bands contradict 7 CFR 658.5(b); criteria 5, 6, 7, 9 inverted | Fix in 45 + Decision | open |
+| DB45-02 | High | Zero-coverage LE scored 0 and threshold evaluated (predates branch) | Fix in 45 | open |
+| DB45-03 | Medium | Corridor criteria 8 and 11 scored on site maximum (10 of 25) | Fix in 45 | open |
+| DB45-04 | Medium | Statutorily zeroed corridor criteria relabeled `machine_estimate` | Fix in 45 | open |
+| DB45-05 | Medium | Criterion 2 never scorable from facts | Decision | open |
+| DB45-06 | Medium | Fact silently overrides analyst override on the same criterion | Fix in 45 | open |
+| DB45-07 | Medium | Out-of-range analyst points silently clamped (LESA-01: 120 -> 15) | Fix in 45 + Contract | open |
+| DB45-08 | Medium | `requires_rationale`/`requires_verification` not enforced; facts labeled `machine_estimate` | Decision | open |
+| DB45-09 | Medium | Corridor LE reports 0% coverage with a nonzero score | Fix in 45 | open |
+| DB45-10 | Medium | `evaluate_site_assessment(None, ...)` returns `complete` with 11 unavailable | Fix in 45 | open |
+| DB45-11 | Medium | Legacy criterion 7 evaluator not on CFR schedule (predates branch) | Decision | open |
+| DB45-12 | Low | `coverage_status` always `unknown`; three vocabularies | Fix in 45 | open |
+| DB45-13 | Low | Between-band values become unavailable without explanation | Fix in 45 | open |
+| DB45-14 | Low | Rating-source provenance missing from LESA notices | Fix in 45 | open |
+| DB45-15 | Low | LINESTRING with default `site` type mixes corridor LE and site SA | Decision | open |
+| DB45-E1 | Eval | SA-MA cases not in the T1 dataset | Contract | open |
+| DB45-E2 | Eval | SA-MA-02/04 prompts lack geometry | Contract | open |
+| DB45-E3 | Eval | Judge noise on LESA-01; null correctness without `expected_facts` | Contract | open |
+| DB45-E4 | Eval | LESA-02 WKT input gap (Plan 44 follow-up) | out of scope | open |
+| DB45-N1 | Env | `make eval-databricks` needs session Python on serverless | document | open |
+| DB45-N2 | Env | `run_evals.py` needs `PYTHONPATH=.` | document | recorded |
+
+- **Deployment:** no app runs this branch; a deployed check needs a dev app
+  pointed at `feature/semiquant-sa1` plus a browser check.
+
