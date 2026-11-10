@@ -256,6 +256,36 @@ class TestResolveSdvSpec:
         assert "component" in ALLOWED_SDV_TABLES
         assert "mapunit" in ALLOWED_SDV_TABLES
 
+
+class TestCoverageAndCountyMaxStates:
+    """Coverage and county maxima remain explicit and property-specific."""
+
+    def test_missing_county_max_is_unrated_not_zero(self) -> None:
+        client = _mock_client({"Table": [["max_county_rating"], [None]]})
+        assert client.get_county_max_productivity_rating("IA169", index_type="csr2") is None
+
+    def test_partial_rating_has_explicit_coverage_state_and_provenance(self) -> None:
+        client = _mock_client(
+            {
+                "Table": [
+                    [
+                        "mukey",
+                        "areasymbol",
+                        "musym",
+                        "muname",
+                        "numeric_rating",
+                        "rated_pct",
+                        "total_pct",
+                    ],
+                    ["1", "IA169", "A", "Test", 80.0, 75.0, 100.0],
+                ]
+            }
+        )
+        result = client.get_productivity_ratings(["1"], index_type="csr2")[0]
+        assert result["coverage_status"] == "partial"
+        assert result["productivity_rating_source"] == "SDA:MAPUNIT_IACORNSR"
+        assert result["sdv_provenance"]["spec_id"] == "csr2"
+
     def test_allowed_tables_are_the_registry_tables(self) -> None:
         from fpac_soil_mcp.sda_client import ALLOWED_SDV_TABLES
 

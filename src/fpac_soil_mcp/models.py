@@ -459,6 +459,17 @@ class LandEvaluationSummary(BaseModel):
         default=0.0,
         description="Percentage of AOI footprint with rated soil productivity",
     )
+    coverage_status: str = Field(
+        default="unknown",
+        description=(
+            "Reconciled productivity coverage state: covered, partial, "
+            "unrated, unmapped, or unknown"
+        ),
+    )
+    reconciliation: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Acreage reconciliation details and explicit coverage states",
+    )
     notices: list[str] = Field(
         default_factory=list,
         description="Land evaluation computation notes and coverage advisories",
