@@ -17,6 +17,7 @@ class FakeCDLClient:
         return CDLServiceMetadata(
             endpoint="https://example.test/ImageServer",
             spatial_reference="4326",
+            full_extent={"xmin": -10, "ymin": -10, "xmax": 10, "ymax": 10},
             retrieved_at_utc=datetime.now(UTC),
             response_hash="a" * 64,
         )
@@ -90,4 +91,21 @@ def test_cdl_tool_reports_out_of_extent_aoi(monkeypatch):
     )
 
     assert response.status is CDLAnalysisStatus.UNAVAILABLE
-    assert "outside" in response.error_message
+    assert "Complete AOI coverage" in response.error_message
+
+
+def test_cdl_tool_reports_unavailable_without_complete_extent(monkeypatch):
+    class MissingExtentCDLClient(FakeCDLClient):
+        def get_service_metadata(self):
+            return super().get_service_metadata().model_copy(update={"full_extent": None})
+
+    monkeypatch.setattr(cdl_tools, "CDLClient", MissingExtentCDLClient)
+
+    response = cdl_tools.analyze_cdl_histogram(
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
+        "2025",
+        [1],
+    )
+
+    assert response.status is CDLAnalysisStatus.UNAVAILABLE
+    assert "Complete AOI coverage" in response.error_message

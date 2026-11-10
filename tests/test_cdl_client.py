@@ -196,6 +196,54 @@ def test_cdl_client_returns_validated_histogram_evidence_with_nodata():
     assert response.histogram[1].class_name == "Corn"
 
 
+def test_cdl_client_excludes_nodata_from_qualifying_evidence():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/ImageServer"):
+            return httpx.Response(
+                200,
+                json={
+                    "capabilities": "Image",
+                    "objectIdField": "OBJECTID",
+                    "timeInfo": {"startTimeField": "Year"},
+                },
+            )
+        if request.url.path.endswith("/query"):
+            return httpx.Response(
+                200,
+                json={"features": [{"attributes": {"OBJECTID": 42, "Year": 2025}}]},
+            )
+        if request.url.path.endswith("/rasterAttributeTable"):
+            return httpx.Response(
+                200,
+                json={
+                    "features": [
+                        {"attributes": {"Value": 0, "Class_Names": "Background"}},
+                        {"attributes": {"Value": 1, "Class_Names": "Corn"}},
+                    ]
+                },
+            )
+        return httpx.Response(
+            200,
+            json={"histograms": [{"bins": [{"value": 0, "count": 2}, {"value": 1, "count": 8}]}]},
+        )
+
+    client = CDLClient(
+        base_url="https://example.test/ImageServer",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    response = client.analyze_polygon_histogram(
+        geometry={"rings": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
+        geometry_hash="c" * 64,
+        product_vintage="2025",
+        qualifying_class_values={0, 1},
+    )
+
+    assert response.qualifying_agricultural_pixel_pct == 100
+    assert response.histogram[0].is_qualifying_agricultural is False
+    assert response.histogram[1].is_qualifying_agricultural is True
+
+
 def test_cdl_client_rejects_ambiguous_histogram_shape():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/ImageServer"):

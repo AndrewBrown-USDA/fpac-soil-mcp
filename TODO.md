@@ -122,9 +122,9 @@ Resolve all open Copilot and author review findings for the CDL ImageServer hist
 - [x] Add regression tests for grouped bins, malformed edges, fractional counts, negative counts, and valid edge-based CDL bins.
 
 ### 3. Enforce NoData and coverage boundaries
-- [ ] Remove effective NoData classes from the qualifying set before marking bins or calculating the agricultural numerator.
-- [ ] Establish a complete AOI coverage denominator from validated service/pixel metadata, and return `unavailable` when the response cannot prove complete AOI coverage.
-- [ ] Add tests for NoData configured as qualifying, partial/out-of-extent AOIs, and unavailable coverage metadata.
+- [x] Remove effective NoData classes from the qualifying set before marking bins or calculating the agricultural numerator.
+- [x] Establish a complete AOI coverage denominator from validated service/pixel metadata, and return `unavailable` when the response cannot prove complete AOI coverage.
+- [x] Add tests for NoData configured as qualifying, partial/out-of-extent AOIs, and unavailable coverage metadata.
 
 ### 4. Harden metadata and geometry submission
 - [ ] Reject incomplete or nonnumeric `fullExtent` values before caching them and ensure public extent access cannot raise `KeyError`.

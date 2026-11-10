@@ -69,22 +69,29 @@ def analyze_cdl_histogram(
                 ).transform,
                 geometry,
             )
-        if metadata.full_extent:
-            minx, miny, maxx, maxy = geometry.bounds
-            extent = metadata.full_extent
-            if (
-                maxx < extent["xmin"]
-                or minx > extent["xmax"]
-                or maxy < extent["ymin"]
-                or miny > extent["ymax"]
-            ):
-                return CDLHistogramResponse(
-                    status=CDLAnalysisStatus.UNAVAILABLE,
-                    geometry_hash=geometry_hash,
-                    product_vintage=product_vintage,
-                    service_metadata=metadata,
-                    error_message="AOI is outside the validated CDL ImageServer extent.",
-                )
+        if not metadata.full_extent:
+            return CDLHistogramResponse(
+                status=CDLAnalysisStatus.UNAVAILABLE,
+                geometry_hash=geometry_hash,
+                product_vintage=product_vintage,
+                service_metadata=metadata,
+                error_message="Complete AOI coverage cannot be established from ImageServer extent metadata.",
+            )
+        minx, miny, maxx, maxy = geometry.bounds
+        extent = metadata.full_extent
+        if (
+            minx < extent["xmin"]
+            or maxx > extent["xmax"]
+            or miny < extent["ymin"]
+            or maxy > extent["ymax"]
+        ):
+            return CDLHistogramResponse(
+                status=CDLAnalysisStatus.UNAVAILABLE,
+                geometry_hash=geometry_hash,
+                product_vintage=product_vintage,
+                service_metadata=metadata,
+                error_message="Complete AOI coverage cannot be established from the validated CDL ImageServer extent.",
+            )
         return client.analyze_polygon_histogram(
             geometry={
                 "rings": polygon_to_esri_rings(geometry),

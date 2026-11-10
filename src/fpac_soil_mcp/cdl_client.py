@@ -189,20 +189,18 @@ class CDLClient:
                 nodata_class_values=nodata_class_values or {0},
                 class_names=class_names,
             )
+            effective_nodata = nodata_class_values or {0}
             bins = [
                 item.model_copy(
                     update={
-                        "is_qualifying_agricultural": item.class_value in qualifying_class_values
+                        "is_qualifying_agricultural": item.class_value
+                        in (qualifying_class_values - effective_nodata)
                     }
                 )
                 for item in bins
             ]
             total = sum(item.pixel_count for item in bins)
-            nodata = sum(
-                item.pixel_count
-                for item in bins
-                if item.class_value in (nodata_class_values or {0})
-            )
+            nodata = sum(item.pixel_count for item in bins if item.class_value in effective_nodata)
             valid = total - nodata
             if valid <= 0:
                 return CDLHistogramResponse(
@@ -214,7 +212,9 @@ class CDLClient:
                     error_message="Histogram contains no valid CDL pixels.",
                 )
             qualifying = sum(
-                item.pixel_count for item in bins if item.class_value in qualifying_class_values
+                item.pixel_count
+                for item in bins
+                if item.class_value in (qualifying_class_values - effective_nodata)
             )
             return CDLHistogramResponse(
                 status=CDLAnalysisStatus.SUCCESS,
@@ -299,11 +299,13 @@ class CDLClient:
             or spatial_reference.get("wkt")
         )
         extent = payload.get("fullExtent") or {}
-        selected_extent = {
-            key: extent[key]
-            for key in ("xmin", "ymin", "xmax", "ymax")
-            if isinstance(extent.get(key), (int, float))
-        }
+        extent_keys = ("xmin", "ymin", "xmax", "ymax")
+        selected_extent = None
+        if all(
+            isinstance(extent.get(key), (int, float)) and not isinstance(extent.get(key), bool)
+            for key in extent_keys
+        ):
+            selected_extent = {key: float(extent[key]) for key in extent_keys}
         capabilities = payload.get("capabilities", "")
         if isinstance(capabilities, str):
             capability_values = [
@@ -324,7 +326,7 @@ class CDLClient:
             band_count=payload.get("bandCount"),
             pixel_size_x=payload.get("pixelSizeX"),
             pixel_size_y=payload.get("pixelSizeY"),
-            full_extent=selected_extent or None,
+            full_extent=selected_extent,
             object_id_field=payload.get("objectIdField"),
             time_field=time_field if isinstance(time_field, str) else None,
             retrieved_at_utc=retrieved_at,
