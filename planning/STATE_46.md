@@ -26,8 +26,8 @@
 | 3 | 46.3.2 Preserve map semantics | done |
 | 3 | gate MCP/map safety | done |
 | 4 | 46.4.1 Instrument benchmarks | done |
-| 4 | 46.4.2 Run performance evidence | pending |
-| 4 | gate Criterion 2 evidence | pending |
+| 4 | 46.4.2 Run performance evidence | done |
+| 4 | gate Criterion 2 evidence | pass with limits |
 | 5 | 46.5.1 Synchronize documentation | pending |
 | 5 | gate final validation | pending |
 
@@ -59,14 +59,14 @@
 - **Status:** done.
 - **Files:** `eval\common\dataset.py` (42-71, 165-195, 333-339); `eval\common\test_common_dataset.py` (72-137); `eval\prompt_test_cases.json` (2, 803-912); `eval\eval_cases.v1.json` (2, 99-192); `planning\EXECUTION_PLAN_46.md` (table row 110, task scope); task TODO.
 - **Validation:** `uv run pytest eval\common eval\contract -q` — 116 passed; Ruff check, format check, and `git diff --check` passed.
-- **Commit:** pending; dependencies: Wave 1 prompt-policy gate passed.
+- **Commit:** `00f7e8f` (`test(eval): add adversarial safety case corpus`); dependencies: Wave 1 prompt-policy gate passed.
 - **Deviations/gotchas:** `evalCases.js` needed no change because the existing deterministic mapping accepts the new cases; all examples are synthetic.
 
 ## 46.2.2
 - **Status:** done.
 - **Files:** common matcher/tests (87-158, 85-130); Databricks scorers/tests (26-38, 201-290; tests 140-195); harness assertions/tests (30-120; tests 76-118); Pi runner/tests (23-32, 530-595, 908-950; tests 250-350); task TODO.
 - **Validation:** `PYTHONPATH=apps\agent-fpac-soil-openai-sdk;eval uv run pytest eval\common eval\databricks\test_databricks_scorers.py eval\pi\test_agent_eval.py -q` — 163 passed, 2 deselected; harness `npm test` — 13 passed; `npm run check`, Ruff, and `git diff --check` passed.
-- **Commit:** pending; dependency 46.2.1 passed and committed.
+- **Commit:** `62a2286` (`feat(eval): score safety and reliability behavior`); dependency 46.2.1 passed and committed.
 - **Deviations/gotchas:** Pi reports semantic status separately from runner health status; Databricks retry scoring counts repeated identical tool calls as retries, and latency scoring requires trace timing.
 
 ## Wave 2 Gate
@@ -78,14 +78,14 @@
 - **Status:** done.
 - **Files:** `src\fpac_soil_mcp\models.py` (51-156); `tools\lesa_tools.py` (171-410); `tools\soil_lookup_tools.py` (44-340); `tools\spatial_analysis_tools.py` (32-155); `tests\test_models.py` (new cases); `tests\test_tools.py` (new cases); `eval\contract\test_contract.py` (120-274); `planning\evidence\46.3.1-tool-surface-review.md`; task TODO.
 - **Validation:** `uv run pytest tests\test_tools.py tests\test_models.py tests\test_server.py eval\contract\test_contract.py -q` — 83 passed, 3 deselected; Ruff check/format and `git diff --check` passed.
-- **Commit:** pending; prompt-policy gate 46.1 passed.
+- **Commit:** `0000eef` (`feat(mcp): validate public tool contracts`); prompt-policy gate 46.1 passed.
 - **Deviations/gotchas:** tool surface inventory covers all ten public tools; no wrapper was deferred.
 
 ## 46.3.2
 - **Status:** done.
 - **Files:** app `agent_server\geo.py` (29-440); map `farmlandClasses.ts` (3-114); `tests\test_geo_screen.py` (261-300); `tests\test_geo_map.py` (33-151); task TODO.
 - **Validation:** `make app-check` — 177 passed; targeted map tests — 59 passed; Ruff and `git diff --check` passed.
-- **Commit:** pending; adversarial corpus gate 46.2 passed.
+- **Commit:** `b50e30a` (`fix(app): preserve map classification uncertainty`); adversarial corpus gate 46.2 passed.
 - **Deviations/gotchas:** map-only calls remain geometry-free/untraced and statuses stay bounded; frontend bundle check was not run because only Node v26 is available while the app requires Node 22.
 
 ## Wave 3 Gate
@@ -97,8 +97,20 @@
 - **Status:** done.
 - **Files:** `eval\criterion2_benchmark.py` (1-300); `tests\test_criterion2_benchmark.py` (1-126); `tests\fixtures\criterion2_benchmark.v1.json` (1-158); `Makefile` (11, 19, 70-72); task TODO.
 - **Validation:** `uv run pytest tests\test_criterion2_benchmark.py -q` — 7 passed; one-run manifest dry run emitted all four fixtures and full aggregate schema; Ruff, format, and `git diff --check` passed.
-- **Commit:** pending; adversarial evaluation and MCP/map safety gates passed.
+- **Commit:** `353ee0a` (`feat(eval): instrument Criterion 2 benchmarks`); adversarial evaluation and MCP/map safety gates passed.
 - **Deviations/gotchas:** dry-run labels outcomes unmeasured; exact fixture arguments are preserved, and concurrent runs do not claim per-case tracemalloc memory.
+
+## 46.4.2
+- **Status:** done; evidence documents manifest scheduling only because service measurements were unavailable.
+- **Files:** `planning\evidence\46.4.2-performance.md` (1-48); `planning\evidence\46.4.2-performance.json` (run `20261110T144926Z`, 20 case records); task TODO.
+- **Validation:** five-run, two-worker dry run with committed manifest `criterion2-benchmark-fixtures.v1`; four fixtures and six county FIPS values; JSON schema and `git diff --check` passed.
+- **Commit:** pending; dependency 46.4.1 committed as `353ee0a`.
+- **Deviations/gotchas:** `MCP_URL` absent, so deployed HTTP was not attempted; `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid_state`, so `make test-eval` was not run. Latency/failure/retry metrics remain null.
+
+## Wave 4 Gate
+- **Status:** pass with environment limitations; reproducible manifest evidence is complete, but there are no observed service-performance or model-assisted results.
+- **Exact evidence run:** `uv run python eval\criterion2_benchmark.py --fixture-manifest tests\fixtures\criterion2_benchmark.v1.json --runs 5 --max-workers 2 --output planning\evidence\46.4.2-performance.json`; dry-run per-case and aggregate measured outcomes are null.
+- **Dependency confirmation:** task 46.4.2 consumed the canonical manifest from committed task 46.4.1; Waves 2 and 3 gates passed.
 
 ## Gate Evidence Convention
 
@@ -114,6 +126,9 @@ prerequisite gate has an explicit passing entry.
 - **Deployed `/mcp` measurements:** blocked when credentials, deployment, or
   upstream services are unavailable; record explicit unavailable fields rather
   than substituting local timings.
+- **Pi `make test-eval`:** not run because `pi auth check --model gpt-5.6-luna
+  --json --no-refresh` returned `invalid_state`; rerun when provider auth is
+  available.
 - **Map persistence, multiple AOIs, custom basemaps, and other M2/M4 work:**
   deferred until the current map contract and safety gate are stable.
 
@@ -122,7 +137,7 @@ prerequisite gate has an explicit passing entry.
 | Gate | Status | Exact command | Counts/artifact | Dependency confirmation |
 |---|---|---|---|---|
 | Prompt policy | pass | targeted prompt/app/Pi/common pytest: 151 passed, 2 deselected; Ruff check/format pass | `64a0e3b`, `c92e462` | both Wave 1 tasks verified |
-| Adversarial evaluation | pass | dataset: 116 passed; scorer Python: 163 passed, 2 deselected; harness: 13 passed; check passed | pending | 46.2.1 then 46.2.2 verified |
-| MCP/map safety | pass | MCP contract pytest: 83 passed, 3 deselected; app-check: 177 passed; targeted map: 59 passed | `0000eef`, pending | both dependencies verified; frontend bundle unavailable under installed Node v26 |
-| Criterion 2 evidence | pending | - | - | - |
+| Adversarial evaluation | pass | dataset: 116 passed; scorer Python: 163 passed, 2 deselected; harness: 13 passed; check passed | `00f7e8f`, `62a2286` | 46.2.1 then 46.2.2 verified |
+| MCP/map safety | pass | MCP contract pytest: 83 passed, 3 deselected; app-check: 177 passed; targeted map: 59 passed | `0000eef`, `b50e30a` | both dependencies verified; frontend bundle unavailable under installed Node v26 |
+| Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, pending | 46.4.1 and 46.4.2 verified |
 | Final validation | pending | - | - | - |
