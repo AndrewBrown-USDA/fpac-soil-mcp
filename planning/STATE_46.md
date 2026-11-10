@@ -28,8 +28,8 @@
 | 4 | 46.4.1 Instrument benchmarks | done |
 | 4 | 46.4.2 Run performance evidence | done |
 | 4 | gate Criterion 2 evidence | pass with limits |
-| 5 | 46.5.1 Synchronize documentation | pending |
-| 5 | gate final validation | pending |
+| 5 | 46.5.1 Synchronize documentation | done |
+| 5 | gate final validation | pass with limits |
 
 ## Task Reports
 
@@ -69,6 +69,13 @@
 - **Commit:** `62a2286` (`feat(eval): score safety and reliability behavior`); dependency 46.2.1 passed and committed.
 - **Deviations/gotchas:** Pi reports semantic status separately from runner health status; Databricks retry scoring counts repeated identical tool calls as retries, and latency scoring requires trace timing.
 
+## 46.2.2 Follow-up
+- **Status:** done; corrected stale Databricks dry-run assertions exposed by final validation.
+- **Files:** `eval\databricks\test_databricks_runner.py` (17, 49, 63); `planning\tasks\46.2.2-followup.todo.md`.
+- **Validation:** `uv run pytest eval\databricks\test_databricks_runner.py -q` — 5 passed.
+- **Commit:** `94dd6c8` (`test(eval): refresh Databricks dry-run assertions`); dependency 46.2.2 committed as `62a2286`.
+- **Deviations/gotchas:** use the full deterministic scorer list and shared dataset loader to avoid stale expectations.
+
 ## Wave 2 Gate
 - **Status:** pass; adversarial corpus loads deterministically and semantic/reliability scorers pass focused Python and harness tests.
 - **Exact tests:** `uv run pytest eval\common eval\contract -q` — 116 passed; Python scorer suite — 163 passed, 2 deselected; harness `npm test` — 13 passed; `npm run check` passed.
@@ -104,13 +111,26 @@
 - **Status:** done; evidence documents manifest scheduling only because service measurements were unavailable.
 - **Files:** `planning\evidence\46.4.2-performance.md` (1-48); `planning\evidence\46.4.2-performance.json` (run `20261110T144926Z`, 20 case records); task TODO.
 - **Validation:** five-run, two-worker dry run with committed manifest `criterion2-benchmark-fixtures.v1`; four fixtures and six county FIPS values; JSON schema and `git diff --check` passed.
-- **Commit:** pending; dependency 46.4.1 committed as `353ee0a`.
+- **Commit:** `e75de91` (`docs(eval): record Criterion 2 performance evidence`); dependency 46.4.1 committed as `353ee0a`.
 - **Deviations/gotchas:** `MCP_URL` absent, so deployed HTTP was not attempted; `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid_state`, so `make test-eval` was not run. Latency/failure/retry metrics remain null.
 
 ## Wave 4 Gate
 - **Status:** pass with environment limitations; reproducible manifest evidence is complete, but there are no observed service-performance or model-assisted results.
 - **Exact evidence run:** `uv run python eval\criterion2_benchmark.py --fixture-manifest tests\fixtures\criterion2_benchmark.v1.json --runs 5 --max-workers 2 --output planning\evidence\46.4.2-performance.json`; dry-run per-case and aggregate measured outcomes are null.
 - **Dependency confirmation:** task 46.4.2 consumed the canonical manifest from committed task 46.4.1; Waves 2 and 3 gates passed.
+
+## 46.5.1
+- **Status:** done; synchronized evaluation, planning, and submission documentation with explicit evidence limits and deferrals.
+- **Files:** `planning\GOALS.md`, `planning\MASTER_PLAN.md`, `README.md`, `eval\databricks\README.md`, `apps\agent-fpac-soil-openai-sdk\README.md`, `eval\fpac_soil_mcp_harness\README.md`, `planning\evidence\46.5.1-closeout.md`, task TODO.
+- **Validation:** local Markdown links and `git diff --check` passed; `make check` — 843 passed, 45 deselected; `make app-check` — 177 passed.
+- **Commit:** `94d740d` (`docs(eval): synchronize safety evaluation guidance`); dependency Wave 4 Criterion 2 evidence gate passed with limitations.
+- **Deviations/gotchas:** `make test-eval` was not run because Pi auth check returned `invalid_state`; no model-assisted or deployed performance result is claimed.
+
+## Wave 5 Final Validation Gate
+- **Status:** pass with limits; serial offline checks passed, Pi model-assisted evaluation remains unavailable.
+- **Exact commands:** `make check` — 843 passed, 45 deselected; then `make app-check` — 177 passed. `make test-eval` not run because `pi auth check --model gpt-5.6-luna --json --no-refresh` returned `invalid_state`.
+- **Evidence:** `planning\evidence\46.5.1-closeout.md`; stale Databricks dry-run assertions corrected in commit `94dd6c8`.
+- **Dependency confirmation:** Waves 2, 3, and 4 gates are complete; Wave 5 documentation is synchronized.
 
 ## Gate Evidence Convention
 
@@ -139,5 +159,5 @@ prerequisite gate has an explicit passing entry.
 | Prompt policy | pass | targeted prompt/app/Pi/common pytest: 151 passed, 2 deselected; Ruff check/format pass | `64a0e3b`, `c92e462` | both Wave 1 tasks verified |
 | Adversarial evaluation | pass | dataset: 116 passed; scorer Python: 163 passed, 2 deselected; harness: 13 passed; check passed | `00f7e8f`, `62a2286` | 46.2.1 then 46.2.2 verified |
 | MCP/map safety | pass | MCP contract pytest: 83 passed, 3 deselected; app-check: 177 passed; targeted map: 59 passed | `0000eef`, `b50e30a` | both dependencies verified; frontend bundle unavailable under installed Node v26 |
-| Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, pending | 46.4.1 and 46.4.2 verified |
-| Final validation | pending | - | - | - |
+| Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, `e75de91` | 46.4.1 and 46.4.2 verified |
+| Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run (Pi auth unavailable) | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
