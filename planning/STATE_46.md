@@ -16,10 +16,10 @@
 
 | Wave | Task | Status |
 |---|---|---|
-| 1 | 46.1.1 Harden prompt policy | pending |
-| 1 | 46.1.2 Add policy assertions | pending |
-| 1 | gate prompt policy | pending |
-| 2 | 46.2.1 Add adversarial corpus | pending |
+| 1 | 46.1.1 Harden prompt policy | done |
+| 1 | 46.1.2 Add policy assertions | done |
+| 1 | gate prompt policy | done |
+| 2 | 46.2.1 Add adversarial corpus | in_progress |
 | 2 | 46.2.2 Add deterministic scorers | pending |
 | 2 | gate adversarial evaluation | pending |
 | 3 | 46.3.1 Harden MCP contracts | pending |
@@ -34,6 +34,26 @@
 ## Task Reports
 
 <!-- Append one report per task, maximum 15 lines. -->
+
+## 46.1.1
+- **Status:** done; worker lost its completion connection after edits, so orchestrator verified the delivered diff and acceptance tests.
+- **Files:** app system prompt `7-19`; Databricks v1/v2 `7-19`; FastMCP prompt module `8-17, 62, 96, 128, 171`; `planning\tasks\46.1.1.todo.md`.
+- **Validation:** combined targeted command recorded below: 151 passed, 2 deselected; Ruff check and format check passed.
+- **Commit:** `64a0e3b` (`feat(prompts): enforce FPPA safety policy`); dependencies: none.
+- **Deviations/gotchas:** none; live prompt contains no named tools.
+
+## 46.1.2
+- **Status:** done.
+- **Files:** policy contract `1-149`; matching helper `16-70`; matching tests `17-121`; FastMCP tests `1-53`; app tests `7, 83-84`; Pi runner `31, 470-505, 549-555, 674-681`; Pi tests `26, 100-130, 1122-1129`; `planning\tasks\46.1.2.todo.md`.
+- **Validation:** combined targeted command recorded below: 151 passed, 2 deselected; Ruff check and format check passed.
+- **Commit:** `c92e462` (`test(eval): assert FPPA safety policy surfaces`); dependencies: none.
+- **Deviations/gotchas:** required dimensions are individually asserted; use `PYTHONPATH=apps\agent-fpac-soil-openai-sdk;eval` for the root pytest process.
+
+## Wave 1 Gate
+- **Status:** pass; both tasks verified, and shared policy version/rule coverage matches the native prompts.
+- **Exact tests:** `$env:PYTHONPATH = "apps\agent-fpac-soil-openai-sdk;eval"; uv run pytest tests\test_prompts.py eval\databricks\test_databricks_agent.py apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py eval\pi\test_agent_eval.py eval\common\test_common_matching.py -q` — 151 passed, 2 deselected.
+- **Lint/format:** `uv run ruff check apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py eval\common\matching.py eval\common\test_common_matching.py eval\pi\run_evals.py eval\pi\test_agent_eval.py src\fpac_soil_mcp\prompts\fppa_prompts.py tests\test_prompts.py` and corresponding `uv run ruff format --check` — passed.
+- **Dependency confirmation:** both wave-1 tasks have no prerequisites; wave 2's `46.1` gate dependency is satisfied.
 
 ## Gate Evidence Convention
 
@@ -56,7 +76,7 @@ prerequisite gate has an explicit passing entry.
 
 | Gate | Status | Exact command | Counts/artifact | Dependency confirmation |
 |---|---|---|---|---|
-| Prompt policy | pending | - | - | - |
+| Prompt policy | pass | targeted prompt/app/Pi/common pytest: 151 passed, 2 deselected; Ruff check/format pass | `64a0e3b`, `c92e462` | both Wave 1 tasks verified |
 | Adversarial evaluation | pending | - | - | - |
 | MCP/map safety | pending | - | - | - |
 | Criterion 2 evidence | pending | - | - | - |
