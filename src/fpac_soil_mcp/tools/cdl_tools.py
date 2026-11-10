@@ -7,7 +7,8 @@ import json
 from typing import Any
 
 from pyproj import Transformer
-from shapely.ops import transform
+from shapely.geometry import MultiPolygon, Polygon
+from shapely.ops import transform, unary_union
 
 from fpac_soil_mcp.cdl_client import CDLClient
 from fpac_soil_mcp.cdl_models import CDLAnalysisStatus, CDLHistogramResponse
@@ -25,6 +26,29 @@ def _fallback_geometry_hash(value: Any) -> str:
     except (TypeError, ValueError):
         serialized = repr(value)
     return f"sha256:{hashlib.sha256(serialized.encode('utf-8')).hexdigest()}"
+
+
+def _parse_cdl_geometry(geojson: dict[str, Any] | str) -> Polygon | MultiPolygon:
+    value = geojson
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return parse_geojson_geometry(geojson)
+
+    if isinstance(value, dict) and value.get("type") == "FeatureCollection":
+        features = value.get("features")
+        if not isinstance(features, list) or not features:
+            raise GeometryValidationError("FeatureCollection contains no features.")
+        geometries = [parse_geojson_geometry(feature) for feature in features]
+        geometry = unary_union(geometries)
+        if not isinstance(geometry, (Polygon, MultiPolygon)):
+            raise GeometryValidationError(
+                "FeatureCollection must contain polygon geometries that form a Polygon or MultiPolygon."
+            )
+        return geometry
+
+    return parse_geojson_geometry(value)
 
 
 def analyze_cdl_histogram(
@@ -57,7 +81,7 @@ def analyze_cdl_histogram(
         )
 
     try:
-        geometry = parse_geojson_geometry(geojson)
+        geometry = _parse_cdl_geometry(geojson)
         geometry_hash = compute_geometry_hash(geometry)
         client = CDLClient()
         metadata = client.get_service_metadata()

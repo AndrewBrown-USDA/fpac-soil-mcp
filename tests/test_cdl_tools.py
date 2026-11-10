@@ -70,6 +70,65 @@ def test_cdl_tool_validates_geometry_and_propagates_histogram(monkeypatch):
     assert fake.submitted_geometry["spatialReference"] == {"wkid": 4326}
 
 
+def test_cdl_tool_combines_all_polygon_features_in_feature_collection(monkeypatch):
+    fake = FakeCDLClient()
+    monkeypatch.setattr(cdl_tools, "CDLClient", lambda: fake)
+
+    response = cdl_tools.analyze_cdl_histogram(
+        {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+                    },
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[2, 0], [3, 0], [3, 1], [2, 0]]],
+                    },
+                },
+            ],
+        },
+        "2025",
+        [1],
+    )
+
+    assert response.status is CDLAnalysisStatus.SUCCESS
+    assert len(fake.submitted_geometry["rings"]) == 2
+
+
+def test_cdl_tool_rejects_feature_collection_with_invalid_later_feature(monkeypatch):
+    fake = FakeCDLClient()
+    monkeypatch.setattr(cdl_tools, "CDLClient", lambda: fake)
+
+    response = cdl_tools.analyze_cdl_histogram(
+        {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+                    },
+                },
+                {"type": "Feature", "geometry": {"type": "Point", "coordinates": [2, 2]}},
+            ],
+        },
+        "2025",
+        [1],
+    )
+
+    assert response.status is CDLAnalysisStatus.INVALID
+    assert "Unsupported geometry type" in response.error_message
+    assert fake.submitted_geometry is None
+
+
 def test_cdl_tool_rejects_invalid_geometry_and_missing_class_policy():
     invalid_geometry = cdl_tools.analyze_cdl_histogram("not-json", "2025", [1])
     missing_policy = cdl_tools.analyze_cdl_histogram(

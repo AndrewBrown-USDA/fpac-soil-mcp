@@ -171,3 +171,8 @@ Correct count-array histogram validation to interpret ArcGIS `size` as the numbe
 - Treat numeric CDL codes as identifiers; neighboring codes are not assumed to be semantically related.
 - Do not map any count array to class codes unless its bin geometry supports one-to-one unit-width integer classes.
 - Preserve completed TODO history and do not modify remote pull-request state; commit locally only when requested.
+
+## Discovered Tasks
+
+- [x] Address unresolved PR #79 review comment: combine and validate all polygon geometries in FeatureCollections so no requested AOI features are silently ignored; add focused tests.
+- [ ] Address unresolved PR #79 review comment: make the configured CDL metadata cache persist across public tool invocations, and add tests proving repeated calls respect the configured TTL.
