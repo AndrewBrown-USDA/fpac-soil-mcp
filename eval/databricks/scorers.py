@@ -40,6 +40,8 @@ JUDGE_SCORER_NAMES = (
     "tool_call_efficiency",
 )
 
+EVIDENCE_TIERS = ("deterministic_contract", "model_assisted")
+
 _PATH_TOKEN = re.compile(r"([^.\[\]]+)|\[(\d+)\]")
 
 
@@ -207,6 +209,13 @@ def scorer_names(judge_model: str | None = None) -> list[str]:
     """
     del judge_model
     return [*DETERMINISTIC_SCORER_NAMES, *JUDGE_SCORER_NAMES]
+
+
+def evidence_tier(scorer_name: str) -> str:
+    """Classify scorer output without conflating contract gates and judges."""
+    return (
+        "deterministic_contract" if scorer_name in DETERMINISTIC_SCORER_NAMES else "model_assisted"
+    )
 
 
 def build_scorers(judge_model: str) -> list[Any]:

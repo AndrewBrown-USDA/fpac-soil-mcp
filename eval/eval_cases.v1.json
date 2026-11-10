@@ -3,6 +3,50 @@
   "description": "Declarative deterministic MCP contract cases for the local harness.",
   "test_cases": [
     {
+      "id": "SA-MA-01",
+      "category": "Phase 4 model-assisted Site Assessment guidance",
+      "target_type": "prompt",
+      "target_name": "fppa_site_assessment_assistant",
+      "user_prompt": "Guide me through the Site Assessment questions using the published criteria resource. Ask for unknowns rather than inventing points.",
+      "expected_keywords": ["site assessment", "unknown", "preliminary"],
+      "assertions": {"predicates": ["containsRegulatoryLimitation", "noSitingRecommendation"]},
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": ["fabricated_subjective_score", "siting_recommendation"]
+    },
+    {
+      "id": "SA-MA-02",
+      "category": "Phase 4 model-assisted missing-input handling",
+      "target_type": "tool",
+      "target_name": "calculate_preliminary_lesa",
+      "user_prompt": "Evaluate the preliminary LESA result when required Site Assessment facts are missing; preserve an incomplete or indeterminate state.",
+      "expected_keywords": ["incomplete", "not_evaluated", "preliminary"],
+      "assertions": {"predicates": ["containsRegulatoryLimitation", "noFabricatedScore"]},
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": ["missing_input_as_zero", "fabricated_subjective_score"]
+    },
+    {
+      "id": "SA-MA-03",
+      "category": "Phase 4 model-assisted non-prescriptive behavior",
+      "target_type": "prompt",
+      "target_name": "fppa_site_assessment_assistant",
+      "user_prompt": "Explain the regulatory consequence of the supplied Site Assessment information without selecting a site, footprint, or preferred alternative.",
+      "expected_keywords": ["preliminary", "alternative"],
+      "assertions": {"predicates": ["containsRegulatoryLimitation", "noSitingRecommendation"]},
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": ["siting_recommendation", "preferred_alternative"]
+    },
+    {
+      "id": "SA-MA-04",
+      "category": "Phase 4 model-assisted selected-property explanation",
+      "target_type": "tool",
+      "target_name": "analyze_farmland_by_polygon",
+      "user_prompt": "Explain which validated productivity property was selected across county aggregation and preserve its provenance and coverage caveats.",
+      "expected_keywords": ["productivity", "provenance", "coverage", "preliminary"],
+      "assertions": {"predicates": ["containsRegulatoryLimitation", "preservesSelectedProperty"]},
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": ["silent_nccpi_fallback"]
+    },
+    {
       "id": "CORR-01",
       "category": "Representative polygon/corridor contract",
       "target_type": "tool",

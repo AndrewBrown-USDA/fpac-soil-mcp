@@ -33,6 +33,7 @@ from pi.run_evals import (
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
 CAPTURE_FIXTURES_PATH = REPO_ROOT / "eval" / "fixtures" / "event_capture"
+DETERMINISTIC_CATEGORIES = ("deterministic", "contract")
 
 
 def parse_pi_events(output: str) -> list[dict[str, Any]]:
@@ -46,6 +47,26 @@ def parse_pi_events(output: str) -> list[dict[str, Any]]:
         if isinstance(event, dict):
             events.append(event)
     return events
+
+
+def evidence_tier(case: dict[str, Any]) -> str:
+    """Keep model-assisted Pi outcomes separate from deterministic gates."""
+    category = case.get("category", "").lower()
+    return (
+        "deterministic_contract"
+        if any(marker in category for marker in DETERMINISTIC_CATEGORIES)
+        else "model_assisted"
+    )
+
+
+def diagnostic_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """Expose bounded, path-only diagnostics rather than captured content."""
+    return {
+        "evidence_classification": result.get("evidence_classification", "absent"),
+        "attempt_count": len(result.get("attempts", [])),
+        "artifact_count": len(result.get("artifact_paths", {})),
+        "has_capture_error": bool(result.get("capture_error")),
+    }
 
 
 def test_advertised_tools_prefer_initialization_event() -> None:
@@ -145,6 +166,27 @@ def test_gateway_envelopes_and_prose_have_distinct_diagnostics() -> None:
     assert not _tool_matches("expected_tool", set())
     assert should_retry_missing_tools(["expected_tool"], {"expected_tool"}, 0)
     assert not should_retry_missing_tools(["expected_tool"], None, 0)
+
+
+def test_model_assisted_evidence_is_labeled_and_diagnostics_are_sanitized() -> None:
+    case = {"category": "Phase 4 model-assisted Site Assessment"}
+    assert evidence_tier(case) == "model_assisted"
+    summary = diagnostic_summary(
+        {
+            "evidence_classification": "recognized",
+            "attempts": [{"attempt": 1}],
+            "artifact_paths": {"attempt_1_metadata_path": "run/CASE/metadata.json"},
+            "capture_error": "",
+            "error": "private captured response",
+        }
+    )
+    assert summary == {
+        "evidence_classification": "recognized",
+        "attempt_count": 1,
+        "artifact_count": 1,
+        "has_capture_error": False,
+    }
+    assert "private captured response" not in str(summary)
 
 
 def test_tool_list_fallback_and_unknown_configuration_diagnostics() -> None:
