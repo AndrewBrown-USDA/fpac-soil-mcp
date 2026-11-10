@@ -39,7 +39,18 @@ V2_FIELDS = frozenset(
         "verified_on",
     }
 )
-ALLOWED_FIELDS = frozenset(REQUIRED_V1_FIELDS) | OPTIONAL_V1_FIELDS | V2_FIELDS
+ADVERSARIAL_FIELDS = frozenset(
+    {
+        "expected_status",
+        "required_behaviors",
+        "prohibited_behaviors",
+        "source_disclosure",
+        "max_tool_calls",
+        "max_retries",
+        "latency_budget_ms",
+    }
+)
+ALLOWED_FIELDS = frozenset(REQUIRED_V1_FIELDS) | OPTIONAL_V1_FIELDS | V2_FIELDS | ADVERSARIAL_FIELDS
 
 # Agent-side tools that expose MCP resources and prompts (contract C4).
 SYNTHETIC_TOOLS = frozenset({"read_resource", "get_prompt"})
@@ -51,6 +62,13 @@ EXPECTATION_FIELDS = (
     "numeric_expectations",
     "guidelines",
     "evidence_tier",
+    "expected_status",
+    "required_behaviors",
+    "prohibited_behaviors",
+    "source_disclosure",
+    "max_tool_calls",
+    "max_retries",
+    "latency_budget_ms",
 )
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -143,13 +161,38 @@ def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
     for field in sorted(set(case) - ALLOWED_FIELDS):
         err(field, "unknown field")
 
-    for field in ("expected_tools", "expected_keywords", "expected_facts", "guidelines"):
+    for field in (
+        "expected_tools",
+        "expected_keywords",
+        "expected_facts",
+        "guidelines",
+        "required_behaviors",
+        "prohibited_behaviors",
+        "source_disclosure",
+    ):
         if field in case and not _is_str_list(case[field]):
             err(field, "expected a list of strings")
+
+    if "expected_status" in case and (
+        not isinstance(case["expected_status"], str)
+        or case["expected_status"] not in {"covered", "indeterminate", "error"}
+    ):
+        err("expected_status", "expected covered, indeterminate, or error")
 
     for field in ("force_tool_use", "live_data_sensitive"):
         if field in case and not isinstance(case[field], bool):
             err(field, "expected bool")
+
+    for field in ("max_tool_calls", "max_retries"):
+        if field in case and (
+            not isinstance(case[field], int) or isinstance(case[field], bool) or case[field] < 0
+        ):
+            err(field, "expected an integer >= 0")
+
+    if "latency_budget_ms" in case and (
+        not _is_number(case["latency_budget_ms"]) or case["latency_budget_ms"] < 0
+    ):
+        err("latency_budget_ms", "expected a finite number >= 0")
 
     if "evidence_tier" in case and (
         not isinstance(case["evidence_tier"], str)
@@ -288,7 +331,9 @@ def to_mlflow_records(cases: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
             "expected_keywords": list(case["expected_keywords"]),
         }
         for field in EXPECTATION_FIELDS:
-            if case.get(field):
+            if field in case and (
+                field in {"max_tool_calls", "max_retries", "latency_budget_ms"} or case[field]
+            ):
                 expectations[field] = case[field]
         records.append({"inputs": {"request": case["user_prompt"]}, "expectations": expectations})
     return records

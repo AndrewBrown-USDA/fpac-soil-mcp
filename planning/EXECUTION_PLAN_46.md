@@ -107,7 +107,7 @@ evaluation setup/results evidence.
 | 1 | 46.1.1 | Harden native prompt policy text | `apps\agent-fpac-soil-openai-sdk\agent_server\prompts\system_prompt.txt`; `eval\databricks\prompts\system_prompt_v2.txt`; `eval\databricks\prompts\system_prompt_v1.txt`; `src\fpac_soil_mcp\prompts\fppa_prompts.py` | none | none |
 | 1 | 46.1.2 | Add cross-surface policy assertions | `eval\common\matching.py`; `eval\common\test_common_matching.py`; `tests\test_prompts.py`; `apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py`; `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | `eval\common\policy_rules.v1.json` | none |
 | 1 gate | - | Prompt policy gate | none | none | 46.1.1, 46.1.2 |
-| 2 | 46.2.1 | Add adversarial case corpus and status schema | `eval\eval_cases.v1.json`; `eval\prompt_test_cases.json`; `eval\common\dataset.py`; `eval\fpac_soil_mcp_harness\lib\evalCases.js` | none | 46.1 gate |
+| 2 | 46.2.1 | Add adversarial case corpus and status schema | `eval\eval_cases.v1.json`; `eval\prompt_test_cases.json`; `eval\common\dataset.py`; `eval\common\test_common_dataset.py`; `eval\fpac_soil_mcp_harness\lib\evalCases.js` | none | 46.1 gate |
 | 2 | 46.2.2 | Add deterministic safety and reliability scorers | `eval\common\matching.py`; `eval\databricks\scorers.py`; `eval\fpac_soil_mcp_harness\lib\evalAssertions.js`; `eval\pi\run_evals.py`; `eval\pi\test_agent_eval.py` | none | 46.2.1 |
 | 2 gate | - | Adversarial evaluation gate | none | none | 46.2.1, 46.2.2 |
 | 3 | 46.3.1 | Harden public MCP input/error contracts and tool metadata | `src\fpac_soil_mcp\tools\__init__.py`; `src\fpac_soil_mcp\tools\soil_lookup_tools.py`; `src\fpac_soil_mcp\tools\spatial_analysis_tools.py`; `src\fpac_soil_mcp\tools\lesa_tools.py`; `src\fpac_soil_mcp\tools\exemption_tools.py`; `src\fpac_soil_mcp\tools\fppa_tools.py`; `src\fpac_soil_mcp\models.py`; `src\fpac_soil_mcp\case_models.py`; `src\fpac_soil_mcp\integration_models.py`; `tests\test_tools.py`; `tests\test_models.py`; `tests\test_server.py`; `eval\contract\test_contract.py`; no prompt files | `planning\evidence\46.3.1-tool-surface-review.md` | 46.1 gate |
@@ -183,7 +183,8 @@ hand off exact required-rule list to 46.1.2.
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Files in scope:** `eval\eval_cases.v1.json`,
-  `eval\prompt_test_cases.json`, `eval\common\dataset.py`, and
+  `eval\prompt_test_cases.json`, `eval\common\dataset.py`,
+  `eval\common\test_common_dataset.py`, and
   `eval\fpac_soil_mcp_harness\lib\evalCases.js`.
 - **Depends on:** prompt policy gate.
 - **Spec:** Add versioned cases for unrelated work, official forms,

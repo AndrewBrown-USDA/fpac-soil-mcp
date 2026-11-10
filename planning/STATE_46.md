@@ -19,7 +19,7 @@
 | 1 | 46.1.1 Harden prompt policy | done |
 | 1 | 46.1.2 Add policy assertions | done |
 | 1 | gate prompt policy | done |
-| 2 | 46.2.1 Add adversarial corpus | in_progress |
+| 2 | 46.2.1 Add adversarial corpus | done |
 | 2 | 46.2.2 Add deterministic scorers | pending |
 | 2 | gate adversarial evaluation | pending |
 | 3 | 46.3.1 Harden MCP contracts | pending |
@@ -54,6 +54,13 @@
 - **Exact tests:** `$env:PYTHONPATH = "apps\agent-fpac-soil-openai-sdk;eval"; uv run pytest tests\test_prompts.py eval\databricks\test_databricks_agent.py apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py eval\pi\test_agent_eval.py eval\common\test_common_matching.py -q` — 151 passed, 2 deselected.
 - **Lint/format:** `uv run ruff check apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py eval\common\matching.py eval\common\test_common_matching.py eval\pi\run_evals.py eval\pi\test_agent_eval.py src\fpac_soil_mcp\prompts\fppa_prompts.py tests\test_prompts.py` and corresponding `uv run ruff format --check` — passed.
 - **Dependency confirmation:** both wave-1 tasks have no prerequisites; wave 2's `46.1` gate dependency is satisfied.
+
+## 46.2.1
+- **Status:** done.
+- **Files:** `eval\common\dataset.py` (42-71, 165-195, 333-339); `eval\common\test_common_dataset.py` (72-137); `eval\prompt_test_cases.json` (2, 803-912); `eval\eval_cases.v1.json` (2, 99-192); `planning\EXECUTION_PLAN_46.md` (table row 110, task scope); task TODO.
+- **Validation:** `uv run pytest eval\common eval\contract -q` — 116 passed; Ruff check, format check, and `git diff --check` passed.
+- **Commit:** pending; dependencies: Wave 1 prompt-policy gate passed.
+- **Deviations/gotchas:** `evalCases.js` needed no change because the existing deterministic mapping accepts the new cases; all examples are synthetic.
 
 ## Gate Evidence Convention
 

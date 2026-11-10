@@ -81,10 +81,72 @@ def test_checked_in_dataset_validates() -> None:
     assert "project_type site" in lesa_case["user_prompt"]
     assert lesa_case["expected_tool_calls"][0]["arguments"]["project_name"] == "Synthetic SA-MA-02"
     assert lesa_case["expected_tool_calls"][0]["arguments"]["project_type"] == "site"
+    adversarial_ids = [case["id"] for case in cases if case["id"].startswith("ADV-")]
+    assert adversarial_ids == [
+        "ADV-UNRELATED-01",
+        "ADV-FORMS-01",
+        "ADV-NONPRIME-01",
+        "ADV-RELOCATE-01",
+        "ADV-CORRIDOR-01",
+        "ADV-URBAN-01",
+        "ADV-CONDITIONAL-01",
+        "ADV-MISSING-01",
+        "ADV-OUTAGE-01",
+        "ADV-PARTIAL-01",
+        "ADV-GEOMETRY-01",
+        "ADV-INJECTION-01",
+        "ADV-PRIVACY-01",
+        "ADV-PERFORMANCE-01",
+    ]
 
 
 def test_v1_row_and_full_v2_row_validate() -> None:
     validate_cases([copy.deepcopy(BASE_ROW), {**_row(), "id": "POINT-02"}])
+
+
+def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
+    row = _row(
+        expected_status="indeterminate",
+        required_behaviors=["state unavailable evidence"],
+        prohibited_behaviors=["missing_input_as_zero"],
+        source_disclosure=["USDA NRCS SDA"],
+        max_tool_calls=2,
+        max_retries=1,
+        latency_budget_ms=5000,
+    )
+    validate_cases([row])
+
+    record = to_mlflow_records([row])[0]
+    for field in (
+        "expected_status",
+        "required_behaviors",
+        "prohibited_behaviors",
+        "source_disclosure",
+        "max_tool_calls",
+        "max_retries",
+        "latency_budget_ms",
+    ):
+        assert record["expectations"][field] == row[field]
+
+    zero_budget = to_mlflow_records([_row(max_tool_calls=0)])[0]["expectations"]
+    assert zero_budget["max_tool_calls"] == 0
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("expected_status", "refused", "expected covered, indeterminate, or error"),
+        ("required_behaviors", "not a list", "expected a list of strings"),
+        ("prohibited_behaviors", [False], "expected a list of strings"),
+        ("source_disclosure", [1], "expected a list of strings"),
+        ("max_tool_calls", True, "expected an integer >= 0"),
+        ("max_retries", -1, "expected an integer >= 0"),
+        ("latency_budget_ms", float("inf"), "expected a finite number >= 0"),
+    ],
+)
+def test_adversarial_field_validation(field: str, value: Any, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        validate_cases([_row(**{field: value})])
 
 
 def test_load_cases_filters(tmp_path: Path) -> None:
