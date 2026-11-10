@@ -7,7 +7,6 @@ import json
 from typing import Any
 
 from pyproj import Transformer
-from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import transform
 
 from fpac_soil_mcp.cdl_client import CDLClient
@@ -16,16 +15,8 @@ from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     compute_geometry_hash,
     parse_geojson_geometry,
+    polygon_to_esri_rings,
 )
-
-
-def _esri_rings(geometry: Polygon | MultiPolygon) -> list[list[list[float]]]:
-    polygons = [geometry] if isinstance(geometry, Polygon) else list(geometry.geoms)
-    rings: list[list[list[float]]] = []
-    for polygon in polygons:
-        rings.append([list(point) for point in polygon.exterior.coords])
-        rings.extend([list(point) for point in interior.coords] for interior in polygon.interiors)
-    return rings
 
 
 def _fallback_geometry_hash(value: Any) -> str:
@@ -96,7 +87,7 @@ def analyze_cdl_histogram(
                 )
         return client.analyze_polygon_histogram(
             geometry={
-                "rings": _esri_rings(geometry),
+                "rings": polygon_to_esri_rings(geometry),
                 "spatialReference": {"wkid": int(spatial_reference)},
             },
             geometry_hash=geometry_hash,

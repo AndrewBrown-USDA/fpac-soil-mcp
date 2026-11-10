@@ -101,3 +101,45 @@ Extend the production CDL histogram response to include live raster attribute-ta
 - Use the USDA NASS CDL ImageServer as the only data source.
 - Do not infer class names from hard-coded CDL tables when the live raster attribute table is unavailable.
 - Preserve the preliminary mapped-land-cover limitation and do not award Criterion 2 points from CDL alone.
+
+---
+
+# TODO: PR #79 Review Fixes
+
+## Goal
+Resolve all open Copilot and author review findings for the CDL ImageServer histogram tool without reporting unverifiable vintage, histogram semantics, or AOI coverage as measured evidence.
+
+## Tasks
+
+### 1. Verify requested product vintage
+- [ ] Discover catalog/time metadata using the configured ImageServer and identify the requested `product_vintage` from verified service fields.
+- [ ] Apply the verified catalog item or mosaic selector to histogram requests and return `unavailable` when the requested vintage cannot be matched or selected.
+- [ ] Add mocked tests proving different vintages produce different selectors and unverifiable vintages do not produce success.
+
+### 2. Validate histogram semantics
+- [ ] Require explicit bins or validate count-array `min`, `max`, `size`, integer-centered unit-width buckets, and count length before deriving class values.
+- [ ] Reject fractional, negative, non-finite, or inconsistent counts without coercing them through `int()`.
+- [ ] Add regression tests for grouped bins, malformed edges, fractional counts, negative counts, and valid edge-based CDL bins.
+
+### 3. Enforce NoData and coverage boundaries
+- [ ] Remove effective NoData classes from the qualifying set before marking bins or calculating the agricultural numerator.
+- [ ] Establish a complete AOI coverage denominator from validated service/pixel metadata, and return `unavailable` when the response cannot prove complete AOI coverage.
+- [ ] Add tests for NoData configured as qualifying, partial/out-of-extent AOIs, and unavailable coverage metadata.
+
+### 4. Harden metadata and geometry submission
+- [ ] Reject incomplete or nonnumeric `fullExtent` values before caching them and ensure public extent access cannot raise `KeyError`.
+- [x] Extract or reuse the existing Esri ring-winding normalization utility so CDL polygon exteriors are clockwise and holes counterclockwise.
+- [x] Add focused tests for incomplete extents and Polygon/MultiPolygon exterior and hole winding.
+
+### 5. Update contract and documentation
+- [ ] Update CDL response/provenance fields and tool documentation to distinguish verified vintage, complete coverage, ambiguity, and unavailability.
+- [ ] Preserve the limitation that CDL is mapped land-cover evidence and cannot establish active farming or official FPPA/LESA conclusions.
+
+### 6. Validate the review fixes
+- [ ] Run focused CDL and geometry tests, then the offline test suite.
+- [ ] Run Ruff lint and format checks and review the final diff for unrelated changes.
+
+## Notes
+- Preserve existing user changes and completed TODO history.
+- Keep the configured ImageServer as the only supported source; do not add arbitrary URL or query passthrough.
+- Do not modify remote pull-request state or create a commit.
