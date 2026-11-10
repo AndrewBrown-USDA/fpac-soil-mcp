@@ -35,8 +35,8 @@
 | 6 | 46.6.1 Correct unavailable SA completion status | done |
 | 6 | 46.6.2 Characterize DB45-E3 judge/null behavior | done |
 | 6 | gate PR #83 follow-ups | pass |
-| 7 | 46.7.1 Migrate Pi eval to built-in MCP | pending |
-| 7 | gate Pi native-MCP contract | pending |
+| 7 | 46.7.1 Migrate Pi eval to built-in MCP | done |
+| 7 | gate Pi native-MCP contract | pass |
 | 8 | 46.8.1 Re-test Pi auth and evaluation | pending |
 | 8 | gate Pi auth/evaluation evidence | pending |
 
@@ -161,6 +161,18 @@
 - **Lint/format:** Ruff check and format check passed for all changed Python files; `git diff --check` passed.
 - **Dependency confirmation:** completed 46.3.1 and Wave 2 gates; no WKT/DB45-E4 work included per user direction.
 
+## 46.7.1
+- **Status:** done; Pi runner now uses temporary project `.pi\mcp.json` with the built-in MCP support and `--approve`.
+- **Files:** `eval\pi\run_evals.py` (250-253, 609-620); `eval\pi\test_agent_eval.py` (263-305, 1100-1127, 1190-1205); task TODO.
+- **Validation:** `uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q` — 38 passed, 2 deselected; Ruff, format, and `git diff --check` passed.
+- **Commit:** `eef05f2` (`fix(eval): use Pi built-in MCP configuration`); dependency 46.5 final-validation gate passed.
+- **Deviations/gotchas:** no global Pi configuration or credentials touched; built-in config is limited to the temporary runner sandbox.
+
+## Wave 7 Pi Native-MCP Gate
+- **Status:** pass; offline runner contract now matches Pi 1.5.2's project-local MCP configuration.
+- **Exact command:** `uv run pytest eval\pi\test_agent_eval.py -m "not agent_eval" -q` — 38 passed, 2 deselected; Ruff and format passed.
+- **Dependency confirmation:** completed Wave 5 final-validation gate; Wave 8 runtime/auth evidence can proceed.
+
 ## Gate Evidence Convention
 
 Each completed task/gate entry must record: status, exact command, pass/fail
@@ -195,4 +207,4 @@ prerequisite gate has an explicit passing entry.
 | Criterion 2 evidence | pass with limits | five-run/two-worker manifest dry run; 20 slots, 4 fixtures, 6 counties; external/model metrics unavailable | `353ee0a`, `e75de91` | 46.4.1 and 46.4.2 verified |
 | Final validation | pass with limits | `make check`: 843 passed, 45 deselected; `make app-check`: 177 passed; `make test-eval` not run at closeout after unqualified model check returned invalid | `94dd6c8`, `planning\evidence\46.5.1-closeout.md` | Waves 2-4 and documentation task verified |
 | PR #83 deferred work | pass | DB45-10 fixed; DB45-E3/null expectations characterized; DB45-E4/WKT excluded per user direction | `c685536`, `1c745d5`, `planning\evidence\46.6.2-judge-followup.md` | Waves 2-3 complete |
-| Pi native MCP | blocked pending runner update | Pi 1.5.2 rejects `--mcp-config`; qualified GitHub Copilot auth is ready | Wave 7-8 task evidence pending | Depends on 46.7.1 before eval rerun |
+| Pi native MCP | pass; runtime retest pending | Pi 1.5.2 runner updated; qualified GitHub Copilot auth is ready | `eef05f2`; Wave 8 evidence pending | 46.7.1 verified before 46.8.1 |
