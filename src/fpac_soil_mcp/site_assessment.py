@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.resources
 import itertools
 import json
+import math
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -20,6 +21,11 @@ class SiteAssessmentBand(BaseModel):
     points: float | None = Field(default=None, ge=0)
     minimum: float | None = Field(default=None, alias="min")
     maximum: float | None = Field(default=None, alias="max")
+    minimum_inclusive: bool = Field(default=True, alias="min_inclusive")
+    maximum_inclusive: bool = Field(default=True, alias="max_inclusive")
+    point_range: tuple[float, float] | None = Field(default=None, min_length=2, max_length=2)
+    representative_value_rule: str | None = None
+    representative_point_rule: str | None = None
 
     @model_validator(mode="after")
     def validate_bounds(self) -> SiteAssessmentBand:
@@ -27,7 +33,33 @@ class SiteAssessmentBand(BaseModel):
             raise ValueError("band minimum must not exceed maximum")
         if self.points is None and (self.minimum is not None or self.maximum is not None):
             raise ValueError("unavailable bands must not define numeric bounds")
+        if self.point_range is not None:
+            if self.points is None or self.point_range[0] > self.point_range[1]:
+                raise ValueError("point ranges require available points and ordered bounds")
+            if self.points_range_invalid():
+                raise ValueError("representative points must lie within the point range")
         return self
+
+    def points_range_invalid(self) -> bool:
+        assert self.point_range is not None and self.points is not None
+        return not self.point_range[0] <= self.points <= self.point_range[1]
+
+    def contains(self, value: str | float) -> bool:
+        if self.minimum is None:
+            return False
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            return False
+        lower_matches = numeric_value > self.minimum or (
+            self.minimum_inclusive and numeric_value == self.minimum
+        )
+        upper_matches = (
+            self.maximum is None
+            or numeric_value < self.maximum
+            or (self.maximum_inclusive and numeric_value == self.maximum)
+        )
+        return lower_matches and upper_matches
 
 
 class SiteAssessmentCriterionDefinition(BaseModel):
@@ -42,12 +74,16 @@ class SiteAssessmentCriterionDefinition(BaseModel):
     requires_rationale: bool
     requires_verification: bool
     deferred_source: bool = False
+    score_direction: str = Field(min_length=1)
+    range_convention: str | None = None
+    accepted_input_sources: tuple[str, ...] = ()
+    spatial_input_status: str | None = None
     bands: tuple[SiteAssessmentBand, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_bands(self) -> SiteAssessmentCriterionDefinition:
         seen_ids: set[str] = set()
-        numeric: list[tuple[float, float, str]] = []
+        numeric: list[tuple[float, bool, float, bool, str]] = []
         has_unavailable = False
         for band in self.bands:
             if band.band_id in seen_ids:
@@ -67,14 +103,66 @@ class SiteAssessmentCriterionDefinition(BaseModel):
                 if band.minimum is None:
                     raise ValueError("numeric bands require a minimum")
                 upper = band.maximum if band.maximum is not None else float("inf")
-                numeric.append((band.minimum, upper, band.band_id))
+                numeric.append(
+                    (
+                        band.minimum,
+                        band.minimum_inclusive,
+                        upper,
+                        band.maximum_inclusive,
+                        band.band_id,
+                    )
+                )
         numeric.sort()
-        for (_, previous_max, _), (current_min, _, _) in itertools.pairwise(numeric):
-            if current_min <= previous_max:
+        for (_, _, previous_max, previous_max_inclusive, _), (
+            current_min,
+            current_min_inclusive,
+            _,
+            _,
+            _,
+        ) in itertools.pairwise(numeric):
+            if current_min < previous_max or (
+                current_min == previous_max and current_min_inclusive and previous_max_inclusive
+            ):
                 raise ValueError("numeric bands overlap")
         if self.deferred_source and not has_unavailable:
             raise ValueError("deferred criteria require an explicit unavailable band")
+        if self.deferred_source and self.spatial_input_status != "deferred_unavailable":
+            raise ValueError("deferred criteria must mark spatial input unavailable")
+        if self.accepted_input_sources and not self.deferred_source:
+            raise ValueError("accepted input sources are reserved for deferred criteria")
         return self
+
+    def band_for(self, value: str | float | None) -> SiteAssessmentBand | None:
+        """Return the matching band, preserving unknown and out-of-band states."""
+        if value is None or (isinstance(value, str) and value.strip().lower() in {"", "unknown"}):
+            return next((band for band in self.bands if band.band_id == "unknown"), None)
+        if self.answer_type == "qualitative":
+            normalized = str(value).strip().lower()
+            return next(
+                (
+                    band
+                    for band in self.bands
+                    if normalized in {band.band_id.lower(), band.label.lower()}
+                ),
+                None,
+            )
+        return next((band for band in self.bands if band.contains(value)), None)
+
+    def score_for_value(
+        self, value: str | float | None, *, provenance: str | None = None
+    ) -> float | None:
+        """Resolve registry points; return None for unknown, out-of-band, or unproven input."""
+        if self.criterion_number == 2 and not (provenance and provenance.strip()):
+            return None
+        band = self.band_for(value)
+        if band is None or band.points is None:
+            return None
+        if band.point_range is None or band.minimum is None or band.maximum is None:
+            return band.points
+        numeric_value = float(value)
+        low_points, high_points = band.point_range
+        ratio = (numeric_value - band.minimum) / (band.maximum - band.minimum)
+        return float(math.floor(low_points + ratio * (high_points - low_points) + 0.5))
 
 
 class SiteAssessmentRegistry(BaseModel):

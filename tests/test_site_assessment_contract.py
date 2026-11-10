@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -23,25 +24,72 @@ def test_registry_loads_deterministically_and_covers_all_criteria() -> None:
     assert [criterion.criterion_number for criterion in first.criteria] == list(range(1, 13))
 
 
-def test_every_criterion_has_citation_maximum_and_valid_points() -> None:
-    for criterion in SITE_ASSESSMENT_REGISTRY.criteria:
-        assert criterion.citation
-        assert criterion.max_points >= 0
-        assert all(
-            band.points is None or 0 <= band.points <= criterion.max_points
-            for band in criterion.bands
+def _cfr_cases() -> dict[str, object]:
+    return json.loads(
+        (Path(__file__).parent / "fixtures" / "site_assessment_cfr_cases.json").read_text(
+            encoding="utf-8"
         )
+    )
+
+
+def test_fixture_anchors_every_criterion_and_expected_score_to_cfr() -> None:
+    fixture = _cfr_cases()
+    cases = fixture["cases"]
+    assert len(cases) == 12
+    for case in cases:
+        number = case["criterion_number"]
+        criterion = SITE_ASSESSMENT_REGISTRY.criterion(number)
+        assert case["citation"] == criterion.citation == f"7 CFR § 658.5(b)({number})"
+        assert case["score_direction"] == criterion.score_direction
+        assert criterion.max_points >= 0
+        for example in case["cases"]:
+            band = criterion.band_for(example["value"])
+            assert band is not None
+            assert band.band_id == example["band"]
+            provenance = "analyst observation record" if number == 2 else None
+            assert (
+                criterion.score_for_value(example["value"], provenance=provenance)
+                == example["points"]
+            )
+
+
+def test_numeric_out_of_band_is_distinct_from_unknown() -> None:
+    criterion = SITE_ASSESSMENT_REGISTRY.criterion(1)
+    assert criterion.band_for(None).band_id == "unknown"
+    assert criterion.score_for_value(None) is None
+    assert criterion.band_for(101) is None
+    assert criterion.score_for_value(101) is None
 
 
 def test_unknown_and_deferred_inputs_remain_unavailable() -> None:
     criterion = SITE_ASSESSMENT_REGISTRY.criterion(2)
     assert criterion.deferred_source is True
+    assert criterion.spatial_input_status == "deferred_unavailable"
+    assert criterion.accepted_input_sources == ("analyst_proposed_with_provenance",)
     assert any(band.points is None for band in criterion.bands)
-    assert any(
-        band.points is None
-        for number in (8, 9, 10, 11, 12)
-        for band in SITE_ASSESSMENT_REGISTRY.criterion(number).bands
-    )
+    assert criterion.score_for_value(95) is None
+    assert criterion.score_for_value(95, provenance="analyst interview notes") == 10
+    assert criterion.score_for_value(None, provenance="analyst interview notes") is None
+
+
+def test_cfr_ranges_define_representative_point_conventions() -> None:
+    for number in (1, 2, 3, 7, 8, 9, 10, 11, 12):
+        criterion = SITE_ASSESSMENT_REGISTRY.criterion(number)
+        assert criterion.range_convention or any(
+            band.point_range is not None
+            or band.representative_point_rule is not None
+            or band.representative_value_rule is not None
+            for band in criterion.bands
+        )
+
+
+def test_criterion_9_service_availability_tracks_cfr_point_direction() -> None:
+    criterion = SITE_ASSESSMENT_REGISTRY.criterion(9)
+    assert criterion.score_direction == "more_services_more_points"
+    assert criterion.score_for_value("all_available") == 5
+    assert criterion.score_for_value("some_available") == 3
+    assert criterion.score_for_value("none_available") == 0
+    assert "ties upward" in criterion.band_for("some_available").representative_point_rule
 
 
 def test_duplicate_bands_are_rejected() -> None:
