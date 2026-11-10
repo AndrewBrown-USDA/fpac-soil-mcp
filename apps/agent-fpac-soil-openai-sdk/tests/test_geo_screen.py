@@ -258,6 +258,7 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
     assert body["display"]["map"] == _map_block()
     assert "soil_polygons" not in body["display"]
     assert body["display"]["regulatory_notice"].startswith("Preliminary screening")
+    assert geo.NON_PRIME_LIMITATION in body["display"]["regulatory_notice"]
     summary = body["chat_summary"]
     assert summary["total_aoi_acres"] == 123.5
     assert summary["farmland_classes"]["prime_farmland"] == {"acres": 100.0, "pct": 81.1}
@@ -271,6 +272,32 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
         (geo.ANALYSIS_TOOL, {"geojson": SQUARE, "include_nccpi": True, "include_map": True})
     ]
     assert server.entered == server.exited == 1
+
+
+def test_summary_preserves_partial_status_and_unknown_class_labels():
+    analysis = _analysis()
+    analysis.update(status="partial", coverage_status="partially_covered")
+    analysis["map_units"] = [
+        {"musym": "U1", "muname": "Unknown value", "farmlndcl": "Mystery classification"},
+        {"musym": "U2", "muname": "Absent value", "farmlndcl": None},
+        {"musym": "U3", "muname": "Unrecognized value", "farmlndcl": "unrecognized"},
+        {"musym": "N1", "muname": "Not prime value", "farmlndcl": "Not prime farmland"},
+    ]
+
+    summary = geo.build_chat_summary(analysis, "aoi-0123abcd")
+    text = geo.render_chat_summary_text(summary)
+
+    assert summary["status"] == "partial"
+    assert summary["coverage_status"] == "partially_covered"
+    assert [unit["farmlndcl"] for unit in summary["map_units"]] == [
+        "Mystery classification",
+        None,
+        "unrecognized",
+        "Not prime farmland",
+    ]
+    assert "Status: partial" in text
+    assert geo.NON_PRIME_LIMITATION in summary["regulatory_notice"]
+    assert geo.NON_PRIME_LIMITATION in text
 
 
 def test_aoi_ref_is_random_per_request(start_server, fake_mcp):

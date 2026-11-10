@@ -23,8 +23,8 @@
 | 2 | 46.2.2 Add deterministic scorers | done |
 | 2 | gate adversarial evaluation | done |
 | 3 | 46.3.1 Harden MCP contracts | done |
-| 3 | 46.3.2 Preserve map semantics | in_progress |
-| 3 | gate MCP/map safety | pending |
+| 3 | 46.3.2 Preserve map semantics | done |
+| 3 | gate MCP/map safety | done |
 | 4 | 46.4.1 Instrument benchmarks | pending |
 | 4 | 46.4.2 Run performance evidence | pending |
 | 4 | gate Criterion 2 evidence | pending |
@@ -81,6 +81,18 @@
 - **Commit:** pending; prompt-policy gate 46.1 passed.
 - **Deviations/gotchas:** tool surface inventory covers all ten public tools; no wrapper was deferred.
 
+## 46.3.2
+- **Status:** done.
+- **Files:** app `agent_server\geo.py` (29-440); map `farmlandClasses.ts` (3-114); `tests\test_geo_screen.py` (261-300); `tests\test_geo_map.py` (33-151); task TODO.
+- **Validation:** `make app-check` — 177 passed; targeted map tests — 59 passed; Ruff and `git diff --check` passed.
+- **Commit:** pending; adversarial corpus gate 46.2 passed.
+- **Deviations/gotchas:** map-only calls remain geometry-free/untraced and statuses stay bounded; frontend bundle check was not run because only Node v26 is available while the app requires Node 22.
+
+## Wave 3 Gate
+- **Status:** pass; MCP contract tests and map uncertainty/privacy checks pass.
+- **Exact tests:** `uv run pytest tests\test_tools.py tests\test_models.py tests\test_server.py eval\contract\test_contract.py -q` — 83 passed, 3 deselected; `make app-check` — 177 passed.
+- **Dependency confirmation:** 46.3.1 follows prompt-policy gate 46.1; 46.3.2 follows adversarial corpus gate 46.2.
+
 ## Gate Evidence Convention
 
 Each completed task/gate entry must record: status, exact command, pass/fail
@@ -104,6 +116,6 @@ prerequisite gate has an explicit passing entry.
 |---|---|---|---|---|
 | Prompt policy | pass | targeted prompt/app/Pi/common pytest: 151 passed, 2 deselected; Ruff check/format pass | `64a0e3b`, `c92e462` | both Wave 1 tasks verified |
 | Adversarial evaluation | pass | dataset: 116 passed; scorer Python: 163 passed, 2 deselected; harness: 13 passed; check passed | pending | 46.2.1 then 46.2.2 verified |
-| MCP/map safety | pending | - | - | - |
+| MCP/map safety | pass | MCP contract pytest: 83 passed, 3 deselected; app-check: 177 passed; targeted map: 59 passed | `0000eef`, pending | both dependencies verified; frontend bundle unavailable under installed Node v26 |
 | Criterion 2 evidence | pending | - | - | - |
 | Final validation | pending | - | - | - |

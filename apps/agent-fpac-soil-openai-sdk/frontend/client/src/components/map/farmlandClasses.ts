@@ -3,9 +3,9 @@ import type { SoilFeatureCollection } from './useScreening';
 
 // One mapping from SSURGO `farmlndcl` text to a display class, used by the map
 // layer, the legend and the results table. The rules mirror the server's
-// `categorize_farmland_class` (src/fpac_soil_mcp/polygon_analysis.py): empty is
-// unmapped, any other unrecognised text counts as not prime. Colours and codes
-// follow the Phase 8 symbology; the code keeps meaning off colour alone.
+// `categorize_farmland_class` (src/fpac_soil_mcp/polygon_analysis.py). Unknown
+// labels remain distinct from an explicit not-prime classification. Colours
+// and codes follow the Phase 8 symbology; meaning never depends on colour alone.
 export type FarmlandClassKey =
   | 'prime'
   | 'conditional_prime'
@@ -13,7 +13,8 @@ export type FarmlandClassKey =
   | 'local'
   | 'unique'
   | 'not_prime'
-  | 'unmapped';
+  | 'unmapped'
+  | 'unknown';
 
 export type FarmlandClass = {
   key: FarmlandClassKey;
@@ -82,6 +83,14 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     pattern: 'hatched',
     summaryKey: 'unmapped',
   },
+  {
+    key: 'unknown',
+    label: 'Unknown classification',
+    code: '?',
+    color: '#BDBDBD',
+    pattern: 'hatched',
+    summaryKey: 'unknown',
+  },
 ];
 
 export const CLASS_BY_KEY = Object.fromEntries(
@@ -91,6 +100,10 @@ export const CLASS_BY_KEY = Object.fromEntries(
 export function classifyFarmland(farmlndcl: unknown): FarmlandClassKey {
   if (typeof farmlndcl !== 'string' || !farmlndcl.trim()) return 'unmapped';
   const desc = farmlndcl.trim().toLowerCase();
+  if (desc === 'unmapped') return 'unmapped';
+  if (desc === 'unknown' || desc === 'unrecognized' || desc === 'unrecognised') {
+    return 'unknown';
+  }
   if (desc === 'all areas are prime farmland') return 'prime';
   if (desc.includes('prime farmland if')) return 'conditional_prime';
   if (desc.includes('statewide importance')) return 'statewide';
@@ -98,7 +111,8 @@ export function classifyFarmland(farmlndcl: unknown): FarmlandClassKey {
   if (desc.includes('unique importance') || desc.includes('unique farmland')) {
     return 'unique';
   }
-  return 'not_prime';
+  if (desc === 'not_prime' || desc === 'not prime farmland') return 'not_prime';
+  return 'unknown';
 }
 
 // Fill colour keyed on the `farmland_class` property added by withFarmlandClass.

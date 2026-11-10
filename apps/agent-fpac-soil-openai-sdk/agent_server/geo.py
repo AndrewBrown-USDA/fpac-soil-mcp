@@ -26,6 +26,10 @@ MAX_BODY_BYTES = 256 * 1024
 DEFAULT_MAX_VERTICES = 2000
 MAX_SUMMARY_MAP_UNITS = 10
 MAX_SUMMARY_TEXT_CHARS = 2000
+NON_PRIME_LIMITATION = (
+    "Not-prime classification is a screening category only; it is not an official "
+    "FPPA determination or a finding of exemption."
+)
 ANALYSIS_TOOL = "analyze_farmland_by_polygon"
 CORRIDOR_TOOL = "analyze_corridor_fppa"
 SOIL_POLYGONS_TOOL = "get_soil_polygons_by_geometry"
@@ -40,6 +44,7 @@ FARMLAND_CLASSES = (
     ("unique_farmland", "Unique farmland"),
     ("not_prime", "Not prime farmland"),
     ("unmapped", "Unmapped"),
+    ("unknown", "Unknown classification"),
     ("total_fppa_protected", "Total FPPA-protected farmland"),
 )
 
@@ -166,6 +171,14 @@ def _short_text(value: Any, limit: int = 120) -> str | None:
     return value[:limit]
 
 
+def _result_notice(value: Any) -> str:
+    """Keep the upstream notice while adding the not-prime interpretation limit."""
+    server_notice = _short_text(value, 800)
+    if server_notice:
+        return f"{server_notice} {NON_PRIME_LIMITATION}"[:1000]
+    return NON_PRIME_LIMITATION
+
+
 def select_display_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
     """Fields the map panel shows; browser-only."""
     urban = analysis.get("urban_screening")
@@ -187,6 +200,7 @@ def select_display_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
             )
     return {
         "total_aoi_acres": _num(analysis.get("total_aoi_acres")),
+        "status": _short_text(analysis.get("status"), 40),
         "coverage_status": _short_text(analysis.get("coverage_status"), 40),
         "farmland_summary": analysis.get("farmland_summary") or {},
         "urban_intersected": urban.get("is_urban_intersected")
@@ -236,6 +250,7 @@ def build_chat_summary(analysis: dict[str, Any], aoi_ref: str) -> dict[str, Any]
     return {
         "aoi_ref": aoi_ref,
         "total_aoi_acres": _num(analysis.get("total_aoi_acres")),
+        "status": _short_text(analysis.get("status"), 40),
         "coverage_status": _short_text(analysis.get("coverage_status"), 40),
         "farmland_classes": classes,
         "urban_screening": urban_summary,
@@ -244,7 +259,7 @@ def build_chat_summary(analysis: dict[str, Any], aoi_ref: str) -> dict[str, Any]
             "service_name": _short_text(source.get("service_name")),
             "timestamp_utc": _short_text(source.get("timestamp_utc"), 40),
         },
-        "regulatory_notice": _short_text(analysis.get("regulatory_notice"), 1000),
+        "regulatory_notice": _result_notice(analysis.get("regulatory_notice")),
     }
 
 
@@ -265,6 +280,8 @@ def render_chat_summary_text(summary: dict[str, Any]) -> str:
         f"Total area: {_fmt(summary.get('total_aoi_acres'))} acres; "
         f"coverage: {summary.get('coverage_status') or 'n/a'}"
     )
+    if summary.get("status"):
+        lines.append(f"Status: {summary['status']}")
     urban = summary.get("urban_screening") or {}
     if "urban_intersected" in urban:
         flag = "yes" if urban["urban_intersected"] else "no"
@@ -419,6 +436,8 @@ async def map_for_tool(tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
     return {
         "tool": tool,
         "map": map_block(result),
-        "regulatory_notice": _short_text(result.get("regulatory_notice"), 1000),
+        "regulatory_notice": _result_notice(result.get("regulatory_notice")),
         "authority": authority if isinstance(authority, dict) else None,
+        "status": _short_text(result.get("status"), 40),
+        "coverage_status": _short_text(result.get("coverage_status"), 40),
     }
