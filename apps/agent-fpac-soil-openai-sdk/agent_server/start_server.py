@@ -29,22 +29,41 @@ def geo_health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+async def _read_body(request: Request, too_large_status: int) -> bytes:
+    """Read the body up to ``geo.MAX_BODY_BYTES``; stop at the first chunk over it."""
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > geo.MAX_BODY_BYTES:
+            raise geo.GeoRequestError(
+                too_large_status, f"Request body exceeds {geo.MAX_BODY_BYTES // 1024} KB."
+            )
+        body.extend(chunk)
+    return bytes(body)
+
+
+def _error_response(exc: geo.GeoRequestError) -> JSONResponse:
+    key = "error" if exc.status_code == 502 else "detail"
+    return JSONResponse({key: exc.message}, status_code=exc.status_code)
+
+
 @app.post("/api/geo/screen")
 async def geo_screen(request: Request) -> JSONResponse:
     """Screen one AOI out of band (ADR 0016). Never logs the body; no model, no trace."""
     try:
-        body = bytearray()
-        async for chunk in request.stream():
-            if len(body) + len(chunk) > geo.MAX_BODY_BYTES:
-                raise geo.GeoRequestError(
-                    422, f"Request body exceeds {geo.MAX_BODY_BYTES // 1024} KB."
-                )
-            body.extend(chunk)
-        screen_request = geo.parse_screen_request(bytes(body))
+        screen_request = geo.parse_screen_request(await _read_body(request, 422))
         return JSONResponse(await geo.screen_aoi(screen_request))
     except geo.GeoRequestError as exc:
-        key = "error" if exc.status_code == 502 else "detail"
-        return JSONResponse({key: exc.message}, status_code=exc.status_code)
+        return _error_response(exc)
+
+
+@app.post("/api/geo/map")
+async def geo_map(request: Request) -> JSONResponse:
+    """Map layers for one analyze tool call (ADR 0017). Never logs the body; no model, no trace."""
+    try:
+        tool, arguments = geo.parse_map_request(await _read_body(request, 413))
+        return JSONResponse(await geo.map_for_tool(tool, arguments))
+    except geo.GeoRequestError as exc:
+        return _error_response(exc)
 
 
 setup_mlflow_git_based_version_tracking()

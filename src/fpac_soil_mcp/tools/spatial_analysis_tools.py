@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import Field
 
 from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer
 from fpac_soil_mcp.corridor_scoring import (
@@ -17,12 +19,19 @@ from fpac_soil_mcp.models import (
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 
+INCLUDE_MAP_DESCRIPTION = (
+    "Leave false. When true the response embeds display GeoJSON for each map layer, "
+    "which is large; the map app sets it when drawing. Numbers are identical either way."
+)
+IncludeMap = Annotated[bool, Field(description=INCLUDE_MAP_DESCRIPTION)]
+
 
 def analyze_farmland_by_polygon(
     geojson: dict | str,
     include_nccpi: bool = True,
     productivity_index: str = "nccpi",
     max_county_rating_override: float | None = None,
+    include_map: IncludeMap = False,
 ) -> PolygonFarmlandAnalysisResponse:
     """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
 
@@ -36,6 +45,8 @@ def analyze_farmland_by_polygon(
         include_nccpi: Whether to retrieve crop productivity ratings.
         productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
+        include_map: Leave false. True embeds display GeoJSON in ``map.layers``
+            (ADR 0017); by default the layers are descriptors without geometry.
 
     Returns:
         PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
@@ -51,6 +62,7 @@ def analyze_farmland_by_polygon(
         include_nccpi=include_nccpi,
         productivity_index=normalized_productivity_index,
         max_county_rating_override=max_county_rating_override,
+        include_map=include_map,
     )
 
 
@@ -64,6 +76,7 @@ def analyze_corridor_fppa(
     site_assessment_inputs: dict[str, Any] | None = None,
     productivity_index: str = "nccpi",
     max_county_rating_override: float | None = None,
+    include_map: IncludeMap = False,
 ) -> dict[str, Any]:
     """Execute multi-county linear corridor FPPA screening and statutory CPA-106 analysis.
 
@@ -87,6 +100,8 @@ def analyze_corridor_fppa(
             - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
             - 'project_farm_acres': float (size of affected farm holding)
             - 'county_average_farm_acres': float (optional override for NASS average farm size)
+        include_map: Leave false. True embeds display GeoJSON in ``map.layers``
+            (ADR 0017); by default the layers are descriptors without geometry.
 
     Returns:
         Dictionary containing CorridorFarmlandAnalysisResponse fields, plus optional 'lesa_evaluation' result.
@@ -105,6 +120,7 @@ def analyze_corridor_fppa(
         "alternatives": alternatives,
         "include_nccpi": include_nccpi,
         "productivity_index": normalized_productivity_index,
+        "include_map": include_map,
     }
     if max_county_rating_override is not None:
         corridor_kwargs["max_county_rating_override"] = max_county_rating_override

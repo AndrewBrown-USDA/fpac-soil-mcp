@@ -105,9 +105,17 @@ def instruction_note(aoi: ActiveAoi) -> str:
             "`geojson` or `geometry` argument; the app substitutes the AOI shape. Do not ask "
             "the user for the GeoJSON and do not write coordinates yourself."
         ),
+        (
+            "When the user asks to run, screen or analyze this AOI, call the tool with the "
+            "reference, even if a screening summary is attached; do not answer such a "
+            "request from the summary alone."
+        ),
     ]
     if aoi.summary_text:
-        lines += ["Latest map screening of this AOI:", aoi.summary_text]
+        lines += [
+            "Latest map screening of this AOI (use it to answer questions about that screening):",
+            aoi.summary_text,
+        ]
     else:
         lines.append("No map screening summary is attached; run the tools on the AOI as needed.")
     return "\n".join(lines)

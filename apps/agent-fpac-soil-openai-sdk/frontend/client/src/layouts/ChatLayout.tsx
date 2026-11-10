@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -8,6 +8,7 @@ import { DbIcon } from '@/components/ui/db-icon';
 import { UserKeyIconIcon } from '@/components/icons';
 import { MapPanel } from '@/components/map/MapPanel';
 import { ActiveAoiProvider } from '@/components/map/ActiveAoiContext';
+import { MapResultProvider } from '@/components/map/MapResultContext';
 
 export default function ChatLayout() {
   const { session, loading } = useSession();
@@ -16,6 +17,8 @@ export default function ChatLayout() {
   const [mapOpen, setMapOpen] = useState(
     () => window.matchMedia?.('(min-width: 768px)').matches ?? false,
   );
+  // "Show on map" on a tool card opens the panel.
+  const openMap = useCallback(() => setMapOpen(true), []);
 
   // Wait for session to load
   if (loading) {
@@ -52,6 +55,7 @@ export default function ChatLayout() {
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
       <ActiveAoiProvider>
+        <MapResultProvider onShow={openMap}>
         <AppSidebar user={session.user} preferredUsername={preferredUsername} />
         <aside
           aria-label="Map panel"
@@ -79,6 +83,7 @@ export default function ChatLayout() {
             <Outlet />
           </div>
         </SidebarInset>
+        </MapResultProvider>
       </ActiveAoiProvider>
     </SidebarProvider>
   );

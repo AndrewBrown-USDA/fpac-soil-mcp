@@ -108,7 +108,7 @@ def test_phase3_multi_county_corridor_analyzer_contract():
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(
+    urban_record = UrbanExemptionRecord(
         status=IntegrationStatus.SUCCESS,
         geometry_hash="sha256:test1234",
         provenance=Provenance(
@@ -122,6 +122,7 @@ def test_phase3_multi_county_corridor_analyzer_contract():
         urban_area_names=[],
         screened_acreage=0.0,
     )
+    mock_tiger.check_urban_exemption_with_geometries.return_value = (urban_record, [])
 
     buf = buffer_centerline(sc2["centerline"], sc2["buffer_distance"], sc2["buffer_units"])
     tot_ac = calculate_acreage(buf)
@@ -224,7 +225,7 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(
+    urban_record = UrbanExemptionRecord(
         status=IntegrationStatus.SUCCESS,
         geometry_hash="sha256:wkt123",
         provenance=Provenance(
@@ -238,6 +239,7 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
         urban_area_names=[],
         screened_acreage=0.0,
     )
+    mock_tiger.check_urban_exemption_with_geometries.return_value = (urban_record, [])
     mock_tiger.get_intersecting_counties.return_value = [
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]
@@ -571,7 +573,7 @@ def test_contract_alternative_composite_le_scoring():
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(
+    urban_record = UrbanExemptionRecord(
         status=IntegrationStatus.SUCCESS,
         geometry_hash="sha256:alt123",
         provenance=Provenance(
@@ -585,6 +587,7 @@ def test_contract_alternative_composite_le_scoring():
         urban_area_names=[],
         screened_acreage=0.0,
     )
+    mock_tiger.check_urban_exemption_with_geometries.return_value = (urban_record, [])
     mock_tiger.get_intersecting_counties.return_value = [
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]
@@ -743,7 +746,7 @@ def test_contract_sum_reconciliation_warning_appended_to_limitations():
     mock_sda.get_interpretations.return_value = []
 
     mock_tiger = MagicMock(spec=TigerwebClient)
-    mock_tiger.check_urban_exemption.return_value = UrbanExemptionRecord(
+    urban_record = UrbanExemptionRecord(
         status=IntegrationStatus.SUCCESS,
         geometry_hash="sha256:recon123",
         provenance=Provenance(
@@ -757,6 +760,7 @@ def test_contract_sum_reconciliation_warning_appended_to_limitations():
         urban_area_names=[],
         screened_acreage=0.0,
     )
+    mock_tiger.check_urban_exemption_with_geometries.return_value = (urban_record, [])
     mock_tiger.get_intersecting_counties.return_value = [
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]

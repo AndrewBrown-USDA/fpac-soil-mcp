@@ -88,6 +88,16 @@ class Settings(BaseSettings):
         description="Allowlist of supported component aggregation methods",
     )
 
+    # Map Result Configuration (ADR 0017)
+    map_simplify_tolerance_m: float = Field(
+        default=1.0,
+        description="Display-only simplification tolerance in metres (EPSG:6933); 0 disables",
+    )
+    map_max_geojson_bytes: int = Field(
+        default=2_000_000,
+        description="Maximum serialized GeoJSON bytes across map layers per response",
+    )
+
     # MCP Server Configuration
     mcp_transport: str = Field(
         default="stdio",
@@ -126,6 +136,20 @@ class Settings(BaseSettings):
     def _validate_retries(cls, v: int) -> int:
         if v < 0:
             raise ValueError("max_retries cannot be negative.")
+        return v
+
+    @field_validator("map_simplify_tolerance_m")
+    @classmethod
+    def _validate_map_tolerance(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("map_simplify_tolerance_m cannot be negative.")
+        return v
+
+    @field_validator("map_max_geojson_bytes")
+    @classmethod
+    def _validate_map_max_bytes(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("map_max_geojson_bytes must be a positive number of bytes.")
         return v
 
     @field_validator("nass_census_year")

@@ -153,6 +153,16 @@ def test_note_without_summary():
     assert str(MARK) not in note
 
 
+@pytest.mark.parametrize("summary", ["default", None])
+def test_note_tells_the_model_to_call_the_tool_when_asked(summary):
+    # Trial 44.8.1: with a summary attached the model answered "screen this AOI" from
+    # the summary and made no tool call.
+    raw = _active() if summary == "default" else _active(summary=None)
+    note = instruction_note(parse_active_aoi(raw))
+    assert "When the user asks to run, screen or analyze this AOI, call the tool" in note
+    assert "do not answer such a request from the summary alone" in note
+
+
 # --- argument substitution ---------------------------------------------------------------
 
 
