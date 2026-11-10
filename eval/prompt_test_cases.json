@@ -1,5 +1,5 @@
 {
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Structured test cases and natural-language prompt benchmarks for FPAC Soil MCP Server tools, resources, and prompt templates.",
   "test_cases": [
     {
@@ -586,15 +586,6 @@
       "target_name": "fppa_site_assessment_assistant",
       "user_prompt": "Guide me through the Site Assessment questions using the published criteria resource. Ask for the criterion-specific evidence that is missing; do not assign points, select a site, or recommend an alternative.",
       "expected_tools": [],
-      "expected_tool_calls": [
-        {
-          "name": "get_prompt",
-          "arguments": {
-            "name": "fppa_site_assessment_assistant",
-            "arguments": {}
-          }
-        }
-      ],
       "expected_keywords": [
         "site assessment",
         "unknown",
@@ -605,7 +596,8 @@
         "The response identifies the discussion as preliminary and not an official FPPA determination, LESA score, or completed form."
       ],
       "guidelines": [
-        "Do not invent subjective Site Assessment points or recommend or select a site, footprint, or alternative."
+        "Do not invent subjective Site Assessment points or recommend or select a site, footprint, or alternative.",
+        "Any retrieval path to the Site Assessment criteria (get_prompt, read_resource, or explain_fppa_screening_scope) is acceptable."
       ],
       "evidence_tier": "model_assisted"
     },
@@ -666,7 +658,8 @@
         "The result is preliminary and not an official FPPA determination, LESA score, or completed form."
       ],
       "guidelines": [
-        "Do not fabricate subjective Site Assessment points, treat missing inputs as zero, or claim a threshold result from an unevaluable total."
+        "Do not fabricate subjective Site Assessment points, treat missing inputs as zero, or claim a threshold result from an unevaluable total.",
+        "The agent may retrieve regulatory context resources before calling the calculation tool."
       ],
       "force_tool_use": true,
       "evidence_tier": "model_assisted",
@@ -705,15 +698,6 @@
       "target_name": "fppa_site_assessment_assistant",
       "user_prompt": "I have no criterion-specific Site Assessment evidence or site comparisons yet. Explain the regulatory consequence of that limitation and what information would be needed, without assigning points or selecting a site, footprint, or preferred alternative.",
       "expected_tools": [],
-      "expected_tool_calls": [
-        {
-          "name": "get_prompt",
-          "arguments": {
-            "name": "fppa_site_assessment_assistant",
-            "arguments": {}
-          }
-        }
-      ],
       "expected_keywords": [
         "preliminary",
         "unknown",
@@ -724,7 +708,8 @@
         "The response describes preliminary screening and does not present an official FPPA determination or completed form."
       ],
       "guidelines": [
-        "Do not invent Site Assessment points or recommend or select a site, footprint, or preferred alternative."
+        "Do not invent Site Assessment points or recommend or select a site, footprint, or preferred alternative.",
+        "Any retrieval path to the Site Assessment criteria (get_prompt, read_resource, or explain_fppa_screening_scope) is acceptable."
       ],
       "evidence_tier": "model_assisted"
     },
@@ -780,12 +765,12 @@
         "preliminary"
       ],
       "expected_facts": [
-        "The selected productivity index is reported from the tool result and is not silently replaced with NCCPI.",
+        "CSR2 is the primary productivity index for scoring; NCCPI may appear as supplementary national-baseline context but does not replace CSR2.",
         "Rating provenance and coverage are reported from the tool result; unavailable evidence is identified rather than inferred.",
         "The result is preliminary and not an official FPPA determination or LESA score."
       ],
       "guidelines": [
-        "Do not invent ratings, provenance, or coverage; do not silently substitute NCCPI for the requested validated productivity index."
+        "Do not invent ratings, provenance, or coverage. CSR2 must remain the primary productivity index; supplementary NCCPI context alongside it is acceptable."
       ],
       "force_tool_use": true,
       "evidence_tier": "model_assisted",

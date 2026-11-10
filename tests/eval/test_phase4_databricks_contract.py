@@ -110,7 +110,7 @@ def test_site_assessment_expectations_do_not_reward_fabrication_or_siting() -> N
     assert "rather than being treated as zero" in lesa_facts
     assert "unevaluable total" in lesa_facts
     property_facts = " ".join(cases[3]["expected_facts"]).casefold()
-    assert "not silently replaced" in property_facts
+    assert "does not replace csr2" in property_facts
     assert "rather than inferred" in property_facts
 
 

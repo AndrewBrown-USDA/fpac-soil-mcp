@@ -73,7 +73,7 @@
       "user_prompt": "Analyze this synthetic Iowa AOI with the validated CSR2 productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Explain which productivity index the tool used, preserve the returned rating provenance and coverage status, and state when evidence is unavailable rather than silently substituting NCCPI.",
       "expected_keywords": ["CSR2", "productivity", "provenance", "coverage", "preliminary"],
       "expected_facts": [
-        "The selected productivity index is reported from the tool result and is not silently replaced with NCCPI.",
+        "CSR2 is the primary productivity index for scoring; NCCPI may appear as supplementary national-baseline context but does not replace CSR2.",
         "Rating provenance and coverage are reported from the tool result; unavailable evidence is identified rather than inferred.",
         "The result is preliminary and not an official FPPA determination or LESA score."
       ],

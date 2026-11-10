@@ -73,15 +73,9 @@ def test_checked_in_dataset_validates() -> None:
     assert dataset_version(DEFAULT_PATH).split(".")[0] in {"1", "2"}
     by_id = {case["id"]: case for case in cases}
     for case_id in ("SA-MA-01", "SA-MA-03"):
-        assert by_id[case_id]["expected_tool_calls"] == [
-            {
-                "name": "get_prompt",
-                "arguments": {
-                    "name": "fppa_site_assessment_assistant",
-                    "arguments": {},
-                },
-            }
-        ]
+        assert "expected_tool_calls" not in by_id[case_id], (
+            f"{case_id} should not prescribe a retrieval path"
+        )
     lesa_case = by_id["SA-MA-02"]
     assert "project Synthetic SA-MA-02" in lesa_case["user_prompt"]
     assert "project_type site" in lesa_case["user_prompt"]
