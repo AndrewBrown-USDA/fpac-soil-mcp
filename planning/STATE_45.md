@@ -29,9 +29,9 @@
 | 2 | 45.2.1 Wire fact-based inputs and question resource | done |
 | 2 | 45.2.2 Correct wording and authority gaps | done |
 | 2 | gate Site Assessment integration | passed |
-| 3 | 45.3.1 Preserve selected property through aggregation | pending |
-| 3 | 45.3.2 Reconcile coverage, maxima, and provenance | pending |
-| 3 | gate aggregation and relevant live tests | pending |
+| 3 | 45.3.1 Preserve selected property through aggregation | done |
+| 3 | 45.3.2 Reconcile coverage, maxima, and provenance | done |
+| 3 | gate aggregation and relevant live tests | passed |
 | 4 | 45.4.1 Build deterministic gold-set evidence | pending |
 | 4 | 45.4.2 Separate model-assisted evidence and diagnostics | pending |
 | 4 | 45.4.3 Synchronize docs and closeout evidence | pending |
@@ -81,4 +81,24 @@
 - **Deviations:** stale “220 points” and resource expectations were updated.
 - **Gotchas:** prompts now require registry questions, unknown handling, and
   non-prescriptive consequences.
+
+## 45.3.1
+
+- **Status:** done.
+- **Files:** polygon/corridor/LESA aggregation, focused regression tests,
+  multi-county productivity fixture, and TODO.
+- **Checks:** targeted aggregation suite 65 passed after fixture corrections;
+  combined SDV/aggregation suite 140 passed; full gate 731 passed, 3 skipped,
+  45 deselected; Ruff clean.
+- **Deviations:** none.
+- **Gotchas:** selected property and county maxima remain explicit across paths.
+
+## 45.3.2
+
+- **Status:** done.
+- **Files:** `sda_client.py`, `models.py`, SDV contract tests, and TODO.
+- **Checks:** targeted SDV/multi-county tests 80 passed; `sda_client.py`
+  compiles cleanly; full gate 731 passed, 3 skipped, 45 deselected.
+- **Deviations:** none.
+- **Gotchas:** missing/partial coverage and provenance are explicit states.
 
