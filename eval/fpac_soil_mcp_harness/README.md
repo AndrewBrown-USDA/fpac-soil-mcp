@@ -118,6 +118,22 @@ versioned cross-surface prompt policy and its limits are summarized in the
 See [Orchestration 46 state](../../planning/STATE_46.md) for the scorer gate
 results and limitations.
 
+A case runs only the predicates listed in its `assertions.predicates`; the
+`expected_status`, behavior, and budget fields alone do not trigger checks. Each
+`ADV-*` case in `eval_cases.v1.json` is wired to predicates that this workbench
+can check directly. Prompt cases check that the rendered MCP prompt keeps the
+preliminary-screening, regulatory-limitation, and no-siting language.
+`ADV-GEOMETRY-01` checks the tool's returned status. Model behavior, tool-call
+budgets, and retries for these cases are scored by the Pi and Databricks
+runners, not here.
+
+Prohibited-behavior IDs come from the shared catalog
+[`../common/prohibited_behaviors.v1.json`](../common/prohibited_behaviors.v1.json),
+which `lib/evalAssertions.js` and `eval/common/matching.py` both read. Keep IDs,
+patterns, and negation there rather than in either scorer. Unknown IDs fail
+closed. `npm test` checks that every `ADV-*` case has predicates and uses only
+catalogued IDs.
+
 ## REST API (used by the UI)
 
 | Method | Path | Purpose |
