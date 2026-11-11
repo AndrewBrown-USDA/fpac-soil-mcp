@@ -835,6 +835,40 @@ class TestSDAClientExecution:
         assert results[0]["sdv_provenance"]["id"] == "SDA:COMPONENT_CROPPRODINDEX"
         assert results[0]["sdv_provenance"]["registry_version"] == "1"
 
+    def test_crop_yield_mixed_units_are_unrated_in_coverage_status(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                    "unit_count",
+                    "yldunits_min",
+                    "yldunits_max",
+                ],
+                ["1001", "IA169", "138B", "Clarion loam", 91.0, 100.0, 100.0, 2, "Bu", "T"],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert b"cocropyld" in request.content
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        result = client.get_productivity_ratings(
+            ["1001"],
+            attribute_meta=_sdv(_YIELD, cropname="Corn"),
+        )[0]
+        assert result["numeric_rating"] is None
+        assert result["is_rated"] is False
+        assert result["rated_pct"] == 100.0
+        assert result["coverage_status"] == "unrated"
+        assert any("Mixed yield units" in caveat for caveat in result["caveats"])
+
     def test_get_productivity_ratings_unregistered_meta_rejected_without_sda_call(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             raise AssertionError("unregistered metadata must not reach SDA")

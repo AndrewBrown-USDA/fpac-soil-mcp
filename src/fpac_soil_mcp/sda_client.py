@@ -1850,6 +1850,7 @@ class SDAClient:
                         "numeric_rating": None,
                         "rated_pct": 0.0,
                         "total_pct": 0.0,
+                        "coverage_status": "not_found",
                         "is_rated": False,
                         "caveats": [SDV_CAVEATS["not_found"]],
                         "sdv_provenance": dict(provenance),
@@ -1890,6 +1891,13 @@ class SDAClient:
                     )
                 )
 
+            if is_rated:
+                coverage_status = "partial" if rated_pct < total_pct else "rated"
+            elif rated_pct > 0 or total_pct > 0:
+                coverage_status = "unrated"
+            else:
+                coverage_status = "no_coverage"
+
             row_provenance = dict(provenance)
 
             # Crop yields (D7): a single yldunits per map unit, otherwise unrated.
@@ -1906,6 +1914,11 @@ class SDAClient:
                     row_provenance["yldunits"] = None
                 else:
                     row_provenance["yldunits"] = yld_min
+
+            if is_rated:
+                coverage_status = "partial" if total_pct > 0 and rated_pct < total_pct else "rated"
+            else:
+                coverage_status = "unrated" if rated_pct > 0 or total_pct > 0 else "no_coverage"
 
             # Method and scope caveats, fixed order.
             if spec.algorithm == "Dominant Condition":
@@ -1935,6 +1948,7 @@ class SDAClient:
                     "numeric_rating": numeric_rating,
                     "rated_pct": round(rated_pct, 2),
                     "total_pct": round(total_pct, 2),
+                    "coverage_status": coverage_status,
                     "is_rated": is_rated,
                     "caveats": caveats,
                     "sdv_provenance": row_provenance,

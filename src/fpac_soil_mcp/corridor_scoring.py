@@ -11,9 +11,9 @@ Key statutory rules under 7 CFR § 658.5(c):
 - Criteria 9, 10, 12: Standard parameters (Max: 5, 20, 10 pts).
 - Total Site Assessment (SA) maximum: 160 points.
 - Combined LESA score (LE + SA) maximum: 260 points.
-- Threshold Rule (§ 658.4(c)(2)): Total score >= 160 points requires consideration of
-  alternatives to avoid or minimize farmland conversion. Total score < 160 requires no
-  further farmland protection consideration.
+- Threshold guidance (§ 658.4(c)(2)-(4)): Scores below 160 need not receive further
+  consideration for protection; USDA recommends increasing levels of protection consideration
+  for scores of 160 or more, with agencies considering alternatives when deciding on an action.
 """
 
 from __future__ import annotations
@@ -182,18 +182,21 @@ class LESAEvaluationResult(BaseModel):
     )
     threshold_score: int = Field(
         default=LESA_THRESHOLD_SCORE,
-        description="Statutory threshold under 7 CFR § 658.4(c)(2) (160 points)",
+        description="160-point threshold described in 7 CFR § 658.4(c)(2)-(4)",
     )
     threshold_exceeded: bool | None = Field(
         default=None,
-        description="True if total LESA score >= 160, False if < 160, None if LE unavailable",
+        description=(
+            "True if the score is 160 or more, False if below 160, None if LE is unavailable; "
+            "this indicates consideration guidance, not a requirement to select an alternative"
+        ),
     )
     statutory_determination: str = Field(
         description="Statutory recommendation under 7 CFR § 658.4(c)",
     )
     recommended_actions: list[str] = Field(
         default_factory=list,
-        description="Required or recommended agency actions based on LESA score",
+        description="Recommended or regulatory consideration guidance based on the LESA score",
     )
     regulatory_notice: str = Field(
         default=REGULATORY_NOTICE,
@@ -402,10 +405,11 @@ def evaluate_corridor_lesa(
 ) -> LESAEvaluationResult:
     """Combine Land Evaluation and Site Assessment into a complete LESA determination.
 
-    Evaluates the 160-point threshold rule (§ 658.4(c)(2)):
-    - If Total < 160 points: Site requires no further farmland protection review.
-    - If Total >= 160 points: Agency must consider alternatives to avoid farmland conversion,
-      alternative designs, and measures to minimize corridor impact (§ 658.4(c)(3)-(4)).
+    Evaluates the 160-point guidance in § 658.4(c)(2)-(4):
+    - If Total < 160 points: Further consideration for protection and additional site evaluation
+      are not needed.
+    - If Total >= 160 points: USDA recommends increasing levels of consideration for protection;
+      agency personnel consider alternatives and other factors when deciding on an action.
     - If LE is None: Returns partial evaluation without false below-threshold determination.
 
     Args:
@@ -442,8 +446,7 @@ def evaluate_corridor_lesa(
     if threshold_exceeded:
         determination = STATUTORY_DETERMINATIONS["THRESHOLD_EXCEEDED"].format(total_lesa=total_lesa)
         actions = [
-            "Assess alternative corridor alignments that avoid or minimize conversion of farmland (7 CFR § 658.4(c)(3)).",
-            "Evaluate corridor designs with reduced right-of-way widths or alternative construction access to minimize acreage taken (7 CFR § 658.4(c)(4)).",
+            "For scores of 160 or more, USDA recommends increasing levels of consideration for protection; when deciding on an action, agency personnel consider corridor alternatives and designs that convert fewer acres or lower-value farmland (7 CFR § 658.4(c)(3)-(4)).",
             "Consult with USDA NRCS State/Local Conservationist to review Site Assessment criteria scores and mitigation options.",
             "Complete official USDA Form NRCS-CPA-106 prior to final federal project approval.",
         ]

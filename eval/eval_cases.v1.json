@@ -3,6 +3,235 @@
   "description": "Declarative deterministic MCP contract cases for the local harness.",
   "test_cases": [
     {
+      "id": "SA-MA-01",
+      "category": "Phase 4 model-assisted Site Assessment guidance",
+      "target_type": "prompt",
+      "target_name": "fppa_site_assessment_assistant",
+      "user_prompt": "Guide me through the Site Assessment questions using the published criteria resource. Ask for the criterion-specific evidence that is missing; do not assign points, select a site, or recommend an alternative.",
+      "expected_facts": [
+        "Unknown Site Assessment criteria remain unknown until supported evidence is supplied; the response asks for missing evidence rather than assigning points.",
+        "The response identifies the discussion as preliminary and not an official FPPA determination, LESA score, or completed form."
+      ],
+      "assertions": {
+        "predicates": [
+          "containsRegulatoryLimitation",
+          "noSitingRecommendation"
+        ]
+      },
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": [
+        "fabricated_subjective_score",
+        "siting_recommendation"
+      ],
+      "expected_keywords": []
+    },
+    {
+      "id": "SA-MA-02",
+      "category": "Phase 4 model-assisted missing-input handling",
+      "target_type": "tool",
+      "target_name": "calculate_preliminary_lesa",
+      "user_prompt": "For project Synthetic SA-MA-02, use project_type site and calculate the preliminary LESA result using NCCPI for this AOI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Report missing criteria as unavailable or incomplete, not zero; do not invent points or claim a threshold result from an unevaluable total.",
+      "expected_keywords": [
+        "incomplete",
+        "unavailable",
+        "preliminary"
+      ],
+      "expected_facts": [
+        "The requested calculator input is a GeoJSON site polygon with no Site Assessment facts or farm-size inputs supplied.",
+        "Missing Part VI facts remain unavailable or incomplete rather than being treated as zero.",
+        "An unevaluable total is not presented as meeting or failing the statutory threshold.",
+        "The result is preliminary and not an official FPPA determination, LESA score, or completed form."
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -93.65,
+              42.02
+            ],
+            [
+              -93.63,
+              42.02
+            ],
+            [
+              -93.63,
+              42.04
+            ],
+            [
+              -93.65,
+              42.04
+            ],
+            [
+              -93.65,
+              42.02
+            ]
+          ]
+        ]
+      },
+      "invocation": {
+        "kind": "tool",
+        "name": "calculate_preliminary_lesa",
+        "arguments": {
+          "project_name": "Synthetic SA-MA-02",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  -93.65,
+                  42.02
+                ],
+                [
+                  -93.63,
+                  42.02
+                ],
+                [
+                  -93.63,
+                  42.04
+                ],
+                [
+                  -93.65,
+                  42.04
+                ],
+                [
+                  -93.65,
+                  42.02
+                ]
+              ]
+            ]
+          },
+          "project_type": "site"
+        }
+      },
+      "assertions": {
+        "predicates": [
+          "containsRegulatoryLimitation",
+          "noFabricatedScore"
+        ]
+      },
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": [
+        "missing_input_as_zero",
+        "fabricated_subjective_score"
+      ]
+    },
+    {
+      "id": "SA-MA-03",
+      "category": "Phase 4 model-assisted non-prescriptive behavior",
+      "target_type": "prompt",
+      "target_name": "fppa_site_assessment_assistant",
+      "user_prompt": "I have no criterion-specific Site Assessment evidence or site comparisons yet. Explain the regulatory consequence of that limitation and what information would be needed, without assigning points or selecting a site, footprint, or preferred alternative.",
+      "expected_facts": [
+        "No Site Assessment points or site preference can be supported without criterion-specific evidence and site comparisons.",
+        "The response describes preliminary screening and does not present an official FPPA determination or completed form."
+      ],
+      "assertions": {
+        "predicates": [
+          "containsRegulatoryLimitation",
+          "noSitingRecommendation"
+        ]
+      },
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": [
+        "fabricated_subjective_score",
+        "siting_recommendation",
+        "preferred_alternative"
+      ],
+      "expected_keywords": []
+    },
+    {
+      "id": "SA-MA-04",
+      "category": "Phase 4 model-assisted selected-property explanation",
+      "target_type": "tool",
+      "target_name": "analyze_farmland_by_polygon",
+      "user_prompt": "Analyze this synthetic Iowa AOI with the validated CSR2 productivity index: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. Explain which productivity index the tool used, preserve the returned rating provenance and coverage status, and state when evidence is unavailable rather than silently substituting NCCPI.",
+      "expected_keywords": [
+        "CSR2",
+        "productivity",
+        "provenance",
+        "coverage",
+        "preliminary"
+      ],
+      "expected_facts": [
+        "CSR2 is the primary productivity index for scoring; NCCPI may appear as supplementary national-baseline context but does not replace CSR2.",
+        "Rating provenance and coverage are reported from the tool result; unavailable evidence is identified rather than inferred.",
+        "The result is preliminary and not an official FPPA determination or LESA score."
+      ],
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -93.65,
+              42.02
+            ],
+            [
+              -93.63,
+              42.02
+            ],
+            [
+              -93.63,
+              42.04
+            ],
+            [
+              -93.65,
+              42.04
+            ],
+            [
+              -93.65,
+              42.02
+            ]
+          ]
+        ]
+      },
+      "invocation": {
+        "kind": "tool",
+        "name": "analyze_farmland_by_polygon",
+        "arguments": {
+          "geojson": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  -93.65,
+                  42.02
+                ],
+                [
+                  -93.63,
+                  42.02
+                ],
+                [
+                  -93.63,
+                  42.04
+                ],
+                [
+                  -93.65,
+                  42.04
+                ],
+                [
+                  -93.65,
+                  42.02
+                ]
+              ]
+            ]
+          },
+          "productivity_index": "csr2"
+        }
+      },
+      "assertions": {
+        "predicates": [
+          "containsRegulatoryLimitation",
+          "preservesSelectedProperty"
+        ]
+      },
+      "evidence_tier": "model_assisted",
+      "prohibited_behaviors": [
+        "silent_nccpi_fallback",
+        "fabricated_rating_or_provenance"
+      ]
+    },
+    {
       "id": "CORR-01",
       "category": "Representative polygon/corridor contract",
       "target_type": "tool",
@@ -14,9 +243,18 @@
           "centerline": {
             "type": "LineString",
             "coordinates": [
-              [-93.62, 42.0],
-              [-93.58, 42.06],
-              [-93.5, 42.1]
+              [
+                -93.62,
+                42.0
+              ],
+              [
+                -93.58,
+                42.06
+              ],
+              [
+                -93.5,
+                42.1
+              ]
             ]
           },
           "buffer_distance": 75,
@@ -25,11 +263,26 @@
             "type": "Polygon",
             "coordinates": [
               [
-                [-93.56, 42.07],
-                [-93.54, 42.07],
-                [-93.54, 42.09],
-                [-93.56, 42.09],
-                [-93.56, 42.07]
+                [
+                  -93.56,
+                  42.07
+                ],
+                [
+                  -93.54,
+                  42.07
+                ],
+                [
+                  -93.54,
+                  42.09
+                ],
+                [
+                  -93.56,
+                  42.09
+                ],
+                [
+                  -93.56,
+                  42.07
+                ]
               ]
             ]
           },
@@ -41,10 +294,17 @@
       },
       "expected_result": {
         "type": "object",
-        "required": ["preliminary_screening", "segments"],
+        "required": [
+          "preliminary_screening",
+          "segments"
+        ],
         "properties": {
-          "preliminary_screening": { "type": "boolean" },
-          "segments": { "type": "array" }
+          "preliminary_screening": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array"
+          }
         }
       },
       "assertions": {

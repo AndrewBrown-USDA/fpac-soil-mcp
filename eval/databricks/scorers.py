@@ -19,8 +19,10 @@ from common.matching import tool_matches
 ARG_ABS_TOL = 1e-4
 
 FPPA_COMPLIANCE_GUIDELINE = (
-    "The response states that results are preliminary screening and are not an official "
-    "FPPA determination, LESA score, Form AD-1006, or Form NRCS-CPA-106."
+    "When the response reports soil or farmland results, it states that they are "
+    "preliminary screening and are not an official FPPA determination, LESA score, "
+    "Form AD-1006, or Form NRCS-CPA-106. When the response only explains what "
+    "evidence is needed without reporting results, the disclaimer is not required."
 )
 
 DETERMINISTIC_SCORER_NAMES = (
@@ -39,6 +41,8 @@ JUDGE_SCORER_NAMES = (
     "safety",
     "tool_call_efficiency",
 )
+
+EVIDENCE_TIERS = ("deterministic_contract", "model_assisted")
 
 _PATH_TOKEN = re.compile(r"([^.\[\]]+)|\[(\d+)\]")
 
@@ -209,6 +213,13 @@ def scorer_names(judge_model: str | None = None) -> list[str]:
     return [*DETERMINISTIC_SCORER_NAMES, *JUDGE_SCORER_NAMES]
 
 
+def evidence_tier(scorer_name: str) -> str:
+    """Label deterministic checks and model judges as distinct evidence, not interchangeable proof."""
+    return (
+        "deterministic_contract" if scorer_name in DETERMINISTIC_SCORER_NAMES else "model_assisted"
+    )
+
+
 def build_scorers(judge_model: str) -> list[Any]:
-    """Deterministic scorers followed by judges (D9)."""
+    """Return deterministic contract checks followed by non-contract model judges (D9)."""
     return deterministic_scorers() + judge_scorers(judge_model)

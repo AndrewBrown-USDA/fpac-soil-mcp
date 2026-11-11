@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 
 from fpac_soil_mcp.constants import CITATIONS, REGULATORY_LIMITATIONS, REGULATORY_NOTICE
 from fpac_soil_mcp.fppa import get_farmland_class_list, get_fppa_scope_explanation
+from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
 
 
 def register_fppa_resources(mcp: FastMCP) -> None:
@@ -33,3 +34,11 @@ def register_fppa_resources(mcp: FastMCP) -> None:
         """Reference listing of SSURGO farmland classification categories and criteria."""
         class_list = get_farmland_class_list()
         return json.dumps(class_list, indent=2)
+
+    @mcp.resource("fppa://site-assessment-criteria")
+    def get_site_assessment_criteria_resource() -> str:
+        """Validated Site Assessment questions, answer forms, and scoring rules."""
+        return json.dumps(
+            SITE_ASSESSMENT_REGISTRY.model_dump(mode="json", by_alias=True),
+            indent=2,
+        )

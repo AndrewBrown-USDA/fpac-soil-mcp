@@ -9,6 +9,7 @@ import express from "express";
 import { HARNESS_ROOT, config, defaultUrlFor, publicConfig, splitArgs } from "./lib/config.js";
 import { McpBridge } from "./lib/mcpBridge.js";
 import { buildPresets, checkKeywords, loadEvalCases } from "./lib/evalCases.js";
+import { evaluateResult } from "./lib/evalAssertions.js";
 
 const app = express();
 const bridge = new McpBridge();
@@ -207,10 +208,18 @@ app.post(
     try {
       const out = await invoke(invocation, timeoutMs);
       const isError = invocation.kind === "tool" && Boolean(out.result?.isError);
-      const keywords = checkKeywords(tc.expected_keywords, responseText(invocation.kind, out));
-      const passed = !isError && keywords.missing.length === 0;
+      const text = responseText(invocation.kind, out);
+      const keywords = checkKeywords(tc.expected_keywords, text);
+      const assertions = evaluateResult({
+        value: out.payload ?? out.result?.structuredContent ?? out.result?.messages,
+        responseText: text,
+        expectedResult: tc.expected_result,
+        predicates: tc.assertions?.predicates || [],
+        context: { invocation },
+      });
+      const passed = !isError && keywords.missing.length === 0 && assertions.status === "pass";
       record({ kind: `eval:${invocation.kind}`, name: tc.id, durationMs: out.durationMs, ok: passed });
-      res.json({ id: tc.id, invocation, passed, isError, keywords, durationMs: out.durationMs, output: out });
+      res.json({ id: tc.id, invocation, passed, isError, keywords, assertions, durationMs: out.durationMs, output: out });
     } catch (err) {
       record({ kind: `eval:${invocation.kind}`, name: tc.id, ok: false, error: errorInfo(err).message });
       res.json({
@@ -219,6 +228,13 @@ app.post(
         passed: false,
         isError: true,
         keywords: { found: [], missing: tc.expected_keywords || [] },
+        assertions: evaluateResult({
+          value: null,
+          responseText: "",
+          expectedResult: tc.expected_result,
+          predicates: tc.assertions?.predicates || [],
+          context: { invocation },
+        }),
         durationMs: Date.now() - started,
         error: errorInfo(err),
       });

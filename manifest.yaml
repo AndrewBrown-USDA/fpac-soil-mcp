@@ -20,7 +20,7 @@ tools:
   - name: get_soil_interpretations
     description: Retrieve component-weighted soil interpretations (such as NCCPI v3 crop productivity) from USDA NRCS Soil Data Access (SDA) for a list of map unit keys (mukeys).
   - name: calculate_preliminary_lesa
-    description: Calculate preliminary Land Evaluation and Site Assessment (LESA) scores and statutory threshold triggers. Performs spatial SSURGO soil clipping across the AOI geometry, computes area-weighted Land Evaluation (LE, 0-100), evaluates statutory Site Assessment (SA, 0-160) criteria for Form AD-1006 (site) or Form NRCS-CPA-106 (corridor), and enforces the statutory 160-point mandatory alternatives consideration threshold under 7 CFR § 658.4(c)(2).
+    description: Calculate preliminary Land Evaluation and Site Assessment (LESA) scores and statutory threshold states. Accepts validated fact-based Site Assessment inputs or rationale-required analyst-proposed overrides, preserves unavailable and indeterminate criteria, and reports authority/provenance. Performs spatial SSURGO soil clipping across the AOI geometry, computes area-weighted Land Evaluation (LE, 0-100), evaluates Site Assessment (SA, 0-160) criteria for Form AD-1006 (site) or Form NRCS-CPA-106 (corridor), and applies the preliminary 160-point consideration guidance under 7 CFR § 658.4(c)(2)-(4) without issuing an official determination.
   - name: analyze_corridor_fppa
     description: Execute multi-county linear corridor FPPA screening, topological erasure of indirect staging areas, Census TIGERweb county partitioning, USDA SDA soil intersection, NASS agricultural baseline queries, composite LE calculation, sum reconciliation, and optional 7 CFR § 658.5(c) Form NRCS-CPA-106 LESA scoring.
   - name: explain_fppa_screening_scope
@@ -37,6 +37,9 @@ resources:
   - uri: fppa://farmland-classes
     name: Farmland Classes Reference
     description: Reference listing of SSURGO farmland classification categories and statutory criteria.
+  - uri: fppa://site-assessment-criteria
+    name: Site Assessment Criteria
+    description: Validated Site Assessment questions, answer forms, scoring rules, citations, and unavailable semantics.
 prompts:
   - name: fppa_screening_assistant
     description: Guides AI assistants through compliant FPPA preliminary screening, tool selection across all 11 tools, and regulatory disclaimers.

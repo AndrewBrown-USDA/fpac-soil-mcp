@@ -68,6 +68,8 @@ uv run pytest -m live_network
 - `apps\agent-fpac-soil-openai-sdk\` - Databricks chat agent app that calls the deployed MCP server; separate uv project; see its nested `AGENTS.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
 - `docs\decisions\` - durable architecture decision records.
+- `docs\cfr\` - eCFR reference copies of 7 CFR Part 657 (prime and unique farmlands) and Part 658 (FPPA, LESA and Site Assessment criteria): source XML, generated Markdown, and `manifest.json`; see `docs\cfr\README.md`.
+- `scripts\fetch_ecfr.py` - standard-library eCFR fetcher behind `make ecfr` (refresh `docs\cfr\`) and `make ecfr-check` (stale check).
 - `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md` (product mission, target architecture, governance, server roadmap, and delivery tracks), then inspect the directory for execution-specific files.
 - `pyproject.toml` - package metadata, dependencies, script entry point, pytest markers, and Ruff settings.
 - `Makefile` - canonical install, run, test, evaluation, lint, format, and Docker targets.
@@ -147,6 +149,7 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 
 - Preserve the preliminary-screening limitation in every soil-query response: this service does not produce an official FPPA determination, LESA score, Form AD-1006, or NRCS-CPA-106.
 - Keep regulatory language and citations centralized in `constants.py`; do not duplicate divergent notices in tools.
+- Check regulatory wording, point schedules, and citations (for example the Site Assessment bands in `data\site_assessment.v1.json`) against `docs\cfr\`, not memory or model recall. Run `make ecfr-check` before relying on the stored copies and `make ecfr` to refresh them; never edit the generated files by hand.
 - Accept only validated coordinates or numeric positive `mukey` values. Do not add user-supplied SQL passthrough.
 - Keep SDA queries in fixed templates and retain explicit errors, retry behavior, source metadata, and coverage status.
 - Enforce Section 1619 and coordinate privacy protections via `privacy.py` where agricultural producer data or sensitive locations are processed.
@@ -163,6 +166,8 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 - `planning\MASTER_PLAN.md` - product mission, target architecture, governance, server roadmap, and delivery tracks.
 - `docs\decisions\` - architecture decision records.
 - `docs\sdv-metadata-contract.md` - SDV metadata rating contract: registry records, validation, per-table behavior, provenance IDs, caveats.
+- `docs\cfr\title-7-part-657.md` and `docs\cfr\title-7-part-658.md` - readable eCFR text of 7 CFR Parts 657 and 658 (as-of date and hashes in `docs\cfr\manifest.json`).
+- [eCFR 7 CFR Part 658](https://www.ecfr.gov/current/title-7/part-658) and [eCFR 7 CFR Part 657](https://www.ecfr.gov/current/title-7/part-657)
 - [FastMCP documentation](https://gofastmcp.com/)
 - [USDA NRCS Soil Data Access](https://sdmdataaccess.nrcs.usda.gov/)
 - [USDA Web Soil Survey](https://websoilsurvey.sc.egov.usda.gov/)

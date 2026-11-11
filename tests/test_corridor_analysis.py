@@ -8,7 +8,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer, _get_corridor_ratings
+from fpac_soil_mcp.corridor_analysis import (
+    CorridorAnalyzer,
+    _coverage_is_complete,
+    _get_corridor_ratings,
+)
 from fpac_soil_mcp.integration_models import (
     CountyAgProfile,
     IntegrationStatus,
@@ -171,6 +175,11 @@ def test_corridor_analysis_two_counties():
     assert response.reconciliation_summary["reconciliation_passed"] is True
     assert response.reconciliation_summary["variance_pct"] <= 0.1
     assert response.composite_relative_rating is not None
+    assert all(
+        unit.productivity_rating_source == "SDA:NCCPI_V3"
+        for segment in response.county_segments
+        for unit in segment.map_units
+    )
     assert response.tabular_csv != ""
     assert "Story" in response.tabular_csv
     assert "Boone" in response.tabular_csv
@@ -693,7 +702,15 @@ def test_corridor_partially_covered_status():
         }
     ]
     mock_sda.get_productivity_ratings.return_value = [
-        {"mukey": "1001", "numeric_rating": "0.85", "rating_class": "High"}
+        {
+            "mukey": "1001",
+            "numeric_rating": "0.85",
+            "rating_class": "High",
+            "rated_pct": 50.0,
+            "total_pct": 100.0,
+            "coverage_status": "partial",
+            "caveats": ["Partially rated: 50% of component area."],
+        }
     ]
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
@@ -726,7 +743,38 @@ def test_corridor_partially_covered_status():
     assert len(res.county_segments) == 1
     seg = res.county_segments[0]
     assert seg.coverage_status == "partially_covered"
+    assert seg.productivity_coverage_status == "partial"
+    assert seg.map_units[0].productivity_coverage_status == "partial"
+    assert seg.map_units[0].productivity_rated_pct == 50.0
+    assert seg.map_units[0].productivity_coverage_caveats == [
+        "Partially rated: 50% of component area."
+    ]
+    assert seg.component_rated_acres == 2.5
+    assert seg.productivity_coverage_caveats == [
+        "Partially rated: 50% of component area.",
+        "Unmapped corridor acreage is not included in productivity ratings.",
+    ]
     assert seg.farmland_summary.unmapped_acres > 0
+    coverage = res.reconciliation_summary
+    assert coverage["productivity_coverage_status"] == "partial"
+    assert coverage["rated_productivity_acres"] == 5.0
+    assert coverage["component_rated_productivity_acres"] == 2.5
+    assert coverage["unrated_productivity_acres"] > 0
+    assert coverage["productivity_coverage_caveats"] == seg.productivity_coverage_caveats
+    assert 0 < coverage["productivity_coverage_percent"] < 100
+
+
+@pytest.mark.parametrize(
+    ("total", "covered", "expected"),
+    [
+        (100.0, 99.95, True),
+        (100.0, 99.89, False),
+        (100.0, 100.0, True),
+        (0.0, 0.0, False),
+    ],
+)
+def test_corridor_coverage_completion_uses_reconciliation_tolerance(total, covered, expected):
+    assert _coverage_is_complete(total, covered) is expected
 
 
 def test_corridor_analysis_with_county_partition_geometry_models():
@@ -833,6 +881,49 @@ def test_corridor_all_validated_selectors_accepted(index):
         raise  # re-raise so test fails if it IS a ValueError
     except (AttributeError, TypeError, KeyError, IndexError, ZeroDivisionError):
         pass  # downstream mock errors (e.g. empty county list) are acceptable
+
+
+def test_corridor_storie_uses_registry_scale_when_county_maximum_is_unavailable():
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = [
+        {
+            "mukey": "1001",
+            "farmlndcl": "Not prime farmland",
+            "areasymbol": "CA001",
+            "area_ac": "10.0",
+        }
+    ]
+    mock_sda.get_productivity_ratings.return_value = [
+        {"mukey": "1001", "numeric_rating": "0.8", "rating_class": "High"}
+    ]
+    mock_sda.get_county_max_productivity_rating.return_value = None
+
+    mock_tiger = MagicMock(spec=TigerwebClient)
+    mock_tiger.get_intersecting_counties.return_value = []
+    mock_tiger.partition_geometry_by_counties.return_value = []
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
+
+    mock_nass = MagicMock()
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
+    )
+    analyzer = CorridorAnalyzer(
+        sda_client=mock_sda,
+        tigerweb_client=mock_tiger,
+        nass_client=mock_nass,
+    )
+    response = analyzer.analyze_corridor(
+        centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
+        buffer_distance=50.0,
+        productivity_index="storie",
+    )
+
+    assert response.county_segments[0].relative_rating_le == 80.0
+    assert response.composite_relative_rating == 80.0
 
 
 @pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])

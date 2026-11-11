@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer, categorize_farmland_class
-from fpac_soil_mcp.sda_client import SDAClient
+from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE, SDAClient
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 GEOJSON = {
@@ -296,7 +296,8 @@ def test_requested_index_sentinels_are_unrated(index, sentinel):
     result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index=index)
     assert result.map_units[0].productivity_rating is None
     assert result.manifest["land_evaluation"]["rated_acreage"] == 0
-    assert result.manifest["candidate_le_score"] == 0.0
+    assert result.manifest["candidate_le_score"] is None
+    assert result.manifest["land_evaluation"]["aoi_relative_rating"] is None
 
 
 def test_requested_index_calls_are_partitioned_for_nccpi():
@@ -428,6 +429,7 @@ def test_analyze_polygon_fully_covered():
 
     assert res.coverage_status == "covered"
     assert res.farmland_summary.unmapped_acres == 0.0
+    assert res.manifest["land_evaluation"]["coverage_status"] == "covered"
 
 
 @pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
@@ -464,9 +466,13 @@ def test_polygon_forwards_selected_productivity_index(index):
     ]
     mock_sda.get_county_max_productivity_rating.return_value = 1.0
 
-    _analyzer(mock_sda).analyze_polygon(GEOJSON, productivity_index=index)
+    result = _analyzer(mock_sda).analyze_polygon(GEOJSON, productivity_index=index)
 
     mock_sda.get_productivity_ratings.assert_called_once_with(mukeys=["1"], index_type=index)
     mock_sda.get_county_max_productivity_rating.assert_called_once_with(
         areasymbol="IA169", index_type=index
     )
+    assert result.map_units[0].productivity_rating_source
+    assert result.manifest["land_evaluation"]["rating_source_provenance"] == [
+        PRODUCTIVITY_PROVENANCE[index]
+    ]

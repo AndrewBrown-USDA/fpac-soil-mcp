@@ -38,6 +38,7 @@ class TestServerInitialization:
         "fppa://regulatory-notice",
         "fppa://screening-guidance",
         "fppa://farmland-classes",
+        "fppa://site-assessment-criteria",
     }
     EXPECTED_PROMPTS: ClassVar[set[str]] = {
         "fppa_screening_assistant",
@@ -112,7 +113,7 @@ class TestServerInitialization:
 
         resource_uris = {uri for uri, _, _ in resource_entries}
         assert resource_uris == TestServerInitialization.EXPECTED_RESOURCES
-        assert len(resource_entries) == 3
+        assert len(resource_entries) == 4
         assert all(name and description for _, name, description in resource_entries)
         assert set(prompt_entries) == TestServerInitialization.EXPECTED_PROMPTS
         assert len(prompt_entries) == 4
@@ -137,7 +138,7 @@ class TestResourcesAndPrompts:
         resource_uris = {str(r.uri) for r in resources}
 
         assert resource_uris == TestServerInitialization.EXPECTED_RESOURCES
-        assert len(resource_uris) == 3
+        assert len(resource_uris) == 4
 
         # Validate regulatory notice resource schema and keys
         reg_res = await server.read_resource("fppa://regulatory-notice")
@@ -315,12 +316,12 @@ class TestResourcesAndPrompts:
                     "Form AD-1006",
                     "NRCS-CPA-106",
                     "160 points",
-                    "220 points",
                     "7 CFR § 658.4",
                     "7 CFR § 658.5",
                     "fppa://regulatory-notice",
                     "fppa://screening-guidance",
                     "fppa://farmland-classes",
+                    "fppa://site-assessment-criteria",
                 ],
             ),
             (
@@ -334,9 +335,9 @@ class TestResourcesAndPrompts:
                     "Form AD-1006",
                     "NRCS-CPA-106",
                     "160 points",
-                    "220 points",
                     "7 CFR § 658.4",
                     "fppa://regulatory-notice",
+                    "fppa://site-assessment-criteria",
                 ],
             ),
         ],

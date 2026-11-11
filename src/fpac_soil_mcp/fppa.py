@@ -43,9 +43,9 @@ def get_fppa_scope_explanation() -> dict[str, Any]:
         },
         "lesa_determination_scope": {
             "what_is_required_for_official_fppa": [
-                "Part IV: Land Evaluation (LE) score assigned by USDA NRCS (0-100 points, based on soil capability/productivity).",
-                "Part V: Site Assessment (SA) score assigned by the Federal agency or grant recipient (0-160 points, based on non-soil factors: surrounding land use, urban infrastructure, zoning, farm size, investment).",
-                "Total LESA Score calculation (0-260 points). If total score >= 160 points, alternatives avoiding farmland conversion must be evaluated (7 CFR 658.4(c)(2)).",
+                "Part V: Land Evaluation (LE) score assigned by USDA NRCS (0-100 points, based on soil capability/productivity).",
+                "Part VI: Site Assessment (SA) score assigned by the Federal agency or grant recipient (0-160 points, based on non-soil factors: surrounding land use, urban infrastructure, zoning, farm size, investment).",
+                "Total LESA Score calculation (0-260 points). Under 7 CFR § 658.4(c)(2), sites scoring below 160 need not receive further consideration for protection and no additional sites need to be evaluated. Under § 658.4(c)(3)-(4), USDA recommends increasing levels of consideration for protection at 160 points or more, and agency personnel consider alternatives when deciding on a proposed action; this service does not recommend an alternative.",
                 "Submission and processing of USDA Form AD-1006 (or Form NRCS-CPA-106 for corridor projects).",
             ],
             "agency_responsibilities": (

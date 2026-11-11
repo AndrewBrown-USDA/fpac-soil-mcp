@@ -27,8 +27,9 @@ maintenance burden and divergence risk.
 * Both site and corridor projects require the same relative rating normalization
   formula: $RR_i = Rating_i / MaxCountyRating$.
 * Both require area-weighted LE scoring: $LE = round(RR_{AOI} \times 100)$.
-* The 160-point mandatory alternatives threshold (7 CFR § 658.4(c)(2)) applies
-  to both project types.
+* The 160-point consideration guidance in 7 CFR § 658.4(c)(2)-(4) applies to
+  both project types: scores below 160 need not receive further protection
+  consideration, while USDA recommends increasing consideration at 160 or more.
 * `corridor_scoring.py` was already stable with 533 lines of corridor-specific
   SA evaluator classes; replacing it entirely would break existing tests and
   callers.

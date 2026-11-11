@@ -6,6 +6,7 @@ FPPA Scope responses, and Farmland Class listings.
 
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Any, Literal
 
@@ -122,6 +123,22 @@ class SoilMapUnitAcreage(BaseModel):
     productivity_rating_source: str | None = Field(
         default=None,
         description="SDA interpretation rule or catalog provenance used for the productivity rating",
+    )
+    productivity_coverage_status: str = Field(
+        default="unknown",
+        description="Selected productivity interpretation coverage status within this map unit",
+    )
+    productivity_rated_pct: float | None = Field(
+        default=None,
+        description="Percent of map-unit component area supporting the selected productivity rating",
+    )
+    productivity_total_pct: float | None = Field(
+        default=None,
+        description="Percent of map-unit component area included in the coverage calculation",
+    )
+    productivity_coverage_caveats: list[str] = Field(
+        default_factory=list,
+        description="Selected productivity interpretation coverage caveats for this map unit",
     )
 
 
@@ -240,6 +257,22 @@ class CorridorCountySegment(BaseModel):
     coverage_status: str = Field(
         default="covered",
         description="Soil coverage status: 'covered', 'partially_covered', or 'unmapped'",
+    )
+    productivity_coverage_status: str = Field(
+        default="unknown",
+        description="Selected productivity rating coverage, independent of mapped-soil coverage",
+    )
+    component_rated_acres: float = Field(
+        default=0.0,
+        description="Map-unit acreage weighted by the share of components supporting the rating",
+    )
+    component_coverage_percent: float = Field(
+        default=0.0,
+        description="Percent of the county segment with rated productivity-component coverage",
+    )
+    productivity_coverage_caveats: list[str] = Field(
+        default_factory=list,
+        description="Selected productivity rating coverage caveats for this county segment",
     )
     urban_screening: dict[str, Any] = Field(
         default_factory=dict,
@@ -459,6 +492,21 @@ class LandEvaluationSummary(BaseModel):
         default=0.0,
         description="Percentage of AOI footprint with rated soil productivity",
     )
+    coverage_status: Literal["covered", "partial", "unrated", "unmapped", "unknown"] = Field(
+        default="unknown",
+        description=(
+            "Reconciled productivity coverage state: covered, partial, unrated, "
+            "unmapped, or unknown (source states are normalized to this vocabulary)"
+        ),
+    )
+    rating_source_provenance: list[str] = Field(
+        default_factory=list,
+        description="Registry provenance identifiers for the selected productivity rating source",
+    )
+    reconciliation: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Acreage reconciliation details and explicit coverage states",
+    )
     notices: list[str] = Field(
         default_factory=list,
         description="Land evaluation computation notes and coverage advisories",
@@ -540,6 +588,12 @@ class SiteAssessmentCriterion(BaseModel):
         default=False,
         description="Whether the evidence and point mapping were verified",
     )
+    input_authority: Literal[
+        "machine_estimate", "analyst_proposed", "unavailable", "verified", "statutory"
+    ] = Field(
+        default="unavailable",
+        description="Authority/state of the input supporting this criterion",
+    )
 
     @field_validator("criterion_number")
     @classmethod
@@ -553,6 +607,8 @@ class SiteAssessmentCriterion(BaseModel):
     def validate_max_points(cls, v: float) -> float:
         if v < 0.0:
             raise ValueError(f"max_points cannot be negative, got {v}")
+        if not math.isfinite(v):
+            raise ValueError(f"max_points must be finite, got {v}")
         return v
 
     @field_validator("awarded_points")
@@ -560,6 +616,8 @@ class SiteAssessmentCriterion(BaseModel):
     def validate_awarded_points(cls, v: float) -> float:
         if v < 0.0:
             raise ValueError(f"awarded_points cannot be negative, got {v}")
+        if not math.isfinite(v):
+            raise ValueError(f"awarded_points must be finite, got {v}")
         return v
 
     @field_validator("normalized_ratio")
@@ -575,6 +633,17 @@ class SiteAssessmentCriterion(BaseModel):
             raise ValueError(
                 f"awarded_points ({self.awarded_points}) cannot exceed max_points ({self.max_points}) for criterion {self.criterion_number}"
             )
+        if self.is_statutorily_zeroed:
+            if self.awarded_points != 0:
+                raise ValueError("Statutorily zeroed criteria cannot receive points.")
+            self.input_authority = "statutory"
+            self.is_automated = False
+        return self
+
+    @model_validator(mode="after")
+    def validate_analyst_rationale(self) -> SiteAssessmentCriterion:
+        if self.input_authority == "analyst_proposed" and not self.justification.strip():
+            raise ValueError("Analyst-proposed criterion points require a rationale.")
         return self
 
 
@@ -588,6 +657,10 @@ class SiteAssessmentSummary(BaseModel):
     criteria: list[SiteAssessmentCriterion] = Field(
         default_factory=list,
         description="Detailed breakdown of individual site assessment criteria",
+    )
+    evaluation_status: Literal["complete", "incomplete", "indeterminate"] = Field(
+        default="incomplete",
+        description="Whether required Site Assessment inputs support evaluation",
     )
 
     @field_validator("total_points")
@@ -618,7 +691,15 @@ class PreliminaryLESAResponse(BaseModel):
     )
     mandatory_alternatives_required: bool | None = Field(
         default=False,
-        description="Statutory trigger under 7 CFR 658.4: true if total LESA score >= 160",
+        description=(
+            "True when the score is 160 or more, indicating the increased-protection "
+            "consideration guidance in 7 CFR § 658.4(c)(3)-(4); this does not require selecting "
+            "an alternative."
+        ),
+    )
+    threshold_status: Literal["evaluated", "not_evaluated"] = Field(
+        default="evaluated",
+        description="Whether the statutory threshold was evaluated",
     )
     regulatory_notice: str = Field(
         description="Official regulatory disclaimer regarding FPPA screening and LESA"
@@ -639,6 +720,13 @@ class PreliminaryLESAResponse(BaseModel):
 
     @model_validator(mode="after")
     def validate_mandatory_alternatives_required(self) -> PreliminaryLESAResponse:
+        if (
+            self.threshold_status == "not_evaluated"
+            and self.mandatory_alternatives_required is not None
+        ):
+            raise ValueError(
+                "mandatory_alternatives_required must be None when threshold_status is not_evaluated"
+            )
         if self.total_lesa_score is None:
             if self.mandatory_alternatives_required is not None:
                 raise ValueError(

@@ -168,6 +168,63 @@ Correct count-array histogram validation to interpret ArcGIS `size` as the numbe
 - [x] Summarize why requiring unit-width bins preserves exact integer-key mapping without assuming numeric adjacency implies a relationship between CDL classes.
 
 ## Notes
+- ImageServer/CDL implementation is explicitly future work and is out of scope.
+- Prefer existing `httpx.MockTransport` fixtures and current analyzer test patterns.
+- Small production fixes are allowed only when directly exposed by the new tests.
+
+---
+
+# TODO — PR #83 Review Resolution
+
+## Goal
+Resolve all 20 open review threads on PR #83 and the two supplied LESA findings about missing evidence and post-scoring authority rewrites, with focused regression coverage.
+
+## Tasks
+
+### 1. Correct LESA scoring and evidence completeness
+- [x] Preserve the productivity index's scale when a corridor county maximum is unavailable, including STORIE.
+- [x] Make acreage-based and registry-based Criterion 7 scoring use one deduction schedule and verify parity at 5% boundaries.
+- [x] Keep Criterion 2 unavailable when measured perimeter evidence lacks a normalized ratio.
+- [x] Reject invalid/non-finite farm acreages and reject competing Criterion 7 acreage and explicit-input forms.
+- [x] Prevent a caller-provided `is_automated` flag from making a missing standard criterion score available.
+- [x] Keep a missing Criterion 10 category unavailable instead of treating it as the zero-point category.
+- [x] Ensure missing Land Evaluation, incomplete or unstructured Site Assessment, and a bare-float Site Assessment never produce an evaluated LESA threshold.
+- [x] Move registry fact authority, verification, justification, and provenance into the scored inputs; remove the post-evaluation rewrite that can contradict scored results.
+- [x] Add regression tests for each evidence/authority edge case and preserve evaluated behavior for complete valid inputs.
+
+### 2. Make evaluation contracts executable and consistent
+- [x] Run gold-set contract cases against production outputs using `match_expected`, and align expected paths with actual response schemas.
+- [x] Wire browser harness safety assertions into the pass predicate or remove assertions that are not implemented.
+- [x] Emit evidence-tier classification from the Pi runner, honoring each case's explicit tier.
+- [x] Require named Site Assessment prompt calls for SA-MA-01 and SA-MA-03 in the T1 and shared catalogs.
+- [x] State the required project name and project type for SA-MA-02 in both catalogs, or revise the contract to avoid asserting undisclosed/defaulted arguments.
+
+### 3. Preserve consistent coverage and provenance
+- [x] Preserve component-level partial-rating coverage and caveats through corridor segment and summary results, separately from mapped-acreage coverage.
+- [x] Apply reconciliation tolerance when deciding whether corridor coverage is complete.
+- [x] Populate normalized coverage status in direct polygon results and Land Evaluation summaries.
+- [x] Use the selected index's registry provenance ID in direct polygon responses.
+- [x] Compute SDA crop-yield coverage after mixed-unit validation so coverage agrees with rating availability.
+
+### 4. Correct eCFR refresh integrity
+- [x] Make `--check` validate local XML files against their manifest hashes, including missing or modified files.
+- [x] Preserve provenance for unselected CFR parts during partial refreshes, or otherwise prevent partial refreshes from corrupting the shared manifest.
+
+### 5. Correct regulatory wording
+- [x] Align the threshold description and citations with 7 CFR § 658.4(c), and update all cited wording locations and regression tests.
+
+### 6. Validate and prepare review responses
+- [x] Run focused tests for the changed areas, then the offline repository checks.
+- [x] Review the final diff and map each resolved finding to its PR review thread.
+- [x] Prepare concise replies for all 20 open PR review threads.
+
+## Discovered Tasks
+- [x] Refresh `docs/cfr` from eCFR because `make ecfr-check` found local XML files that do not match their manifest hashes; rerun the check before aligning regulatory wording.
+
+## Notes
+- Scope includes all 20 open review threads returned for PR #83, plus the two supplied LESA findings on missing/unstructured inputs and authority/provenance rewrites.
+- The supplied shared coverage-vocabulary proposal and suspected Streamable HTTP stateless/session-mode issue are deferred; do not change these unless a scoped review fix makes it necessary, in which case stop and request approval.
+- Preserve unrelated existing TODO content above. Do not push commits or modify remote PR review state.
 - Treat numeric CDL codes as identifiers; neighboring codes are not assumed to be semantically related.
 - Do not map any count array to class codes unless its bin geometry supports one-to-one unit-width integer classes.
 - Preserve completed TODO history and do not modify remote pull-request state; commit locally only when requested.

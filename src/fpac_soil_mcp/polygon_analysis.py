@@ -48,7 +48,12 @@ from fpac_soil_mcp.models import (
     QuerySource,
     SoilMapUnitAcreage,
 )
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
+from fpac_soil_mcp.sda_client import (
+    PRODUCTIVITY_PROVENANCE,
+    PRODUCTIVITY_SEMANTICS,
+    SDAClient,
+    SDAClientError,
+)
 from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 logger = logging.getLogger(__name__)
@@ -56,13 +61,16 @@ logger = logging.getLogger(__name__)
 _UNRATED_SENTINELS = {99.0, 999.0, -99.0, -999.0}
 
 
-def _normalize_numeric_rating(value: Any) -> float | None:
+def _normalize_numeric_rating(value: Any, productivity_index: str = "nccpi") -> float | None:
     """Return a usable productivity rating, excluding SDA sentinel values."""
     try:
         rating = float(value) if value is not None else None
     except (ValueError, TypeError):
         return None
-    if rating is None or rating in _UNRATED_SENTINELS:
+    sentinels = PRODUCTIVITY_SEMANTICS.get(productivity_index, {}).get(
+        "sentinels", _UNRATED_SENTINELS
+    )
+    if rating is None or rating in sentinels:
         return None
     return rating
 
@@ -195,7 +203,7 @@ class PolygonAnalyzer:
                     for irow in interp_rows:
                         mukey_val = str(irow.get("mukey"))
                         num_r = irow.get("numeric_rating")
-                        parsed_num_r = _normalize_numeric_rating(num_r)
+                        parsed_num_r = _normalize_numeric_rating(num_r, norm_idx)
                         rating_map[mukey_val] = {
                             "mukey": mukey_val,
                             "numeric_rating": parsed_num_r,
@@ -298,7 +306,7 @@ class PolygonAnalyzer:
             cat = categorize_farmland_class(farmlndcl_str)
             category_acres[cat] += calc_ac
 
-            numeric_rating = _normalize_numeric_rating(rating_info.get("numeric_rating"))
+            numeric_rating = _normalize_numeric_rating(rating_info.get("numeric_rating"), norm_idx)
 
             is_rated = rating_info.get(
                 "is_rated", numeric_rating is not None and numeric_rating >= 0
@@ -328,7 +336,8 @@ class PolygonAnalyzer:
                     productivity_rating_class=(
                         None if numeric_rating is None else rating_info.get("rating_class")
                     ),
-                    productivity_rating_source=rating_info.get("productivity_rating_source"),
+                    productivity_rating_source=rating_info.get("productivity_rating_source")
+                    or PRODUCTIVITY_PROVENANCE.get(norm_idx),
                 )
             )
 
@@ -345,8 +354,8 @@ class PolygonAnalyzer:
             candidate_le = round(aoi_rr * 100.0, 2)
             cov_pct = round((rated_le_acres / total_acres * 100.0) if total_acres > 0 else 0.0, 2)
         else:
-            aoi_rr = 0.0
-            candidate_le = 0.0
+            aoi_rr = None
+            candidate_le = None
             cov_pct = 0.0
 
         if county_max != (1.0 if norm_idx == "nccpi" else 100.0):
@@ -360,13 +369,18 @@ class PolygonAnalyzer:
 
         le_summary = LandEvaluationSummary(
             productivity_index=idx_enum,
-            aoi_relative_rating=min(1.0, max(0.0, aoi_rr)),
-            candidate_le_score=min(100.0, max(0.0, candidate_le)),
+            aoi_relative_rating=(min(1.0, max(0.0, aoi_rr)) if aoi_rr is not None else None),
+            candidate_le_score=(
+                min(100.0, max(0.0, candidate_le)) if candidate_le is not None else None
+            ),
             county_farmland_percentile_higher=None,
             rated_acreage=rated_le_acres,
             unrated_acreage=unrated_le_acres,
             total_acreage=round(total_acres, 2),
             coverage_percent=min(100.0, max(0.0, cov_pct)),
+            rating_source_provenance=[
+                PRODUCTIVITY_PROVENANCE.get(norm_idx, f"SDA:{norm_idx.upper()}")
+            ],
             notices=le_notices,
         )
 
@@ -407,6 +421,18 @@ class PolygonAnalyzer:
             coverage_status = "partially_covered"
         else:
             coverage_status = "covered"
+        le_coverage_status = (
+            "unknown"
+            if total_acres <= 0
+            else "unmapped"
+            if not unit_models
+            else "unrated"
+            if rated_le_acres <= 0
+            else "covered"
+            if rated_le_acres >= total_acres
+            else "partial"
+        )
+        le_summary.coverage_status = le_coverage_status
 
         # 6. Generate CSV table
         output_io = io.StringIO()

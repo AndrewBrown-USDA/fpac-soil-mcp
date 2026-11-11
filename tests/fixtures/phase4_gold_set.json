@@ -1,0 +1,128 @@
+{
+  "schema": "phase4-gold-set",
+  "version": "45.4.1",
+  "cases": [
+    {
+      "id": "strategy-cointerp",
+      "category": "source-table-strategy",
+      "description": "COINTERP metadata route preserves selected property and provenance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "nccpi"},
+        {"path": "sdv_provenance.id", "equals": "SDA:NCCPI_V3"},
+        {"path": "coverage_status", "equals": "rated"}
+      ]
+    },
+    {
+      "id": "strategy-mapunit",
+      "category": "source-table-strategy",
+      "description": "MAPUNIT metadata route remains exact and rated.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "csr2"},
+        {"path": "sdv_provenance.table", "equals": "mapunit"},
+        {"path": "numeric_rating", "equals": 96}
+      ]
+    },
+    {
+      "id": "strategy-component",
+      "category": "source-table-strategy",
+      "description": "Component route preserves explicit precision tolerance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "cpi"},
+        {"path": "numeric_rating", "approx": {"value": 71.0, "abs_tol": 0.01}},
+        {"path": "sdv_provenance.nulls_as_zero", "equals": true}
+      ]
+    },
+    {
+      "id": "strategy-chorizon",
+      "category": "source-table-strategy",
+      "description": "CHORIZON horizon-weighted metadata route preserves depth clipping and provenance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "aws_0_100"},
+        {"path": "sdv_provenance.id", "equals": "SDA:CHORIZON_AWC_R_0_100"},
+        {"path": "sdv_provenance.table", "equals": "chorizon"},
+        {"path": "numeric_rating", "approx": {"value": 15.5, "abs_tol": 0.01}}
+      ]
+    },
+    {
+      "id": "strategy-cocropyld",
+      "category": "source-table-strategy",
+      "description": "COCROPYLD crop-yield metadata route preserves nulls-as-zero and crop constraint.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "spec_id", "equals": "nonirr_crop_yield"},
+        {"path": "sdv_provenance.id", "equals": "SDA:COCROPYLD_NONIRRYIELD_R"},
+        {"path": "sdv_provenance.nulls_as_zero", "equals": true},
+        {"path": "numeric_rating", "approx": {"value": 145.0, "abs_tol": 0.01}}
+      ]
+    },
+    {
+      "id": "multi-county-selected-property",
+      "category": "aggregation",
+      "description": "County partitions use the selected property and stable provenance.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "ratings.0.spec_id", "equals": "nccpi"},
+        {"path": "county_maxima.IL019", "equals": 0.933},
+        {"path": "county_maxima.IN097", "equals": 0.812},
+        {"path": "ratings.0.sdv_provenance.spec_id", "equals": "nccpi"}
+      ]
+    },
+    {
+      "id": "partial-rated-coverage",
+      "category": "coverage",
+      "description": "Partial rated acreage remains explicit and is not treated as full coverage.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "coverage_percent", "approx": {"value": 60.0, "abs_tol": 0.001}},
+        {"path": "rated_acreage", "approx": {"value": 60.0, "abs_tol": 0.001}},
+        {"path": "unrated_acreage", "approx": {"value": 40.0, "abs_tol": 0.001}}
+      ]
+    },
+    {
+      "id": "urban-partial-overlap",
+      "category": "coverage",
+      "description": "Urban-screened acreage and soil rating coverage are reported separately.",
+      "status": "covered",
+      "deterministic": true,
+      "expectations": [
+        {"path": "urban_screening.is_urban_intersected", "equals": true},
+        {"path": "urban_screening.screened_acreage", "equals": 25.0},
+        {"path": "manifest.land_evaluation.coverage_percent", "approx": {"value": 60.0, "abs_tol": 0.2}}
+      ]
+    },
+    {
+      "id": "missing-subjective-inputs",
+      "category": "subjective-inputs",
+      "description": "Missing Site Assessment facts remain indeterminate with no fabricated points.",
+      "status": "indeterminate",
+      "deterministic": true,
+      "expectations": [
+        {"path": "site_assessment.evaluation_status", "equals": "incomplete"},
+        {"path": "total_lesa_score", "is_null": true},
+        {"path": "site_assessment.criteria.0.input_authority", "equals": "unavailable"}
+      ]
+    },
+    {
+      "id": "upstream-failure",
+      "category": "failure-semantics",
+      "description": "Upstream failure is explicit and unavailable values are not zero.",
+      "status": "error",
+      "deterministic": true,
+      "expectations": [
+        {"path": "error.type", "equals": "SDAQueryError"},
+        {"path": "rating", "is_null": true}
+      ]
+    }
+  ]
+}

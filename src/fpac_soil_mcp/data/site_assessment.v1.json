@@ -1,0 +1,990 @@
+{
+  "schema_version": "1.0",
+  "registry_id": "site-assessment-ad1006",
+  "citation": "7 CFR § 658.5(b)",
+  "criteria": [
+    {
+      "criterion_number": 1,
+      "name": "Nonurban land within one mile",
+      "question": "What percentage of land within a one-mile radius is in nonurban use?",
+      "answer_type": "percentage",
+      "max_points": 15,
+      "citation": "7 CFR § 658.5(b)(1)",
+      "requires_rationale": false,
+      "requires_verification": true,
+      "score_direction": "more_nonurban_more_points",
+      "range_convention": "Partition the CFR's 90%-to-20% range into 14 equal-width intervals; each interval is the representative range for its stated integer score. Exact 90% maps to 14 points; >90% maps to the maximum; <20% maps to zero.",
+      "bands": [
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        },
+        {
+          "id": "below_20",
+          "label": "Less than 20%",
+          "min": 0,
+          "max": 20,
+          "max_inclusive": false,
+          "points": 0
+        },
+        {
+          "id": "range_20_90_1",
+          "label": "20% to 25% representative interval; 1 point(s)",
+          "min": 20.0,
+          "min_inclusive": true,
+          "max": 25.0,
+          "max_inclusive": false,
+          "points": 1
+        },
+        {
+          "id": "range_20_90_2",
+          "label": "25% to 30% representative interval; 2 point(s)",
+          "min": 25.0,
+          "min_inclusive": true,
+          "max": 30.0,
+          "max_inclusive": false,
+          "points": 2
+        },
+        {
+          "id": "range_20_90_3",
+          "label": "30% to 35% representative interval; 3 point(s)",
+          "min": 30.0,
+          "min_inclusive": true,
+          "max": 35.0,
+          "max_inclusive": false,
+          "points": 3
+        },
+        {
+          "id": "range_20_90_4",
+          "label": "35% to 40% representative interval; 4 point(s)",
+          "min": 35.0,
+          "min_inclusive": true,
+          "max": 40.0,
+          "max_inclusive": false,
+          "points": 4
+        },
+        {
+          "id": "range_20_90_5",
+          "label": "40% to 45% representative interval; 5 point(s)",
+          "min": 40.0,
+          "min_inclusive": true,
+          "max": 45.0,
+          "max_inclusive": false,
+          "points": 5
+        },
+        {
+          "id": "range_20_90_6",
+          "label": "45% to 50% representative interval; 6 point(s)",
+          "min": 45.0,
+          "min_inclusive": true,
+          "max": 50.0,
+          "max_inclusive": false,
+          "points": 6
+        },
+        {
+          "id": "range_20_90_7",
+          "label": "50% to 55% representative interval; 7 point(s)",
+          "min": 50.0,
+          "min_inclusive": true,
+          "max": 55.0,
+          "max_inclusive": false,
+          "points": 7
+        },
+        {
+          "id": "range_20_90_8",
+          "label": "55% to 60% representative interval; 8 point(s)",
+          "min": 55.0,
+          "min_inclusive": true,
+          "max": 60.0,
+          "max_inclusive": false,
+          "points": 8
+        },
+        {
+          "id": "range_20_90_9",
+          "label": "60% to 65% representative interval; 9 point(s)",
+          "min": 60.0,
+          "min_inclusive": true,
+          "max": 65.0,
+          "max_inclusive": false,
+          "points": 9
+        },
+        {
+          "id": "range_20_90_10",
+          "label": "65% to 70% representative interval; 10 point(s)",
+          "min": 65.0,
+          "min_inclusive": true,
+          "max": 70.0,
+          "max_inclusive": false,
+          "points": 10
+        },
+        {
+          "id": "range_20_90_11",
+          "label": "70% to 75% representative interval; 11 point(s)",
+          "min": 70.0,
+          "min_inclusive": true,
+          "max": 75.0,
+          "max_inclusive": false,
+          "points": 11
+        },
+        {
+          "id": "range_20_90_12",
+          "label": "75% to 80% representative interval; 12 point(s)",
+          "min": 75.0,
+          "min_inclusive": true,
+          "max": 80.0,
+          "max_inclusive": false,
+          "points": 12
+        },
+        {
+          "id": "range_20_90_13",
+          "label": "80% to 85% representative interval; 13 point(s)",
+          "min": 80.0,
+          "min_inclusive": true,
+          "max": 85.0,
+          "max_inclusive": false,
+          "points": 13
+        },
+        {
+          "id": "range_20_90_14",
+          "label": "85% to 90% representative interval; 14 point(s)",
+          "min": 85.0,
+          "min_inclusive": true,
+          "max": 90.0,
+          "max_inclusive": true,
+          "points": 14
+        },
+        {
+          "id": "above_90",
+          "label": "More than 90%",
+          "min": 90,
+          "min_inclusive": false,
+          "max": 100,
+          "points": 15
+        }
+      ]
+    },
+    {
+      "criterion_number": 2,
+      "name": "Site perimeter bordering nonurban land",
+      "question": "What percentage of the site's perimeter borders land in nonurban use?",
+      "answer_type": "percentage",
+      "max_points": 10,
+      "citation": "7 CFR § 658.5(b)(2)",
+      "requires_rationale": false,
+      "requires_verification": true,
+      "deferred_source": true,
+      "accepted_input_sources": [
+        "analyst_proposed_with_provenance"
+      ],
+      "spatial_input_status": "deferred_unavailable",
+      "score_direction": "more_nonurban_more_points",
+      "range_convention": "Partition the CFR's 90%-to-20% range into 9 equal-width intervals; each interval is the representative range for its stated integer score. Exact 90% maps to 9 points; >90% maps to the maximum; <20% maps to zero.",
+      "bands": [
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        },
+        {
+          "id": "below_20",
+          "label": "Less than 20%",
+          "min": 0,
+          "max": 20,
+          "max_inclusive": false,
+          "points": 0
+        },
+        {
+          "id": "range_20_90_1",
+          "label": "20% to 27.7778% representative interval; 1 point(s)",
+          "min": 20.0,
+          "min_inclusive": true,
+          "max": 27.77777777777778,
+          "max_inclusive": false,
+          "points": 1
+        },
+        {
+          "id": "range_20_90_2",
+          "label": "27.7778% to 35.5556% representative interval; 2 point(s)",
+          "min": 27.77777777777778,
+          "min_inclusive": true,
+          "max": 35.55555555555556,
+          "max_inclusive": false,
+          "points": 2
+        },
+        {
+          "id": "range_20_90_3",
+          "label": "35.5556% to 43.3333% representative interval; 3 point(s)",
+          "min": 35.55555555555556,
+          "min_inclusive": true,
+          "max": 43.33333333333333,
+          "max_inclusive": false,
+          "points": 3
+        },
+        {
+          "id": "range_20_90_4",
+          "label": "43.3333% to 51.1111% representative interval; 4 point(s)",
+          "min": 43.33333333333333,
+          "min_inclusive": true,
+          "max": 51.111111111111114,
+          "max_inclusive": false,
+          "points": 4
+        },
+        {
+          "id": "range_20_90_5",
+          "label": "51.1111% to 58.8889% representative interval; 5 point(s)",
+          "min": 51.111111111111114,
+          "min_inclusive": true,
+          "max": 58.888888888888886,
+          "max_inclusive": false,
+          "points": 5
+        },
+        {
+          "id": "range_20_90_6",
+          "label": "58.8889% to 66.6667% representative interval; 6 point(s)",
+          "min": 58.888888888888886,
+          "min_inclusive": true,
+          "max": 66.66666666666666,
+          "max_inclusive": false,
+          "points": 6
+        },
+        {
+          "id": "range_20_90_7",
+          "label": "66.6667% to 74.4444% representative interval; 7 point(s)",
+          "min": 66.66666666666666,
+          "min_inclusive": true,
+          "max": 74.44444444444444,
+          "max_inclusive": false,
+          "points": 7
+        },
+        {
+          "id": "range_20_90_8",
+          "label": "74.4444% to 82.2222% representative interval; 8 point(s)",
+          "min": 74.44444444444444,
+          "min_inclusive": true,
+          "max": 82.22222222222223,
+          "max_inclusive": false,
+          "points": 8
+        },
+        {
+          "id": "range_20_90_9",
+          "label": "82.2222% to 90% representative interval; 9 point(s)",
+          "min": 82.22222222222223,
+          "min_inclusive": true,
+          "max": 90.0,
+          "max_inclusive": true,
+          "points": 9
+        },
+        {
+          "id": "above_90",
+          "label": "More than 90%",
+          "min": 90,
+          "min_inclusive": false,
+          "max": 100,
+          "points": 10
+        }
+      ]
+    },
+    {
+      "criterion_number": 3,
+      "name": "Site farmed more than five of the last ten years",
+      "question": "What percentage of the site was farmed (managed for scheduled harvest or timber activity) more than five of the last ten years?",
+      "answer_type": "percentage",
+      "max_points": 20,
+      "citation": "7 CFR § 658.5(b)(3)",
+      "requires_rationale": false,
+      "requires_verification": true,
+      "score_direction": "more_farmed_more_points",
+      "range_convention": "Partition the CFR's 90%-to-20% range into 19 equal-width intervals; each interval is the representative range for its stated integer score. Exact 90% maps to 19 points; >90% maps to the maximum; <20% maps to zero.",
+      "bands": [
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        },
+        {
+          "id": "below_20",
+          "label": "Less than 20%",
+          "min": 0,
+          "max": 20,
+          "max_inclusive": false,
+          "points": 0
+        },
+        {
+          "id": "range_20_90_1",
+          "label": "20% to 23.6842% representative interval; 1 point(s)",
+          "min": 20.0,
+          "min_inclusive": true,
+          "max": 23.684210526315788,
+          "max_inclusive": false,
+          "points": 1
+        },
+        {
+          "id": "range_20_90_2",
+          "label": "23.6842% to 27.3684% representative interval; 2 point(s)",
+          "min": 23.684210526315788,
+          "min_inclusive": true,
+          "max": 27.36842105263158,
+          "max_inclusive": false,
+          "points": 2
+        },
+        {
+          "id": "range_20_90_3",
+          "label": "27.3684% to 31.0526% representative interval; 3 point(s)",
+          "min": 27.36842105263158,
+          "min_inclusive": true,
+          "max": 31.05263157894737,
+          "max_inclusive": false,
+          "points": 3
+        },
+        {
+          "id": "range_20_90_4",
+          "label": "31.0526% to 34.7368% representative interval; 4 point(s)",
+          "min": 31.05263157894737,
+          "min_inclusive": true,
+          "max": 34.73684210526316,
+          "max_inclusive": false,
+          "points": 4
+        },
+        {
+          "id": "range_20_90_5",
+          "label": "34.7368% to 38.4211% representative interval; 5 point(s)",
+          "min": 34.73684210526316,
+          "min_inclusive": true,
+          "max": 38.421052631578945,
+          "max_inclusive": false,
+          "points": 5
+        },
+        {
+          "id": "range_20_90_6",
+          "label": "38.4211% to 42.1053% representative interval; 6 point(s)",
+          "min": 38.421052631578945,
+          "min_inclusive": true,
+          "max": 42.10526315789474,
+          "max_inclusive": false,
+          "points": 6
+        },
+        {
+          "id": "range_20_90_7",
+          "label": "42.1053% to 45.7895% representative interval; 7 point(s)",
+          "min": 42.10526315789474,
+          "min_inclusive": true,
+          "max": 45.78947368421053,
+          "max_inclusive": false,
+          "points": 7
+        },
+        {
+          "id": "range_20_90_8",
+          "label": "45.7895% to 49.4737% representative interval; 8 point(s)",
+          "min": 45.78947368421053,
+          "min_inclusive": true,
+          "max": 49.473684210526315,
+          "max_inclusive": false,
+          "points": 8
+        },
+        {
+          "id": "range_20_90_9",
+          "label": "49.4737% to 53.1579% representative interval; 9 point(s)",
+          "min": 49.473684210526315,
+          "min_inclusive": true,
+          "max": 53.1578947368421,
+          "max_inclusive": false,
+          "points": 9
+        },
+        {
+          "id": "range_20_90_10",
+          "label": "53.1579% to 56.8421% representative interval; 10 point(s)",
+          "min": 53.1578947368421,
+          "min_inclusive": true,
+          "max": 56.84210526315789,
+          "max_inclusive": false,
+          "points": 10
+        },
+        {
+          "id": "range_20_90_11",
+          "label": "56.8421% to 60.5263% representative interval; 11 point(s)",
+          "min": 56.84210526315789,
+          "min_inclusive": true,
+          "max": 60.526315789473685,
+          "max_inclusive": false,
+          "points": 11
+        },
+        {
+          "id": "range_20_90_12",
+          "label": "60.5263% to 64.2105% representative interval; 12 point(s)",
+          "min": 60.526315789473685,
+          "min_inclusive": true,
+          "max": 64.21052631578948,
+          "max_inclusive": false,
+          "points": 12
+        },
+        {
+          "id": "range_20_90_13",
+          "label": "64.2105% to 67.8947% representative interval; 13 point(s)",
+          "min": 64.21052631578948,
+          "min_inclusive": true,
+          "max": 67.89473684210526,
+          "max_inclusive": false,
+          "points": 13
+        },
+        {
+          "id": "range_20_90_14",
+          "label": "67.8947% to 71.5789% representative interval; 14 point(s)",
+          "min": 67.89473684210526,
+          "min_inclusive": true,
+          "max": 71.57894736842105,
+          "max_inclusive": false,
+          "points": 14
+        },
+        {
+          "id": "range_20_90_15",
+          "label": "71.5789% to 75.2632% representative interval; 15 point(s)",
+          "min": 71.57894736842105,
+          "min_inclusive": true,
+          "max": 75.26315789473685,
+          "max_inclusive": false,
+          "points": 15
+        },
+        {
+          "id": "range_20_90_16",
+          "label": "75.2632% to 78.9474% representative interval; 16 point(s)",
+          "min": 75.26315789473685,
+          "min_inclusive": true,
+          "max": 78.94736842105263,
+          "max_inclusive": false,
+          "points": 16
+        },
+        {
+          "id": "range_20_90_17",
+          "label": "78.9474% to 82.6316% representative interval; 17 point(s)",
+          "min": 78.94736842105263,
+          "min_inclusive": true,
+          "max": 82.63157894736841,
+          "max_inclusive": false,
+          "points": 17
+        },
+        {
+          "id": "range_20_90_18",
+          "label": "82.6316% to 86.3158% representative interval; 18 point(s)",
+          "min": 82.63157894736841,
+          "min_inclusive": true,
+          "max": 86.3157894736842,
+          "max_inclusive": false,
+          "points": 18
+        },
+        {
+          "id": "range_20_90_19",
+          "label": "86.3158% to 90% representative interval; 19 point(s)",
+          "min": 86.3157894736842,
+          "min_inclusive": true,
+          "max": 90.0,
+          "max_inclusive": true,
+          "points": 19
+        },
+        {
+          "id": "above_90",
+          "label": "More than 90%",
+          "min": 90,
+          "min_inclusive": false,
+          "max": 100,
+          "points": 20
+        }
+      ]
+    },
+    {
+      "criterion_number": 4,
+      "name": "Farmland protection status",
+      "question": "Is the site subject to State or local government policies or programs, or private programs, to protect farmland?",
+      "answer_type": "qualitative",
+      "max_points": 20,
+      "citation": "7 CFR § 658.5(b)(4)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "protected_more_points",
+      "bands": [
+        {
+          "id": "protected",
+          "label": "Site is protected",
+          "points": 20
+        },
+        {
+          "id": "not_protected",
+          "label": "Site is not protected",
+          "points": 0
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 5,
+      "name": "Distance and adjacency to urban built-up area",
+      "question": "How close is the site to an urban built-up area, and is it adjacent?",
+      "answer_type": "qualitative",
+      "max_points": 15,
+      "citation": "7 CFR § 658.5(b)(5)",
+      "requires_rationale": false,
+      "requires_verification": true,
+      "score_direction": "farther_from_urban_more_points",
+      "bands": [
+        {
+          "id": "two_miles_or_more",
+          "label": "2 miles or more",
+          "points": 15
+        },
+        {
+          "id": "over_one_under_two",
+          "label": "More than 1 mile but less than 2 miles",
+          "points": 10
+        },
+        {
+          "id": "under_one_not_adjacent",
+          "label": "Less than 1 mile, but not adjacent",
+          "points": 5
+        },
+        {
+          "id": "adjacent",
+          "label": "Adjacent",
+          "points": 0
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 6,
+      "name": "Water, sewer, and other local facilities and services",
+      "question": "How close are water lines, sewer lines, or other local facilities and services whose capacity and design promote nonagricultural use?",
+      "answer_type": "qualitative",
+      "max_points": 15,
+      "citation": "7 CFR § 658.5(b)(6)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "more_services_nearer_fewer_points",
+      "bands": [
+        {
+          "id": "none_within_three",
+          "label": "None of the services exist nearer than 3 miles",
+          "points": 15
+        },
+        {
+          "id": "some_over_one_under_three",
+          "label": "Some services exist more than 1 but less than 3 miles away",
+          "points": 10
+        },
+        {
+          "id": "all_within_half_mile",
+          "label": "All services exist within one-half mile",
+          "points": 0
+        },
+        {
+          "id": "other_or_ambiguous",
+          "label": "Other configuration not specified by the CFR; unavailable pending agency judgment",
+          "points": null
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 7,
+      "name": "Farm unit size relative to county average",
+      "question": "Is the farm unit containing the site, before the project, as large as the average-size farming unit in the county?",
+      "answer_type": "percentage",
+      "max_points": 10,
+      "citation": "7 CFR § 658.5(b)(7)",
+      "requires_rationale": false,
+      "requires_verification": true,
+      "score_direction": "larger_farm_more_points",
+      "range_convention": "Deduct one point for each 5 percentage points below the county average; 50% or more below (50% or less of average) scores zero; at or above average scores 10. Interior interval midpoints are representative values.",
+      "bands": [
+        {
+          "id": "half_or_more_below",
+          "label": "50% or more below average",
+          "min": 0,
+          "max": 50,
+          "max_inclusive": true,
+          "points": 0
+        },
+        {
+          "id": "below_average_1",
+          "label": "More than 50% to less than 60% of county average; 1 point",
+          "min": 50,
+          "min_inclusive": false,
+          "max": 60,
+          "max_inclusive": false,
+          "points": 1,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_2",
+          "label": "60% to less than 65% of county average; 2 points",
+          "min": 60,
+          "min_inclusive": true,
+          "max": 65,
+          "max_inclusive": false,
+          "points": 2,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_3",
+          "label": "65% to less than 70% of county average; 3 points",
+          "min": 65,
+          "min_inclusive": true,
+          "max": 70,
+          "max_inclusive": false,
+          "points": 3,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_4",
+          "label": "70% to less than 75% of county average; 4 points",
+          "min": 70,
+          "min_inclusive": true,
+          "max": 75,
+          "max_inclusive": false,
+          "points": 4,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_5",
+          "label": "75% to less than 80% of county average; 5 points",
+          "min": 75,
+          "min_inclusive": true,
+          "max": 80,
+          "max_inclusive": false,
+          "points": 5,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_6",
+          "label": "80% to less than 85% of county average; 6 points",
+          "min": 80,
+          "min_inclusive": true,
+          "max": 85,
+          "max_inclusive": false,
+          "points": 6,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_7",
+          "label": "85% to less than 90% of county average; 7 points",
+          "min": 85,
+          "min_inclusive": true,
+          "max": 90,
+          "max_inclusive": false,
+          "points": 7,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_8",
+          "label": "90% to less than 95% of county average; 8 points",
+          "min": 90,
+          "min_inclusive": true,
+          "max": 95,
+          "max_inclusive": false,
+          "points": 8,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "below_average_9",
+          "label": "95% to less than 100% of county average; 9 points",
+          "min": 95,
+          "min_inclusive": true,
+          "max": 100,
+          "max_inclusive": false,
+          "points": 9,
+          "representative_value_rule": "Five-percentage-point deduction interval; midpoint is its representative value."
+        },
+        {
+          "id": "at_or_above_average",
+          "label": "As large as or larger than average",
+          "min": 100,
+          "max": 1000000,
+          "points": 10
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 8,
+      "name": "Remaining farm land rendered non-farmable",
+      "question": "What percentage of the acres directly converted will the project render non-farmable on the remaining farm because of interference with land patterns?",
+      "answer_type": "percentage",
+      "max_points": 10,
+      "citation": "7 CFR § 658.5(b)(8)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "more_nonfarmable_remnant_more_points",
+      "range_convention": "Partition the CFR's 5%-to-25% range into nine equal-width intervals; interval midpoints represent integer scores 1 through 9. Exact endpoints are included in the middle range; <5% scores zero and >25% scores 10.",
+      "bands": [
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        },
+        {
+          "id": "below_5",
+          "label": "Less than 5%",
+          "min": 0,
+          "max": 5,
+          "max_inclusive": false,
+          "points": 0
+        },
+        {
+          "id": "range_5_25_1",
+          "label": "5% to 7.22222% representative interval; 1 point(s)",
+          "min": 5.0,
+          "min_inclusive": true,
+          "max": 7.222222222222222,
+          "max_inclusive": false,
+          "points": 1
+        },
+        {
+          "id": "range_5_25_2",
+          "label": "7.22222% to 9.44444% representative interval; 2 point(s)",
+          "min": 7.222222222222222,
+          "min_inclusive": true,
+          "max": 9.444444444444445,
+          "max_inclusive": false,
+          "points": 2
+        },
+        {
+          "id": "range_5_25_3",
+          "label": "9.44444% to 11.6667% representative interval; 3 point(s)",
+          "min": 9.444444444444445,
+          "min_inclusive": true,
+          "max": 11.666666666666668,
+          "max_inclusive": false,
+          "points": 3
+        },
+        {
+          "id": "range_5_25_4",
+          "label": "11.6667% to 13.8889% representative interval; 4 point(s)",
+          "min": 11.666666666666668,
+          "min_inclusive": true,
+          "max": 13.88888888888889,
+          "max_inclusive": false,
+          "points": 4
+        },
+        {
+          "id": "range_5_25_5",
+          "label": "13.8889% to 16.1111% representative interval; 5 point(s)",
+          "min": 13.88888888888889,
+          "min_inclusive": true,
+          "max": 16.11111111111111,
+          "max_inclusive": false,
+          "points": 5
+        },
+        {
+          "id": "range_5_25_6",
+          "label": "16.1111% to 18.3333% representative interval; 6 point(s)",
+          "min": 16.11111111111111,
+          "min_inclusive": true,
+          "max": 18.333333333333336,
+          "max_inclusive": false,
+          "points": 6
+        },
+        {
+          "id": "range_5_25_7",
+          "label": "18.3333% to 20.5556% representative interval; 7 point(s)",
+          "min": 18.333333333333336,
+          "min_inclusive": true,
+          "max": 20.555555555555557,
+          "max_inclusive": false,
+          "points": 7
+        },
+        {
+          "id": "range_5_25_8",
+          "label": "20.5556% to 22.7778% representative interval; 8 point(s)",
+          "min": 20.555555555555557,
+          "min_inclusive": true,
+          "max": 22.77777777777778,
+          "max_inclusive": false,
+          "points": 8
+        },
+        {
+          "id": "range_5_25_9",
+          "label": "22.7778% to 25% representative interval; 9 point(s)",
+          "min": 22.77777777777778,
+          "min_inclusive": true,
+          "max": 25.0,
+          "max_inclusive": true,
+          "points": 9
+        },
+        {
+          "id": "above_25",
+          "label": "More than 25%",
+          "min": 25,
+          "min_inclusive": false,
+          "points": 10
+        }
+      ]
+    },
+    {
+      "criterion_number": 9,
+      "name": "Availability of farm support services and markets",
+      "question": "Does the site have an adequate supply of farm support services and markets?",
+      "answer_type": "qualitative",
+      "max_points": 5,
+      "citation": "7 CFR § 658.5(b)(9)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "more_services_more_points",
+      "bands": [
+        {
+          "id": "all_available",
+          "label": "All required services are available",
+          "points": 5
+        },
+        {
+          "id": "some_available",
+          "label": "Some required services are available; representative score 3",
+          "points": 3,
+          "point_range": [
+            1,
+            4
+          ],
+          "representative_point_rule": "The CFR permits 4 to 1 points; choose the midpoint 2.5 rounded to the nearest integer, ties upward, giving representative score 3. Agency judgment may select 1 through 4."
+        },
+        {
+          "id": "none_available",
+          "label": "No required services are available",
+          "points": 0
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 10,
+      "name": "On-farm investments and conservation measures",
+      "question": "What is the amount and condition of substantial on-farm investments and conservation measures?",
+      "answer_type": "qualitative",
+      "max_points": 20,
+      "citation": "7 CFR § 658.5(b)(10)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "more_investment_more_points",
+      "bands": [
+        {
+          "id": "high",
+          "label": "High amount of on-farm investment",
+          "points": 20
+        },
+        {
+          "id": "moderate",
+          "label": "Moderate amount; CFR range 19 to 1 points, representative score 10",
+          "points": 10,
+          "point_range": [
+            1,
+            19
+          ],
+          "representative_point_rule": "10 is the midpoint representative; agency judgment may select 1 through 19."
+        },
+        {
+          "id": "none",
+          "label": "No on-farm investment",
+          "points": 0
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 11,
+      "name": "Reduction in demand for farm support services",
+      "question": "Would conversion reduce demand for support services enough to jeopardize their existence and the viability of remaining farms?",
+      "answer_type": "qualitative",
+      "max_points": 10,
+      "citation": "7 CFR § 658.5(b)(11)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "greater_reduction_more_points",
+      "bands": [
+        {
+          "id": "substantial_reduction",
+          "label": "Substantial reduction",
+          "points": 10
+        },
+        {
+          "id": "some_reduction",
+          "label": "Some reduction; CFR range 9 to 1 points, representative score 5",
+          "points": 5,
+          "point_range": [
+            1,
+            9
+          ],
+          "representative_point_rule": "5 is the midpoint representative; agency judgment may select 1 through 9."
+        },
+        {
+          "id": "no_significant_reduction",
+          "label": "No significant reduction",
+          "points": 0
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    },
+    {
+      "criterion_number": 12,
+      "name": "Incompatibility of project with surrounding agriculture",
+      "question": "Is the proposed use sufficiently incompatible with agriculture to likely contribute to eventual conversion of surrounding farmland?",
+      "answer_type": "qualitative",
+      "max_points": 10,
+      "citation": "7 CFR § 658.5(b)(12)",
+      "requires_rationale": true,
+      "requires_verification": true,
+      "score_direction": "greater_incompatibility_more_points",
+      "bands": [
+        {
+          "id": "incompatible",
+          "label": "Incompatible with existing agricultural use",
+          "points": 10
+        },
+        {
+          "id": "tolerable",
+          "label": "Tolerable; CFR range 9 to 1 points, representative score 5",
+          "points": 5,
+          "point_range": [
+            1,
+            9
+          ],
+          "representative_point_rule": "5 is the midpoint representative; agency judgment may select 1 through 9."
+        },
+        {
+          "id": "fully_compatible",
+          "label": "Fully compatible with existing agricultural use",
+          "points": 0
+        },
+        {
+          "id": "unknown",
+          "label": "Unknown or unavailable",
+          "points": null
+        }
+      ]
+    }
+  ]
+}

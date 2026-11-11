@@ -18,7 +18,7 @@ APP_PYTHON  ?= 3.11
 # Files this repo owns in the app; the remaining template runtime files are not linted.
 APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/aoi_context.py agent_server/config.py agent_server/geo.py agent_server/history.py tests)
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check ecfr ecfr-check
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -73,6 +73,12 @@ eval: test-eval ## Alias for test-eval
 
 eval-databricks: ## Run T1 Databricks-native MLflow evaluation (requires eval-databricks group)
 	$(UV) run --group eval-databricks python eval/databricks/run_mlflow_eval.py $(ARGS)
+
+ecfr: ## Refresh eCFR reference copies of 7 CFR Parts 657/658 in docs/cfr (requires network)
+	$(PYTHON) scripts/fetch_ecfr.py $(ARGS)
+
+ecfr-check: ## Exit non-zero if docs/cfr differs from the current eCFR text (requires network)
+	$(PYTHON) scripts/fetch_ecfr.py --check $(ARGS)
 
 lint: ## Run Ruff linter checks
 	$(UV) tool run ruff check .

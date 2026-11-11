@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { extractPayload, McpBridge } from "../lib/mcpBridge.js";
 import { buildInvocation, checkKeywords } from "../lib/evalCases.js";
+import { evaluateResult } from "../lib/evalAssertions.js";
 
 test("extractPayload prefers structured content", () => {
   assert.deepEqual(extractPayload({ structuredContent: { ok: true }, content: [] }), { ok: true });
@@ -73,6 +74,52 @@ test("invocation construction and keyword failures remain deterministic", () => 
   });
 });
 
+test("evaluation predicates enforce prompt safety, incomplete-score, and selected-property contracts", () => {
+  const prompt = evaluateResult({
+    value: null,
+    responseText: "Do not select or recommend a site, footprint, alignment, or alternative.",
+    predicates: ["noSitingRecommendation"],
+    context: { invocation: { kind: "prompt" } },
+  });
+  assert.equal(prompt.status, "pass");
+
+  const incomplete = evaluateResult({
+    value: {
+      site_assessment: { evaluation_status: "incomplete" },
+      threshold_status: "not_evaluated",
+      total_lesa_score: null,
+      mandatory_alternatives_required: null,
+    },
+    predicates: ["noFabricatedScore"],
+  });
+  assert.equal(incomplete.status, "pass");
+  assert.equal(evaluateResult({
+    value: {
+      site_assessment: { evaluation_status: "incomplete" },
+      threshold_status: "evaluated",
+      total_lesa_score: 190,
+      mandatory_alternatives_required: true,
+    },
+    predicates: ["noFabricatedScore"],
+  }).status, "predicate");
+
+  const selectedProperty = evaluateResult({
+    value: { manifest: { productivity_index: "csr2" } },
+    predicates: ["preservesSelectedProperty"],
+    context: { invocation: { arguments: { productivity_index: "CSR2" } } },
+  });
+  assert.equal(selectedProperty.status, "pass");
+});
+
+test("SA-MA-02 names the expected project and project type in its request and invocation", async () => {
+  const source = await readFile(new URL("../../eval_cases.v1.json", import.meta.url), "utf8");
+  const testCase = JSON.parse(source).test_cases.find((item) => item.id === "SA-MA-02");
+  assert.match(testCase.user_prompt, /project Synthetic SA-MA-02/);
+  assert.match(testCase.user_prompt, /project_type site/);
+  assert.equal(testCase.invocation.arguments.project_name, "Synthetic SA-MA-02");
+  assert.equal(testCase.invocation.arguments.project_type, "site");
+});
+
 test("browser helper source contains integer rejection and clipboard fallback seams", async () => {
   const source = await readFile(new URL("../public/app.js", import.meta.url), "utf8");
   assert.match(source, /kind === "integer" && !Number\.isInteger\(n\)/);
@@ -86,5 +133,6 @@ test("server source preserves command override rejection and evaluation error cl
   assert.match(source, /Authorization: "Bearer " \+ bridge\.activeAuthToken/);
   assert.match(source, /fetch\(`\$\{origin\}\/\$\{route\}`, \{ headers, signal:/);
   assert.match(source, /invoke\(invocation, timeoutMs\)/);
-  assert.match(source, /passed = !isError && keywords\.missing\.length === 0/);
+  assert.match(source, /passed = !isError && keywords\.missing\.length === 0 && assertions\.status === "pass"/);
+  assert.match(source, /assertions, durationMs: out\.durationMs/);
 });

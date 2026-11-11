@@ -22,6 +22,7 @@ from common.matching import keywords_present
 from pi import run_evals
 from pi.run_evals import (
     _tool_matches,
+    evidence_tier,
     extract_advertised_tool_names,
     extract_assistant_content,
     extract_structured_prompt_names,
@@ -46,6 +47,16 @@ def parse_pi_events(output: str) -> list[dict[str, Any]]:
         if isinstance(event, dict):
             events.append(event)
     return events
+
+
+def diagnostic_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """Expose bounded, path-only diagnostics rather than captured content."""
+    return {
+        "evidence_classification": result.get("evidence_classification", "absent"),
+        "attempt_count": len(result.get("attempts", [])),
+        "artifact_count": len(result.get("artifact_paths", {})),
+        "has_capture_error": bool(result.get("capture_error")),
+    }
 
 
 def test_advertised_tools_prefer_initialization_event() -> None:
@@ -147,6 +158,32 @@ def test_gateway_envelopes_and_prose_have_distinct_diagnostics() -> None:
     assert not should_retry_missing_tools(["expected_tool"], None, 0)
 
 
+def test_model_assisted_evidence_is_labeled_and_diagnostics_are_sanitized() -> None:
+    case = {"category": "Phase 4 model-assisted Site Assessment"}
+    assert evidence_tier(case) == "model_assisted"
+    assert (
+        evidence_tier({"category": "contract", "evidence_tier": "model_assisted"})
+        == "model_assisted"
+    )
+    assert evidence_tier({"evidence_tier": "deterministic_contract"}) == "deterministic_contract"
+    summary = diagnostic_summary(
+        {
+            "evidence_classification": "recognized",
+            "attempts": [{"attempt": 1}],
+            "artifact_paths": {"attempt_1_metadata_path": "run/CASE/metadata.json"},
+            "capture_error": "",
+            "error": "private captured response",
+        }
+    )
+    assert summary == {
+        "evidence_classification": "recognized",
+        "attempt_count": 1,
+        "artifact_count": 1,
+        "has_capture_error": False,
+    }
+    assert "private captured response" not in str(summary)
+
+
 def test_tool_list_fallback_and_unknown_configuration_diagnostics() -> None:
     assert extract_advertised_tool_names(
         [{"type": "tools_list", "result": {"tools": [{"name": "listed_tool"}]}}]
@@ -236,7 +273,10 @@ def test_run_case_capture_success_separates_stderr_malformed_lines_and_metadata(
 
     monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
     result = run_evals.run_case(
-        _capture_case(expected_tools=["get_farmland_classification_by_point"]),
+        _capture_case(
+            evidence_tier="model_assisted",
+            expected_tools=["get_farmland_classification_by_point"],
+        ),
         tmp_path / "sandbox",
         model="test-model",
         timeout=1,
@@ -246,6 +286,7 @@ def test_run_case_capture_success_separates_stderr_malformed_lines_and_metadata(
     )
 
     assert result["status"] == "PASS"
+    assert result["evidence_tier"] == "model_assisted"
     assert result["evidence_classification"] == "recognized"
     assert result["attempts"][0]["model"] == "test-model"
     assert result["attempts"][0]["provider"] == "pi"
@@ -639,6 +680,7 @@ def test_cli_diagnostics_print_capture_paths_and_errors_without_raw_content(
         "id": "CLI-01",
         "category": "capture",
         "target": "expected_tool",
+        "evidence_tier": "model_assisted",
         "status": "ERROR",
         "elapsed_sec": 0.01,
         "error": "OSError: unable to start pi",
@@ -672,6 +714,7 @@ def test_cli_diagnostics_print_capture_paths_and_errors_without_raw_content(
     assert "metadata: run/CLI-01/attempt-1/metadata.json" in output
     assert "artifact attempt_1_metadata_path: run/CLI-01/attempt-1/metadata.json" in output
     assert "capture error: capture failed" in output
+    assert "model_assisted" in output
     assert "private raw response" not in output
     assert "Summary:" in output
 

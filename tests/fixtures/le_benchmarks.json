@@ -59,7 +59,7 @@
       "expected_lesa_summary": {
         "total_lesa_score": 173.48,
         "mandatory_alternatives_required": true,
-        "threshold_note": "Score >= 160 triggers consideration of alternative project sites per FPPA guidelines."
+        "threshold_note": "At 160 points or more, USDA recommends increasing consideration for protection and agencies consider alternatives when deciding on an action under 7 CFR § 658.4(c)(3)-(4)."
       }
     },
     {
@@ -109,7 +109,7 @@
       "expected_lesa_summary": {
         "total_lesa_score": 143.33,
         "mandatory_alternatives_required": false,
-        "threshold_note": "Corridor total score < 160 does not mandate alternative corridor selection under Form NRCS-CPA-106."
+        "threshold_note": "A corridor total score below 160 need not receive further consideration for protection or additional site evaluation under 7 CFR § 658.4(c)(2)."
       }
     },
     {
