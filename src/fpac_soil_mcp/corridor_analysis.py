@@ -508,6 +508,7 @@ class CorridorAnalyzer:
                 "local": 0.0,
                 "unique": 0.0,
                 "not_prime": 0.0,
+                "unknown": 0.0,
                 "unmapped": 0.0,
             }
 
@@ -941,6 +942,7 @@ class CorridorAnalyzer:
                         "local": 0.0,
                         "unique": 0.0,
                         "not_prime": 0.0,
+                        "unknown": 0.0,
                         "unmapped": 0.0,
                     }
                     alt_soil_rows: list[dict[str, Any]] = []

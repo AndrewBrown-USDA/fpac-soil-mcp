@@ -287,6 +287,7 @@ class PolygonAnalyzer:
             "local": 0.0,
             "unique": 0.0,
             "not_prime": 0.0,
+            "unknown": 0.0,
             "unmapped": 0.0,
         }
 
