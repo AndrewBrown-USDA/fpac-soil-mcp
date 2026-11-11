@@ -97,8 +97,12 @@ def _payload(result: Any) -> dict[str, Any]:
 _SDV_RECORDS: dict[str, dict[str, Any]] = {
     r["attributename"]: r
     for r in json.loads(
-        (Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sdv_attribute_records.json")
-        .read_text(encoding="utf-8")
+        (
+            Path(__file__).resolve().parents[2]
+            / "tests"
+            / "fixtures"
+            / "sdv_attribute_records.json"
+        ).read_text(encoding="utf-8")
     )["records"]
 }
 
@@ -179,11 +183,15 @@ def _gold_scenario(case_id: str) -> dict[str, Any]:
         return _rating_result("cpi", "3", 71.004)
     if case_id == "strategy-chorizon":
         return _attribute_rating_result(
-            "Available Water Storage", "4", 15.5,
+            "Available Water Storage",
+            "4",
+            15.5,
         )
     if case_id == "strategy-cocropyld":
         return _attribute_rating_result(
-            "Yields of Non-Irrigated Crops (Component)", "5", 145.0,
+            "Yields of Non-Irrigated Crops (Component)",
+            "5",
+            145.0,
             constraints={"cropname": "Corn"},
         )
     if case_id == "multi-county-selected-property":
