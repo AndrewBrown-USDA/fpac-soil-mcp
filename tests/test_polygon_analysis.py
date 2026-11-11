@@ -40,6 +40,7 @@ def test_categorize_farmland_class():
     assert categorize_farmland_class("Farmland of local importance") == "local"
     assert categorize_farmland_class("Farmland of unique importance") == "unique"
     assert categorize_farmland_class("Not prime farmland") == "not_prime"
+    assert categorize_farmland_class("Some unrecognized SSURGO label") == "unknown"
     assert categorize_farmland_class(None) == "unmapped"
 
 

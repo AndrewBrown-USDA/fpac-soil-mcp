@@ -146,6 +146,7 @@ def test_farmland_legend_matches_classifier_values():
         "Farmland of unique importance",
         "Farmland of local importance",
         "Not prime farmland",
+        "Some unrecognized SSURGO label",
         None,
     ]
     assert {categorize_farmland_class(s) for s in samples} == set(FARMLAND_CLASS_VALUES)
