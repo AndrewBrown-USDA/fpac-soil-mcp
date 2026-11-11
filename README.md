@@ -461,12 +461,8 @@ Verified agricultural-land adjacency remains unavailable and deferred until
 PR #79/CDL integration is merged and validated and an authoritative adjacency
 source is approved.
 
-Final serial validation passed: `make check` completed with 843 passed and 45
-deselected, followed by `make app-check` with 177 passed. `make test-eval` was
-not run at that gate after an unqualified Pi model check returned
-`invalid_state`. The qualified `github-copilot/gpt-5.6-luna` auth check is now
-ready, but the Pi 1.5.2 runner currently fails on its removed `--mcp-config`
-option; see the [Plan 46 follow-up state](planning/STATE_46.md).
+Validation gate results and runner status are tracked in
+[planning/STATE_46.md](planning/STATE_46.md).
 
 Capture is opt-in and non-retaining by default. The normal offline test command
 does not start Pi, contact external services, or enable capture. To retain
