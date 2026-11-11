@@ -723,7 +723,12 @@ def run_case(
                 if isinstance(event, dict):
                     events.append(event)
             all_events.extend(events)
-            tool_call_count += sum(len(extract_structured_tool_names(event)) for event in events)
+            # Count only start events to avoid double-counting start+end pairs.
+            tool_call_count += sum(
+                len(extract_structured_tool_names(event))
+                for event in events
+                if str(event.get("type", "")).lower() != "tool_execution_end"
+            )
             dedicated_events = [event for event in events if _has_dedicated_invocation(event)]
             executed_tools = set().union(
                 *(extract_structured_tool_names(event) for event in events)
