@@ -16,6 +16,8 @@ from typing import Any
 
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "prompt_test_cases.json"
 GOLD_SET_PATH = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "phase4_gold_set.json"
+# Shared scorer catalog (also read by common.matching and the browser harness).
+PROHIBITED_BEHAVIORS_PATH = Path(__file__).with_name("prohibited_behaviors.v1.json")
 
 REQUIRED_V1_FIELDS: dict[str, type] = {
     "id": str,
@@ -138,6 +140,11 @@ def load_gold_set(path: Path | str = GOLD_SET_PATH) -> list[dict[str, Any]]:
     return list(data["cases"])
 
 
+def _prohibited_behavior_catalog() -> dict[str, dict[str, Any]]:
+    with open(PROHIBITED_BEHAVIORS_PATH, encoding="utf-8") as handle:
+        return json.load(handle)["behaviors"]
+
+
 def _is_number(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -172,6 +179,18 @@ def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
     ):
         if field in case and not _is_str_list(case[field]):
             err(field, "expected a list of strings")
+
+    if _is_str_list(case.get("prohibited_behaviors")):
+        catalog = _prohibited_behavior_catalog()
+        for behavior in case["prohibited_behaviors"]:
+            spec = catalog.get(behavior)
+            if spec is None:
+                err("prohibited_behaviors", f"unknown behavior ID {behavior!r}")
+            elif spec["kind"] == "structural" and spec["requires_field"] not in case:
+                err(
+                    "prohibited_behaviors",
+                    f"{behavior!r} requires the {spec['requires_field']!r} field",
+                )
 
     if "expected_status" in case and (
         not isinstance(case["expected_status"], str)

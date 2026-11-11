@@ -149,6 +149,17 @@ def test_adversarial_field_validation(field: str, value: Any, message: str) -> N
         validate_cases([_row(**{field: value})])
 
 
+def test_unknown_prohibited_behavior_id_is_rejected() -> None:
+    with pytest.raises(ValueError, match="unknown behavior ID 'future_behavior'"):
+        validate_cases([_row(prohibited_behaviors=["future_behavior"])])
+
+
+def test_structural_prohibited_behavior_requires_its_budget_field() -> None:
+    with pytest.raises(ValueError, match="requires the 'max_retries' field"):
+        validate_cases([_row(prohibited_behaviors=["retry_budget_exceeded"])])
+    validate_cases([_row(prohibited_behaviors=["retry_budget_exceeded"], max_retries=1)])
+
+
 def test_load_cases_filters(tmp_path: Path) -> None:
     rows = [
         _row(),

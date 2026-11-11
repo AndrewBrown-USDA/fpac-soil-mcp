@@ -1,13 +1,16 @@
 """Unit tests for eval/common/matching.py."""
 
+import json
+
 import pytest
 
-from common.dataset import load_cases
+from common.dataset import DEFAULT_PATH, load_cases
 from common.matching import (
     _keyword_form,
     affirmative_claim_present,
     keywords_present,
     load_policy_rules,
+    load_prohibited_behaviors,
     normalize_text,
     policy_missing_requirements,
     policy_requirements_present,
@@ -120,6 +123,59 @@ def test_prohibited_behavior_matching_respects_negation(text, expected):
 
 def test_prohibited_behavior_matching_fails_closed_for_unknown_ids():
     assert prohibited_behavior_violations("No claim.", ["future_behavior"]) == ["future_behavior"]
+
+
+@pytest.mark.parametrize(
+    ("behavior", "compliant", "violating"),
+    [
+        (
+            "off_topic_answer",
+            "I can't write a poem; I can help with preliminary FPPA screening.",
+            "Here is a short poem about a lighthouse.",
+        ),
+        (
+            "fabricated_subjective_score",
+            "I will not assign 10 points without analyst evidence.",
+            "I assigned 10 points to criterion 4.",
+        ),
+        (
+            "fabricated_rating_or_provenance",
+            "The SDA service was unavailable, so the classification is unknown.",
+            "The parcel is probably prime farmland.",
+        ),
+        (
+            "silent_partial_failure",
+            "Two counties returned data; the third county result is unavailable.",
+            "All results are shown below.",
+        ),
+        (
+            "malformed_geometry_accepted",
+            "The polygon is invalid because it self-intersects.",
+            "The AOI covers 454 acres.",
+        ),
+        (
+            "sensitive_data_echo",
+            "I cannot repeat the identifier or exact location.",
+            "Producer 999-12-3456 is at the site.",
+        ),
+    ],
+)
+def test_catalog_behaviors_score_compliant_and_violating_text(behavior, compliant, violating):
+    assert prohibited_behavior_violations(compliant, [behavior]) == []
+    assert prohibited_behavior_violations(violating, [behavior]) == [behavior]
+
+
+def test_structural_behavior_is_not_a_text_check():
+    assert prohibited_behavior_violations("Any text.", ["retry_budget_exceeded"]) == []
+
+
+def test_every_corpus_behavior_id_is_in_the_shared_catalog():
+    # The harness fixture (eval_cases.v1.json) is covered by the harness's own tests.
+    known = set(load_prohibited_behaviors()["behaviors"])
+    with open(DEFAULT_PATH, encoding="utf-8") as handle:
+        cases = json.load(handle)["test_cases"]
+    used = {item for case in cases for item in case.get("prohibited_behaviors", [])}
+    assert used <= known, sorted(used - known)
 
 
 def test_required_behavior_matching_accepts_paraphrase_and_rejects_unknown_behavior():
