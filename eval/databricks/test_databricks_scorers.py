@@ -157,11 +157,18 @@ def test_safety_and_disclosure_scorers(scorers: dict[str, Any]) -> None:
     ).value
 
     status = scorers["required_status_matches"]
+    trace_hit = make_trace(
+        [("get_farmland_classification_by_point", {}, {"status": "indeterminate"})],
+    )
     assert status(
-        outputs={"status": "indeterminate"}, expectations={"expected_status": "indeterminate"}
+        trace=trace_hit, expectations={"expected_status": "indeterminate"}
     ).value
+    trace_miss = make_trace(
+        [("get_farmland_classification_by_point", {}, {"acres": 100})],
+        answer="The result is indeterminate.",
+    )
     assert not status(
-        outputs="The result is indeterminate.", expectations={"expected_status": "indeterminate"}
+        trace=trace_miss, expectations={"expected_status": "indeterminate"}
     ).value
 
     required = scorers["required_behaviors_present"]
