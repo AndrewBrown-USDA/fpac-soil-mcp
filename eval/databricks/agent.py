@@ -242,7 +242,8 @@ def build_agent(
                 {"force_tool_use": case_force_tool_use, "max_tool_calls": max_tool_calls}
             ),
         )
-        if max_tool_calls == 0:
+        budget_exhausted = max_tool_calls is not None and max_tool_calls <= 0
+        if budget_exhausted:
             system_prompt += (
                 "\n\nThis evaluation case has a strict zero-call budget. Do not invoke MCP "
                 "tools, read resources, or render prompts."
@@ -253,16 +254,22 @@ def build_agent(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request},
             ]
+            calls_made = 0
             final_text = ""
             for _ in range(max_turns):
+                # Withhold tools when the budget is exhausted so the model cannot call them.
+                active_tools = None if budget_exhausted else tool_specs
                 response = llm.chat.completions.create(
-                    model=model, messages=messages, tools=tool_specs, **params
+                    model=model, messages=messages, tools=active_tools, **params
                 )
                 message = response.choices[0].message
                 final_text = message.content or ""
                 tool_calls = list(message.tool_calls or [])
                 if not tool_calls:
                     return final_text
+                calls_made += len(tool_calls)
+                if max_tool_calls is not None and calls_made >= max_tool_calls:
+                    budget_exhausted = True
                 messages.append(
                     {
                         "role": "assistant",
@@ -303,7 +310,7 @@ def build_agent(
     @mlflow.trace(name="fpac_soil_agent", span_type="AGENT")
     def predict(
         request: str,
-        force_tool_use: bool = True,
+        force_tool_use: bool = force_tool_use,
         max_tool_calls: int | None = None,
     ) -> str:
         return _run_coroutine(lambda: run(request, force_tool_use, max_tool_calls))
