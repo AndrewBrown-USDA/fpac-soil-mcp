@@ -210,14 +210,21 @@ def prohibited_behaviors_absent(outputs: Any, expectations: dict[str, Any]) -> A
     return _feedback(True, f"No prohibited behaviors found: {prohibited}")
 
 
-def required_status_matches(outputs: Any, expectations: dict[str, Any]) -> Any:
+def required_status_matches(trace: Any, expectations: dict[str, Any]) -> Any:
     expected = expectations.get("expected_status")
     if expected is None:
         return None
-    actual = _status(outputs)
+    # Search TOOL span outputs (structured MCP results) for the status field.
+    for span in _tool_spans(trace):
+        actual = _status(span.outputs or {})
+        if actual == expected:
+            return _feedback(True, f"Required status matched: {expected}")
+    # Fall back to the agent's final text output.
+    actual = _status(trace.data.spans[0].outputs if trace.data.spans else {})
     if actual == expected:
         return _feedback(True, f"Required status matched: {expected}")
-    return _feedback(False, f"Required status {expected!r}, observed {actual!r}")
+    observed = [_status(s.outputs or {}) for s in _tool_spans(trace)]
+    return _feedback(False, f"Required status {expected!r}, observed {observed!r}")
 
 
 def required_behaviors_present(outputs: Any, expectations: dict[str, Any]) -> Any:
