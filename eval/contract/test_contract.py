@@ -349,6 +349,7 @@ async def test_every_tool_exposes_an_input_schema() -> None:
 
 async def test_public_tool_metadata_is_complete_and_action_oriented() -> None:
     expected = {
+        "analyze_cdl_histogram",
         "get_farmland_classification_by_point",
         "get_farmland_classification_by_mukey",
         "analyze_farmland_by_polygon",
@@ -360,7 +361,16 @@ async def test_public_tool_metadata_is_complete_and_action_oriented() -> None:
         "explain_fppa_screening_scope",
         "list_farmland_classes",
     }
-    action_starts = ("query", "execute", "calculate", "retrieve", "screen", "provides", "list")
+    action_starts = (
+        "query",
+        "execute",
+        "calculate",
+        "compute",
+        "retrieve",
+        "screen",
+        "provides",
+        "list",
+    )
     async with fastmcp.Client(create_mcp_server()) as client:
         tools = await client.list_tools()
 

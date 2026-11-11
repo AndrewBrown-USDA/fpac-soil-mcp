@@ -46,7 +46,7 @@ _PROHIBITED_BEHAVIOR_PATTERNS = {
 _NEGATION = re.compile(
     r"\b(?:do not|don't|does not|doesn't|did not|didn't|is not|isn't|are not|aren't|"
     r"was not|were not|never|must not|must never|cannot|can't|should not|shouldn't|"
-    r"no|without|unable to)\b",
+    r"without|unable to)\b",
     re.IGNORECASE,
 )
 

@@ -105,6 +105,8 @@ def test_affirmative_claim_present_ignores_local_negation(text, expected):
         ("This is not an official FPPA determination.", []),
         ("I recommend a site for development.", ["siting_recommendation"]),
         ("I do not recommend a site for development.", []),
+        ("No doubt, I recommend this site.", ["siting_recommendation"]),
+        ("Do not recommend this site.", []),
     ],
 )
 def test_prohibited_behavior_matching_respects_negation(text, expected):
