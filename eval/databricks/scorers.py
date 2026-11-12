@@ -2,7 +2,8 @@
 
 Deterministic scorers read TOOL span inputs/outputs (contract C4) and the MLflow
 `expectations` built from the shared dataset (contract C3). Each returns ``None`` when its
-expectation key is absent for a row, so it is skipped rather than failed.
+expectation key is absent for a row, so it is skipped rather than failed. The exception is
+`agent_completed`, which scores every row so an errored trace can never pass silently.
 
 `mlflow` is imported lazily so this module imports without the `eval-databricks` group.
 """
@@ -26,6 +27,7 @@ FPPA_COMPLIANCE_GUIDELINE = (
 )
 
 DETERMINISTIC_SCORER_NAMES = (
+    "agent_completed",
     "required_tools_called",
     "keywords_present",
     "numeric_within_tolerance",
@@ -133,6 +135,22 @@ def _matches_expected(expected: Any, actual: Any) -> bool:
             return sorted(expected) == sorted(actual)
         return all(_matches_expected(e, a) for e, a in zip(expected, actual, strict=True))
     return actual == expected
+
+
+AGENT_ERROR_RATIONALE_CHARS = 300
+
+
+def agent_completed(trace: Any, outputs: Any) -> Any:
+    """Fail when the agent errored or returned no response; always returns a Feedback."""
+    info = getattr(trace, "info", None)
+    state = getattr(info, "state", None)
+    errored = str(getattr(state, "value", state)) == "ERROR"
+    if not errored and outputs is not None:
+        return _feedback(True, "Agent completed with a response")
+    spans = getattr(getattr(trace, "data", None), "spans", None) or []
+    root = next((span for span in spans if span.parent_id is None), None)
+    description = getattr(getattr(root, "status", None), "description", "") or ""
+    return _feedback(False, description[:AGENT_ERROR_RATIONALE_CHARS] or "no response")
 
 
 def required_tools_called(trace: Any, expectations: dict[str, Any]) -> Any:
@@ -309,6 +327,7 @@ def deterministic_scorers() -> list[Any]:
     from mlflow.genai.scorers import scorer
 
     functions = (
+        agent_completed,
         required_tools_called,
         keywords_present,
         numeric_within_tolerance,

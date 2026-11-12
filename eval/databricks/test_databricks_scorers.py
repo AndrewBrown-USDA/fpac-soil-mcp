@@ -70,6 +70,55 @@ DB45_E3_SYNTHETIC_RESPONSE = (
 )
 
 
+def errored_trace(message: str):
+    """Build an ERROR-state trace: the AGENT root raises, as a failed endpoint call does."""
+
+    @mlflow.trace(name="fpac_soil_agent", span_type="AGENT")
+    def agent(request: str) -> str:
+        raise RuntimeError(message)
+
+    with pytest.raises(RuntimeError):
+        agent("request")
+    return mlflow.get_trace(mlflow.get_last_active_trace_id())
+
+
+def test_agent_completed_passes_ok_trace(scorers: dict[str, Any]) -> None:
+    scorer = scorers["agent_completed"]
+    trace = make_trace([])
+
+    passed = scorer(trace=trace, outputs="answer")
+    assert passed is not None
+    assert passed.value is True
+
+    missing = scorer(trace=trace, outputs=None)
+    assert missing is not None
+    assert missing.value is False
+    assert missing.rationale == "no response"
+
+
+def test_agent_completed_fails_errored_trace(scorers: dict[str, Any]) -> None:
+    scorer = scorers["agent_completed"]
+    message = "400 INVALID_PARAMETER_VALUE: Invalid type of chat model 'tools' parameter"
+    trace = errored_trace(message)
+    assert str(getattr(trace.info.state, "value", trace.info.state)) == "ERROR"
+
+    for outputs in (None, "partial answer"):
+        feedback = scorer(trace=trace, outputs=outputs)
+        assert feedback is not None
+        assert feedback.value is False
+        assert message in feedback.rationale
+
+    long_trace = errored_trace("x" * 500)
+    feedback = scorer(trace=long_trace, outputs=None)
+    assert feedback.value is False
+    assert 0 < len(feedback.rationale) <= 300
+
+
+def test_agent_completed_is_the_first_deterministic_scorer() -> None:
+    assert DETERMINISTIC_SCORER_NAMES[0] == "agent_completed"
+    assert deterministic_scorers()[0].name == "agent_completed"
+
+
 def test_resolve_path() -> None:
     assert resolve_path(INTERP_RESULT, "result[1].numeric_rating") == "0.592"
     assert resolve_path({"a": {"b": [1, {"c": 2}]}}, "a.b[1].c") == 2
