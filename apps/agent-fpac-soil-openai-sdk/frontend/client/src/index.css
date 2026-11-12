@@ -220,9 +220,10 @@
   --atlas-paper-raised: #1c241f;
   --atlas-paper-sunk: #222b25;
   --atlas-line: #303a33;
-  --atlas-forest: #357a4e;
-  --atlas-forest-hover: #42905d;
-  --atlas-forest-press: #2b6440;
+  /* Light enough for dark text: upstream primary buttons use text-background. */
+  --atlas-forest: #5aa574;
+  --atlas-forest-hover: #6fb585;
+  --atlas-forest-press: #4f9a68;
   --atlas-soil: #c08a63;
   --atlas-leaf: #8fbf6a;
 
@@ -236,7 +237,7 @@
   --tooltip-foreground: var(--background);
 
   --primary: var(--atlas-forest);
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--atlas-paper);
 
   --secondary: var(--atlas-paper-sunk);
   --secondary-foreground: var(--atlas-ink);
@@ -273,7 +274,7 @@
   --sidebar-background: #1a211c;
   --sidebar-foreground: var(--atlas-ink);
   --sidebar-primary: var(--atlas-forest);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: var(--atlas-paper);
   --sidebar-accent: #26302a;
   --sidebar-accent-foreground: var(--atlas-ink);
   --sidebar-border: var(--atlas-line);
