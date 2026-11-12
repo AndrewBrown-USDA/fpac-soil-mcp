@@ -118,6 +118,10 @@ Modified upstream files:
   `get_soil_polygons_by_geometry` tool cards (Plan 44, ADR 0017).
 * `client/src/components/multimodal-input.tsx`: shows the attached map AOI
   chip above the textarea (ADR 0016).
+* `client/src/components/suggested-actions.tsx`: FPPA starter prompts
+  (labelled, two columns on wider screens) in place of the two generic
+  upstream suggestions. Each reuses an `eval/prompt_test_cases.json`
+  `user_prompt` named by `caseId`, plus one map-AOI prompt.
 * `client/src/components/chat.tsx`: tells the map panel the open chat id and
   sends the chat's AOI as `activeAoi` with each turn (ADR 0016).
 * `packages/core/src/schemas/chat.ts`: optional, bounded `activeAoi` in the
