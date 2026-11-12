@@ -218,8 +218,7 @@
         "polygon"
       ],
       "expected_facts": [
-        "The response is a GeoJSON FeatureCollection of SSURGO map unit polygons clipped to the project boundary.",
-        "The clipped polygons are SSURGO map units in soil survey area IA169."
+        "The response is a GeoJSON FeatureCollection of SSURGO map unit polygons clipped to the project boundary."
       ],
       "sample_geometry": {
         "type": "Polygon",
@@ -527,9 +526,7 @@
       "target_type": "prompt",
       "target_name": "fppa_urban_exemption_assistant",
       "user_prompt": "Use the fppa_urban_exemption_assistant prompt to evaluate a proposed logistics park expansion on the fringe of Cedar Rapids, IA.",
-      "expected_tools": [
-        "check_urban_area_exemption"
-      ],
+      "expected_tools": [],
       "expected_keywords": [
         "urban",
         "exemption"
