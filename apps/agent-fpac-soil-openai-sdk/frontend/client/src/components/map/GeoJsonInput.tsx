@@ -1,5 +1,6 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { ChevronDown, Clipboard, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseAoiText } from './geojson';
 import type { PolygonGeometry } from './geojson';
@@ -13,10 +14,12 @@ export function GeoJsonInput({
   onGeometry: (geometry: PolygonGeometry) => void;
 }) {
   const textId = useId();
-  const fileId = useId();
   const messageId = useId();
+  const pastePanelId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
 
   const apply = (value: string) => {
     const parsed = parseAoiText(value);
@@ -42,39 +45,65 @@ export function GeoJsonInput({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={textId} className="font-medium text-sm">
-        Paste GeoJSON (Polygon or MultiPolygon)
-      </label>
-      <textarea
-        id={textId}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        rows={3}
-        spellCheck={false}
-        aria-describedby={message ? messageId : undefined}
-        className="w-full rounded-md border border-border bg-background p-2 font-mono text-xs"
-      />
+    <div role="group" aria-label="AOI input methods" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => fileInputRef.current?.click()}
+          className="gap-1.5"
+        >
+          <Upload aria-hidden="true" />
+          Upload file
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          aria-expanded={pasteOpen}
+          aria-controls={pastePanelId}
+          onClick={() => setPasteOpen((open) => !open)}
+          className="gap-1.5"
+        >
+          <Clipboard aria-hidden="true" />
+          Paste GeoJSON
+          <ChevronDown
+            aria-hidden="true"
+            className={`transition-transform ${pasteOpen ? 'rotate-180' : ''}`}
+          />
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".geojson,.json,application/geo+json,application/json"
+          onChange={onFile}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="sr-only"
+        />
+      </div>
+      <div id={pastePanelId} hidden={!pasteOpen} className="flex flex-col gap-2">
+        <label htmlFor={textId} className="font-medium text-sm">
+          GeoJSON Polygon or MultiPolygon
+        </label>
+        <textarea
+          id={textId}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          rows={3}
+          spellCheck={false}
+          aria-describedby={message ? messageId : undefined}
+          className="w-full rounded-md border border-border bg-background p-2 font-mono text-xs"
+        />
         <Button
           type="button"
           size="sm"
           variant="secondary"
           onClick={() => apply(text)}
           disabled={!text.trim()}
+          className="w-fit"
         >
-          Use pasted AOI
+          Use this AOI
         </Button>
-        <label htmlFor={fileId} className="text-sm">
-          or upload
-        </label>
-        <input
-          id={fileId}
-          type="file"
-          accept=".geojson,.json,application/geo+json,application/json"
-          onChange={onFile}
-          className="max-w-[14rem] text-xs"
-        />
       </div>
       {message && (
         <p id={messageId} role="alert" className="text-destructive text-sm">

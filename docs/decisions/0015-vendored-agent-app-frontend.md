@@ -94,7 +94,8 @@ Modified upstream files:
 * `packages/db/migrations/0001_add_trace_id.sql` and
   `packages/db/migrations/meta/_journal.json`: add the MLflow trace ID column
   with replay-safe SQL and an execution-order timestamp.
-* `client/index.html`: permit browser page zoom.
+* `client/index.html`: permit browser page zoom and set the browser title to
+  “Farmland Protection Policy Act Agent”.
 * `client/src/components/sidebar-toggle.tsx`: give the icon-only sidebar
   toggle an accessible name.
 * `client/package.json`: exact pins for the map panel dependencies
@@ -107,12 +108,22 @@ Modified upstream files:
 * `client/src/layouts/ChatLayout.tsx`: collapsible map panel column next to
   the chat, wrapped in the active-AOI provider (ADR 0016) and the map-result
   provider, which opens the panel when a tool card's "Show on map" is used
-  (Plan 44, ADR 0017).
+  (Plan 44, ADR 0017). The map toggle has an icon and a focus ring; when open,
+  it appears inline with the map-panel header.
+* `client/src/index.css`: "field atlas" app theme (warm surfaces, ink text,
+  forest-green primary, `--atlas-*` tokens with `atlas-soil`/`atlas-leaf`
+  colour utilities) in light and dark mode. Map data colours, chart and
+  status tokens are unchanged
+  (`planning/RESEARCH_AGENT_MAP_APP_VISUAL_DESIGN.md`).
 * `client/src/components/message.tsx`: "Show on map" button on completed
   `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and
   `get_soil_polygons_by_geometry` tool cards (Plan 44, ADR 0017).
 * `client/src/components/multimodal-input.tsx`: shows the attached map AOI
   chip above the textarea (ADR 0016).
+* `client/src/components/suggested-actions.tsx`: FPPA starter prompts
+  (labelled, two columns on wider screens) in place of the two generic
+  upstream suggestions. Each reuses an `eval/prompt_test_cases.json`
+  `user_prompt` named by `caseId`, plus one map-AOI prompt.
 * `client/src/components/chat.tsx`: tells the map panel the open chat id and
   sends the chat's AOI as `activeAoi` with each turn (ADR 0016).
 * `packages/core/src/schemas/chat.ts`: optional, bounded `activeAoi` in the
@@ -121,6 +132,10 @@ Modified upstream files:
 * `client/src/components/map/farmlandClasses.ts`: keeps unknown/unrecognized
   classification labels distinct from explicit not-prime farmland rather than
   defaulting unrecognized values to `not_prime`.
+* `client/src/components/map/MapPanel.tsx`: uses the NCSS acronym-only logo in
+  the map-panel header, with the official color and white variants for light
+  and dark themes (NCSS Visual Standards Guide, March 2018); Vite-managed
+  imports ensure the assets are included in the frontend build.
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
 * `packages/ai-sdk-providers/src/providers-server.ts`: request-scoped AOI
@@ -137,7 +152,15 @@ Added paths:
   shown-result context and tool-card button (`MapResultContext.tsx`,
   `ShowOnMapButton.tsx`, calling `/api/geo/map`), the fixed context-overlay
   catalog and toggles (`overlays.ts`, `OverlayControl.tsx`), and identify
-  popups with "Use as AOI" (`identify.ts`, `IdentifyPopup.tsx`).
+  popups with "Use as AOI" (`identify.ts`, `IdentifyPopup.tsx`). The visual
+  refresh added the panel header, grouped draw/edit tools, the
+  `StatusMessage.tsx` message bar and the screening summary strip. AOI import
+  keeps file upload prominent and collapses pasted GeoJSON behind a disclosure.
+* `client/src/assets/ncss-acronym-color.png` and
+  `client/src/assets/ncss-acronym-white.png`: official NCSS acronym-only logo
+  variants prepared from the
+  [NCSS Visual Standards Guide](https://www.nrcs.usda.gov/sites/default/files/2022-09/NCSS_logo_style_guide.pdf)
+  for light and dark map-panel headers.
 
 ### Update procedure
 

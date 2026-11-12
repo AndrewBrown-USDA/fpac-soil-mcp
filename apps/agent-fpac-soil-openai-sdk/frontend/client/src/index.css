@@ -103,12 +103,25 @@
   --dubois-shadow-db-lg: 0px 2px 16px 0px rgba(0, 0, 0, 0.08);
   --dubois-shadow-db-xl: 0px 8px 40px 0px rgba(0, 0, 0, 0.13);
 
-  --action-default-background-hover: rgba(34, 114, 180, 0.08);
-  --action-default-background-press: rgba(34, 114, 180, 0.16);
-  --action-primary-background-hover: var(--color-blue-700);
-  --action-primary-background-press: var(--color-blue-800);
-  --action-tertiary-background-hover: rgba(34, 114, 180, 0.08);
-  --action-tertiary-background-press: rgba(34, 114, 180, 0.16);
+  /* FPAC field-atlas palette (app chrome only; map data colours live in
+     farmlandClasses.ts and the server map block). */
+  --atlas-ink: #1f2a24;
+  --atlas-paper: #fbfaf6;
+  --atlas-paper-raised: #fffefb;
+  --atlas-paper-sunk: #f4f1e8;
+  --atlas-line: #e3ddcd;
+  --atlas-forest: #2f6b45;
+  --atlas-forest-hover: #24543a;
+  --atlas-forest-press: #1b3f2c;
+  --atlas-soil: #8a5a3b;
+  --atlas-leaf: #5f8f3e;
+
+  --action-default-background-hover: rgba(47, 107, 69, 0.08);
+  --action-default-background-press: rgba(47, 107, 69, 0.16);
+  --action-primary-background-hover: var(--atlas-forest-hover);
+  --action-primary-background-press: var(--atlas-forest-press);
+  --action-tertiary-background-hover: rgba(47, 107, 69, 0.08);
+  --action-tertiary-background-press: rgba(47, 107, 69, 0.16);
   --action-danger-primary-background-hover: var(--color-red-700);
   --action-danger-primary-background-press: var(--color-red-800);
 
@@ -130,38 +143,38 @@
     "Source Code Pro", monospace, Menlo, Monaco, "Courier New", monospace;
 
   /* Core surfaces */
-  --background: #ffffff;
-  --foreground: var(--color-grey-800);
-  --card: #ffffff;
-  --card-foreground: var(--color-grey-800);
-  --popover: #ffffff;
-  --popover-foreground: var(--color-grey-800);
+  --background: var(--atlas-paper);
+  --foreground: var(--atlas-ink);
+  --card: var(--atlas-paper-raised);
+  --card-foreground: var(--atlas-ink);
+  --popover: var(--atlas-paper-raised);
+  --popover-foreground: var(--atlas-ink);
   --tooltip: var(--color-neutral-800);
   --tooltip-foreground: var(--background);
 
   /* Primary action */
-  --primary: var(--color-blue-600);
+  --primary: var(--atlas-forest);
   --primary-foreground: #ffffff;
 
   /* Secondary surface */
-  --secondary: var(--color-grey-050);
-  --secondary-foreground: var(--color-grey-800);
+  --secondary: var(--atlas-paper-sunk);
+  --secondary-foreground: var(--atlas-ink);
 
   /* Muted */
-  --muted: var(--color-grey-050);
-  --muted-foreground: var(--color-neutral-600);
+  --muted: var(--atlas-paper-sunk);
+  --muted-foreground: #5a5448;
 
   /* Accent */
-  --accent: var(--color-grey-050);
-  --accent-foreground: var(--color-grey-800);
+  --accent: var(--atlas-paper-sunk);
+  --accent-foreground: var(--atlas-ink);
 
   /* Destructive / danger */
   --destructive: var(--color-red-600);
 
   /* Borders & inputs */
-  --border: var(--color-grey-100);
-  --input: var(--color-grey-100);
-  --ring: #2272b4;
+  --border: var(--atlas-line);
+  --input: var(--atlas-line);
+  --ring: var(--atlas-forest);
 
   /* Semantic additions */
   --warning: var(--color-yellow-600);
@@ -183,14 +196,14 @@
   --chart-5: #9b6ae8;
 
   /* Sidebar */
-  --sidebar-background: var(--color-neutral-050);
-  --sidebar-foreground: var(--color-grey-800);
-  --sidebar-primary: var(--color-blue-600);
+  --sidebar-background: #f6f3ec;
+  --sidebar-foreground: var(--atlas-ink);
+  --sidebar-primary: var(--atlas-forest);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--color-grey-100);
-  --sidebar-accent-foreground: var(--color-grey-800);
-  --sidebar-border: var(--color-grey-100);
-  --sidebar-ring: var(--color-blue-600);
+  --sidebar-accent: #ebe6d9;
+  --sidebar-accent-foreground: var(--atlas-ink);
+  --sidebar-border: var(--atlas-line);
+  --sidebar-ring: var(--atlas-forest);
 
   --radius: 0.25rem;
 
@@ -202,32 +215,44 @@
 
 /* define design tokens (dark mode) */
 .dark {
-  --background: var(--color-grey-800);
-  --foreground: var(--color-grey-100);
-  --card: #1a2530;
-  --card-foreground: var(--color-grey-100);
-  --popover: #1a2530;
-  --popover-foreground: var(--color-grey-100);
-  --tooltip: var(--color-grey-100);
+  --atlas-ink: #e9e6dc;
+  --atlas-paper: #141a16;
+  --atlas-paper-raised: #1c241f;
+  --atlas-paper-sunk: #222b25;
+  --atlas-line: #303a33;
+  /* Light enough for dark text: upstream primary buttons use text-background. */
+  --atlas-forest: #5aa574;
+  --atlas-forest-hover: #6fb585;
+  --atlas-forest-press: #4f9a68;
+  --atlas-soil: #c08a63;
+  --atlas-leaf: #8fbf6a;
+
+  --background: var(--atlas-paper);
+  --foreground: var(--atlas-ink);
+  --card: var(--atlas-paper-raised);
+  --card-foreground: var(--atlas-ink);
+  --popover: var(--atlas-paper-raised);
+  --popover-foreground: var(--atlas-ink);
+  --tooltip: var(--atlas-ink);
   --tooltip-foreground: var(--background);
 
-  --primary: var(--color-blue-500);
-  --primary-foreground: #ffffff;
+  --primary: var(--atlas-forest);
+  --primary-foreground: var(--atlas-paper);
 
-  --secondary: #283035;
-  --secondary-foreground: #e8ecf0;
+  --secondary: var(--atlas-paper-sunk);
+  --secondary-foreground: var(--atlas-ink);
 
-  --muted: #2a3a45;
-  --muted-foreground: #bdcdd9;
+  --muted: #26302a;
+  --muted-foreground: #c4bfb2;
 
-  --accent: #2a3a45;
-  --accent-foreground: #e8ecf0;
+  --accent: #26302a;
+  --accent-foreground: var(--atlas-ink);
 
   --destructive: #e65677;
 
-  --border: #2a3a45;
-  --input: #2a3a45;
-  --ring: #4ba3d6;
+  --border: var(--atlas-line);
+  --input: var(--atlas-line);
+  --ring: #7fbf8f;
 
   --warning: #dc6222;
   --success: #3ca45e;
@@ -246,21 +271,21 @@
   --chart-4: #e83a5f;
   --chart-5: #9b6ae8;
 
-  --sidebar-background: var(--color-grey-700);
-  --sidebar-foreground: #e8ecf0;
-  --sidebar-primary: #2e86c1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2a3a45;
-  --sidebar-accent-foreground: #e8ecf0;
-  --sidebar-border: #2a3a45;
-  --sidebar-ring: #4ba3d6;
+  --sidebar-background: #1a211c;
+  --sidebar-foreground: var(--atlas-ink);
+  --sidebar-primary: var(--atlas-forest);
+  --sidebar-primary-foreground: var(--atlas-paper);
+  --sidebar-accent: #26302a;
+  --sidebar-accent-foreground: var(--atlas-ink);
+  --sidebar-border: var(--atlas-line);
+  --sidebar-ring: #7fbf8f;
 
-  --action-default-background-hover: rgba(138, 202, 255, 0.08);
-  --action-default-background-press: rgba(138, 202, 255, 0.16);
-  --action-primary-background-hover: #4ba3d6;
-  --action-primary-background-press: #bae1fc;
-  --action-tertiary-background-hover: rgba(143, 205, 255, 0.08);
-  --action-tertiary-background-press: rgba(143, 205, 255, 0.16);
+  --action-default-background-hover: rgba(127, 191, 143, 0.08);
+  --action-default-background-press: rgba(127, 191, 143, 0.16);
+  --action-primary-background-hover: var(--atlas-forest-hover);
+  --action-primary-background-press: var(--atlas-forest-press);
+  --action-tertiary-background-hover: rgba(127, 191, 143, 0.08);
+  --action-tertiary-background-press: rgba(127, 191, 143, 0.16);
 
   --action-danger-primary-background-hover: #f06e87;
   --action-danger-primary-background-press: #fbd0d8;
@@ -307,6 +332,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-atlas-soil: var(--atlas-soil);
+  --color-atlas-leaf: var(--atlas-leaf);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

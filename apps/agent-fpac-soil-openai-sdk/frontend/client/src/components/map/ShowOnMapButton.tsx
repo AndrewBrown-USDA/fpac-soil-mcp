@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useOptionalActiveAoi } from './ActiveAoiContext';
 import { inlineLayers } from './mapLayers';
 import type { MapBlock } from './mapLayers';
 import { useOptionalMapResult } from './MapResultContext';
+import { StatusMessage } from './StatusMessage';
 
 // The tools whose results carry an ADR 0017 map block (`geo.MAP_TOOLS`).
 export const MAP_TOOLS: ReadonlySet<string> = new Set([
@@ -108,16 +110,18 @@ export function ShowOnMapButton({
       <Button
         type="button"
         size="sm"
-        variant="secondary"
+        variant="default"
         onClick={run}
         disabled={status === 'loading'}
+        className="gap-1.5 px-2"
       >
+        <MapPin aria-hidden="true" className="text-primary" />
         {status === 'loading' ? 'Loading map...' : 'Show on map'}
       </Button>
       {status === 'error' && message && (
-        <span role="alert" className="text-destructive text-xs">
-          {message}
-        </span>
+        <StatusMessage variant="error" className="text-xs">
+          <p>{message}</p>
+        </StatusMessage>
       )}
     </div>
   );

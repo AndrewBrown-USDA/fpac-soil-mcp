@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Map as MapIcon } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { useSession } from '@/contexts/SessionContext';
@@ -61,21 +62,24 @@ export default function ChatLayout() {
           aria-label="Map panel"
           className={`relative h-svh shrink-0 bg-secondary ${mapOpen ? 'w-full md:w-[40%]' : 'w-10'}`}
         >
-          <button
-            type="button"
-            onClick={() => setMapOpen((open) => !open)}
-            aria-expanded={mapOpen}
-            aria-controls="map-panel"
-            className="absolute top-2 right-1 z-10 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
-          >
-            {mapOpen ? 'Hide map' : 'Map'}
-          </button>
+          {!mapOpen && (
+            <button
+              type="button"
+              onClick={() => setMapOpen(true)}
+              aria-expanded={false}
+              aria-controls="map-panel"
+              className="absolute top-2 right-1 z-10 flex flex-col items-center gap-0.5 rounded-md border border-border bg-background px-1.5 py-1 font-medium text-xs shadow-sm hover:bg-[var(--action-default-background-hover)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+            >
+              <MapIcon aria-hidden="true" className="size-4 text-primary" />
+              Map
+            </button>
+          )}
           <div
             id="map-panel"
             hidden={!mapOpen}
-            className="h-full pt-10 md:my-2 md:ml-2 md:rounded-xl md:bg-background"
+            className="h-full md:my-2 md:ml-2 md:rounded-xl md:bg-background"
           >
-            <MapPanel />
+            <MapPanel onCloseMap={() => setMapOpen(false)} />
           </div>
         </aside>
         <SidebarInset className="h-svh overflow-hidden bg-secondary">
