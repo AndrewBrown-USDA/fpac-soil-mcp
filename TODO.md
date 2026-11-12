@@ -48,3 +48,7 @@ Apply the low-hanging-fruit visual refresh from `planning/RESEARCH_AGENT_MAP_APP
 - Task 6: the summary strip sits above the regulatory notice as planned (user decision 2026-11-12, after I raised the ADR 0003 "notice first" comment); the strip carries the "Preliminary machine estimate" badge and the notice still precedes the legend and table. `ResultsTable.tsx` and `Legend.tsx` are unchanged; they are wrapped in cards instead.
 - Small addition (task 5): "Run screening" uses the primary (filled) button variant, so the main action stands out from the outlined tool buttons.
 - 2026-11-12: Auto Mode blocked the commit for task 4 onward (it read the `~/fpac-soil-mcp-ui` path as the main clone); the user confirmed commits in this clone. Tasks 4-6 share `MapPanel.tsx` edits, so they landed as one frontend commit instead of one per section.
+
+## Review fixes (PR Copilot comments)
+- [x] Dark primary button text contrast: upstream `Button` primary uses `text-background`, which the task 2 check missed (it checked `--primary-foreground`). Dark ink on #357a4e was 3.40:1. Dark `--atlas-forest` is now #5aa574 (hover #6fb585, press #4f9a68) and dark primary/sidebar-primary foregrounds use `--atlas-paper`. The re-check covers the real button pairs (text-background on primary, hover and press; text-primary on background and card): 22 pairs, 0 below 4.5:1, dark lowest 5.18 (press). `button.tsx` is unchanged.
+- [x] Toolbar accessible name "Draw AOI" -> "AOI tools" (it holds both groups).
