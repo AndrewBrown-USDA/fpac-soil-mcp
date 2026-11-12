@@ -19,25 +19,25 @@ Apply the low-hanging-fruit visual refresh from `planning/RESEARCH_AGENT_MAP_APP
 - [x] `ChatLayout.tsx`: toggle gets a lucide `Map` icon plus the existing text labels, same `aria-expanded`/`aria-controls`, same open/closed widths and narrow-screen default.
 
 ### 4. Toolbar hierarchy
-- [ ] Split the single toolbar into labelled groups "Draw area" (Polygon, Rectangle) and "Edit area" (Edit, Undo, Clear), each `role="group"` with `aria-label`, lucide icons beside the existing text labels; keep `aria-pressed`, `disabled` rules and handlers unchanged.
-- [ ] Selected tool state not colour-only: pressed button also shows a check icon or ring.
-- [ ] `GeoJsonInput`: give its block an "Import GeoJSON" group heading in the same style; no behaviour change.
+- [x] Split the single toolbar into labelled groups "Draw area" (Polygon, Rectangle) and "Edit area" (Edit, Undo, Clear), each `role="group"` with `aria-label`, lucide icons beside the existing text labels; keep `aria-pressed`, `disabled` rules and handlers unchanged.
+- [x] Selected tool state not colour-only: pressed button also shows a check icon or ring.
+- [x] `GeoJsonInput`: give its block an "Import GeoJSON" group heading in the same style; no behaviour change.
 
 ### 5. Status message bars
-- [ ] Add `components/map/StatusMessage.tsx` (variants info/success/warning/error using the existing `--background-*`/`--border-*` tokens, icon + wrapping text, no truncation; error variant keeps `role="alert"`).
-- [ ] Use it for the preliminary notice (warning, same text), the screening status line (info while idle/running, success when done, still `aria-live="polite"`), and the AOI/screening/tile error block (same messages).
-- [ ] `ShowOnMapButton.tsx`: add a lucide `MapPin` icon to the button and render its error through `StatusMessage`; same text and states.
+- [x] Add `components/map/StatusMessage.tsx` (variants info/success/warning/error using the existing `--background-*`/`--border-*` tokens, icon + wrapping text, no truncation; error variant keeps `role="alert"`).
+- [x] Use it for the preliminary notice (warning, same text), the screening status line (info while idle/running, success when done, still `aria-live="polite"`), and the AOI/screening/tile error block (same messages).
+- [x] `ShowOnMapButton.tsx`: add a lucide `MapPin` icon to the button and render its error through `StatusMessage`; same text and states.
 
 ### 6. Results layout
-- [ ] `ScreeningResults.tsx`: summary strip above the notice from existing `analysis` values only (AOI acres, FPPA-protected acres and %, coverage status), labelled "Preliminary machine estimate"; hide fields that are null, never compute new numbers.
-- [ ] Regulatory notice stays first in content order after the strip, verbatim, with a heading; legend and table get section spacing and small headings; `ResultsTable` content unchanged except caption/heading typography.
-- [ ] Apply the same notice/legend treatment to the tool-result view in `MapPanel.tsx` ("Map of ... result" header gets a "Tool result" badge vs "AOI screening").
+- [x] `ScreeningResults.tsx`: summary strip above the notice from existing `analysis` values only (AOI acres, FPPA-protected acres and %, coverage status), labelled "Preliminary machine estimate"; hide fields that are null, never compute new numbers.
+- [x] Regulatory notice stays first in content order after the strip, verbatim, with a heading; legend and table get section spacing and small headings; `ResultsTable` content unchanged except caption/heading typography.
+- [x] Apply the same notice/legend treatment to the tool-result view in `MapPanel.tsx` ("Map of ... result" header gets a "Tool result" badge vs "AOI screening").
 
 ### 7. Docs and gate
-- [ ] ADR 0015 `### Local changes`: list `index.css`, `ChatLayout.tsx` (if not already listed) and the new `StatusMessage.tsx`.
-- [ ] Frontend gate in a fresh `/tmp` clone of the committed head: 0 lint errors, warnings <= baseline, build OK; `make app-check` still passes.
-- [ ] Read-back check of the diff: preliminary notice text, regulatory notice rendering, Legend source/vintage/authority, `farmlandClasses.ts`, `mapLayers.ts`, `overlays.ts` unchanged; no new npm dependencies.
-- [ ] Commit per section with conventional commits (`feat(app-ui): ...`, `docs(adr): ...`); do not push.
+- [x] ADR 0015 `### Local changes`: list `index.css`, `ChatLayout.tsx` (if not already listed) and the new `StatusMessage.tsx`.
+- [x] Frontend gate in a fresh `/tmp` clone of the committed head: 0 lint errors, warnings <= baseline, build OK; `make app-check` still passes. Result at 764c721: npm ci OK, 608 files 0 errors / 10 warnings (same as baseline, none in changed files), build OK, app-check 177 passed.
+- [x] Read-back check of the diff: preliminary notice text, regulatory notice rendering, Legend source/vintage/authority, `farmlandClasses.ts`, `mapLayers.ts`, `overlays.ts` unchanged; no new npm dependencies. Result: farmlandClasses, mapLayers, overlays, Legend, ResultsTable, client/package.json and package-lock.json identical to 5d53ce7; notice, missing-notice, tile-error and status strings present; aria-pressed/expanded/controls/live kept.
+- [x] Commit per section with conventional commits (`feat(app-ui): ...`, `docs(adr): ...`); do not push. Commits: 7f67144, f1e7b78, 9ef00aa, 48ae432 (tasks 4-6 together), 764c721, plus this TODO update. Not pushed.
 
 ## Notes
 - Branch: `ui/agent-map-app-pretty1`, worked in the separate Git folder `~/fpac-soil-mcp-ui`; the main clone (`~/fpac-soil-mcp`, another agent on `fix/eval-tuning1`) is not touched.
@@ -45,3 +45,6 @@ Apply the low-hanging-fruit visual refresh from `planning/RESEARCH_AGENT_MAP_APP
 - Icons come from `lucide-react` (already a dependency, 0.446.0). No new packages, no lockfile change.
 - Risk: app-wide primary colour change from blue to green affects every chat button and link; contrast is checked in task 2, appearance needs the user's browser check.
 - Commits stay local until the user approves the push (a push may redeploy the dev apps).
+- Task 6: the summary strip sits above the regulatory notice as planned (user decision 2026-11-12, after I raised the ADR 0003 "notice first" comment); the strip carries the "Preliminary machine estimate" badge and the notice still precedes the legend and table. `ResultsTable.tsx` and `Legend.tsx` are unchanged; they are wrapped in cards instead.
+- Small addition (task 5): "Run screening" uses the primary (filled) button variant, so the main action stands out from the outlined tool buttons.
+- 2026-11-12: Auto Mode blocked the commit for task 4 onward (it read the `~/fpac-soil-mcp-ui` path as the main clone); the user confirmed commits in this clone. Tasks 4-6 share `MapPanel.tsx` edits, so they landed as one frontend commit instead of one per section.
