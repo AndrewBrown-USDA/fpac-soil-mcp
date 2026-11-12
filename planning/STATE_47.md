@@ -178,8 +178,8 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 - `2f80621`, `7676dd0`, `83d39e1`: trimmed PROMPT-02 to 2 facts, PROMPT-03 to 2, RES-03 to 2 (class names checked against `fppa://farmland-classes`).
 - Offline: `eval/common` + phase 4 137 passed; Databricks 38; Pi 41/2 deselected; dry run 38 records; Ruff clean.
 - Live `correctness`: run `aa474e05` (6 cases) passed URBAN-01, LESA-01, PROMPT-02, RES-03. PROMPT-03 failed twice on wording (`aa474e05`, `6ed11d4e`), then passed after the second rewording (`27f56b85`). POLY-02 still fails: the response does not name IA169 (open, F-47-5).
-- F-47-5: POLY-02 fact "map units in IA169" is unsupported when the response omits the survey area. Either drop it or have the prompt ask for the survey area.
-- PROMPT-03 `required_tools_called` still fails: the prompt has no geometry, so the agent does not call `check_urban_area_exemption` (F-47-4).
+- F-47-5 (resolved): dropped the POLY-02 IA169 fact (user decision). PROMPT-03 now has `expected_tools: []` like PROMPT-02: with no footprint in the prompt, the agent answers with guidance instead of calling a tool (user decision). Live run `336604fd`: both pass `correctness`; PROMPT-03 `required_tools_called` is null. Offline suites, harness 18/18 unchanged.
+- Open: `tool_call_correctness` fails PROMPT-02 and PROMPT-03 (also in `69d873e7`) because the judge objects to the agent passing arguments to `get_prompt`. Not changed.
 
 ## Discovered
 
