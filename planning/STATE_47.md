@@ -40,7 +40,7 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 | 3 gate | Case data + fact source extraction | pass | | Py 175, Pi 41, harness 18/18; 15 cases / 32 spans dumped |
 | 4 | 47.4.1 Expected facts for 15 cases | done | `91898ed`, `a253438` | 47 facts; trimmed after live check |
 | 4 gate | Facts | pass | | Py 175, Pi 41, harness 18/18; live `correctness` 3/3 non-null |
-| 5 | 47.5.1 Remove Databricks `keywords_present` | pending | | |
+| 5 | 47.5.1 Remove Databricks `keywords_present` | done | `78d66ba` | 16 scorers; 0 records carry keywords |
 | final | Full T1 rerun vs `f2df7fe1` | pending | | |
 
 ## Task Reports
@@ -132,6 +132,14 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 ## 47.4 gate
 
 - On HEAD `a253438`: `PY eval/common` + phase 4 136 passed; Databricks 39 passed; Pi 41 passed, 2 deselected; dry run `--all` 38 records, 17 scorers; harness check OK, 18/18. Ruff on the touched test file plus `eval/`: clean. Live `correctness` returned a value on 3/3 cases. **PASS.**
+
+## 47.5.1
+
+- Status: done, `78d66ba`. Removed `keywords_present` (function, name entry, tuple entry, `_keywords_present` import) and `test_keywords_present`. `to_mlflow_records` no longer copies `expected_keywords`; the field stays required in the case schema. Field-role comment and README `## Scoring` updated (10 deterministic scorers; keywords are harness and Pi advisory only).
+- New `test_non_adversarial_keyword_cases_have_expected_facts` on the checked-in dataset; C3 record test no longer expects `expected_keywords`.
+- Spec suites: 160 passed. All Databricks: 38 passed (39 - 1). Pi 41 passed, 2 deselected. Dry run `--all`: 38 records, 16 scorers; 0 records with `expected_keywords`, 24 with facts. `git grep keywords_present -- eval/databricks` empty; `common.matching.keywords_present` kept. Ruff on `eval` + `tests/eval`: clean.
+- Negative control: in memory (patched `load_cases` with CORR-02 facts emptied) the new test fails; real data passes.
+- Deviation: Auto Mode blocked a negative control that rewrote a `/tmp` copy of the case file, so it ran in memory instead.
 
 ## Discovered
 
