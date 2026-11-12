@@ -100,6 +100,18 @@ def test_checked_in_dataset_validates() -> None:
     ]
 
 
+def test_non_adversarial_keyword_cases_have_expected_facts() -> None:
+    # MLflow records drop `expected_keywords`, so `correctness` must have facts to judge.
+    missing = [
+        case["id"]
+        for case in load_cases()
+        if not case["id"].startswith("ADV-")
+        and case["expected_keywords"]
+        and not case.get("expected_facts")
+    ]
+    assert missing == []
+
+
 def test_v1_row_and_full_v2_row_validate() -> None:
     validate_cases([copy.deepcopy(BASE_ROW), {**_row(), "id": "POINT-02"}])
 
@@ -221,7 +233,6 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
         "expectations": {
             "case_id": "POINT-01",
             "expected_tools": V2_ROW["expected_tools"],
-            "expected_keywords": V2_ROW["expected_keywords"],
             "expected_tool_calls": V2_ROW["expected_tool_calls"],
             "expected_facts": V2_ROW["expected_facts"],
             "numeric_expectations": V2_ROW["numeric_expectations"],
@@ -231,7 +242,6 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
     assert records[1]["expectations"] == {
         "case_id": "DISC-01",
         "expected_tools": BASE_ROW["expected_tools"],
-        "expected_keywords": BASE_ROW["expected_keywords"],
     }
     assert records[1]["inputs"]["force_tool_use"] is True
 

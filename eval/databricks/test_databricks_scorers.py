@@ -137,17 +137,6 @@ def test_required_tools_called(scorers: dict[str, Any]) -> None:
     assert score(trace=trace, expectations={"expected_tools": []}) is None
 
 
-def test_keywords_present(scorers: dict[str, Any]) -> None:
-    score = scorers["keywords_present"]
-    expectations = {"expected_keywords": ["Prime farmland", "AD-1006"]}
-
-    assert score(outputs="prime farmland; see Form AD\u20111006", expectations=expectations).value
-    miss = score(outputs="prime farmland", expectations=expectations)
-    assert miss.value is False
-    assert "AD-1006" in miss.rationale
-    assert score(outputs="x", expectations={}) is None
-
-
 def test_numeric_within_tolerance_reads_tool_output(scorers: dict[str, Any]) -> None:
     trace = make_trace([("get_soil_interpretations", INTERP_ARGS, INTERP_RESULT)])
     score = scorers["numeric_within_tolerance"]

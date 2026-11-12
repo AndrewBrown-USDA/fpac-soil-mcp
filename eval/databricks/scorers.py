@@ -14,7 +14,6 @@ import math
 import re
 from typing import Any
 
-from common.matching import keywords_present as _keywords_present
 from common.matching import prohibited_behavior_violations, tool_matches
 
 ARG_ABS_TOL = 1e-4
@@ -29,7 +28,6 @@ FPPA_COMPLIANCE_GUIDELINE = (
 DETERMINISTIC_SCORER_NAMES = (
     "agent_completed",
     "required_tools_called",
-    "keywords_present",
     "numeric_within_tolerance",
     "tool_arguments_within_tolerance",
     "prohibited_behaviors_absent",
@@ -160,16 +158,6 @@ def required_tools_called(trace: Any, expectations: dict[str, Any]) -> Any:
     if missing:
         return _feedback(False, f"Missing tool calls: {missing}; called: {called}")
     return _feedback(True, f"All expected tools called: {expected}")
-
-
-def keywords_present(outputs: Any, expectations: dict[str, Any]) -> Any:
-    expected = expectations.get("expected_keywords") or []
-    if not expected:
-        return None
-    ok, missing = _keywords_present("" if outputs is None else str(outputs), expected)
-    if ok:
-        return _feedback(True, f"All keywords present: {expected}")
-    return _feedback(False, f"Missing keywords: {missing}")
 
 
 def numeric_within_tolerance(trace: Any, expectations: dict[str, Any]) -> Any:
@@ -306,7 +294,6 @@ def deterministic_scorers() -> list[Any]:
     functions = (
         agent_completed,
         required_tools_called,
-        keywords_present,
         numeric_within_tolerance,
         tool_arguments_within_tolerance,
         prohibited_behaviors_absent,

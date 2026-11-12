@@ -147,10 +147,14 @@ rule above is what keeps the AGENT span safe.
 ## Scoring
 
 Deterministic scorers, in run order: `agent_completed`,
-`required_tools_called`, `keywords_present`, `numeric_within_tolerance`,
+`required_tools_called`, `numeric_within_tolerance`,
 `tool_arguments_within_tolerance`, `prohibited_behaviors_absent`,
 `required_status_matches`, `privacy_non_echo`, `tool_call_budget`,
 `retry_budget`, `latency_budget`.
+
+There is no keyword scorer here: answer content is graded by the `correctness`
+judge against `expected_facts`. `expected_keywords` is used only by the browser
+harness and, as an advisory check, by the Pi runner.
 
 `agent_completed` fails a row whose trace state is `ERROR` or whose response is
 `None` (the rationale quotes the root span error, up to 300 characters). It

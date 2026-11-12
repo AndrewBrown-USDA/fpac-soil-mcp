@@ -46,7 +46,8 @@ V2_FIELDS = frozenset(
 #   folds them into per-row `guidelines` for the `expectations_guidelines` judge; no runner
 #   string-matches them any more.
 # - `expected_keywords` is the browser harness smoke check on raw server output and an
-#   advisory (non-failing) check in the Pi runner.
+#   advisory (non-failing) check in the Pi runner. MLflow records omit it; the
+#   `correctness` judge grades `expected_facts` instead.
 ADVERSARIAL_FIELDS = frozenset(
     {
         "expected_status",
@@ -364,7 +365,6 @@ def to_mlflow_records(cases: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         expectations: dict[str, Any] = {
             "case_id": case["id"],
             "expected_tools": list(case["expected_tools"]),
-            "expected_keywords": list(case["expected_keywords"]),
         }
         for field in EXPECTATION_FIELDS:
             if field in case and (
