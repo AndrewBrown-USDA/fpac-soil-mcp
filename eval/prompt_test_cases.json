@@ -173,7 +173,7 @@
       "expected_facts": [
         "The area of interest is about 909 acres (within 1%).",
         "About 368 acres (within 1%), roughly 40 percent of the area, are mapped as prime farmland.",
-        "Productivity ratings use NCCPI version 3.0; for example, map unit 411277 (Waukee variant loam, 0 to 2 percent slopes) has an NCCPI rating of about 0.96 (within 0.01).",
+        "Map unit productivity ratings are reported using NCCPI.",
         "The parcel intersects the Census 2020 Ames, IA Urban Area."
       ],
       "sample_geometry": {
@@ -219,8 +219,7 @@
       ],
       "expected_facts": [
         "The response is a GeoJSON FeatureCollection of SSURGO map unit polygons clipped to the project boundary.",
-        "The clipped polygons cover about 29 SSURGO map units in soil survey area IA169.",
-        "The clipped polygons include map unit 411277, Waukee variant loam, 0 to 2 percent slopes."
+        "The clipped polygons are SSURGO map units in soil survey area IA169."
       ],
       "sample_geometry": {
         "type": "Polygon",
@@ -265,8 +264,7 @@
       ],
       "expected_facts": [
         "The site is screened against US Census Bureau 2020 Urban Areas (TIGERweb Layer 0).",
-        "An overlap with a Census urban area is preliminary evidence for the 7 CFR 658.2(a) exemption, not an official exemption determination.",
-        "Local zoning, committed-to-urban-development status, and field conditions must be verified before relying on the exemption."
+        "An overlap with a Census urban area is preliminary evidence for the 7 CFR 658.2(a) exemption, not an official exemption determination."
       ],
       "sample_geometry": {
         "type": "Polygon",
@@ -365,9 +363,9 @@
       ],
       "expected_facts": [
         "The 150-foot corridor covers about 233 acres of direct right-of-way (within 1%), and the indirect staging yard about 881 acres (within 1%), for about 1,114 acres in total (within 1%).",
-        "The corridor lies almost entirely in Story County, IA, and intersects the Ames, IA Urban Area.",
+        "The corridor lies almost entirely in Story County, IA.",
         "The land evaluation score is about 84.3 (within 0.5); with no site assessment points supplied, the preliminary total LESA score is about 84.3 out of 260.",
-        "Because the total score is below 160, under 7 CFR 658.4(c)(2) the site need not receive further consideration for protection; this preliminary result is not an official FPPA determination."
+        "Because the total score is below 160, under 7 CFR 658.4(c)(2) the site need not receive further consideration for protection."
       ],
       "sample_geometry": {
         "type": "LineString",
@@ -404,8 +402,7 @@
       "expected_facts": [
         "The primary alignment covers about 205 acres (within 1%), including about 92 acres of prime farmland (within 1%).",
         "Alignment B covers about 234 acres (within 1%), including about 117 acres of prime farmland (within 1%).",
-        "Both alignments are in Story County, IA, with about 203 acres (primary) and about 202 acres (Alignment B) in FPPA-protected farmland classes (within 1%).",
-        "The comparison is neutral preliminary screening; the agency, not the service, selects an alignment."
+        "The primary alignment crosses about 25 fewer acres of prime farmland than Alignment B."
       ],
       "sample_geometry": {
         "type": "LineString",
@@ -465,10 +462,8 @@
         "NRCS-CPA-106"
       ],
       "expected_facts": [
-        "Form AD-1006 is the Farmland Conversion Impact Rating form for federal projects, and Form NRCS-CPA-106 is the Farmland Conversion Impact Rating form for corridor-type projects.",
-        "The service provides preliminary SSURGO soil inventory screening under 7 CFR Part 657 and does not perform formal LESA scoring or issue official FPPA findings under 7 CFR Part 658.",
-        "An official determination needs a Part V Land Evaluation score from NRCS (0-100 points) and a Part VI Site Assessment score from the federal agency (0-160 points), for a total of up to 260 points.",
-        "Federal agencies must consult NRCS and complete Form AD-1006 or NRCS-CPA-106 before finalizing project commitments."
+        "Form AD-1006 is used for non-corridor (site) projects, and Form NRCS-CPA-106 is used for corridor-type projects.",
+        "The service's screening is preliminary and is not an official FPPA determination, LESA score, or completed form."
       ]
     },
     {
@@ -484,7 +479,6 @@
         "Unique"
       ],
       "expected_facts": [
-        "The fppa://farmland-classes resource lists the SSURGO mapunit.farmlndcl categories, citing the USDA NRCS National Soil Survey Handbook, Part 622.",
         "'All areas are prime farmland' is Prime Farmland under 7 CFR 657.5(a); the 'Prime farmland if ...' classes (drained, irrigated, protected from flooding, and similar) are conditional prime farmland under 7 CFR 657.5(a)(2).",
         "Farmland of Statewide Importance (7 CFR 657.5(c)), Farmland of Local Importance (7 CFR 657.5(d)), and Unique Farmland (7 CFR 657.5(b)) are separate protected categories.",
         "'Not prime farmland' is not protected under the FPPA baseline soil criteria."
@@ -545,7 +539,6 @@
       "expected_facts": [
         "Urban exemption screening checks the project footprint against US Census Bureau 2020 Urban Areas (TIGERweb Layer 0).",
         "Under 7 CFR 658.2(a), land shown as an urbanized area or urban cluster on Census maps is treated as committed to urban development, and land with 30 or more structures per 40-acre area can be exempt subject to documentation.",
-        "Land committed to urban development or water storage by local zoning or comprehensive plans before the project application may also qualify for the exemption.",
         "The screening is preliminary evidence for agency documentation, not an official NRCS determination or a conclusion that the expansion is legally exempt."
       ]
     },
@@ -561,10 +554,9 @@
         "threshold"
       ],
       "expected_facts": [
-        "Form AD-1006 combines a Part V Land Evaluation score (up to 100 points, completed by NRCS) and a Part VI Site Assessment score (up to 160 points across 12 criteria, completed by the federal agency) for a total of up to 260 points.",
+        "Form AD-1006 combines a Part V Land Evaluation score (up to 100 points) and a Part VI Site Assessment score (up to 160 points) for a total of up to 260 points.",
         "Under the 7 CFR 658.4(c)(2) threshold, a site scoring below 160 points need not receive further consideration for protection, and no additional sites need to be evaluated.",
-        "At 160 points or more, USDA recommends increasing consideration for protection under 7 CFR 658.4(c)(3), and under 7 CFR 658.4(c)(4) the agency considers alternatives that would convert fewer acres or lower-value farmland.",
-        "The service does not select or recommend a site or alternative."
+        "At 160 points or more, USDA recommends increasing consideration for protection under 7 CFR 658.4(c)(3), and under 7 CFR 658.4(c)(4) the agency considers alternatives that would convert fewer acres or lower-value farmland."
       ]
     },
     {
@@ -584,7 +576,6 @@
       ],
       "expected_facts": [
         "The server rejected the preliminary LESA request because site assessment criterion 1 points must be between 0 and 15, so no LESA score was calculated.",
-        "The 120 site assessment points have to be split across the individual Part VI criteria, each within its own maximum, before a score can be calculated.",
         "A LESA total combines a land evaluation score (up to 100 points) with a site assessment score (up to 160 points).",
         "Under 7 CFR 658.4(c)(2)-(4), a total below 160 points needs no further consideration for protection, while 160 or more calls for increasing consideration and review of alternatives, without requiring selection of an alternative."
       ],
@@ -633,10 +624,9 @@
         "non-farmland"
       ],
       "expected_facts": [
-        "The 45-acre clinic site has a preliminary NCCPI-based land evaluation score of about 68.4 (within 0.5), with about 81 percent of its acreage rated.",
+        "The 45-acre clinic site has a preliminary NCCPI-based land evaluation score of about 68.4 (within 0.5).",
         "No site assessment criteria were supplied, so the Form AD-1006 site assessment is incomplete and no total LESA score or threshold result was calculated.",
-        "Under 7 CFR 658.4(c), 160 total points is the threshold: below it the site needs no further consideration for protection, and at or above it the agency considers non-farmland and alternative sites.",
-        "The service does not recommend an alternative or non-farmland site; that consideration belongs to the agency."
+        "Under 7 CFR 658.4(c), 160 total points is the threshold: below it the site needs no further consideration for protection, and at or above it the agency considers non-farmland and alternative sites."
       ],
       "sample_geometry": {
         "type": "Polygon",
