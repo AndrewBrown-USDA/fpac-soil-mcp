@@ -38,8 +38,8 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 | 3 | 47.3.1 ADV keywords to required behaviors | done | `346c883` | 7 behaviors added |
 | 3 | 47.3.2 Delete `required_behavior_missing` | done | `8a1af1a` | |
 | 3 gate | Case data + fact source extraction | pass | | Py 175, Pi 41, harness 18/18; 15 cases / 32 spans dumped |
-| 4 | 47.4.1 Expected facts for 15 cases | pending | | |
-| 4 gate | Facts | pending | | |
+| 4 | 47.4.1 Expected facts for 15 cases | done | `91898ed`, `a253438` | 47 facts; trimmed after live check |
+| 4 gate | Facts | pass | | Py 175, Pi 41, harness 18/18; live `correctness` 3/3 non-null |
 | 5 | 47.5.1 Remove Databricks `keywords_present` | pending | | |
 | final | Full T1 rerun vs `f2df7fe1` | pending | | |
 
@@ -120,12 +120,29 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 - Deviation: dump written to `/tmp/47/f2df7fe1_tool_outputs.json` (332 KB, serverless local disk) instead of `.development/47/` (gitignored), because workspace files are not written from code here. It is untracked either way and is regenerable from the run id; 47.4.1 reads it from `/tmp` in the same session.
 - **PASS.**
 
+## 47.4.1
+
+- Status: done, `91898ed` + `a253438`. All 15 cases got 2-4 `expected_facts` (47 total), inserted after `expected_keywords`; no `verified_on`. Contract test now strips facts and guidelines from a synthetic LESA-01 copy (asserts the real row has facts). Source notes in `planning/tasks/47.4.1.todo.md`.
+- Data facts from the `f2df7fe1` dump; regulatory facts from resource and prompt text. POLY-02 data comes from POLY-01's output (identical polygon); URBAN-01 facts are regulatory only and LESA-01 facts describe the server rejection (both runs failed; D-47-5, D-47-6).
+- Checks: parsed diff vs `5afe1e6` touches only `expected_facts` on the 15 cases; every case's keywords covered by its facts (`keywords_present`); 7 numbers spot-checked against the dump; 24 of 38 dry-run records carry facts (only the 14 ADV rows lack them).
+- Live check: first run `b4f27852` discarded (stale `scorers`/`common` modules from the Wave 1 smoke import; summary still listed removed scorers). Fresh-import run `fb926187` (POINT-02, RES-02, CORR-02): `correctness` 1/2/0. Rationales showed the judge fails on any listed fact the response omits (county, agency-selection framing, "from NRCS", CFR part numbers), and that my RES-02 "AD-1006 is for federal projects" was wrong (resource: AD-1006, or CPA-106 for corridors).
+- `a253438` trims facts to the core answer across the 15 cases. Rerun `f3d21ccb`: `correctness` 2/1/0 (RES-02 failed on a "both forms" fact, then removed without a further rerun to avoid fitting to one sample).
+- Deviation: two commits instead of one; Auto Mode blocked `git commit --amend` on the unpushed `91898ed`.
+
+## 47.4 gate
+
+- On HEAD `a253438`: `PY eval/common` + phase 4 136 passed; Databricks 39 passed; Pi 41 passed, 2 deselected; dry run `--all` 38 records, 17 scorers; harness check OK, 18/18. Ruff on the touched test file plus `eval/`: clean. Live `correctness` returned a value on 3/3 cases. **PASS.**
+
 ## Discovered
 
 - D-47-1: ADV-FORMS-01 `prohibited_behaviors_absent` fails `official_determination_claim` on a refusal: "I can’t complete or certify Form AD-1006 or NRCS-CPA-106, provide official point totals, or issue an official FPPA determination." Confirmed causes: the 5-word negation window misses "issue" in the coordinated list after "can’t", and "would not" is not a negation cue. Not the curly apostrophe (a straight apostrophe still fails). The scorer is out of scope for plan 47 (not changed). `fppa_compliance` and `safety` passed the row.
 - D-47-2: MLflow logged `Failed to extract tools from trace using LLM ... parameters.properties Field required` during the run, so the trace-tool extraction used by the tool-call judges may have fallen back to an empty list. Not investigated.
 - D-47-3: test env pins differ from uv.lock: mlflow 3.12.0 (lock 3.17.2) with starlette 1.10.0 gives a pip `mlflow-skinny requires starlette<1` warning; ruff 0.17.5 (lock 0.17.3). No test impact seen.
 - D-47-4: the `pi` CLI is not installed on this serverless image, so the live Pi `agent_eval` tests (2, deselected) cannot run here. Pi changes are verified only by the offline mocked-subprocess tests; a live Pi run needs a machine with `pi` installed.
+- D-47-5: POLY-02 and URBAN-01 prompts give WKT polygons; in `f2df7fe1` the agent passed the WKT string to the `geojson` parameter of `get_soil_polygons_by_geometry` / `check_urban_area_exemption`, and both returned "Invalid GeoJSON string". Either those tools accept WKT (corridor tools already do) or the prompts switch to GeoJSON. Their facts describe the correct answer and will fail until this is fixed.
+- D-47-6: LESA-01 supplies a single 120-point Site Assessment total; the agent put it in criterion 1 and the server rejected it ("Criterion 1 points must be between 0 and 15"). The prompt cannot be satisfied as written.
+- D-47-7: `correctness` treats every `expected_facts` entry as required, so facts must be the core answer to the case question only. On CORR-02 (`f3d21ccb`), `fppa_compliance` failed a disclaimer that named NRCS-CPA-106 but not AD-1006 (judge out of scope).
+- D-47-8: `expectations_guidelines` logs "3/3 failed" (reported null) on rows without guidelines; noise only. Live runs from a reused Python session must purge repo modules from `sys.modules` first (see 47.4.1).
 
 ## Findings
 
