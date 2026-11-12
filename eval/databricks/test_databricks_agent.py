@@ -198,11 +198,29 @@ def test_zero_call_budget_disables_tool_use_and_is_added_to_system_prompt() -> N
 
     assert answer == "I cannot make an official determination."
     assert not _tool_spans(trace)
+    assert len(llm.calls) == 1
+    # FakeLLM accepts tools=None; the endpoint does not, so the key must be absent.
+    assert "tools" not in llm.calls[0]
     system_prompt = llm.calls[0]["messages"][0]["content"]
     assert "You MUST call" not in system_prompt
     assert "strict zero-call budget" in system_prompt
     assert "Do not invoke MCP tools" in system_prompt
     assert FPPA_POLICY_BLOCK.strip() in system_prompt
+
+
+def test_tools_are_omitted_after_budget_runs_out_mid_run() -> None:
+    llm = FakeLLM(("tools", [("list_farmland_classes", {})]), ("text", "Done."))
+    predict = build_agent("databricks-gpt-5-6-luna", client=llm)
+
+    answer = predict("List farmland classes.", max_tool_calls=1)
+    trace = mlflow.get_trace(mlflow.get_last_active_trace_id())
+
+    assert answer == "Done."
+    assert len(llm.calls) == 2
+    assert llm.calls[0]["tools"]
+    # FakeLLM accepts tools=None; the endpoint does not, so the key must be absent.
+    assert "tools" not in llm.calls[1]
+    assert [span.name for span in _tool_spans(trace)] == ["list_farmland_classes"]
 
 
 def test_agent_span_shape_is_pinned() -> None:

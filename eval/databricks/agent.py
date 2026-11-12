@@ -258,10 +258,11 @@ def build_agent(
             final_text = ""
             for _ in range(max_turns):
                 # Withhold tools when the budget is exhausted so the model cannot call them.
-                active_tools = None if budget_exhausted else tool_specs
-                response = llm.chat.completions.create(
-                    model=model, messages=messages, tools=active_tools, **params
-                )
+                # Omit the key entirely: the endpoint rejects tools=None with HTTP 400.
+                create_kwargs: dict[str, Any] = {"model": model, "messages": messages, **params}
+                if not budget_exhausted:
+                    create_kwargs["tools"] = tool_specs
+                response = llm.chat.completions.create(**create_kwargs)
                 message = response.choices[0].message
                 final_text = message.content or ""
                 tool_calls = list(message.tool_calls or [])
