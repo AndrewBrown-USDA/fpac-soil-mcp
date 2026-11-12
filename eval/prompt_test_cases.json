@@ -480,9 +480,8 @@
         "Unique"
       ],
       "expected_facts": [
-        "'All areas are prime farmland' is Prime Farmland under 7 CFR 657.5(a); the 'Prime farmland if ...' classes (drained, irrigated, protected from flooding, and similar) are conditional prime farmland under 7 CFR 657.5(a)(2).",
-        "Farmland of Statewide Importance (7 CFR 657.5(c)), Farmland of Local Importance (7 CFR 657.5(d)), and Unique Farmland (7 CFR 657.5(b)) are separate protected categories.",
-        "'Not prime farmland' is not protected under the FPPA baseline soil criteria."
+        "The resource lists Prime Farmland ('All areas are prime farmland') and conditional prime farmland classes such as 'Prime farmland if drained', 'Prime farmland if irrigated', and flood-protection variants.",
+        "It also lists Farmland of Statewide Importance, Farmland of Local Importance, Farmland of Unique Importance, and 'Not prime farmland'."
       ]
     },
     {
@@ -518,9 +517,7 @@
         "658.5(c)"
       ],
       "expected_facts": [
-        "Under 7 CFR 658.5(c), linear corridor projects use Form NRCS-CPA-106 with modified site assessment criteria.",
-        "For corridor projects, criteria 5 and 6 are assigned 0 points, and criteria 8 and 11 have maximum weights of 25 points each.",
-        "The site assessment is out of 160 points and the land evaluation out of 100, for a 260-point total; a total below 160 need not receive further consideration for protection under 7 CFR 658.4(c)(2).",
+        "The evaluation follows the 7 CFR 658.5(c) corridor screening workflow for the pipeline right-of-way.",
         "A multi-county corridor is segmented by county boundary, and staging areas, access roads, and laydown yards are evaluated separately from the right-of-way."
       ]
     },
@@ -539,7 +536,6 @@
       ],
       "expected_facts": [
         "Urban exemption screening checks the project footprint against US Census Bureau 2020 Urban Areas (TIGERweb Layer 0).",
-        "Under 7 CFR 658.2(a), land shown as an urbanized area or urban cluster on Census maps is treated as committed to urban development, and land with 30 or more structures per 40-acre area can be exempt subject to documentation.",
         "The screening is preliminary evidence for agency documentation, not an official NRCS determination or a conclusion that the expansion is legally exempt."
       ]
     },
