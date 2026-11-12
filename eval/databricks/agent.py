@@ -25,8 +25,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+from common.dataset import case_forces_tool_use
+
 from fpac_soil_mcp.app import create_mcp_server
 from fpac_soil_mcp.privacy import sanitize_public_payload
+from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _PROMPT_FILE = re.compile(r"^system_prompt_(v\d+)\.txt$")
@@ -57,6 +60,10 @@ def load_system_prompt(
             f"available: {', '.join(available_prompt_versions())}"
         )
     text = (PROMPTS_DIR / f"system_prompt_{version}.txt").read_text(encoding="utf-8")
+    marker = "{{FPPA_POLICY_BLOCK}}"
+    if text.count(marker) != 1:
+        raise ValueError(f"Prompt {version!r} must contain exactly one {marker} marker.")
+    text = text.replace(marker, FPPA_POLICY_BLOCK.strip())
     replacement = (lambda m: m.group(1)) if force_tool_use else ""
     return _FORCED_BLOCK.sub(replacement, text).strip()
 
@@ -215,32 +222,54 @@ def build_agent(
     max_turns: int = 8,
     force_tool_use: bool = True,
     system_prompt_version: str = DEFAULT_PROMPT_VERSION,
-) -> Callable[[str], str]:
+) -> Callable[..., str]:
     """Build a traced ``predict(request) -> str`` for ``mlflow.genai.evaluate``."""
     import fastmcp
     import mlflow
 
-    system_prompt = load_system_prompt(system_prompt_version, force_tool_use=force_tool_use)
+    load_system_prompt(system_prompt_version, force_tool_use=force_tool_use)
     params = chat_params(model)
     llm = client if client is not None else _default_openai_client()
 
-    async def run(request: str) -> str:
+    async def run(
+        request: str,
+        case_force_tool_use: bool,
+        max_tool_calls: int | None,
+    ) -> str:
+        system_prompt = load_system_prompt(
+            system_prompt_version,
+            force_tool_use=case_forces_tool_use(
+                {"force_tool_use": case_force_tool_use, "max_tool_calls": max_tool_calls}
+            ),
+        )
+        budget_exhausted = max_tool_calls is not None and max_tool_calls <= 0
+        if budget_exhausted:
+            system_prompt += (
+                "\n\nThis evaluation case has a strict zero-call budget. Do not invoke MCP "
+                "tools, read resources, or render prompts."
+            )
         async with fastmcp.Client(server_factory()) as mcp:
             tool_specs, mcp_tools = await _discover(mcp)
             messages: list[dict[str, Any]] = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request},
             ]
+            calls_made = 0
             final_text = ""
             for _ in range(max_turns):
+                # Withhold tools when the budget is exhausted so the model cannot call them.
+                active_tools = None if budget_exhausted else tool_specs
                 response = llm.chat.completions.create(
-                    model=model, messages=messages, tools=tool_specs, **params
+                    model=model, messages=messages, tools=active_tools, **params
                 )
                 message = response.choices[0].message
                 final_text = message.content or ""
                 tool_calls = list(message.tool_calls or [])
                 if not tool_calls:
                     return final_text
+                calls_made += len(tool_calls)
+                if max_tool_calls is not None and calls_made >= max_tool_calls:
+                    budget_exhausted = True
                 messages.append(
                     {
                         "role": "assistant",
@@ -279,7 +308,11 @@ def build_agent(
             return final_text
 
     @mlflow.trace(name="fpac_soil_agent", span_type="AGENT")
-    def predict(request: str) -> str:
-        return _run_coroutine(lambda: run(request))
+    def predict(
+        request: str,
+        force_tool_use: bool = force_tool_use,
+        max_tool_calls: int | None = None,
+    ) -> str:
+        return _run_coroutine(lambda: run(request, force_tool_use, max_tool_calls))
 
     return predict

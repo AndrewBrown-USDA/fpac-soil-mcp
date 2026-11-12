@@ -1,4 +1,11 @@
+import { readFileSync } from "node:fs";
+
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+
+// Shared with eval/common/matching.py; see the catalog's description field.
+const CATALOG = JSON.parse(readFileSync(new URL("../../common/prohibited_behaviors.v1.json", import.meta.url), "utf8"));
+const NEGATION = new RegExp(CATALOG.negation, "i");
+const normalizeText = (text) => String(text ?? "").replace(/[\u2018\u2019]/g, "'");
 
 function typeMatches(value, type) {
   return type === "object" ? isObject(value)
@@ -53,22 +60,73 @@ const PREDICATES = {
     return typeof expected === "string" && typeof actual === "string"
       && expected.toLowerCase() === actual.toLowerCase();
   },
+  requiredStatus: (value, _text, _context, expectations) =>
+    typeof expectations.expected_status === "string" && readStatus(value) === expectations.expected_status,
+  requiredBehaviors: (_value, text, _context, expectations) =>
+    Array.isArray(expectations.required_behaviors) && expectations.required_behaviors.length > 0
+      && expectations.required_behaviors.every((item) => typeof item === "string" && text.toLowerCase().includes(item.toLowerCase())),
+  prohibitedBehaviors: (_value, text, _context, expectations) =>
+    Array.isArray(expectations.prohibited_behaviors) && expectations.prohibited_behaviors.length > 0
+      && expectations.prohibited_behaviors.every((item) => !hasProhibitedClaim(text, item)),
+  sourceDisclosure: (_value, text, _context, expectations) =>
+    Array.isArray(expectations.source_disclosure) && expectations.source_disclosure.length > 0
+      && expectations.source_disclosure.every((item) => typeof item === "string" && text.toLowerCase().includes(item.toLowerCase())),
+  privacyNonEcho: (_value, text, _context, expectations) =>
+    Array.isArray(expectations.sensitive_values) && expectations.sensitive_values.length > 0
+      && expectations.sensitive_values.every((item) => typeof item === "string" && item && !text.includes(item)),
+  toolCallBudget: (value, _text, _context, expectations) =>
+    Number.isInteger(expectations.max_tool_calls) && Number.isInteger(value?.tool_call_count)
+      && value.tool_call_count <= expectations.max_tool_calls,
+  retryBudget: (value, _text, _context, expectations) =>
+    Number.isInteger(expectations.max_retries) && Number.isInteger(value?.retry_count)
+      && value.retry_count <= expectations.max_retries,
+  latencyBudget: (value, _text, _context, expectations) =>
+    Number.isFinite(expectations.latency_budget_ms) && Number.isFinite(value?.elapsed_ms)
+      && value.elapsed_ms <= expectations.latency_budget_ms,
 };
 
-export function runPredicates(names, value, responseText = "", context = {}) {
+function readStatus(value) {
+  if (!isObject(value)) return undefined;
+  for (const key of ["status", "coverage_status", "result_status"]) {
+    if (key in value) return value[key];
+  }
+  for (const key of ["result", "structuredContent", "structured_content"]) {
+    const status = readStatus(value[key]);
+    if (status !== undefined) return status;
+  }
+  return undefined;
+}
+
+// claim: affirmative (non-negated) match violates; omission: absent disclosure violates;
+// structural: enforced by runner budgets, not text. Unknown IDs fail closed.
+export function hasProhibitedClaim(rawText, behavior) {
+  const spec = CATALOG.behaviors[behavior];
+  if (!spec) return true;
+  if (spec.kind === "structural") return false;
+  const text = normalizeText(rawText);
+  if (spec.kind === "omission") return !new RegExp(spec.pattern, "i").test(text);
+  for (const match of text.matchAll(new RegExp(spec.pattern, "gi"))) {
+    const start = Math.max(...[".", "!", "?", ";", "\n"].map((mark) => text.lastIndexOf(mark, match.index - 1))) + 1;
+    const prefix = text.slice(start, match.index).trim().split(/\s+/).slice(-5).join(" ");
+    if (!NEGATION.test(prefix)) return true;
+  }
+  return false;
+}
+
+export function runPredicates(names, value, responseText = "", context = {}, expectations = context) {
   const results = [];
   for (const name of names || []) {
     const predicate = PREDICATES[name];
     results.push(predicate
-      ? { name, passed: Boolean(predicate(value, responseText, context)) }
+      ? { name, passed: Boolean(predicate(value, responseText, context, expectations)) }
       : { name, passed: false, error: "Predicate is not allowlisted" });
   }
   return { passed: results.every((result) => result.passed), results };
 }
 
-export function evaluateResult({ value, responseText = "", expectedResult, predicates = [], context = {} }) {
+export function evaluateResult({ value, responseText = "", expectedResult, predicates = [], context = {}, expectations = {} }) {
   const schema = checkSchema(value, expectedResult);
-  const predicate = runPredicates(predicates, value, responseText, context);
+  const predicate = runPredicates(predicates, value, responseText, context, expectations);
   return {
     status: !schema.valid ? "schema" : !predicate.passed ? "predicate" : "pass",
     schema,

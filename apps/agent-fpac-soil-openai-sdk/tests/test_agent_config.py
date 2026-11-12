@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from agent_server import config
+from common.matching import policy_missing_requirements
 
 ENV_NAMES = ("AGENT_MODEL", "FPAC_MCP_URL", "FPAC_MCP_APP", "FPAC_MCP_TIMEOUT_SECONDS")
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
@@ -77,6 +78,10 @@ def test_default_model_is_not_disabled_model():
 )
 def test_prompt_contains_required_phrases(phrase):
     assert phrase in config.load_system_prompt()
+
+
+def test_prompt_carries_shared_policy():
+    assert policy_missing_requirements(config.load_system_prompt()) == []
 
 
 @pytest.mark.parametrize(

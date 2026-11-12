@@ -118,6 +118,9 @@ Modified upstream files:
 * `packages/core/src/schemas/chat.ts`: optional, bounded `activeAoi` in the
   chat request; invalid values are dropped (ADR 0016).
 * `packages/core/src/ai/providers.ts`: re-exports the AOI request helpers.
+* `client/src/components/map/farmlandClasses.ts`: keeps unknown/unrecognized
+  classification labels distinct from explicit not-prime farmland rather than
+  defaulting unrecognized values to `not_prime`.
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
 * `packages/ai-sdk-providers/src/providers-server.ts`: request-scoped AOI

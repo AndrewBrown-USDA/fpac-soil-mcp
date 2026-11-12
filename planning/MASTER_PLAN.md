@@ -480,13 +480,14 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track E: Evaluation
 
 - **Goal:** Measure MCP contract stability, agent tool routing, answer correctness, and preliminary-screening compliance across complementary tiers.
-- **Status:** T0 in-memory contract tests (`eval/contract/`) and T1 in-process MLflow evaluation (`eval/databricks/`) have shipped; the Pi harness remains a local smoke test.
-- **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases).
+- **Status:** T0 in-memory contract tests (`eval/contract/`) and T1 in-process MLflow evaluation (`eval/databricks/`) have shipped; the Pi harness remains a local smoke test. Orchestration 46 added cross-surface prompt-policy assertions, adversarial cases and deterministic safety/reliability scorers, and hardened MCP/map contracts. Its Wave 4 benchmark evidence is a reproducible manifest-only dry run; no service performance was measured.
+- **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases); Orchestration 46 (policy, adversarial evaluation, MCP/map safety, and Criterion 2 benchmark setup/evidence; see [execution plan](EXECUTION_PLAN_46.md), [state](STATE_46.md), and [46.4.2 evidence](evidence/46.4.2-performance.md)).
 - **Backlog:**
   - Proposed: move the T1 model client to AI Gateway.
   - Proposed: T2 against the deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent.
   - Proposed: expand ground truth with domain-owner sign-off.
   - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
+  - Deferred: verified agricultural-land adjacency and associated Criterion 2 scoring remain unavailable until PR #79/CDL integration is merged and validated and an authoritative adjacency source is approved.
 - **Exit criteria:** T0 contract tests and the deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for every ground-truth case; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
 - **Open decisions:** T2 authentication path (service principal M2M or Unity Gateway MCP service). An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
 - **Source:** [Tracks research, 4.2](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#42-track-e-evaluation).
@@ -494,7 +495,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track A: Agent App
 
 - **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and keeps the preliminary-screening boundary ([ADR 0003](../docs/decisions/0003-preliminary-screening-authority-boundary.md)).
-- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat.
+- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat. Orchestration 46 added shared policy assertions and map uncertainty safeguards; deployed performance and model-assisted results were not established by its benchmark dry run.
 - **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md), [42](EXECUTION_PLAN_42.md) and [44](EXECUTION_PLAN_44.md) (M3-M5, [ADR 0017](../docs/decisions/0017-server-map-result-contract.md)); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md).
 - **Backlog:**
   - Delivered: M0, vendor and pin the chat UI (ADR 0015).

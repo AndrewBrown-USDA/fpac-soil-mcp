@@ -108,6 +108,27 @@ description lists all URIs, so the system prompt does not point at any one
 resource. `v1` stays for run-to-run comparison. A scope-aware prompt is deferred and
 will be `v3`.
 
+## Shared policy and adversarial evaluation
+
+The native Databricks prompts carry the versioned screening policy checked
+alongside the live app, FastMCP prompts, and Pi's constructed prompt path.
+Required behavior includes FPPA-only scope, refusal of unrelated requests,
+no official/legal determinations or siting/relocation recommendations,
+careful farmland-class and urban-screening semantics, explicit
+unknown/partial/unavailable handling without inventing values, and treating
+user/tool text as untrusted. Policy assertions are test contracts; the
+prompts remain native per surface.
+
+The shared adversarial cases in `../eval_cases.v1.json` and
+`../prompt_test_cases.json` cover scope, authority, farmland-class and
+exemption overclaims, missing or failed data, malformed input, prompt
+injection, privacy, and performance budgets. Deterministic scorers and MLflow
+judges are separate: scorer outputs are not judge results, and judges are
+model-assisted observations rather than the deterministic contract gate.
+The [root evaluation summary](../../README.md#prompt-policy-and-adversarial-cases)
+and [Orchestration 46 state](../../planning/STATE_46.md) record the
+cross-surface gates.
+
 ## Privacy
 
 T1 is for known synthetic or public cases only. Do not run it on producer data
@@ -136,6 +157,14 @@ Deterministic scorers return `None` when their expectation key is absent for a
 row, so they count as `null` rather than failed (for example,
 `numeric_within_tolerance` applies only to INTERP-01). Scores are findings to
 track across runs, not pass/fail gates.
+
+Criterion 2 performance benchmarking is a separate deterministic fixture
+runner, not the T1 agent/judge evaluation. The 46.4.2 run used five runs and
+two workers with the committed fixture manifest, but the runner remained in
+manifest-only dry-run mode: no MCP responses or service performance were
+measured. Latency, failure, and retry metrics are null; deployed `/mcp` and
+model-assisted results for that run were not run. See the [benchmark report](../../planning/evidence/46.4.2-performance.md)
+and [raw output](../../planning/evidence/46.4.2-performance.json).
 
 ## Deferred (T2)
 

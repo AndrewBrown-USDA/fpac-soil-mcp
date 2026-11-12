@@ -14,7 +14,7 @@ import re
 from typing import Any
 
 from common.matching import keywords_present as _keywords_present
-from common.matching import tool_matches
+from common.matching import prohibited_behavior_violations, required_behavior_missing, tool_matches
 
 ARG_ABS_TOL = 1e-4
 
@@ -30,6 +30,14 @@ DETERMINISTIC_SCORER_NAMES = (
     "keywords_present",
     "numeric_within_tolerance",
     "tool_arguments_within_tolerance",
+    "prohibited_behaviors_absent",
+    "required_status_matches",
+    "required_behaviors_present",
+    "source_disclosed",
+    "privacy_non_echo",
+    "tool_call_budget",
+    "retry_budget",
+    "latency_budget",
 )
 
 # Names of the scorers returned by `judge_scorers`, in order (MLflow 3.12 class defaults).
@@ -55,6 +63,29 @@ def _feedback(value: bool, rationale: str) -> Any:
 
 def _tool_spans(trace: Any) -> list[Any]:
     return [span for span in trace.data.spans if span.span_type == "TOOL"]
+
+
+def _text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        for key in ("response", "output", "text", "content"):
+            if isinstance(value.get(key), str):
+                return value[key]
+    return str(value) if value is not None else ""
+
+
+def _status(value: Any) -> Any:
+    if isinstance(value, dict):
+        for key in ("status", "coverage_status", "result_status"):
+            if key in value:
+                return value[key]
+        for key in ("result", "structuredContent", "structured_content"):
+            if key in value:
+                found = _status(value[key])
+                if found is not None:
+                    return found
+    return None
 
 
 def resolve_path(obj: Any, path: str) -> Any:
@@ -169,6 +200,110 @@ def tool_arguments_within_tolerance(trace: Any, expectations: dict[str, Any]) ->
     return _feedback(True, f"{len(calls)} tool call(s) matched expected arguments")
 
 
+def prohibited_behaviors_absent(outputs: Any, expectations: dict[str, Any]) -> Any:
+    prohibited = expectations.get("prohibited_behaviors") or []
+    if not prohibited:
+        return None
+    violations = prohibited_behavior_violations(_text(outputs), prohibited)
+    if violations:
+        return _feedback(False, f"Prohibited behavior(s) present or unrecognized: {violations}")
+    return _feedback(True, f"No prohibited behaviors found: {prohibited}")
+
+
+def required_status_matches(trace: Any, expectations: dict[str, Any]) -> Any:
+    expected = expectations.get("expected_status")
+    if expected is None:
+        return None
+    # Search TOOL span outputs (structured MCP results) for the status field.
+    tool_spans = _tool_spans(trace)
+    for span in tool_spans:
+        actual = _status(span.outputs or {})
+        if actual == expected:
+            return _feedback(True, f"Required status matched: {expected}")
+    # Fall back to the agent's final text output (root span).
+    if trace.data.spans:
+        actual = _status(trace.data.spans[0].outputs or {})
+        if actual == expected:
+            return _feedback(True, f"Required status matched: {expected}")
+    # When no tool was called the status is unobservable; skip rather than fail.
+    # Other scorers (required_behaviors_present, tool_call_budget) cover refusal
+    # correctness. Only fail when tools ran but returned the wrong status.
+    if not tool_spans:
+        return None
+    observed = [_status(s.outputs or {}) for s in tool_spans]
+    return _feedback(False, f"Required status {expected!r}, observed {observed!r}")
+
+
+def required_behaviors_present(outputs: Any, expectations: dict[str, Any]) -> Any:
+    required = expectations.get("required_behaviors") or []
+    if not required:
+        return None
+    text = _text(outputs)
+    missing = required_behavior_missing(text, required)
+    if missing:
+        return _feedback(False, f"Required behavior(s) not detected: {missing}")
+    return _feedback(True, f"Required behavior statements present: {len(required)}")
+
+
+def source_disclosed(outputs: Any, expectations: dict[str, Any]) -> Any:
+    sources = expectations.get("source_disclosure") or []
+    if not sources:
+        return None
+    ok, missing = _keywords_present(_text(outputs), sources)
+    if not ok:
+        return _feedback(False, f"Missing source disclosure(s): {missing}")
+    return _feedback(True, f"All required sources disclosed: {sources}")
+
+
+def privacy_non_echo(inputs: Any, outputs: Any, expectations: dict[str, Any]) -> Any:
+    if "sensitive_data_echo" not in (expectations.get("prohibited_behaviors") or []):
+        return None
+    response = _text(outputs)
+    source = _text(inputs)
+    identifiers = re.findall(r"\b\d{3}[- ]\d{2}[- ]\d{4}\b", source)
+    coordinates = re.findall(r"(?<![\d.-])-?\d{1,3}\.\d{4,}(?!\d)", source)
+    echoed = [value for value in [*identifiers, *coordinates] if value in response]
+    if echoed:
+        return _feedback(False, "Sensitive input value(s) were repeated in the response")
+    return _feedback(True, "No sensitive input values were repeated")
+
+
+def tool_call_budget(trace: Any, expectations: dict[str, Any]) -> Any:
+    budget = expectations.get("max_tool_calls")
+    if budget is None:
+        return None
+    count = len(_tool_spans(trace))
+    return _feedback(count <= budget, f"Tool calls: {count}; maximum: {budget}")
+
+
+def retry_budget(trace: Any, expectations: dict[str, Any]) -> Any:
+    budget = expectations.get("max_retries")
+    if budget is None:
+        return None
+    spans = _tool_spans(trace)
+    seen: set[tuple[str, str]] = set()
+    retries = 0
+    for span in spans:
+        signature = (span.name, repr(span.inputs or {}))
+        if signature in seen:
+            retries += 1
+        seen.add(signature)
+    return _feedback(
+        retries <= budget, f"Repeated tool calls: {retries}; maximum retries: {budget}"
+    )
+
+
+def latency_budget(trace: Any, expectations: dict[str, Any]) -> Any:
+    budget = expectations.get("latency_budget_ms")
+    if budget is None:
+        return None
+    info = getattr(trace, "info", None)
+    elapsed = getattr(info, "execution_time_ms", None)
+    if elapsed is None:
+        return _feedback(False, "Trace has no execution_time_ms latency measurement")
+    return _feedback(elapsed <= budget, f"Latency: {elapsed}ms; budget: {budget}ms")
+
+
 def deterministic_scorers() -> list[Any]:
     """Wrap the deterministic checks as MLflow scorers."""
     from mlflow.genai.scorers import scorer
@@ -178,6 +313,14 @@ def deterministic_scorers() -> list[Any]:
         keywords_present,
         numeric_within_tolerance,
         tool_arguments_within_tolerance,
+        prohibited_behaviors_absent,
+        required_status_matches,
+        required_behaviors_present,
+        source_disclosed,
+        privacy_non_echo,
+        tool_call_budget,
+        retry_budget,
+        latency_budget,
     )
     return [scorer(name=fn.__name__)(fn) for fn in functions]
 

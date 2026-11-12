@@ -81,10 +81,83 @@ def test_checked_in_dataset_validates() -> None:
     assert "project_type site" in lesa_case["user_prompt"]
     assert lesa_case["expected_tool_calls"][0]["arguments"]["project_name"] == "Synthetic SA-MA-02"
     assert lesa_case["expected_tool_calls"][0]["arguments"]["project_type"] == "site"
+    adversarial_ids = [case["id"] for case in cases if case["id"].startswith("ADV-")]
+    assert adversarial_ids == [
+        "ADV-UNRELATED-01",
+        "ADV-FORMS-01",
+        "ADV-NONPRIME-01",
+        "ADV-RELOCATE-01",
+        "ADV-CORRIDOR-01",
+        "ADV-URBAN-01",
+        "ADV-CONDITIONAL-01",
+        "ADV-MISSING-01",
+        "ADV-OUTAGE-01",
+        "ADV-PARTIAL-01",
+        "ADV-GEOMETRY-01",
+        "ADV-INJECTION-01",
+        "ADV-PRIVACY-01",
+        "ADV-PERFORMANCE-01",
+    ]
 
 
 def test_v1_row_and_full_v2_row_validate() -> None:
     validate_cases([copy.deepcopy(BASE_ROW), {**_row(), "id": "POINT-02"}])
+
+
+def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
+    row = _row(
+        expected_status="indeterminate",
+        required_behaviors=["state unavailable evidence"],
+        prohibited_behaviors=["missing_input_as_zero"],
+        source_disclosure=["USDA NRCS SDA"],
+        max_tool_calls=2,
+        max_retries=1,
+        latency_budget_ms=5000,
+    )
+    validate_cases([row])
+
+    record = to_mlflow_records([row])[0]
+    for field in (
+        "expected_status",
+        "required_behaviors",
+        "prohibited_behaviors",
+        "source_disclosure",
+        "max_tool_calls",
+        "max_retries",
+        "latency_budget_ms",
+    ):
+        assert record["expectations"][field] == row[field]
+
+    zero_budget = to_mlflow_records([_row(max_tool_calls=0)])[0]["expectations"]
+    assert zero_budget["max_tool_calls"] == 0
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("expected_status", "refused", "expected covered, indeterminate, or error"),
+        ("required_behaviors", "not a list", "expected a list of strings"),
+        ("prohibited_behaviors", [False], "expected a list of strings"),
+        ("source_disclosure", [1], "expected a list of strings"),
+        ("max_tool_calls", True, "expected an integer >= 0"),
+        ("max_retries", -1, "expected an integer >= 0"),
+        ("latency_budget_ms", float("inf"), "expected a finite number >= 0"),
+    ],
+)
+def test_adversarial_field_validation(field: str, value: Any, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        validate_cases([_row(**{field: value})])
+
+
+def test_unknown_prohibited_behavior_id_is_rejected() -> None:
+    with pytest.raises(ValueError, match="unknown behavior ID 'future_behavior'"):
+        validate_cases([_row(prohibited_behaviors=["future_behavior"])])
+
+
+def test_structural_prohibited_behavior_requires_its_budget_field() -> None:
+    with pytest.raises(ValueError, match="requires the 'max_retries' field"):
+        validate_cases([_row(prohibited_behaviors=["retry_budget_exceeded"])])
+    validate_cases([_row(prohibited_behaviors=["retry_budget_exceeded"], max_retries=1)])
 
 
 def test_load_cases_filters(tmp_path: Path) -> None:
@@ -111,7 +184,10 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
     records = to_mlflow_records([_row(), v1_row])
 
     assert records[0] == {
-        "inputs": {"request": V2_ROW["user_prompt"]},
+        "inputs": {
+            "request": V2_ROW["user_prompt"],
+            "force_tool_use": True,
+        },
         "expectations": {
             "case_id": "POINT-01",
             "expected_tools": V2_ROW["expected_tools"],
@@ -127,6 +203,25 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
         "expected_tools": BASE_ROW["expected_tools"],
         "expected_keywords": BASE_ROW["expected_keywords"],
     }
+    assert records[1]["inputs"]["force_tool_use"] is True
+
+
+def test_zero_call_budget_disables_forced_tool_use_in_mlflow_inputs() -> None:
+    row = _row(max_tool_calls=0)
+
+    record = to_mlflow_records([row])[0]
+
+    assert record["inputs"] == {
+        "request": row["user_prompt"],
+        "force_tool_use": False,
+        "max_tool_calls": 0,
+    }
+
+
+def test_explicit_force_tool_use_false_is_preserved() -> None:
+    row = _row(force_tool_use=False, max_tool_calls=2)
+
+    assert to_mlflow_records([row])[0]["inputs"]["force_tool_use"] is False
 
 
 def test_synthetic_tool_allowed_when_expected_tools_empty() -> None:

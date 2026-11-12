@@ -113,6 +113,7 @@ _FARMLAND_LEGEND: tuple[tuple[str, str, str, str, LegendPattern], ...] = (
     ("unique", "Unique farmland", "U", "#6A1B9A", "cross_hatch"),
     ("local", "Farmland of local importance", "L", "#0288D1", "dot_stipple"),
     ("not_prime", "Not prime farmland", "NP", "#9E9E9E", "outline"),
+    ("unknown", "Unknown classification", "?", "#BDBDBD", "dot_stipple"),
     ("unmapped", "Unmapped", "UM", "#FFFFFF", "diagonal_hatch"),
 )
 FARMLAND_CLASS_VALUES: tuple[str, ...] = tuple(item[0] for item in _FARMLAND_LEGEND)

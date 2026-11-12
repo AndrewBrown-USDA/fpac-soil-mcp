@@ -216,6 +216,7 @@ app.post(
         expectedResult: tc.expected_result,
         predicates: tc.assertions?.predicates || [],
         context: { invocation },
+        expectations: tc,
       });
       const passed = !isError && keywords.missing.length === 0 && assertions.status === "pass";
       record({ kind: `eval:${invocation.kind}`, name: tc.id, durationMs: out.durationMs, ok: passed });
@@ -234,6 +235,7 @@ app.post(
           expectedResult: tc.expected_result,
           predicates: tc.assertions?.predicates || [],
           context: { invocation },
+          expectations: tc,
         }),
         durationMs: Date.now() - started,
         error: errorInfo(err),

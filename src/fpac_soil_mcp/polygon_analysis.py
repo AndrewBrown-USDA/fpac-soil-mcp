@@ -93,7 +93,7 @@ def categorize_farmland_class(farmlndcl: str | None) -> str:
         return "unique"
     if "not prime farmland" in desc:
         return "not_prime"
-    return "not_prime"
+    return "unknown"
 
 
 class PolygonAnalyzer:
@@ -287,6 +287,7 @@ class PolygonAnalyzer:
             "local": 0.0,
             "unique": 0.0,
             "not_prime": 0.0,
+            "unknown": 0.0,
             "unmapped": 0.0,
         }
 

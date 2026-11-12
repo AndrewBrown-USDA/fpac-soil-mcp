@@ -30,6 +30,10 @@ MAP = {
 }
 AUTHORITY = {"level": "preliminary_screening", "official_filing": False}
 NOTICE = "Preliminary screening only; not an official FPPA determination."
+NON_PRIME_LIMITATION = (
+    "Not-prime classification is a screening category only; it is not an official "
+    "FPPA determination or a finding of exemption."
+)
 
 
 @pytest.fixture(scope="module")
@@ -92,6 +96,8 @@ def _result(extra: dict | None = None) -> CallToolResult:
         "map": MAP,
         "authority": AUTHORITY,
         "regulatory_notice": NOTICE,
+        "status": "partial",
+        "coverage_status": "partially_covered",
         **(extra or {}),
     }
     return CallToolResult(content=[], structuredContent=data, isError=False)
@@ -121,10 +127,12 @@ def test_polygon_call_returns_map_only(start_server, fake_mcp):
     assert response.json() == {
         "tool": geo.ANALYSIS_TOOL,
         "map": MAP,
-        "regulatory_notice": NOTICE,
+        "regulatory_notice": f"{NOTICE} {NON_PRIME_LIMITATION}",
         "authority": AUTHORITY,
+        "status": "partial",
+        "coverage_status": "partially_covered",
     }
-    assert MARKER not in response.text  # nothing beyond the map, notice and authority
+    assert MARKER not in response.text  # nothing beyond map, notice, authority and status
     assert fake.calls == [(geo.ANALYSIS_TOOL, {"geojson": SQUARE, "include_map": True})]
 
 
@@ -140,7 +148,9 @@ def test_corridor_call_and_wrapped_result(start_server, fake_mcp):
     body = _post(start_server, {"tool": geo.CORRIDOR_TOOL, "arguments": arguments}).json()
 
     assert body["map"] == MAP
-    assert body["regulatory_notice"] is None
+    assert body["regulatory_notice"] == NON_PRIME_LIMITATION
+    assert body["status"] is None
+    assert body["coverage_status"] is None
     assert fake.calls == [(geo.CORRIDOR_TOOL, {**arguments, "include_map": True})]
 
 

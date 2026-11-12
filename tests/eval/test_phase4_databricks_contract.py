@@ -130,3 +130,13 @@ def test_contract_and_judge_evidence_remain_distinct() -> None:
     gold_cases = load_gold_set()
     assert gold_cases
     assert all(case["deterministic"] is True for case in gold_cases)
+
+
+def test_missing_expected_facts_omit_judge_expectations_instead_of_failing() -> None:
+    case = load_cases(DATASET_PATH, ids=("LESA-01",))[0]
+    record = to_mlflow_records([case])[0]
+
+    assert not case.get("expected_facts")
+    assert not case.get("guidelines")
+    assert "expected_facts" not in record["expectations"]
+    assert "guidelines" not in record["expectations"]

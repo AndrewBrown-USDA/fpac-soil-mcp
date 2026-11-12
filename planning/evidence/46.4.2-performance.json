@@ -1,0 +1,1671 @@
+{
+  "aggregates": [
+    {
+      "case_id": "CORR-MULTI-2COUNTY",
+      "case_ids": [
+        "CORR-MULTI-2COUNTY"
+      ],
+      "county_count": 2,
+      "county_fips": [
+        "19015",
+        "19169"
+      ],
+      "county_identifiers": [
+        "19015",
+        "19169"
+      ],
+      "failure_count": null,
+      "latency_method": "not_measured_manifest_dry_run",
+      "manifest_version": "criterion2-benchmark-fixtures.v1",
+      "p50_latency_ms": null,
+      "p95_latency_ms": null,
+      "p99_latency_ms": null,
+      "retry_count": null,
+      "sample_count": 5,
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-3COUNTY",
+      "case_ids": [
+        "CORR-MULTI-3COUNTY"
+      ],
+      "county_count": 3,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "county_identifiers": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "failure_count": null,
+      "latency_method": "not_measured_manifest_dry_run",
+      "manifest_version": "criterion2-benchmark-fixtures.v1",
+      "p50_latency_ms": null,
+      "p95_latency_ms": null,
+      "p99_latency_ms": null,
+      "retry_count": null,
+      "sample_count": 5,
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "POLY-PARTIAL",
+      "case_ids": [
+        "POLY-PARTIAL"
+      ],
+      "county_count": 1,
+      "county_fips": [
+        "19169"
+      ],
+      "county_identifiers": [
+        "19169"
+      ],
+      "failure_count": null,
+      "latency_method": "not_measured_manifest_dry_run",
+      "manifest_version": "criterion2-benchmark-fixtures.v1",
+      "p50_latency_ms": null,
+      "p95_latency_ms": null,
+      "p99_latency_ms": null,
+      "retry_count": null,
+      "sample_count": 5,
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "URBAN-PARTIAL",
+      "case_ids": [
+        "URBAN-PARTIAL"
+      ],
+      "county_count": 1,
+      "county_fips": [
+        "19113"
+      ],
+      "county_identifiers": [
+        "19113"
+      ],
+      "failure_count": null,
+      "latency_method": "not_measured_manifest_dry_run",
+      "manifest_version": "criterion2-benchmark-fixtures.v1",
+      "p50_latency_ms": null,
+      "p95_latency_ms": null,
+      "p99_latency_ms": null,
+      "retry_count": null,
+      "sample_count": 5,
+      "tool_call_count": 0
+    },
+    {
+      "case_ids": [
+        "CORR-MULTI-2COUNTY",
+        "CORR-MULTI-3COUNTY",
+        "POLY-PARTIAL",
+        "URBAN-PARTIAL"
+      ],
+      "county_count": 6,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089",
+        "19015",
+        "19113",
+        "19169"
+      ],
+      "county_identifiers": [
+        "17037",
+        "17043",
+        "17089",
+        "19015",
+        "19113",
+        "19169"
+      ],
+      "failure_count": null,
+      "latency_method": "not_measured_manifest_dry_run",
+      "manifest_version": "criterion2-benchmark-fixtures.v1",
+      "p50_latency_ms": null,
+      "p95_latency_ms": null,
+      "p99_latency_ms": null,
+      "retry_count": null,
+      "sample_count": 20,
+      "scope": "all_cases",
+      "tool_call_count": 0
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "CORR-MULTI-2COUNTY",
+      "county_count": 2,
+      "county_fips": [
+        "19015",
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 50,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -93.9,
+                42.03
+              ],
+              [
+                -93.7,
+                42.03
+              ],
+              [
+                -93.5,
+                42.03
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 2,
+        "county_fips": [
+          "19015",
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -93.9,
+              42.03
+            ],
+            [
+              -93.7,
+              42.03
+            ],
+            [
+              -93.5,
+              42.03
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 1,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-3COUNTY",
+      "county_count": 3,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 75,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -88.75,
+                41.93
+              ],
+              [
+                -88.45,
+                41.93
+              ],
+              [
+                -88.15,
+                41.93
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 3,
+        "county_fips": [
+          "17037",
+          "17043",
+          "17089"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -88.75,
+              41.93
+            ],
+            [
+              -88.45,
+              41.93
+            ],
+            [
+              -88.15,
+              41.93
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 1,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "POLY-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -93.5,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.0
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -93.5,
+                42.0
+              ],
+              [
+                -93.493,
+                42.0
+              ],
+              [
+                -93.493,
+                42.005
+              ],
+              [
+                -93.5,
+                42.005
+              ],
+              [
+                -93.5,
+                42.0
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 1,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "URBAN-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19113"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -91.72,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.96
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19113"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -91.72,
+                41.96
+              ],
+              [
+                -91.7,
+                41.96
+              ],
+              [
+                -91.7,
+                41.98
+              ],
+              [
+                -91.72,
+                41.98
+              ],
+              [
+                -91.72,
+                41.96
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 1,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-2COUNTY",
+      "county_count": 2,
+      "county_fips": [
+        "19015",
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 50,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -93.9,
+                42.03
+              ],
+              [
+                -93.7,
+                42.03
+              ],
+              [
+                -93.5,
+                42.03
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 2,
+        "county_fips": [
+          "19015",
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -93.9,
+              42.03
+            ],
+            [
+              -93.7,
+              42.03
+            ],
+            [
+              -93.5,
+              42.03
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 2,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-3COUNTY",
+      "county_count": 3,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 75,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -88.75,
+                41.93
+              ],
+              [
+                -88.45,
+                41.93
+              ],
+              [
+                -88.15,
+                41.93
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 3,
+        "county_fips": [
+          "17037",
+          "17043",
+          "17089"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -88.75,
+              41.93
+            ],
+            [
+              -88.45,
+              41.93
+            ],
+            [
+              -88.15,
+              41.93
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 2,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "POLY-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -93.5,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.0
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -93.5,
+                42.0
+              ],
+              [
+                -93.493,
+                42.0
+              ],
+              [
+                -93.493,
+                42.005
+              ],
+              [
+                -93.5,
+                42.005
+              ],
+              [
+                -93.5,
+                42.0
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 2,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "URBAN-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19113"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -91.72,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.96
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19113"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -91.72,
+                41.96
+              ],
+              [
+                -91.7,
+                41.96
+              ],
+              [
+                -91.7,
+                41.98
+              ],
+              [
+                -91.72,
+                41.98
+              ],
+              [
+                -91.72,
+                41.96
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 2,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-2COUNTY",
+      "county_count": 2,
+      "county_fips": [
+        "19015",
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 50,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -93.9,
+                42.03
+              ],
+              [
+                -93.7,
+                42.03
+              ],
+              [
+                -93.5,
+                42.03
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 2,
+        "county_fips": [
+          "19015",
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -93.9,
+              42.03
+            ],
+            [
+              -93.7,
+              42.03
+            ],
+            [
+              -93.5,
+              42.03
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 3,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-3COUNTY",
+      "county_count": 3,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 75,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -88.75,
+                41.93
+              ],
+              [
+                -88.45,
+                41.93
+              ],
+              [
+                -88.15,
+                41.93
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 3,
+        "county_fips": [
+          "17037",
+          "17043",
+          "17089"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -88.75,
+              41.93
+            ],
+            [
+              -88.45,
+              41.93
+            ],
+            [
+              -88.15,
+              41.93
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 3,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "POLY-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -93.5,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.0
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -93.5,
+                42.0
+              ],
+              [
+                -93.493,
+                42.0
+              ],
+              [
+                -93.493,
+                42.005
+              ],
+              [
+                -93.5,
+                42.005
+              ],
+              [
+                -93.5,
+                42.0
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 3,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "URBAN-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19113"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -91.72,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.96
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19113"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -91.72,
+                41.96
+              ],
+              [
+                -91.7,
+                41.96
+              ],
+              [
+                -91.7,
+                41.98
+              ],
+              [
+                -91.72,
+                41.98
+              ],
+              [
+                -91.72,
+                41.96
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 3,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-2COUNTY",
+      "county_count": 2,
+      "county_fips": [
+        "19015",
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 50,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -93.9,
+                42.03
+              ],
+              [
+                -93.7,
+                42.03
+              ],
+              [
+                -93.5,
+                42.03
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 2,
+        "county_fips": [
+          "19015",
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -93.9,
+              42.03
+            ],
+            [
+              -93.7,
+              42.03
+            ],
+            [
+              -93.5,
+              42.03
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 4,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-3COUNTY",
+      "county_count": 3,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 75,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -88.75,
+                41.93
+              ],
+              [
+                -88.45,
+                41.93
+              ],
+              [
+                -88.15,
+                41.93
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 3,
+        "county_fips": [
+          "17037",
+          "17043",
+          "17089"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -88.75,
+              41.93
+            ],
+            [
+              -88.45,
+              41.93
+            ],
+            [
+              -88.15,
+              41.93
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 4,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "POLY-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -93.5,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.0
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -93.5,
+                42.0
+              ],
+              [
+                -93.493,
+                42.0
+              ],
+              [
+                -93.493,
+                42.005
+              ],
+              [
+                -93.5,
+                42.005
+              ],
+              [
+                -93.5,
+                42.0
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 4,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "URBAN-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19113"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -91.72,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.96
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19113"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -91.72,
+                41.96
+              ],
+              [
+                -91.7,
+                41.96
+              ],
+              [
+                -91.7,
+                41.98
+              ],
+              [
+                -91.72,
+                41.98
+              ],
+              [
+                -91.72,
+                41.96
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 4,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-2COUNTY",
+      "county_count": 2,
+      "county_fips": [
+        "19015",
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 50,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -93.9,
+                42.03
+              ],
+              [
+                -93.7,
+                42.03
+              ],
+              [
+                -93.5,
+                42.03
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 2,
+        "county_fips": [
+          "19015",
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -93.9,
+              42.03
+            ],
+            [
+              -93.7,
+              42.03
+            ],
+            [
+              -93.5,
+              42.03
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 5,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "CORR-MULTI-3COUNTY",
+      "county_count": 3,
+      "county_fips": [
+        "17037",
+        "17043",
+        "17089"
+      ],
+      "error": null,
+      "expected_coverage_class": "multi_county",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "buffer_distance": 75,
+          "buffer_units": "feet",
+          "centerline": {
+            "coordinates": [
+              [
+                -88.75,
+                41.93
+              ],
+              [
+                -88.45,
+                41.93
+              ],
+              [
+                -88.15,
+                41.93
+              ]
+            ],
+            "type": "LineString"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 3,
+        "county_fips": [
+          "17037",
+          "17043",
+          "17089"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              -88.75,
+              41.93
+            ],
+            [
+              -88.45,
+              41.93
+            ],
+            [
+              -88.15,
+              41.93
+            ]
+          ],
+          "type": "LineString"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 5,
+      "tool": "analyze_corridor_fppa",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "POLY-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19169"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -93.5,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.0
+                ],
+                [
+                  -93.493,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.005
+                ],
+                [
+                  -93.5,
+                  42.0
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19169"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -93.5,
+                42.0
+              ],
+              [
+                -93.493,
+                42.0
+              ],
+              [
+                -93.493,
+                42.005
+              ],
+              [
+                -93.5,
+                42.005
+              ],
+              [
+                -93.5,
+                42.0
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 5,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    },
+    {
+      "case_id": "URBAN-PARTIAL",
+      "county_count": 1,
+      "county_fips": [
+        "19113"
+      ],
+      "error": null,
+      "expected_coverage_class": "partial",
+      "expected_status": "indeterminate",
+      "failure": null,
+      "input": {
+        "arguments": {
+          "geojson": {
+            "coordinates": [
+              [
+                [
+                  -91.72,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.96
+                ],
+                [
+                  -91.7,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.98
+                ],
+                [
+                  -91.72,
+                  41.96
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "include_nccpi": true
+        },
+        "county_count": 1,
+        "county_fips": [
+          "19113"
+        ],
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -91.72,
+                41.96
+              ],
+              [
+                -91.7,
+                41.96
+              ],
+              [
+                -91.7,
+                41.98
+              ],
+              [
+                -91.72,
+                41.98
+              ],
+              [
+                -91.72,
+                41.96
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "latency_ms": null,
+      "outcomes_measured": false,
+      "peak_memory_bytes": null,
+      "response_size_bytes": null,
+      "response_status": "not_executed",
+      "retry_count": null,
+      "run_number": 5,
+      "tool": "analyze_farmland_by_polygon",
+      "tool_call_count": 0
+    }
+  ],
+  "duration_ms": 1.088,
+  "environment": {
+    "case_version": "criterion2-benchmark-fixtures.v1",
+    "commit": "353ee0a3316750279d08c12e64e4e18071062ef0",
+    "max_retries": 0,
+    "max_workers": 2,
+    "mcp_url": null,
+    "memory_method": "not_measured_dry_run",
+    "model": "not_applicable",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "prompt_version": "unknown",
+    "python_version": "3.11.16",
+    "timeout_seconds": 180.0,
+    "transport": "dry-run"
+  },
+  "execution_mode": "manifest_dry_run",
+  "manifest": {
+    "path": "tests\\fixtures\\criterion2_benchmark.v1.json",
+    "version": "criterion2-benchmark-fixtures.v1"
+  },
+  "run_id": "20261110T144926Z",
+  "run_settings": {
+    "case_count": 4,
+    "runs_per_case": 5
+  },
+  "schema_version": "criterion2-benchmark.v1"
+}

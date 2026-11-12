@@ -408,10 +408,9 @@ tab performs deterministic MCP invocations and response checks; it does not use 
 to select tools or claim model-evaluation results. The existing `eval\prompt_test_cases.json`
 corpus and Python T0/T1 evaluation paths remain separate.
 
-Databricks App hosting/deployment and model-based agent evaluation are intentionally
-outside this local workbench and belong to separate forthcoming work. The harness, like
-this server, provides preliminary soil inventory screening only; it does not produce an
-official FPPA determination, LESA score, Form AD-1006, or NRCS-CPA-106.
+Databricks App hosting/deployment and model-based evaluation use separate workflows.
+The harness, like this server, provides preliminary soil inventory screening only; it
+does not produce an official FPPA determination, LESA score, Form AD-1006, or NRCS-CPA-106.
 
 ### Evaluation Capture (Opt-In)
 
@@ -420,6 +419,50 @@ The project has three evaluation tiers:
 1. **Pi local** (`make test-eval`) -- Pi CLI agent evaluation benchmark suite on a laptop. Live, opt-in, serial.
 2. **T0 contract** (`uv run pytest eval/contract/`) -- Offline contract tests over the in-memory FastMCP client. Part of the default offline suite.
 3. **T1 Databricks** (`make eval-databricks ARGS="--ground-truth"`) -- In-process agent loop with MLflow tracing and scoring on serverless compute. Requires the `eval-databricks` dependency group (`uv sync --group eval-databricks`). See `eval/databricks/README.md` for details.
+
+### Prompt policy and adversarial cases
+
+The versioned FPPA screening policy is asserted across the live app, FastMCP
+prompts, Databricks prompts, and Pi's constructed prompt path. It requires
+FPPA-only scope; refusal of unrelated requests; no official/legal
+determinations or siting/relocation recommendations; careful non-prime,
+conditional-class, urban-screening, and LESA-threshold language; explicit
+no-invented-values behavior; unknown, partial, or unavailable states; and
+treating user/tool text as untrusted. The policy-version and required-rule
+assertions are tests, not runtime prompt generation.
+
+The shared versioned adversarial corpus covers out-of-scope requests, official
+forms, farmland-class overclaims, relocation/corridor choice, urban exemption,
+conditional classes, missing values, tool/upstream failures, malformed
+geometry, prompt injection, privacy non-echo, and performance budgets. The
+deterministic scorers check expected status, required/prohibited behavior,
+source disclosure, and applicable call/retry/latency budgets. See
+[`eval/eval_cases.v1.json`](eval/eval_cases.v1.json),
+[`eval/prompt_test_cases.json`](eval/prompt_test_cases.json), and
+[`planning/STATE_46.md`](planning/STATE_46.md) for gates and results.
+
+### Criterion 2 benchmark evidence
+
+The reproducible benchmark uses the committed fixture manifest and repeated,
+bounded-worker scheduling; this setup is not itself a service-performance
+measurement. The latest 46.4.2 result is a five-run/two-worker manifest-only
+dry run: 20 case slots across four fixtures and six county FIPS identifiers.
+Latency, failure, and retry metrics remain null; deployed `/mcp` and
+model-assisted results were not run. See the [46.4.2 report](planning/evidence/46.4.2-performance.md)
+and [raw output](planning/evidence/46.4.2-performance.json). The reproducible
+command consumes the committed
+[fixture manifest](tests/fixtures/criterion2_benchmark.v1.json):
+
+```powershell
+uv run python eval\criterion2_benchmark.py --fixture-manifest tests\fixtures\criterion2_benchmark.v1.json --runs 5 --max-workers 2 --output planning\evidence\46.4.2-performance.json
+```
+
+Verified agricultural-land adjacency remains unavailable and deferred until
+PR #79/CDL integration is merged and validated and an authoritative adjacency
+source is approved.
+
+Validation gate results and runner status are tracked in
+[planning/STATE_46.md](planning/STATE_46.md).
 
 Capture is opt-in and non-retaining by default. The normal offline test command
 does not start Pi, contact external services, or enable capture. To retain

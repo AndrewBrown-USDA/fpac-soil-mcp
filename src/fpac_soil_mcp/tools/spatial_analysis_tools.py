@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
@@ -15,7 +15,9 @@ from fpac_soil_mcp.lesa import _normalize_productivity_index
 from fpac_soil_mcp.models import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
+    CorridorAlternativeInput,
     PolygonFarmlandAnalysisResponse,
+    SiteAssessmentInputs,
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 
@@ -30,7 +32,9 @@ def analyze_farmland_by_polygon(
     geojson: dict | str,
     include_nccpi: bool = True,
     productivity_index: str = "nccpi",
-    max_county_rating_override: float | None = None,
+    max_county_rating_override: Annotated[
+        float | None, Field(default=None, gt=0, allow_inf_nan=False)
+    ] = None,
     include_map: IncludeMap = False,
 ) -> PolygonFarmlandAnalysisResponse:
     """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
@@ -68,14 +72,16 @@ def analyze_farmland_by_polygon(
 
 def analyze_corridor_fppa(
     centerline: dict | str,
-    buffer_distance: float,
-    buffer_units: str = "feet",
+    buffer_distance: Annotated[float, Field(gt=0, allow_inf_nan=False)],
+    buffer_units: Literal["feet", "meters", "miles"] = "feet",
     indirect_geometry: dict | str | None = None,
-    alternatives: list[dict] | None = None,
+    alternatives: list[CorridorAlternativeInput] | None = None,
     include_nccpi: bool = True,
-    site_assessment_inputs: dict[str, Any] | None = None,
+    site_assessment_inputs: SiteAssessmentInputs | None = None,
     productivity_index: str = "nccpi",
-    max_county_rating_override: float | None = None,
+    max_county_rating_override: Annotated[
+        float | None, Field(default=None, gt=0, allow_inf_nan=False)
+    ] = None,
     include_map: IncludeMap = False,
 ) -> dict[str, Any]:
     """Execute multi-county linear corridor FPPA screening and statutory CPA-106 analysis.
@@ -117,7 +123,16 @@ def analyze_corridor_fppa(
         "buffer_distance": buffer_distance,
         "buffer_units": buffer_units,
         "indirect_geometry_input": indirect_geometry,
-        "alternatives": alternatives,
+        "alternatives": (
+            [
+                CorridorAlternativeInput.model_validate(alternative).model_dump(
+                    mode="python", exclude_none=True
+                )
+                for alternative in alternatives
+            ]
+            if alternatives is not None
+            else None
+        ),
         "include_nccpi": include_nccpi,
         "productivity_index": normalized_productivity_index,
         "include_map": include_map,
@@ -131,6 +146,9 @@ def analyze_corridor_fppa(
     result = corridor_response.model_dump()
 
     if site_assessment_inputs:
+        site_assessment_inputs = SiteAssessmentInputs.model_validate(
+            site_assessment_inputs
+        ).model_dump(mode="python", exclude_none=True)
         crit_inputs_raw = site_assessment_inputs.get("criteria_inputs", {})
         # Convert string criterion keys if passed as json strings
         parsed_crit_inputs = {}

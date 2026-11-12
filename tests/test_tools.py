@@ -19,6 +19,7 @@ from fpac_soil_mcp.models import (
     FarmlandClassificationResponse,
     FarmlandClassListResponse,
     FppaScopeResponse,
+    SiteAssessmentInputs,
 )
 from fpac_soil_mcp.sda_client import SDAQueryError, SDAValidationError
 from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
@@ -134,6 +135,9 @@ class TestSoilTools:
         assert response.coverage_status == "no_data"
         assert len(response.map_units) == 0
         assert any("Latitude out of range" in lim for lim in response.limitations)
+        assert response.error is not None
+        assert response.error.code == "validation_error"
+        assert response.error.source == "USDA NRCS Soil Data Access (SDA)"
 
     @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_point_query_error(
@@ -151,6 +155,9 @@ class TestSoilTools:
         assert response.coverage_status == "no_data"
         assert len(response.map_units) == 0
         assert any("SDA connection timeout" in lim for lim in response.limitations)
+        assert response.error is not None
+        assert response.error.code == "upstream_error"
+        assert response.error.source == "USDA NRCS Soil Data Access (SDA)"
 
     @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_mukey_covered(
@@ -781,6 +788,39 @@ class TestPolygonTools:
         res = get_soil_interpretations(["412915"])
         assert len(res) == 1
         assert res[0]["numeric_rating"] == 0.85
+
+    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    def test_get_soil_interpretations_returns_source_aware_upstream_error(
+        self, mock_sda_cls: MagicMock
+    ) -> None:
+        mock_instance = mock_sda_cls.return_value
+        mock_instance.base_url = "https://sda.example.test/query"
+        mock_instance.get_interpretations.side_effect = SDAQueryError("service unavailable")
+
+        result = get_soil_interpretations(["412915"])
+
+        assert result["status"] == "error"
+        assert result["source"]["endpoint"] == "https://sda.example.test/query"
+        assert result["error"] == {
+            "code": "upstream_error",
+            "message": "service unavailable",
+            "source": "USDA NRCS Soil Data Access (SDA)",
+        }
+
+    def test_site_assessment_input_rejects_unknown_nested_fields_and_bad_criteria(self) -> None:
+        with pytest.raises(ValueError):
+            SiteAssessmentInputs.model_validate(
+                {"criteria_inputs": {"1": {"awarded_points": 2, "unexpected": True}}}
+            )
+        with pytest.raises(ValueError):
+            SiteAssessmentInputs.model_validate({"criteria_inputs": {"13": {"awarded_points": 2}}})
+        with pytest.raises(ValueError):
+            SiteAssessmentInputs.model_validate(
+                {
+                    "criteria_inputs": {"1": {"awarded_points": 2}},
+                    "criteria_facts": {"1": {"percentage": 10}},
+                }
+            )
 
     @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_soil_polygons_by_geometry(self, mock_sda_cls: MagicMock) -> None:
