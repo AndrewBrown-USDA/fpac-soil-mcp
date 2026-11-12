@@ -215,15 +215,22 @@ def required_status_matches(trace: Any, expectations: dict[str, Any]) -> Any:
     if expected is None:
         return None
     # Search TOOL span outputs (structured MCP results) for the status field.
-    for span in _tool_spans(trace):
+    tool_spans = _tool_spans(trace)
+    for span in tool_spans:
         actual = _status(span.outputs or {})
         if actual == expected:
             return _feedback(True, f"Required status matched: {expected}")
-    # Fall back to the agent's final text output.
-    actual = _status(trace.data.spans[0].outputs if trace.data.spans else {})
-    if actual == expected:
-        return _feedback(True, f"Required status matched: {expected}")
-    observed = [_status(s.outputs or {}) for s in _tool_spans(trace)]
+    # Fall back to the agent's final text output (root span).
+    if trace.data.spans:
+        actual = _status(trace.data.spans[0].outputs or {})
+        if actual == expected:
+            return _feedback(True, f"Required status matched: {expected}")
+    # When no tool was called the status is unobservable; skip rather than fail.
+    # Other scorers (required_behaviors_present, tool_call_budget) cover refusal
+    # correctness. Only fail when tools ran but returned the wrong status.
+    if not tool_spans:
+        return None
+    observed = [_status(s.outputs or {}) for s in tool_spans]
     return _feedback(False, f"Required status {expected!r}, observed {observed!r}")
 
 

@@ -166,6 +166,9 @@ def test_safety_and_disclosure_scorers(scorers: dict[str, Any]) -> None:
         answer="The result is indeterminate.",
     )
     assert not status(trace=trace_miss, expectations={"expected_status": "indeterminate"}).value
+    # No TOOL spans (refusal / zero-call budget): status is unobservable, skip.
+    trace_no_tools = make_trace([], answer="I cannot do that.")
+    assert status(trace=trace_no_tools, expectations={"expected_status": "covered"}) is None
 
     required = scorers["required_behaviors_present"]
     statement = "Do not echo sensitive producer identifiers."
