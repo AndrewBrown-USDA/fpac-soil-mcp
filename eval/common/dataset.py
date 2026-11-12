@@ -41,6 +41,13 @@ V2_FIELDS = frozenset(
         "verified_on",
     }
 )
+# Field roles:
+# - `required_behaviors` and `source_disclosure` are judge input only. `to_mlflow_records`
+#   folds them into per-row `guidelines` for the `expectations_guidelines` judge; no runner
+#   string-matches them any more.
+# - `expected_keywords` is the browser harness smoke check on raw server output and an
+#   advisory (non-failing) check in the Pi runner. MLflow records omit it; the
+#   `correctness` judge grades `expected_facts` instead.
 ADVERSARIAL_FIELDS = frozenset(
     {
         "expected_status",
@@ -62,15 +69,20 @@ EXPECTATION_FIELDS = (
     "expected_tool_calls",
     "expected_facts",
     "numeric_expectations",
-    "guidelines",
     "evidence_tier",
     "expected_status",
-    "required_behaviors",
     "prohibited_behaviors",
-    "source_disclosure",
     "max_tool_calls",
     "max_retries",
     "latency_budget_ms",
+)
+
+# One judge guideline per `source_disclosure` entry. Conditional, like the FPPA compliance
+# guideline, so a refusal that reports no results is not penalized for naming no source.
+SOURCE_GUIDELINE_TEMPLATE = (
+    "When the response reports soil, farmland, or urban-area results, it identifies "
+    "{source} as a data source; a response that reports no results does not need to "
+    "name a source."
 )
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -353,15 +365,33 @@ def to_mlflow_records(cases: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         expectations: dict[str, Any] = {
             "case_id": case["id"],
             "expected_tools": list(case["expected_tools"]),
-            "expected_keywords": list(case["expected_keywords"]),
         }
         for field in EXPECTATION_FIELDS:
             if field in case and (
                 field in {"max_tool_calls", "max_retries", "latency_budget_ms"} or case[field]
             ):
                 expectations[field] = case[field]
+        guidelines = judge_guidelines(case)
+        if guidelines:
+            expectations["guidelines"] = guidelines
         records.append({"inputs": inputs, "expectations": expectations})
     return records
+
+
+def judge_guidelines(case: dict[str, Any]) -> list[str]:
+    """Case guidelines, then required behaviors verbatim, then one sentence per source.
+
+    De-duplicated in first-seen order; empty when the case has none of the three fields.
+    """
+    candidates = [
+        *case.get("guidelines", []),
+        *case.get("required_behaviors", []),
+        *(
+            SOURCE_GUIDELINE_TEMPLATE.format(source=source)
+            for source in case.get("source_disclosure", [])
+        ),
+    ]
+    return list(dict.fromkeys(candidates))
 
 
 def case_forces_tool_use(case: dict[str, Any]) -> bool:

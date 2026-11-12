@@ -100,6 +100,18 @@ def test_checked_in_dataset_validates() -> None:
     ]
 
 
+def test_non_adversarial_keyword_cases_have_expected_facts() -> None:
+    # MLflow records drop `expected_keywords`, so `correctness` must have facts to judge.
+    missing = [
+        case["id"]
+        for case in load_cases()
+        if not case["id"].startswith("ADV-")
+        and case["expected_keywords"]
+        and not case.get("expected_facts")
+    ]
+    assert missing == []
+
+
 def test_v1_row_and_full_v2_row_validate() -> None:
     validate_cases([copy.deepcopy(BASE_ROW), {**_row(), "id": "POINT-02"}])
 
@@ -117,11 +129,12 @@ def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
     validate_cases([row])
 
     record = to_mlflow_records([row])[0]
+    # Behaviors and sources reach the judge only as guidelines, not as raw keys.
+    assert "required_behaviors" not in record["expectations"]
+    assert "source_disclosure" not in record["expectations"]
     for field in (
         "expected_status",
-        "required_behaviors",
         "prohibited_behaviors",
-        "source_disclosure",
         "max_tool_calls",
         "max_retries",
         "latency_budget_ms",
@@ -130,6 +143,35 @@ def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
 
     zero_budget = to_mlflow_records([_row(max_tool_calls=0)])[0]["expectations"]
     assert zero_budget["max_tool_calls"] == 0
+
+
+def test_behaviors_and_sources_become_judge_guidelines() -> None:
+    row = _row(
+        guidelines=["States that results are preliminary screening.", "Names the county."],
+        required_behaviors=["Names the county.", "State unavailable evidence."],
+        source_disclosure=["USDA NRCS SDA", "US Census TIGERweb"],
+    )
+
+    guidelines = to_mlflow_records([row])[0]["expectations"]["guidelines"]
+
+    assert guidelines == [
+        "States that results are preliminary screening.",
+        "Names the county.",
+        "State unavailable evidence.",
+        (
+            "When the response reports soil, farmland, or urban-area results, it identifies "
+            "USDA NRCS SDA as a data source; a response that reports no results does not "
+            "need to name a source."
+        ),
+        (
+            "When the response reports soil, farmland, or urban-area results, it identifies "
+            "US Census TIGERweb as a data source; a response that reports no results does "
+            "not need to name a source."
+        ),
+    ]
+
+    bare = {**copy.deepcopy(BASE_ROW), "id": "DISC-01"}
+    assert "guidelines" not in to_mlflow_records([bare])[0]["expectations"]
 
 
 @pytest.mark.parametrize(
@@ -191,7 +233,6 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
         "expectations": {
             "case_id": "POINT-01",
             "expected_tools": V2_ROW["expected_tools"],
-            "expected_keywords": V2_ROW["expected_keywords"],
             "expected_tool_calls": V2_ROW["expected_tool_calls"],
             "expected_facts": V2_ROW["expected_facts"],
             "numeric_expectations": V2_ROW["numeric_expectations"],
@@ -201,7 +242,6 @@ def test_to_mlflow_records_matches_contract_c3() -> None:
     assert records[1]["expectations"] == {
         "case_id": "DISC-01",
         "expected_tools": BASE_ROW["expected_tools"],
-        "expected_keywords": BASE_ROW["expected_keywords"],
     }
     assert records[1]["inputs"]["force_tool_use"] is True
 

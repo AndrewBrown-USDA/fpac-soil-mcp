@@ -129,14 +129,12 @@ test("safety and reliability predicates distinguish negated claims and enforce b
 
   const result = evaluateResult({
     value: { status: "indeterminate", tool_call_count: 2, retry_count: 1, elapsed_ms: 450 },
-    responseText: "Source: USDA NRCS SDA.",
-    predicates: ["requiredStatus", "toolCallBudget", "retryBudget", "latencyBudget", "sourceDisclosure"],
+    predicates: ["requiredStatus", "toolCallBudget", "retryBudget", "latencyBudget"],
     expectations: {
       expected_status: "indeterminate",
       max_tool_calls: 2,
       max_retries: 1,
       latency_budget_ms: 500,
-      source_disclosure: ["USDA NRCS SDA"],
     },
   });
   assert.equal(result.status, "pass");

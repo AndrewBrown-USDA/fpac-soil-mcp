@@ -127,6 +127,11 @@ preliminary-screening, regulatory-limitation, and no-siting language.
 budgets, and retries for these cases are scored by the Pi and Databricks
 runners, not here.
 
+The harness has no model, so it does not judge `required_behaviors` or
+`source_disclosure`. That intent is graded in the Databricks eval by the
+`expectations_guidelines` judge, which receives both fields as per-row
+guidelines. The harness keyword check covers raw server output only.
+
 Prohibited-behavior IDs come from the shared catalog
 [`../common/prohibited_behaviors.v1.json`](../common/prohibited_behaviors.v1.json),
 which `lib/evalAssertions.js` and `eval/common/matching.py` both read. Keep IDs,

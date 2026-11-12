@@ -63,7 +63,14 @@ const CASE_ARGUMENTS = {
     geometry: tc.sample_geometry,
     project_type: "site",
     productivity_index: "nccpi",
-    site_assessment_inputs: { project_farm_acres: 180, county_average_farm_acres: 320 },
+    site_assessment_inputs: {
+      criteria_inputs: Object.fromEntries(
+        [12, 8, 18, 15, 12, 12, 4, 6, 3, 16, 6, 8].map((points, i) => [
+          String(i + 1),
+          { awarded_points: points, justification: "Analyst-proposed score from field review" },
+        ]),
+      ),
+    },
   }),
   "LESA-02": (tc) => ({
     project_name: "Regional Medical Clinic (45 ac)",

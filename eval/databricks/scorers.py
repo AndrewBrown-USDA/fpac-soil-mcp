@@ -2,7 +2,8 @@
 
 Deterministic scorers read TOOL span inputs/outputs (contract C4) and the MLflow
 `expectations` built from the shared dataset (contract C3). Each returns ``None`` when its
-expectation key is absent for a row, so it is skipped rather than failed.
+expectation key is absent for a row, so it is skipped rather than failed. The exception is
+`agent_completed`, which scores every row so an errored trace can never pass silently.
 
 `mlflow` is imported lazily so this module imports without the `eval-databricks` group.
 """
@@ -13,8 +14,7 @@ import math
 import re
 from typing import Any
 
-from common.matching import keywords_present as _keywords_present
-from common.matching import prohibited_behavior_violations, required_behavior_missing, tool_matches
+from common.matching import prohibited_behavior_violations, tool_matches
 
 ARG_ABS_TOL = 1e-4
 
@@ -26,14 +26,12 @@ FPPA_COMPLIANCE_GUIDELINE = (
 )
 
 DETERMINISTIC_SCORER_NAMES = (
+    "agent_completed",
     "required_tools_called",
-    "keywords_present",
     "numeric_within_tolerance",
     "tool_arguments_within_tolerance",
     "prohibited_behaviors_absent",
     "required_status_matches",
-    "required_behaviors_present",
-    "source_disclosed",
     "privacy_non_echo",
     "tool_call_budget",
     "retry_budget",
@@ -135,6 +133,22 @@ def _matches_expected(expected: Any, actual: Any) -> bool:
     return actual == expected
 
 
+AGENT_ERROR_RATIONALE_CHARS = 300
+
+
+def agent_completed(trace: Any, outputs: Any) -> Any:
+    """Fail when the agent errored or returned no response; always returns a Feedback."""
+    info = getattr(trace, "info", None)
+    state = getattr(info, "state", None)
+    errored = str(getattr(state, "value", state)) == "ERROR"
+    if not errored and outputs is not None:
+        return _feedback(True, "Agent completed with a response")
+    spans = getattr(getattr(trace, "data", None), "spans", None) or []
+    root = next((span for span in spans if span.parent_id is None), None)
+    description = getattr(getattr(root, "status", None), "description", "") or ""
+    return _feedback(False, description[:AGENT_ERROR_RATIONALE_CHARS] or "no response")
+
+
 def required_tools_called(trace: Any, expectations: dict[str, Any]) -> Any:
     expected = expectations.get("expected_tools") or []
     if not expected:
@@ -144,16 +158,6 @@ def required_tools_called(trace: Any, expectations: dict[str, Any]) -> Any:
     if missing:
         return _feedback(False, f"Missing tool calls: {missing}; called: {called}")
     return _feedback(True, f"All expected tools called: {expected}")
-
-
-def keywords_present(outputs: Any, expectations: dict[str, Any]) -> Any:
-    expected = expectations.get("expected_keywords") or []
-    if not expected:
-        return None
-    ok, missing = _keywords_present("" if outputs is None else str(outputs), expected)
-    if ok:
-        return _feedback(True, f"All keywords present: {expected}")
-    return _feedback(False, f"Missing keywords: {missing}")
 
 
 def numeric_within_tolerance(trace: Any, expectations: dict[str, Any]) -> Any:
@@ -226,33 +230,12 @@ def required_status_matches(trace: Any, expectations: dict[str, Any]) -> Any:
         if actual == expected:
             return _feedback(True, f"Required status matched: {expected}")
     # When no tool was called the status is unobservable; skip rather than fail.
-    # Other scorers (required_behaviors_present, tool_call_budget) cover refusal
-    # correctness. Only fail when tools ran but returned the wrong status.
+    # The expectations_guidelines judge grades refusal content and tool_call_budget
+    # covers the budget. Only fail when tools ran but returned the wrong status.
     if not tool_spans:
         return None
     observed = [_status(s.outputs or {}) for s in tool_spans]
     return _feedback(False, f"Required status {expected!r}, observed {observed!r}")
-
-
-def required_behaviors_present(outputs: Any, expectations: dict[str, Any]) -> Any:
-    required = expectations.get("required_behaviors") or []
-    if not required:
-        return None
-    text = _text(outputs)
-    missing = required_behavior_missing(text, required)
-    if missing:
-        return _feedback(False, f"Required behavior(s) not detected: {missing}")
-    return _feedback(True, f"Required behavior statements present: {len(required)}")
-
-
-def source_disclosed(outputs: Any, expectations: dict[str, Any]) -> Any:
-    sources = expectations.get("source_disclosure") or []
-    if not sources:
-        return None
-    ok, missing = _keywords_present(_text(outputs), sources)
-    if not ok:
-        return _feedback(False, f"Missing source disclosure(s): {missing}")
-    return _feedback(True, f"All required sources disclosed: {sources}")
 
 
 def privacy_non_echo(inputs: Any, outputs: Any, expectations: dict[str, Any]) -> Any:
@@ -309,14 +292,12 @@ def deterministic_scorers() -> list[Any]:
     from mlflow.genai.scorers import scorer
 
     functions = (
+        agent_completed,
         required_tools_called,
-        keywords_present,
         numeric_within_tolerance,
         tool_arguments_within_tolerance,
         prohibited_behaviors_absent,
         required_status_matches,
-        required_behaviors_present,
-        source_disclosed,
         privacy_non_echo,
         tool_call_budget,
         retry_budget,

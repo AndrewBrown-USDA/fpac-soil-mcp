@@ -29,7 +29,6 @@ from common.dataset import case_forces_tool_use
 from common.matching import (
     keywords_present,
     prohibited_behavior_violations,
-    required_behavior_missing,
     tool_matches,
 )
 
@@ -598,12 +597,8 @@ def _semantic_failures(
     prohibited = prohibited_behavior_violations(text, case.get("prohibited_behaviors", []))
     if prohibited:
         failures.append(f"prohibited behavior(s): {prohibited}")
-    required = required_behavior_missing(text, case.get("required_behaviors", []))
-    if required:
-        failures.append(f"required behavior(s) missing: {required}")
-    _, missing_sources = keywords_present(text, case.get("source_disclosure", []))
-    if missing_sources:
-        failures.append(f"source disclosure(s) missing: {missing_sources}")
+    # required_behaviors and source_disclosure are judge input (Databricks
+    # expectations_guidelines); they are not string-matched here.
     if "sensitive_data_echo" in case.get("prohibited_behaviors", []):
         prompt = case.get("user_prompt", "")
         sensitive_values = re.findall(r"\b\d{3}[- ]\d{2}[- ]\d{4}\b", prompt)
@@ -636,6 +631,8 @@ def run_case(
     prompt = case["user_prompt"]
     expected_keywords = case.get("expected_keywords", [])
     expected_tools = case.get("expected_tools", [])
+    # Keyword misses are reported, not failed: phrasing varies across models.
+    advisory_missing_keywords: list[str] = []
     run_id = run_id or uuid.uuid4().hex
     try:
         artifact_root = _artifact_root(artifact_root)
@@ -834,12 +831,12 @@ def run_case(
                 if extract_assistant_content(event)
             ]
             combined_assistant_text = " ".join(assistant_texts) if assistant_texts else output
-            _, missing_keywords = keywords_present(combined_assistant_text, expected_keywords)
+            _, advisory_missing_keywords = keywords_present(
+                combined_assistant_text, expected_keywords
+            )
             failures = []
             if missing_tools:
                 failures.append(f"Missing tools: {', '.join(missing_tools)}")
-            if missing_keywords:
-                failures.append(f"Missing keywords: {', '.join(missing_keywords)}")
             if diagnostics:
                 failures.append(
                     f"{'; '.join(diagnostics)}; tool-list source={advertisement_source}; "
@@ -963,9 +960,7 @@ def run_case(
             key in case
             for key in (
                 "expected_status",
-                "required_behaviors",
                 "prohibited_behaviors",
-                "source_disclosure",
                 "max_tool_calls",
                 "max_retries",
                 "latency_budget_ms",
@@ -990,6 +985,7 @@ def run_case(
         if "combined_assistant_text" in locals() and combined_assistant_text
         else output,
         "expected_keywords": expected_keywords,
+        "advisory_missing_keywords": list(advisory_missing_keywords),
         "expected_tools": expected_tools,
         "run_id": run_id,
         "evidence_classification": evidence_classification,
@@ -1055,6 +1051,9 @@ def main() -> None:
             print(f"{res['status']} ({res['elapsed_sec']}s)")
             if res["error"]:
                 print(f"     -> {res['error']}")
+            if res.get("advisory_missing_keywords"):
+                missing = ", ".join(res["advisory_missing_keywords"])
+                print(f"     -> advisory: missing keywords: {missing}")
             for attempt in res.get("attempts", []):
                 attempt_label = f"attempt {attempt.get('attempt', '?')}"
                 outcome = attempt.get("outcome", "unknown")
