@@ -153,7 +153,8 @@ Added paths:
   catalog and toggles (`overlays.ts`, `OverlayControl.tsx`), and identify
   popups with "Use as AOI" (`identify.ts`, `IdentifyPopup.tsx`). The visual
   refresh added the panel header, grouped draw/edit tools, the
-  `StatusMessage.tsx` message bar and the screening summary strip.
+  `StatusMessage.tsx` message bar and the screening summary strip. AOI import
+  keeps file upload prominent and collapses pasted GeoJSON behind a disclosure.
 * `client/src/assets/ncss-acronym-color.png` and
   `client/src/assets/ncss-acronym-white.png`: official NCSS acronym-only logo
   variants prepared from the
