@@ -15,6 +15,8 @@ import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import { Check, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
+import ncssAcronymWhite from '@/assets/ncss-acronym-white.png';
 import { GeoJsonInput } from './GeoJsonInput';
 import {
   MAX_AOI_VERTICES,
@@ -532,12 +534,12 @@ export function MapPanel() {
         <header className="flex items-start justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
           <div className="flex items-center gap-2">
             <img
-              src="/ncss-acronym-color.png"
+              src={ncssAcronymColor}
               alt="National Cooperative Soil Survey"
               className="mr-1 h-auto w-16 shrink-0 dark:hidden"
             />
             <img
-              src="/ncss-acronym-white.png"
+              src={ncssAcronymWhite}
               alt="National Cooperative Soil Survey"
               className="mr-1 hidden h-auto w-16 shrink-0 dark:block"
             />
