@@ -107,7 +107,12 @@ Modified upstream files:
 * `client/src/layouts/ChatLayout.tsx`: collapsible map panel column next to
   the chat, wrapped in the active-AOI provider (ADR 0016) and the map-result
   provider, which opens the panel when a tool card's "Show on map" is used
-  (Plan 44, ADR 0017).
+  (Plan 44, ADR 0017). The map toggle has an icon and a focus ring.
+* `client/src/index.css`: "field atlas" app theme (warm surfaces, ink text,
+  forest-green primary, `--atlas-*` tokens with `atlas-soil`/`atlas-leaf`
+  colour utilities) in light and dark mode. Map data colours, chart and
+  status tokens are unchanged
+  (`planning/RESEARCH_AGENT_MAP_APP_VISUAL_DESIGN.md`).
 * `client/src/components/message.tsx`: "Show on map" button on completed
   `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and
   `get_soil_polygons_by_geometry` tool cards (Plan 44, ADR 0017).
@@ -137,7 +142,9 @@ Added paths:
   shown-result context and tool-card button (`MapResultContext.tsx`,
   `ShowOnMapButton.tsx`, calling `/api/geo/map`), the fixed context-overlay
   catalog and toggles (`overlays.ts`, `OverlayControl.tsx`), and identify
-  popups with "Use as AOI" (`identify.ts`, `IdentifyPopup.tsx`).
+  popups with "Use as AOI" (`identify.ts`, `IdentifyPopup.tsx`). The visual
+  refresh added the panel header, grouped draw/edit tools, the
+  `StatusMessage.tsx` message bar and the screening summary strip.
 
 ### Update procedure
 
