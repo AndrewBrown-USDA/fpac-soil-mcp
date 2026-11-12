@@ -10,3 +10,9 @@ env:
     value: "false"
   - name: MCP_MODE
     value: "http"
+  - name: MCP_URL
+    value: "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
+  # Bearer token for the MCP server. Resolved from the app's secret resource
+  # with key "mcp-auth-token" (configure under App > Edit > App resources).
+  - name: MCP_AUTH_TOKEN
+    valueFrom: "mcp-auth-token"
