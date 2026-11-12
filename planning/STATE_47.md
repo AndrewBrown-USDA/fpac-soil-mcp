@@ -35,9 +35,9 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 | 2 | 47.2.3 Pi: drop checks, advisory keywords | done | `b961c6a` | offline tests only (D-47-4) |
 | 2 | 47.2.4 Harness: drop unused predicates | done | `30b8e3f` | |
 | 2 gate | String-check retirement | pass | | Py 178, Pi 41, harness 18/18 |
-| 3 | 47.3.1 ADV keywords to required behaviors | pending | | |
-| 3 | 47.3.2 Delete `required_behavior_missing` | pending | | |
-| 3 gate | Case data + fact source extraction | pending | | |
+| 3 | 47.3.1 ADV keywords to required behaviors | done | `346c883` | 7 behaviors added |
+| 3 | 47.3.2 Delete `required_behavior_missing` | done | `8a1af1a` | |
+| 3 gate | Case data + fact source extraction | pass | | Py 175, Pi 41, harness 18/18; 15 cases / 32 spans dumped |
 | 4 | 47.4.1 Expected facts for 15 cases | pending | | |
 | 4 gate | Facts | pending | | |
 | 5 | 47.5.1 Remove Databricks `keywords_present` | pending | | |
@@ -101,6 +101,24 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 ## 47.2 gate
 
 - Serial on HEAD `30b8e3f`: `PY eval/common` + Databricks scorers/agent/runner/dry run + phase-4 contract: 178 passed (132 + 39 + 6 + 1 new). Pi: 41 passed, 2 deselected. Harness: check OK, 18/18. Dry run: 38 records, 17 scorers. Ruff check + format on the 8 Python files changed since `9e5bb23`: clean. **PASS.**
+
+## 47.3.1
+
+- Status: done, `346c883`. `eval/prompt_test_cases.json`: all 14 ADV cases now have `expected_keywords: []`. Seven keyword intents not already stated got one behavior sentence each (FORMS, NONPRIME, RELOCATE, OUTAGE, PARTIAL, PRIVACY, PERFORMANCE); the other 7 cases' existing behaviors already covered both keywords. Mapping table in `planning/tasks/47.3.1.todo.md`.
+- Parsed JSON diff vs HEAD: non-ADV rows identical; ADV changes limited to keywords and behaviors, existing behaviors kept as prefix. `PY eval/common` 133 passed; phase-4 6 passed; dry run 38 records. `keywords_present` returns None on `[]`; harness `checkKeywords([])` passes, so ADV harness rows rely on predicates.
+- Deviations: none.
+
+## 47.3.2
+
+- Status: done, `8a1af1a`. Deleted `required_behavior_missing` (`matching.py`, 101 lines) and its import and 3 tests. `PY eval/common` 130 passed (133 - 3). `git grep required_behavior_missing -- . ':!planning'` empty. Ruff clean.
+- Deviations: none.
+
+## 47.3 gate
+
+- Serial on HEAD `8a1af1a`: Python gate suites 175 passed (178 - 3 deleted). Pi 41 passed, 2 deselected. Harness check OK, 18/18. Dry run 38 records. Ruff on the 10 Python files changed since `9e5bb23`: clean.
+- Fact sources: run `f2df7fe1` has 38 traces; all 15 Recon cases map one-to-one by `user_prompt`, all state OK, 32 TOOL spans total (inputs sanitized: geometry/coordinate values over 200 chars and strings over 500 chars elided; outputs kept whole). LESA-01's `calculate_preliminary_lesa` span has status OK but its output is a tool error string (matches Recon).
+- Deviation: dump written to `/tmp/47/f2df7fe1_tool_outputs.json` (332 KB, serverless local disk) instead of `.development/47/` (gitignored), because workspace files are not written from code here. It is untracked either way and is regenerable from the run id; 47.4.1 reads it from `/tmp` in the same session.
+- **PASS.**
 
 ## Discovered
 
