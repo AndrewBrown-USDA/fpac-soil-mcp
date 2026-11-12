@@ -15,7 +15,7 @@ import re
 from typing import Any
 
 from common.matching import keywords_present as _keywords_present
-from common.matching import prohibited_behavior_violations, required_behavior_missing, tool_matches
+from common.matching import prohibited_behavior_violations, tool_matches
 
 ARG_ABS_TOL = 1e-4
 
@@ -34,8 +34,6 @@ DETERMINISTIC_SCORER_NAMES = (
     "tool_arguments_within_tolerance",
     "prohibited_behaviors_absent",
     "required_status_matches",
-    "required_behaviors_present",
-    "source_disclosed",
     "privacy_non_echo",
     "tool_call_budget",
     "retry_budget",
@@ -244,33 +242,12 @@ def required_status_matches(trace: Any, expectations: dict[str, Any]) -> Any:
         if actual == expected:
             return _feedback(True, f"Required status matched: {expected}")
     # When no tool was called the status is unobservable; skip rather than fail.
-    # Other scorers (required_behaviors_present, tool_call_budget) cover refusal
-    # correctness. Only fail when tools ran but returned the wrong status.
+    # The expectations_guidelines judge grades refusal content and tool_call_budget
+    # covers the budget. Only fail when tools ran but returned the wrong status.
     if not tool_spans:
         return None
     observed = [_status(s.outputs or {}) for s in tool_spans]
     return _feedback(False, f"Required status {expected!r}, observed {observed!r}")
-
-
-def required_behaviors_present(outputs: Any, expectations: dict[str, Any]) -> Any:
-    required = expectations.get("required_behaviors") or []
-    if not required:
-        return None
-    text = _text(outputs)
-    missing = required_behavior_missing(text, required)
-    if missing:
-        return _feedback(False, f"Required behavior(s) not detected: {missing}")
-    return _feedback(True, f"Required behavior statements present: {len(required)}")
-
-
-def source_disclosed(outputs: Any, expectations: dict[str, Any]) -> Any:
-    sources = expectations.get("source_disclosure") or []
-    if not sources:
-        return None
-    ok, missing = _keywords_present(_text(outputs), sources)
-    if not ok:
-        return _feedback(False, f"Missing source disclosure(s): {missing}")
-    return _feedback(True, f"All required sources disclosed: {sources}")
 
 
 def privacy_non_echo(inputs: Any, outputs: Any, expectations: dict[str, Any]) -> Any:
@@ -334,8 +311,6 @@ def deterministic_scorers() -> list[Any]:
         tool_arguments_within_tolerance,
         prohibited_behaviors_absent,
         required_status_matches,
-        required_behaviors_present,
-        source_disclosed,
         privacy_non_echo,
         tool_call_budget,
         retry_budget,

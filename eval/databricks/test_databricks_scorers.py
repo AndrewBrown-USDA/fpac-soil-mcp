@@ -219,21 +219,6 @@ def test_safety_and_disclosure_scorers(scorers: dict[str, Any]) -> None:
     trace_no_tools = make_trace([], answer="I cannot do that.")
     assert status(trace=trace_no_tools, expectations={"expected_status": "covered"}) is None
 
-    required = scorers["required_behaviors_present"]
-    statement = "Do not echo sensitive producer identifiers."
-    assert required(outputs=statement, expectations={"required_behaviors": [statement]}).value
-    assert not required(
-        outputs="I will protect privacy.", expectations={"required_behaviors": [statement]}
-    ).value
-
-    disclose = scorers["source_disclosed"]
-    assert disclose(
-        outputs="Source: USDA NRCS SDA.", expectations={"source_disclosure": ["USDA NRCS SDA"]}
-    ).value
-    assert not disclose(
-        outputs="Source unavailable.", expectations={"source_disclosure": ["USDA NRCS SDA"]}
-    ).value
-
 
 def test_privacy_and_budget_scorers(scorers: dict[str, Any]) -> None:
     privacy = scorers["privacy_non_echo"]
