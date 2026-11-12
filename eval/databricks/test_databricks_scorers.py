@@ -160,16 +160,12 @@ def test_safety_and_disclosure_scorers(scorers: dict[str, Any]) -> None:
     trace_hit = make_trace(
         [("get_farmland_classification_by_point", {}, {"status": "indeterminate"})],
     )
-    assert status(
-        trace=trace_hit, expectations={"expected_status": "indeterminate"}
-    ).value
+    assert status(trace=trace_hit, expectations={"expected_status": "indeterminate"}).value
     trace_miss = make_trace(
         [("get_farmland_classification_by_point", {}, {"acres": 100})],
         answer="The result is indeterminate.",
     )
-    assert not status(
-        trace=trace_miss, expectations={"expected_status": "indeterminate"}
-    ).value
+    assert not status(trace=trace_miss, expectations={"expected_status": "indeterminate"}).value
 
     required = scorers["required_behaviors_present"]
     statement = "Do not echo sensitive producer identifiers."
