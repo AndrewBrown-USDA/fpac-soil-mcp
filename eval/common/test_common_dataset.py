@@ -117,11 +117,12 @@ def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
     validate_cases([row])
 
     record = to_mlflow_records([row])[0]
+    # Behaviors and sources reach the judge only as guidelines, not as raw keys.
+    assert "required_behaviors" not in record["expectations"]
+    assert "source_disclosure" not in record["expectations"]
     for field in (
         "expected_status",
-        "required_behaviors",
         "prohibited_behaviors",
-        "source_disclosure",
         "max_tool_calls",
         "max_retries",
         "latency_budget_ms",
@@ -130,6 +131,35 @@ def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
 
     zero_budget = to_mlflow_records([_row(max_tool_calls=0)])[0]["expectations"]
     assert zero_budget["max_tool_calls"] == 0
+
+
+def test_behaviors_and_sources_become_judge_guidelines() -> None:
+    row = _row(
+        guidelines=["States that results are preliminary screening.", "Names the county."],
+        required_behaviors=["Names the county.", "State unavailable evidence."],
+        source_disclosure=["USDA NRCS SDA", "US Census TIGERweb"],
+    )
+
+    guidelines = to_mlflow_records([row])[0]["expectations"]["guidelines"]
+
+    assert guidelines == [
+        "States that results are preliminary screening.",
+        "Names the county.",
+        "State unavailable evidence.",
+        (
+            "When the response reports soil, farmland, or urban-area results, it identifies "
+            "USDA NRCS SDA as a data source; a response that reports no results does not "
+            "need to name a source."
+        ),
+        (
+            "When the response reports soil, farmland, or urban-area results, it identifies "
+            "US Census TIGERweb as a data source; a response that reports no results does "
+            "not need to name a source."
+        ),
+    ]
+
+    bare = {**copy.deepcopy(BASE_ROW), "id": "DISC-01"}
+    assert "guidelines" not in to_mlflow_records([bare])[0]["expectations"]
 
 
 @pytest.mark.parametrize(
