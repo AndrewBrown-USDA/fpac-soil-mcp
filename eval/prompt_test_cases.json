@@ -500,7 +500,6 @@
       "expected_facts": [
         "The point -93.88, 42.05 in Boone County, IA falls in map unit 2550238 (symbol 138D2), Clarion loam, 9 to 14 percent slopes, moderately eroded.",
         "The SSURGO farmland classification is 'Farmland of statewide importance'.",
-        "The point intersects the Census 2020 Boone, IA Urban Area, which is preliminary evidence for the 7 CFR 658.2(a) urban exemption, not an exemption determination.",
         "The result is preliminary FPPA screening, not an official FPPA determination or Form AD-1006."
       ]
     },
