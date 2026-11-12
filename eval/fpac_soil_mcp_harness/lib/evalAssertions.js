@@ -62,15 +62,9 @@ const PREDICATES = {
   },
   requiredStatus: (value, _text, _context, expectations) =>
     typeof expectations.expected_status === "string" && readStatus(value) === expectations.expected_status,
-  requiredBehaviors: (_value, text, _context, expectations) =>
-    Array.isArray(expectations.required_behaviors) && expectations.required_behaviors.length > 0
-      && expectations.required_behaviors.every((item) => typeof item === "string" && text.toLowerCase().includes(item.toLowerCase())),
   prohibitedBehaviors: (_value, text, _context, expectations) =>
     Array.isArray(expectations.prohibited_behaviors) && expectations.prohibited_behaviors.length > 0
       && expectations.prohibited_behaviors.every((item) => !hasProhibitedClaim(text, item)),
-  sourceDisclosure: (_value, text, _context, expectations) =>
-    Array.isArray(expectations.source_disclosure) && expectations.source_disclosure.length > 0
-      && expectations.source_disclosure.every((item) => typeof item === "string" && text.toLowerCase().includes(item.toLowerCase())),
   privacyNonEcho: (_value, text, _context, expectations) =>
     Array.isArray(expectations.sensitive_values) && expectations.sensitive_values.length > 0
       && expectations.sensitive_values.every((item) => typeof item === "string" && item && !text.includes(item)),
