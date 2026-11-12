@@ -115,7 +115,9 @@ evaluated.
 - MLflow: experiment id `517983779529169`; `search_traces` needs
   `locations=["517983779529169"]`.
 - Test env (serverless): `PYTHONDONTWRITEBYTECODE=1`; `pip install -e .
-  mlflow==3.12.0 pytest-asyncio` (bare image lacks `fastmcp`; verified); Ruff on `git archive HEAD | tar -x` in `/tmp`
+  mlflow==3.12.0 pytest-asyncio`, then `pip install fastmcp==4.1.6 mcp==2.3.0`
+  (bare image lacks `fastmcp`; the first install resolves fastmcp 3.4.0 / mcp
+  1.30.0, which breaks `agent.py` `tool.input_schema`; verified at baseline); Ruff on `git archive HEAD | tar -x` in `/tmp`
   with `RUFF_CACHE_DIR=/tmp/ruff-cache`; harness tests via the `/tmp/r87` copy +
   `source databricks/bootstrap-serverless.sh` + `npm ci && npm test`.
 - Reference implementations: `make_trace` in `test_databricks_scorers.py`
