@@ -550,7 +550,7 @@ export function MapPanel() {
         <StatusMessage variant="warning" className="font-medium text-xs">
           <p>Preliminary screening view. Not an official NRCS determination.</p>
         </StatusMessage>
-        <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="Draw AOI">
+        <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="AOI tools">
           <div role="group" aria-label="Draw area" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>
               Draw area
