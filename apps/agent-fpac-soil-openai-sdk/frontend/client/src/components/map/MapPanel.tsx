@@ -12,7 +12,8 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Sprout } from 'lucide-react';
+import { Check, MousePointer2, Pentagon, Sprout, Square, Trash2, Undo2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GeoJsonInput } from './GeoJsonInput';
 import {
@@ -35,7 +36,9 @@ import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
 import type { OverlayFlags } from './OverlayControl';
 import { OVERLAYS, addOverlay, overlayIdForSource, removeOverlay } from './overlays';
 import type { OverlayId } from './overlays';
-import { ScreeningResults } from './ScreeningResults';
+import { NOTICE_CARD, RESULT_CARD, ScreeningResults } from './ScreeningResults';
+import { StatusMessage } from './StatusMessage';
+import type { StatusVariant } from './StatusMessage';
 import { useScreening } from './useScreening';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
@@ -481,18 +484,41 @@ export function MapPanel() {
     chooseMode('static');
   };
 
-  const toolButton = (label: string, target: DrawMode) => (
-    <Button
-      type="button"
-      size="sm"
-      variant={mode === target ? 'default' : 'secondary'}
-      aria-pressed={mode === target}
-      onClick={() => chooseMode(mode === target ? 'static' : target)}
-      disabled={!mapReady}
-    >
-      {label}
-    </Button>
-  );
+  // The pressed tool is filled and swaps its icon for a check, so the state is not
+  // carried by colour alone.
+  const toolButton = (label: string, target: DrawMode, Icon: LucideIcon) => {
+    const pressed = mode === target;
+    const StateIcon = pressed ? Check : Icon;
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant={pressed ? 'primary' : 'default'}
+        aria-pressed={pressed}
+        onClick={() => chooseMode(pressed ? 'static' : target)}
+        disabled={!mapReady}
+        className="gap-1.5 px-2"
+      >
+        <StateIcon aria-hidden="true" />
+        {label}
+      </Button>
+    );
+  };
+
+  const groupLabel = 'font-medium text-muted-foreground text-xs uppercase tracking-wide';
+  const originBadge = 'rounded-full border border-border bg-muted px-2 py-0.5 font-medium text-xs';
+
+  // Same status text as before, now with a variant for the message bar.
+  let statusText: string | null = null;
+  let statusVariant: StatusVariant = 'info';
+  if (!aoi) statusText = 'Draw or paste one AOI for this chat.';
+  else if (activeAoi && screening.status === 'idle')
+    statusText = `AOI ${activeAoi.aoi_ref} is attached to this chat.`;
+  if (screening.status === 'running') statusText = 'Running preliminary screening.';
+  if (screening.status === 'done') {
+    statusText = `Preliminary screening done (${inlineLayers(screening.result?.display?.map).length} map layers drawn).`;
+    statusVariant = 'success';
+  }
 
   return (
     <section
@@ -521,31 +547,50 @@ export function MapPanel() {
             {activeAoi ? `AOI ${activeAoi.aoi_ref}` : 'No AOI'}
           </span>
         </header>
-        <p className="rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-medium text-xs">
-          Preliminary screening view. Not an official NRCS determination.
-        </p>
-        <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Draw AOI">
-          {toolButton('Polygon', 'polygon')}
-          {toolButton('Rectangle', 'rectangle')}
-          {toolButton('Edit', 'select')}
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={undo}
-            disabled={!previousAoi && !aoi}
-          >
-            Undo
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={clear}
-            disabled={!aoi}
-          >
-            Clear
-          </Button>
+        <StatusMessage variant="warning" className="font-medium text-xs">
+          <p>Preliminary screening view. Not an official NRCS determination.</p>
+        </StatusMessage>
+        <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="Draw AOI">
+          <div role="group" aria-label="Draw area" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>
+              Draw area
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {toolButton('Polygon', 'polygon', Pentagon)}
+              {toolButton('Rectangle', 'rectangle', Square)}
+            </div>
+          </div>
+          <div aria-hidden="true" className="hidden h-6 w-px self-end bg-border sm:block" />
+          <div role="group" aria-label="Edit area" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>
+              Edit area
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {toolButton('Edit', 'select', MousePointer2)}
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={undo}
+                disabled={!previousAoi && !aoi}
+                className="gap-1.5 px-2"
+              >
+                <Undo2 aria-hidden="true" />
+                Undo
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={clear}
+                disabled={!aoi}
+                className="gap-1.5 px-2"
+              >
+                <Trash2 aria-hidden="true" />
+                Clear
+              </Button>
+            </div>
+          </div>
         </div>
         <div className="relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border">
           {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
@@ -581,22 +626,22 @@ export function MapPanel() {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
+            variant="primary"
             onClick={runScreening}
             disabled={!aoi || screening.status === 'running'}
           >
             {screening.status === 'running' ? 'Screening...' : 'Run screening'}
           </Button>
-          <p className="text-muted-foreground text-sm" aria-live="polite">
-            {!aoi && 'Draw or paste one AOI for this chat.'}
-            {aoi && activeAoi && screening.status === 'idle' &&
-              `AOI ${activeAoi.aoi_ref} is attached to this chat.`}
-            {screening.status === 'running' && 'Running preliminary screening.'}
-            {screening.status === 'done' &&
-              `Preliminary screening done (${inlineLayers(screening.result?.display?.map).length} map layers drawn).`}
-          </p>
+          <div aria-live="polite" className="min-w-[12rem] flex-1">
+            {statusText && (
+              <StatusMessage variant={statusVariant}>
+                <p>{statusText}</p>
+              </StatusMessage>
+            )}
+          </div>
         </div>
         {(aoiError || tileError || screening.status === 'error') && (
-          <div role="alert" className="flex flex-col gap-1 text-destructive text-sm">
+          <StatusMessage variant="error">
             {aoiError && <p>{aoiError}</p>}
             {screening.status === 'error' && screening.error && <p>{screening.error}</p>}
             {tileError && (
@@ -605,12 +650,13 @@ export function MapPanel() {
                 still work.
               </p>
             )}
-          </div>
+          </StatusMessage>
         )}
       </div>
       {shown?.origin === 'tool' ? (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
+            <span className={originBadge}>Tool result</span>
             <h3 className="font-medium text-sm">Map of {shown.tool} result</h3>
             {screeningMap && (
               <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
@@ -619,20 +665,29 @@ export function MapPanel() {
             )}
           </div>
           {shown.regulatory_notice ? (
-            <div className="rounded-md border border-border bg-muted p-2 text-sm">
-              <h3 className="font-medium">Regulatory notice</h3>
-              <p className="whitespace-pre-line">{shown.regulatory_notice}</p>
+            <div className={NOTICE_CARD}>
+              <h3 className="font-semibold text-sm">Regulatory notice</h3>
+              <p className="mt-1 whitespace-pre-line">{shown.regulatory_notice}</p>
             </div>
           ) : (
             <p role="alert" className="text-destructive text-sm">
               Regulatory notice missing - treat this result as invalid.
             </p>
           )}
-          <MapLegend block={shown.block} />
+          <div className={RESULT_CARD}>
+            <MapLegend block={shown.block} />
+          </div>
         </div>
       ) : (
         screening.status === 'done' &&
-        screening.result && <ScreeningResults result={screening.result} />
+        screening.result && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={originBadge}>AOI screening</span>
+            </div>
+            <ScreeningResults result={screening.result} />
+          </div>
+        )
       )}
     </section>
   );

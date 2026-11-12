@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseAoiText } from './geojson';
 import type { PolygonGeometry } from './geojson';
@@ -15,6 +16,7 @@ export function GeoJsonInput({
   const textId = useId();
   const fileId = useId();
   const messageId = useId();
+  const headingId = useId();
   const [text, setText] = useState('');
   const [message, setMessage] = useState<string | null>(null);
 
@@ -42,7 +44,14 @@ export function GeoJsonInput({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div role="group" aria-labelledby={headingId} className="flex flex-col gap-2">
+      <span
+        id={headingId}
+        className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide"
+      >
+        <Upload aria-hidden="true" className="size-3.5" />
+        Import GeoJSON
+      </span>
       <label htmlFor={textId} className="font-medium text-sm">
         Paste GeoJSON (Polygon or MultiPolygon)
       </label>
