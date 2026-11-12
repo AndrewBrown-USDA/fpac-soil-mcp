@@ -398,6 +398,17 @@ def test_semantic_checks_are_separate_from_runner_health_status() -> None:
     )
     assert failures == []
 
+    # Behaviors and sources are judge input only: omitting them is not a Pi failure.
+    failures = run_evals._semantic_failures(
+        case,
+        "This is preliminary screening only.",
+        [{"result": {"status": "covered"}}],
+        elapsed_sec=0.5,
+        attempt_count=1,
+        tool_call_count=1,
+    )
+    assert failures == []
+
     failures = run_evals._semantic_failures(
         case,
         "I recommend this site.",
@@ -411,6 +422,36 @@ def test_semantic_checks_are_separate_from_runner_health_status() -> None:
     assert any("tool calls" in failure for failure in failures)
     assert any("retries" in failure for failure in failures)
     assert any("latency" in failure for failure in failures)
+
+
+def test_run_case_keyword_misses_are_advisory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stdout = (CAPTURE_FIXTURES_PATH / "recognized.jsonl").read_text(encoding="utf-8")
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+        def __init__(self) -> None:
+            self.stdout = stdout
+
+    monkeypatch.setattr(run_evals.subprocess, "run", lambda *args, **kwargs: Completed())
+    result = run_evals.run_case(
+        _capture_case(
+            expected_tools=["get_farmland_classification_by_point"],
+            expected_keywords=["absent-keyword-xyz"],
+        ),
+        tmp_path / "sandbox",
+        model=None,
+        timeout=1,
+        verbose=False,
+        artifact_root=tmp_path / "artifacts",
+    )
+
+    assert result["status"] == "PASS"
+    assert result["error"] == ""
+    assert result["advisory_missing_keywords"] == ["absent-keyword-xyz"]
 
 
 def test_structured_status_ignores_mcp_call_progress_statuses() -> None:
