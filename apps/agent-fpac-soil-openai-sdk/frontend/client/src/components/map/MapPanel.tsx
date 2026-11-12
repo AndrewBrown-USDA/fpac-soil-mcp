@@ -12,7 +12,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, MousePointer2, Pentagon, Sprout, Square, Trash2, Undo2 } from 'lucide-react';
+import { Check, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GeoJsonInput } from './GeoJsonInput';
@@ -531,7 +531,16 @@ export function MapPanel() {
       <div className="flex min-h-full shrink-0 flex-col gap-3">
         <header className="flex items-start justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
           <div className="flex items-center gap-2">
-            <Sprout aria-hidden="true" className="size-5 shrink-0 text-atlas-leaf" />
+            <img
+              src="/ncss-acronym-color.png"
+              alt="National Cooperative Soil Survey"
+              className="mr-1 h-auto w-16 shrink-0 dark:hidden"
+            />
+            <img
+              src="/ncss-acronym-white.png"
+              alt="National Cooperative Soil Survey"
+              className="mr-1 hidden h-auto w-16 shrink-0 dark:block"
+            />
             <div className="flex flex-col">
               <h2 className="font-semibold text-sm leading-5 tracking-tight">FPAC Soil</h2>
               <p className="text-muted-foreground text-xs">Map workspace</p>
