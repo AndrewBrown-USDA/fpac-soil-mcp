@@ -5,15 +5,17 @@ Worker prompt: `planning/PROMPT_TEMPLATE_47.md`.
 
 ## Baseline (record before wave 1)
 
-- [ ] Branch created off `fix/eval-tuning1` (`8c90f0d`); name recorded here.
-- [ ] Test env: `pip install -e . mlflow==3.12.0 pytest-asyncio` (project deps such as `fastmcp` are not on the serverless image; a bare dry run failed with `No module named 'fastmcp'` on 2026-11-12); `PYTHONDONTWRITEBYTECODE=1`.
-- [ ] Dry run: `PYTHONPATH=src:eval python eval/databricks/run_mlflow_eval.py --dry-run --all` prints 38 records.
-- [ ] `PY eval/common` -- counts:
-- [ ] `PY eval/databricks/test_databricks_scorers.py eval/databricks/test_databricks_agent.py eval/databricks/test_databricks_runner.py eval/databricks/test_databricks_dry_run.py` -- counts:
-- [ ] `PY eval/pi/test_agent_eval.py -m "not agent_eval"` -- counts:
-- [ ] `PY tests/eval/test_phase4_databricks_contract.py` -- counts:
-- [ ] Harness `npm run check && npm test` (`/tmp` copy) -- counts:
-- [ ] Ruff on archive copy of `eval/` -- result:
+Recorded 2026-11-12 on Databricks serverless (Python 3.12).
+
+- [x] Branch created off `fix/eval-tuning1` (`8c90f0d`): `feat/judge-first-scoring` @ `2b7c9ee`, clean tree, 0 ahead / 0 behind origin.
+- [x] Test env: `pip install -e . mlflow==3.12.0 pytest-asyncio` (project deps such as `fastmcp` are not on the serverless image; a bare dry run failed with `No module named 'fastmcp'` on 2026-11-12); `PYTHONDONTWRITEBYTECODE=1`. Resolved to mlflow 3.12.0, **fastmcp 3.4.0, mcp 1.30.0** (uv.lock pins fastmcp 4.1.6, mcp 2.3.0; mlflow 3.12.0 declares `fastmcp<4` for its `mcp` extra). Ruff 0.17.5 (lock 0.17.3).
+- [x] Dry run: `PYTHONPATH=src:eval python eval/databricks/run_mlflow_eval.py --dry-run --all` -- `Dry run: 38 records`, 18 scorers.
+- [x] `PY eval/common` -- 132 passed.
+- [x] `PY eval/databricks/test_databricks_scorers.py eval/databricks/test_databricks_agent.py eval/databricks/test_databricks_runner.py eval/databricks/test_databricks_dry_run.py` -- **28 passed, 7 failed (PRE-EXISTING, environment)**. All 7 in `test_databricks_agent.py` (test_agent_calls_tool_then_answers_with_c4_trace, test_zero_call_budget_disables_tool_use_and_is_added_to_system_prompt, test_agent_span_shape_is_pinned, test_read_resource_and_get_prompt_dispatch, test_max_turns_is_honored, test_tool_errors_are_returned_to_the_model_not_raised, test_span_payloads_are_sanitized). Error: `AttributeError: 'Tool' object has no attribute 'input_schema'. Did you mean: 'inputSchema'?` at `agent.py` L156 (`_discover`). Cause: the install resolves fastmcp 3.4.0 / mcp 1.30.0 instead of the locked 4.1.6 / 2.3.0. Not fixed (baseline rule); awaiting user decision.
+- [x] `PY eval/pi/test_agent_eval.py -m "not agent_eval"` -- 40 passed, 2 deselected.
+- [x] `PY tests/eval/test_phase4_databricks_contract.py` -- 6 passed.
+- [x] Harness `npm run check && npm test` (`/tmp/r87/repo` copy, node v22.20.0, npm 10.9.3) -- check OK; tests 18, pass 18, fail 0, skipped 0.
+- [x] Ruff on archive copy of `eval/` (`ruff check eval/` + `ruff format --check eval/`) -- All checks passed; 20 files already formatted.
 
 Reference T1 run: `f2df7fe1d52a4c139df1bdde4748768f` (38 cases, `--all`,
 agent `databricks-gpt-5-6-luna`, judge `databricks-claude-sonnet-4-5`,
