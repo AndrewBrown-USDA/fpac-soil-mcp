@@ -12,6 +12,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
+import { Sprout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GeoJsonInput } from './GeoJsonInput';
 import {
@@ -502,6 +503,24 @@ export function MapPanel() {
           below and are reached with the panel's scrollbar, so screening never
           shrinks the map. */}
       <div className="flex min-h-full shrink-0 flex-col gap-3">
+        <header className="flex items-start justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
+          <div className="flex items-center gap-2">
+            <Sprout aria-hidden="true" className="size-5 shrink-0 text-atlas-leaf" />
+            <div className="flex flex-col">
+              <h2 className="font-semibold text-sm leading-5 tracking-tight">FPAC Soil</h2>
+              <p className="text-muted-foreground text-xs">Map workspace</p>
+            </div>
+          </div>
+          <span
+            className={`break-all rounded-full border px-2 py-0.5 font-mono text-xs ${
+              activeAoi
+                ? 'border-primary/40 bg-primary/10 text-foreground'
+                : 'border-border bg-muted text-muted-foreground'
+            }`}
+          >
+            {activeAoi ? `AOI ${activeAoi.aoi_ref}` : 'No AOI'}
+          </span>
+        </header>
         <p className="rounded-md border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-medium text-xs">
           Preliminary screening view. Not an official NRCS determination.
         </p>

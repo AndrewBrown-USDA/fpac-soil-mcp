@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Map as MapIcon } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { useSession } from '@/contexts/SessionContext';
@@ -66,8 +67,11 @@ export default function ChatLayout() {
             onClick={() => setMapOpen((open) => !open)}
             aria-expanded={mapOpen}
             aria-controls="map-panel"
-            className="absolute top-2 right-1 z-10 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+            className={`absolute top-2 right-1 z-10 flex items-center rounded-md border border-border bg-background px-1.5 py-1 font-medium text-xs shadow-sm hover:bg-[var(--action-default-background-hover)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${
+              mapOpen ? 'flex-row gap-1.5' : 'flex-col gap-0.5'
+            }`}
           >
+            <MapIcon aria-hidden="true" className="size-4 text-primary" />
             {mapOpen ? 'Hide map' : 'Map'}
           </button>
           <div

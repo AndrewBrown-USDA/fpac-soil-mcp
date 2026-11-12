@@ -15,8 +15,8 @@ Apply the low-hanging-fruit visual refresh from `planning/RESEARCH_AGENT_MAP_APP
 - [x] Verify with a script: WCAG contrast >= 4.5:1 for foreground/background, muted-foreground/background, primary-foreground/primary, and foreground/secondary, in light and dark. Result: 24 pairs (incl. card, sidebar, destructive, soil, tooltip), 0 below 4.5:1; lowest 5.01 (dark destructive). White on primary is 6.34 light (was 5.08 on the old blue), 5.19 dark.
 
 ### 3. Panel header and map toggle
-- [ ] `MapPanel.tsx`: compact header ("FPAC Soil" title, "Map workspace" subtitle, thin soil-coloured rule) above the existing preliminary notice; AOI status pill showing the active `aoi_ref` or "No AOI" (values already in `activeAoi`).
-- [ ] `ChatLayout.tsx`: toggle gets a lucide `Map` icon plus the existing text labels, same `aria-expanded`/`aria-controls`, same open/closed widths and narrow-screen default.
+- [x] `MapPanel.tsx`: compact header ("FPAC Soil" title, "Map workspace" subtitle, thin soil-coloured rule) above the existing preliminary notice; AOI status pill showing the active `aoi_ref` or "No AOI" (values already in `activeAoi`).
+- [x] `ChatLayout.tsx`: toggle gets a lucide `Map` icon plus the existing text labels, same `aria-expanded`/`aria-controls`, same open/closed widths and narrow-screen default.
 
 ### 4. Toolbar hierarchy
 - [ ] Split the single toolbar into labelled groups "Draw area" (Polygon, Rectangle) and "Edit area" (Edit, Undo, Clear), each `role="group"` with `aria-label`, lucide icons beside the existing text labels; keep `aria-pressed`, `disabled` rules and handlers unchanged.
