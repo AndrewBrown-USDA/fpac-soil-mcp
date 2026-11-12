@@ -12,7 +12,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
+import { Check, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
@@ -76,7 +76,11 @@ const LEFT_BUTTON_ONLY = {
 
 const emptyCollection = { type: 'FeatureCollection' as const, features: [] };
 
-export function MapPanel() {
+type MapPanelProps = {
+  onCloseMap: () => void;
+};
+
+export function MapPanel({ onCloseMap }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const drawRef = useRef<TerraDraw | null>(null);
@@ -531,32 +535,44 @@ export function MapPanel() {
           below and are reached with the panel's scrollbar, so screening never
           shrinks the map. */}
       <div className="flex min-h-full shrink-0 flex-col gap-3">
-        <header className="flex items-start justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
+        <header className="flex items-center justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
           <div className="flex items-center gap-2">
             <img
               src={ncssAcronymColor}
               alt="National Cooperative Soil Survey"
-              className="mr-1 h-auto w-16 shrink-0 dark:hidden"
+              className="h-auto w-12 shrink-0 dark:hidden"
             />
             <img
               src={ncssAcronymWhite}
               alt="National Cooperative Soil Survey"
-              className="mr-1 hidden h-auto w-16 shrink-0 dark:block"
+              className="hidden h-auto w-12 shrink-0 dark:block"
             />
             <div className="flex flex-col">
               <h2 className="font-semibold text-sm leading-5 tracking-tight">FPAC Soil</h2>
               <p className="text-muted-foreground text-xs">Map workspace</p>
             </div>
           </div>
-          <span
-            className={`break-all rounded-full border px-2 py-0.5 font-mono text-xs ${
-              activeAoi
-                ? 'border-primary/40 bg-primary/10 text-foreground'
-                : 'border-border bg-muted text-muted-foreground'
-            }`}
-          >
-            {activeAoi ? `AOI ${activeAoi.aoi_ref}` : 'No AOI'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={`break-all rounded-full border px-2 py-0.5 font-mono text-xs ${
+                activeAoi
+                  ? 'border-primary/40 bg-primary/10 text-foreground'
+                  : 'border-border bg-muted text-muted-foreground'
+              }`}
+            >
+              {activeAoi ? `AOI ${activeAoi.aoi_ref}` : 'No AOI'}
+            </span>
+            <button
+              type="button"
+              onClick={onCloseMap}
+              aria-expanded
+              aria-controls="map-panel"
+              className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-1.5 py-1 font-medium text-xs shadow-sm hover:bg-[var(--action-default-background-hover)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+            >
+              <MapIcon aria-hidden="true" className="size-4 text-primary" />
+              Hide map
+            </button>
+          </div>
         </header>
         <StatusMessage variant="warning" className="font-medium text-xs">
           <p>Preliminary screening view. Not an official NRCS determination.</p>

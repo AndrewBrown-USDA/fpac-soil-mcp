@@ -107,7 +107,8 @@ Modified upstream files:
 * `client/src/layouts/ChatLayout.tsx`: collapsible map panel column next to
   the chat, wrapped in the active-AOI provider (ADR 0016) and the map-result
   provider, which opens the panel when a tool card's "Show on map" is used
-  (Plan 44, ADR 0017). The map toggle has an icon and a focus ring.
+  (Plan 44, ADR 0017). The map toggle has an icon and a focus ring; when open,
+  it appears inline with the map-panel header.
 * `client/src/index.css`: "field atlas" app theme (warm surfaces, ink text,
   forest-green primary, `--atlas-*` tokens with `atlas-soil`/`atlas-leaf`
   colour utilities) in light and dark mode. Map data colours, chart and
