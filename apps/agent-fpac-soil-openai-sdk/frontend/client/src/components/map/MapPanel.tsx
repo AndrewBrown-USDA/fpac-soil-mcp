@@ -547,10 +547,9 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               alt="National Cooperative Soil Survey"
               className="hidden h-auto w-12 shrink-0 dark:block"
             />
-            <div className="flex flex-col">
-              <h2 className="font-semibold text-sm leading-5 tracking-tight">FPAC Soil</h2>
-              <p className="text-muted-foreground text-xs">Map workspace</p>
-            </div>
+            <h2 className="font-semibold text-sm leading-5 tracking-tight">
+              Farmland Protection Policy Act Agent
+            </h2>
           </div>
           <div className="flex items-center gap-2">
             <span

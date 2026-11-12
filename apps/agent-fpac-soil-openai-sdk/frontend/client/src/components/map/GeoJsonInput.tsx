@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Upload } from 'lucide-react';
+import { ChevronDown, Clipboard, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseAoiText } from './geojson';
 import type { PolygonGeometry } from './geojson';
@@ -15,10 +15,11 @@ export function GeoJsonInput({
 }) {
   const textId = useId();
   const messageId = useId();
-  const headingId = useId();
+  const pastePanelId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
 
   const apply = (value: string) => {
     const parsed = parseAoiText(value);
@@ -44,22 +45,31 @@ export function GeoJsonInput({
   };
 
   return (
-    <div role="group" aria-labelledby={headingId} className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span
-          id={headingId}
-          className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
-        >
-          Import AOI
-        </span>
+    <div role="group" aria-label="AOI input methods" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
-          variant="primary"
+          variant="secondary"
           onClick={() => fileInputRef.current?.click()}
           className="gap-1.5"
         >
           <Upload aria-hidden="true" />
-          Upload AOI file
+          Upload file
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          aria-expanded={pasteOpen}
+          aria-controls={pastePanelId}
+          onClick={() => setPasteOpen((open) => !open)}
+          className="gap-1.5"
+        >
+          <Clipboard aria-hidden="true" />
+          Paste GeoJSON
+          <ChevronDown
+            aria-hidden="true"
+            className={`transition-transform ${pasteOpen ? 'rotate-180' : ''}`}
+          />
         </Button>
         <input
           ref={fileInputRef}
@@ -71,35 +81,30 @@ export function GeoJsonInput({
           className="sr-only"
         />
       </div>
-      <details>
-        <summary className="w-fit cursor-pointer font-medium text-primary text-sm hover:underline">
-          Paste GeoJSON instead
-        </summary>
-        <div className="mt-2 flex flex-col gap-2">
-          <label htmlFor={textId} className="font-medium text-sm">
-            GeoJSON Polygon or MultiPolygon
-          </label>
-          <textarea
-            id={textId}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            rows={3}
-            spellCheck={false}
-            aria-describedby={message ? messageId : undefined}
-            className="w-full rounded-md border border-border bg-background p-2 font-mono text-xs"
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => apply(text)}
-            disabled={!text.trim()}
-            className="w-fit"
-          >
-            Use pasted AOI
-          </Button>
-        </div>
-      </details>
+      <div id={pastePanelId} hidden={!pasteOpen} className="flex flex-col gap-2">
+        <label htmlFor={textId} className="font-medium text-sm">
+          GeoJSON Polygon or MultiPolygon
+        </label>
+        <textarea
+          id={textId}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          rows={3}
+          spellCheck={false}
+          aria-describedby={message ? messageId : undefined}
+          className="w-full rounded-md border border-border bg-background p-2 font-mono text-xs"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          onClick={() => apply(text)}
+          disabled={!text.trim()}
+          className="w-fit"
+        >
+          Use this AOI
+        </Button>
+      </div>
       {message && (
         <p id={messageId} role="alert" className="text-destructive text-sm">
           {message}

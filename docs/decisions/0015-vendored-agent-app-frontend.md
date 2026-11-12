@@ -94,7 +94,8 @@ Modified upstream files:
 * `packages/db/migrations/0001_add_trace_id.sql` and
   `packages/db/migrations/meta/_journal.json`: add the MLflow trace ID column
   with replay-safe SQL and an execution-order timestamp.
-* `client/index.html`: permit browser page zoom.
+* `client/index.html`: permit browser page zoom and set the browser title to
+  “Farmland Protection Policy Act Agent”.
 * `client/src/components/sidebar-toggle.tsx`: give the icon-only sidebar
   toggle an accessible name.
 * `client/package.json`: exact pins for the map panel dependencies
