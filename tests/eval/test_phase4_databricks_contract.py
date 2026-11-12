@@ -133,10 +133,12 @@ def test_contract_and_judge_evidence_remain_distinct() -> None:
 
 
 def test_missing_expected_facts_omit_judge_expectations_instead_of_failing() -> None:
-    case = load_cases(DATASET_PATH, ids=("LESA-01",))[0]
+    source = load_cases(DATASET_PATH, ids=("LESA-01",))[0]
+    assert source["expected_facts"]
+    case = {
+        key: value for key, value in source.items() if key not in ("expected_facts", "guidelines")
+    }
     record = to_mlflow_records([case])[0]
 
-    assert not case.get("expected_facts")
-    assert not case.get("guidelines")
     assert "expected_facts" not in record["expectations"]
     assert "guidelines" not in record["expectations"]
