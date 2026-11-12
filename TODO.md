@@ -6,13 +6,13 @@ Apply the low-hanging-fruit visual refresh from `planning/RESEARCH_AGENT_MAP_APP
 ## Tasks
 
 ### 1. Baseline
-- [ ] In a throwaway `/tmp` copy of committed HEAD 5d53ce7, run the frontend gate (`npm ci`, `npx biome lint --skip=nursery/useSortedClasses --skip=style/useTemplate .`, `npm run build`) and record error/warning counts as the baseline.
+- [x] In a throwaway `/tmp` copy of committed HEAD 5d53ce7, run the frontend gate (`npm ci`, `npx biome lint --skip=nursery/useSortedClasses --skip=style/useTemplate .`, `npm run build`) and record error/warning counts as the baseline. Result: 607 files, 0 errors, 10 warnings, build OK.
 
 ### 2. Tokens, app-wide (`client/src/index.css`)
-- [ ] Light `:root`: warm paper surfaces (`--background`, `--card`, `--popover`, `--secondary`, `--muted`, `--accent`, sidebar), warm borders/inputs, deep ink `--foreground`, forest-green `--primary`/`--ring`/`--sidebar-primary`; add `--atlas-soil` (accent for header rule only) and `--atlas-leaf`.
-- [ ] `.dark`: matching warm-dark variants of the same tokens; no new tokens missing from `.dark`.
-- [ ] Leave data colours untouched: `farmlandClasses.ts`, server map styles, `--chart-*`, `--destructive`.
-- [ ] Verify with a script: WCAG contrast >= 4.5:1 for foreground/background, muted-foreground/background, primary-foreground/primary, and foreground/secondary, in light and dark.
+- [x] Light `:root`: warm paper surfaces (`--background`, `--card`, `--popover`, `--secondary`, `--muted`, `--accent`, sidebar), warm borders/inputs, deep ink `--foreground`, forest-green `--primary`/`--ring`/`--sidebar-primary`; add `--atlas-soil` (accent for header rule only) and `--atlas-leaf`.
+- [x] `.dark`: matching warm-dark variants of the same tokens; no new tokens missing from `.dark`.
+- [x] Leave data colours untouched: `farmlandClasses.ts`, server map styles, `--chart-*`, `--destructive`.
+- [x] Verify with a script: WCAG contrast >= 4.5:1 for foreground/background, muted-foreground/background, primary-foreground/primary, and foreground/secondary, in light and dark. Result: 24 pairs (incl. card, sidebar, destructive, soil, tooltip), 0 below 4.5:1; lowest 5.01 (dark destructive). White on primary is 6.34 light (was 5.08 on the old blue), 5.19 dark.
 
 ### 3. Panel header and map toggle
 - [ ] `MapPanel.tsx`: compact header ("FPAC Soil" title, "Map workspace" subtitle, thin soil-coloured rule) above the existing preliminary notice; AOI status pill showing the active `aoi_ref` or "No AOI" (values already in `activeAoi`).
