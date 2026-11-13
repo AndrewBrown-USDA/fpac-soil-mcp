@@ -44,9 +44,9 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 1 gate | eCFR and CDL contract gate | done | | Serial `make check`: 980 passed, 45 deselected; Ruff check and format passed. |
 | 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | done | `ea54cc2` / `a8d26cb` | Planning commits `cfba2bd` / `3ca4d3c`; focused acceptance and Ruff checks passed. |
 | 2 | 50.2.2 Add CDL map overlay and summary display | done | `987610d` / `8c672e0` | Planning commits `e781666` / `e41f5c1`; frontend lint/build and browser/CORS checks passed. |
-| 2 | 50.2.3 Synchronize AOI handler test mocks with criteria resource reads | in progress | | Plan approved; planning commit `d3d2256`; fixture-only remediation for 14 AOI mock failures. |
-| 2 gate | Chat/map integration gate | pending | | Reopened for 50.2.3 and full app-suite regression check. |
-| 3 gate | Serial validation and local browser walkthrough | pending | | Root `make check` passed; app suite and combined local walkthrough remain. No deployed dev-app trial. |
+| 2 | 50.2.3 Synchronize AOI handler test mocks with criteria resource reads | done | `0ac9091` | Planning commits `d3d2256` / `02ba919`; focused and full app suites pass. |
+| 2 gate | Chat/map integration gate | done | | All Wave 2 tasks integrated; root and app suites pass, frontend build and map walkthrough pass. |
+| 3 gate | Serial validation and local browser walkthrough | pending | | Root `make check` and full app checks pass; live-network and integrated chat/map walkthrough remain. No deployed dev-app trial. |
 
 ## Worker Worktrees
 
@@ -57,7 +57,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 50.1.3 | `.worktrees\50.1.3` | `feature/sa-checklist1-50.1.3-worker` | 2026-11-12 23:54:15 -08:00 | complete; retained |
 | 50.2.1 | `.worktrees\50.2.1` | `feature/sa-checklist1-50.2.1-worker` | 2026-11-13 00:04:29 -08:00 | complete; retained |
 | 50.2.2 | `.worktrees\50.2.2` | `feature/sa-checklist1-50.2.2-worker` | 2026-11-13 00:04:28 -08:00 | complete; retained |
-| 50.2.3 | `.worktrees\50.2.3` | `feature/sa-checklist1-50.2.3-worker` | 2026-11-13 00:47:37 -08:00 | plan approved; execution in progress; retained |
+| 50.2.3 | `.worktrees\50.2.3` | `feature/sa-checklist1-50.2.3-worker` | 2026-11-13 00:47:37 -08:00 | complete; retained |
 
 ## Task Reports
 
@@ -107,3 +107,11 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 - `npm ci`; read-only Biome lint; `npm run build` — passed; lint reported 10 existing warnings.
 - Local browser walkthrough verified the summary, default-off toggle, and MapLibre tile requests; ImageServer returned HTTP 200 `image/png`, so no proxy was added.
 - Deviation: first `npm ci`/build ran in the primary worktree; only ignored frontend dependencies/build output were refreshed. Tracked primary changes remain the pre-existing eCFR XML edits; `.worktrees\` remains untracked.
+
+### 50.2.3 — Synchronize AOI handler test mocks with criteria resource reads
+- Status: complete; planning commits `d3d2256` / `02ba919`; implementation commit `0ac9091`.
+- Added a reusable valid criteria-resource fixture and async resource reads to the AOI handler mocks; updated healthy-context call expectations without changing production code.
+- `uv run --frozen --python 3.11 pytest tests\test_aoi_context.py tests\test_aoi_handoff.py -q` — 51 passed.
+- `uv run --frozen --python 3.11 pytest tests -q` — 183 passed.
+- App Ruff check and format check — passed.
+- Deviation: an initial focused test invocation ran in the primary worktree before integration and failed because the fixture was not yet present there; the isolated worktree rerun passed. No production files changed.
