@@ -14,6 +14,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from agent_server import agent as agent_module
 from agent_server import config as config_module
+from agents.exceptions import UserError
+from mcp.shared.exceptions import McpError
+from mcp.types import ErrorData
 from mlflow.types.responses import ResponsesAgentRequest
 
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
@@ -208,6 +211,43 @@ def test_invalid_site_assessment_resource_disables_interview_context(patched):
         patched.create_agent.call_args.kwargs["site_assessment_context"]
         == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
     )
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        McpError(ErrorData(code=-32603, message="Resource read failed.")),
+        UserError("Failed to read resource on MCP server 'fpac-soil-mcp': Request failed."),
+    ],
+    ids=["mcp-resource-error", "mcp-transport-error"],
+)
+def test_resource_read_failures_disable_interview_context(patched, error):
+    patched.server.read_resource.side_effect = error
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+    assert (
+        patched.create_agent.call_args.kwargs["site_assessment_context"]
+        == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+
+
+def test_unexpected_resource_read_error_propagates(patched):
+    patched.server.read_resource.side_effect = RuntimeError("implementation bug")
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    with pytest.raises(RuntimeError, match="implementation bug"):
+        asyncio.run(connect())
 
 
 def test_validated_resource_context_contains_all_criteria():

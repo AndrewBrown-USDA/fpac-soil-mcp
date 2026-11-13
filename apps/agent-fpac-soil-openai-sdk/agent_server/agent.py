@@ -12,10 +12,12 @@ from agents import (
     set_default_openai_api,
     set_default_openai_client,
 )
+from agents.exceptions import UserError
 from agents.tracing import set_trace_processors
 from databricks.sdk import WorkspaceClient
 from databricks_openai import AsyncDatabricksOpenAI
 from databricks_openai.agents import McpServer
+from mcp.shared.exceptions import McpError
 from mlflow.genai.agent_server import invoke, stream
 from mlflow.types.responses import (
     ResponsesAgentRequest,
@@ -62,6 +64,7 @@ SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE = (
     "Do not conduct or score the Site Assessment interview from memory; tell the user the "
     "criteria are unavailable. Other available preliminary screening may continue."
 )
+RESOURCE_READ_USER_ERROR_PREFIX = "Failed to read resource on MCP server "
 
 
 def _site_assessment_criteria_context(result: object) -> str:
@@ -228,13 +231,29 @@ async def _connect_fpac_agent(stack: AsyncExitStack, aoi: ActiveAoi | None = Non
     site_assessment_context = None
     try:
         resource = await server.read_resource(SITE_ASSESSMENT_CRITERIA_URI)
-        site_assessment_context = _site_assessment_criteria_context(resource)
-    except Exception:
+    except McpError:
         logger.warning(
-            "Validated Site Assessment criteria unavailable; interview disabled for this turn.",
+            "Site Assessment resource request failed; interview disabled for this turn.",
             exc_info=True,
         )
         site_assessment_context = SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    except UserError as exc:
+        if not str(exc).startswith(RESOURCE_READ_USER_ERROR_PREFIX):
+            raise
+        logger.warning(
+            "Site Assessment resource transport failed; interview disabled for this turn.",
+            exc_info=True,
+        )
+        site_assessment_context = SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    else:
+        try:
+            site_assessment_context = _site_assessment_criteria_context(resource)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Validated Site Assessment criteria unavailable; interview disabled for this turn.",
+                exc_info=True,
+            )
+            site_assessment_context = SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
     if aoi is not None:
         return create_agent(
             mcp_servers=servers,
