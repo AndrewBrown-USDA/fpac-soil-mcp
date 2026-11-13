@@ -26,22 +26,6 @@ def _request() -> ResponsesAgentRequest:
     return ResponsesAgentRequest(input=[{"role": "user", "content": "hi"}])
 
 
-def _criteria_resource() -> SimpleNamespace:
-    payload = {
-        "schema_version": "1.0",
-        "criteria": [
-            {
-                "criterion_number": number,
-                "question": f"Question {number}?",
-                "citation": f"7 CFR § 658.5(b)({number})",
-                "bands": [{"label": "Unknown or unavailable", "points": None}],
-            }
-            for number in range(1, 13)
-        ],
-    }
-    return SimpleNamespace(contents=[SimpleNamespace(text=json.dumps(payload))])
-
-
 async def _empty_events():
     return
     yield  # pragma: no cover - makes this an async generator
@@ -55,10 +39,10 @@ def _clear_env(monkeypatch):
 
 
 @pytest.fixture
-def patched(monkeypatch):
+def patched(monkeypatch, valid_site_assessment_criteria_resource):
     """Patch everything the handlers call; returns the mocks."""
     server = MagicMock(name="server")
-    server.read_resource = AsyncMock(return_value=_criteria_resource())
+    server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
     mocks = SimpleNamespace(
         server=server,
         workspace_client=MagicMock(name="WorkspaceClient"),
@@ -161,7 +145,7 @@ def test_handler_healthy_path(patched, caplog, run_handler):
         mcp_servers=[patched.server],
         tools_unavailable=False,
         site_assessment_context=agent_module._site_assessment_criteria_context(
-            _criteria_resource()
+            patched.server.read_resource.return_value
         ),
     )
     patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
@@ -214,6 +198,75 @@ def test_invalid_site_assessment_resource_disables_interview_context(patched):
 
 
 @pytest.mark.parametrize(
+    ("target", "field", "value"),
+    [
+        ("band", "id", "  "),
+        ("band", "id", "range_20_90_1"),
+        ("band", "label", ""),
+        ("band", "points", "0"),
+        ("band", "points", 16),
+        ("band", "points", True),
+        ("criterion", "max_points", True),
+        ("band", "min", "0"),
+        ("band", "min", 1),
+        ("band", "max", 25),
+        ("band", "max_inclusive", True),
+        ("band", "min_inclusive", False),
+    ],
+    ids=[
+        "empty-id",
+        "duplicate-id",
+        "empty-label",
+        "non-numeric-points",
+        "points-over-maximum",
+        "boolean-points",
+        "invalid-maximum-points",
+        "non-numeric-minimum",
+        "percentage-ranges-must-start-at-zero",
+        "percentage-range-gap",
+        "overlapping-inclusive-boundary",
+        "zero-must-be-included",
+    ],
+)
+def test_invalid_site_assessment_band_fields_are_rejected(
+    target, field, value, valid_site_assessment_criteria_resource
+):
+    payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
+    if target == "criterion":
+        payload["criteria"][0][field] = value
+    else:
+        band_id = "above_90" if field == "points" and value == 16 else "below_20"
+        band = next(band for band in payload["criteria"][0]["bands"] if band["id"] == band_id)
+        band[field] = value
+    resource = SimpleNamespace(contents=[SimpleNamespace(text=json.dumps(payload))])
+
+    with pytest.raises((TypeError, ValueError)):
+        agent_module._site_assessment_criteria_context(resource)
+
+
+def test_malformed_site_assessment_band_disables_interview_context(
+    patched, valid_site_assessment_criteria_resource
+):
+    payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
+    payload["criteria"][0]["bands"][0]["label"] = " "
+    patched.server.read_resource.return_value = SimpleNamespace(
+        contents=[SimpleNamespace(text=json.dumps(payload))]
+    )
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+    assert (
+        patched.create_agent.call_args.kwargs["site_assessment_context"]
+        == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+
+
+@pytest.mark.parametrize(
     "error",
     [
         McpError(ErrorData(code=-32603, message="Resource read failed.")),
@@ -250,8 +303,11 @@ def test_unexpected_resource_read_error_propagates(patched):
         asyncio.run(connect())
 
 
-def test_validated_resource_context_contains_all_criteria():
-    context = agent_module._site_assessment_criteria_context(_criteria_resource())
+def test_validated_resource_context_contains_all_criteria(valid_site_assessment_criteria_resource):
+    context = agent_module._site_assessment_criteria_context(
+        valid_site_assessment_criteria_resource
+    )
     assert "fppa://site-assessment-criteria" in context
-    assert all(f"Question {number}?" in context for number in range(1, 13))
+    payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
+    assert all(criterion["question"] in context for criterion in payload["criteria"])
     assert "Unknown or unavailable" in context

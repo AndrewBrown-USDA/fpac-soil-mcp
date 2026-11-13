@@ -1,8 +1,10 @@
 import json
 import logging
+import math
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from functools import lru_cache
+from itertools import pairwise
 
 import mlflow
 from agents import (
@@ -67,6 +69,15 @@ SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE = (
 RESOURCE_READ_USER_ERROR_PREFIX = "Failed to read resource on MCP server "
 
 
+def _is_finite_number(value: object) -> bool:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def _site_assessment_criteria_context(result: object) -> str:
     """Validate the MCP resource envelope and return its authoritative JSON as context."""
     contents = getattr(result, "contents", None)
@@ -96,8 +107,14 @@ def _site_assessment_criteria_context(result: object) -> str:
             raise TypeError("Site Assessment criterion is malformed.")
         number = criterion.get("criterion_number")
         bands = criterion.get("bands")
+        answer_type = criterion.get("answer_type")
+        max_points = criterion.get("max_points")
         if not isinstance(number, int) or isinstance(number, bool):
             raise TypeError("Site Assessment criterion number is malformed.")
+        if answer_type not in {"percentage", "qualitative"}:
+            raise ValueError("Site Assessment criterion answer type is unsupported.")
+        if not _is_finite_number(max_points) or max_points < 0:
+            raise ValueError("Site Assessment criterion maximum points are malformed.")
         question = criterion.get("question")
         citation = criterion.get("citation")
         if not isinstance(question, str) or not isinstance(citation, str):
@@ -108,13 +125,83 @@ def _site_assessment_criteria_context(result: object) -> str:
             raise TypeError("Site Assessment scoring bands must be a list.")
         if not bands:
             raise ValueError("Site Assessment criterion has no scoring bands.")
-        if any(
-            not isinstance(band, dict)
-            or not isinstance(band.get("label"), str)
-            or "points" not in band
-            for band in bands
-        ):
-            raise TypeError("Site Assessment scoring band is malformed.")
+        band_ids: set[str] = set()
+        percentage_ranges: list[tuple[float, float | None, bool, bool, float]] = []
+        for band in bands:
+            if not isinstance(band, dict):
+                raise TypeError("Site Assessment scoring band is malformed.")
+            band_id = band.get("id")
+            label = band.get("label")
+            points = band.get("points")
+            if not isinstance(band_id, str) or not band_id.strip():
+                raise ValueError("Site Assessment scoring band ID is empty or malformed.")
+            if band_id in band_ids:
+                raise ValueError("Site Assessment scoring band IDs must be unique.")
+            band_ids.add(band_id)
+            if not isinstance(label, str) or not label.strip():
+                raise ValueError("Site Assessment scoring band label is empty or malformed.")
+            if "points" not in band or (
+                points is not None
+                and (not _is_finite_number(points) or points < 0 or points > max_points)
+            ):
+                raise ValueError("Site Assessment scoring band points are malformed.")
+
+            bounds: dict[str, float] = {}
+            for bound_name in ("min", "max"):
+                if bound_name in band:
+                    bound = band[bound_name]
+                    if not _is_finite_number(bound) or bound < 0:
+                        raise ValueError("Site Assessment scoring band bounds are malformed.")
+                    bounds[bound_name] = float(bound)
+            for bound_name, inclusive_name in (
+                ("min", "min_inclusive"),
+                ("max", "max_inclusive"),
+            ):
+                if inclusive_name in band and (
+                    bound_name not in bounds or type(band[inclusive_name]) is not bool
+                ):
+                    raise ValueError("Site Assessment scoring band inclusivity is malformed.")
+
+            if answer_type == "qualitative":
+                if bounds or "min_inclusive" in band or "max_inclusive" in band:
+                    raise ValueError(
+                        "Qualitative Site Assessment bands cannot define numeric bounds."
+                    )
+            elif points is None:
+                if bounds or "min_inclusive" in band or "max_inclusive" in band:
+                    raise ValueError("Unscored percentage bands cannot define numeric bounds.")
+            else:
+                if "min" not in bounds:
+                    raise ValueError("Scored percentage bands must define a lower bound.")
+                lower = bounds["min"]
+                upper = bounds.get("max")
+                if upper is not None and lower > upper:
+                    raise ValueError("Site Assessment scoring band bounds are reversed.")
+                percentage_ranges.append(
+                    (
+                        lower,
+                        upper,
+                        band.get("min_inclusive", True),
+                        band.get("max_inclusive", False),
+                        float(points),
+                    )
+                )
+        if answer_type == "percentage":
+            percentage_ranges.sort(key=lambda bounds: bounds[0])
+            if percentage_ranges and (
+                not math.isclose(percentage_ranges[0][0], 0) or not percentage_ranges[0][2]
+            ):
+                raise ValueError("Percentage scoring bands must include zero.")
+            for previous, current in pairwise(percentage_ranges):
+                previous_max = previous[1]
+                if previous_max is None:
+                    raise ValueError("Percentage scoring bands cannot follow an unbounded band.")
+                if not math.isclose(previous_max, current[0], rel_tol=0, abs_tol=1e-9):
+                    raise ValueError("Percentage scoring band bounds contain a gap or overlap.")
+                if previous[3] == current[2]:
+                    raise ValueError("Adjacent percentage scoring bands have inconsistent bounds.")
+                if current[4] < previous[4]:
+                    raise ValueError("Percentage scoring band points do not follow their bounds.")
         numbers.append(number)
     if sorted(numbers) != list(range(1, 13)):
         raise ValueError("Site Assessment resource criterion numbers are incomplete.")
