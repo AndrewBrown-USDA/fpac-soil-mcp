@@ -10,6 +10,7 @@ from shapely.wkt import loads as load_wkt
 from fpac_soil_mcp.geometry import (
     GeometryValidationError,
     buffer_centerline,
+    buffer_polygon,
     calculate_acreage,
     calculate_geodesic_length,
     compute_geometry_hash,
@@ -39,6 +40,23 @@ def test_lesa_02_fixture_represents_45_acres():
     assert calculate_acreage(
         load_wkt(fixture["user_prompt"].split(": ", 1)[1].split(". Use ", 1)[0])
     ) == pytest.approx(acreage)
+
+
+def test_buffer_polygon_returns_only_projected_exterior_band():
+    aoi = Polygon([(0, 0), (0.001, 0), (0.001, 0.001), (0, 0.001), (0, 0)])
+
+    band = buffer_polygon(aoi, 30)
+
+    assert band.is_valid
+    assert band.intersection(aoi).area == pytest.approx(0, abs=1e-12)
+    assert band.area > 0
+
+
+def test_buffer_polygon_rejects_non_positive_distance():
+    aoi = Polygon([(0, 0), (0.001, 0), (0.001, 0.001), (0, 0.001), (0, 0)])
+
+    with pytest.raises(GeometryValidationError, match="positive"):
+        buffer_polygon(aoi, 0)
 
 
 def test_lesa_02_aoi_acreage_is_separate_from_affected_farm_acreage():
