@@ -55,3 +55,13 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | executing |
 
 ## Task Reports
+
+### 50.1.2 — Add combined CDL context analysis
+- Status: complete; implementation commit `011e4a9` (`feat(cdl): add combined CDL context analysis`); planning commit `4bab81e`.
+- Added EPSG:6933 AOI exterior bands, latest uniquely verified vintage selection, per-zone full class evidence, and MCP registration/public metadata.
+- Changed: geometry, CDL client/models/tool registration, README, manifest, server metadata, and four focused test files.
+- `uv run pytest tests\test_geometry.py tests\test_cdl_client.py tests\test_cdl_models.py tests\test_cdl_tools.py -q` — 62 passed.
+- `uv run ruff check .` — passed.
+- `uv run ruff format --check .` — passed.
+- Deviations: none; same vintage is supplied to existing client analysis for all zones; no extra mosaic-lock contract was added.
+- Dependent-task note: context is preliminary CDL class evidence only; no agricultural-class policy, farmland status, or Criterion 2 percentage is provided.
