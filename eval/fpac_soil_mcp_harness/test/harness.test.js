@@ -1,9 +1,36 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { test } from "node:test";
 import { extractPayload, McpBridge } from "../lib/mcpBridge.js";
-import { buildInvocation, checkKeywords } from "../lib/evalCases.js";
+import { buildInvocation, checkKeywords, loadEvalCases } from "../lib/evalCases.js";
+import { EVAL_ROOT, HARNESS_ROOT, resolveEvalCasesPath } from "../lib/config.js";
 import { evaluateResult, hasProhibitedClaim, runPredicates } from "../lib/evalAssertions.js";
+
+test("evaluation corpus path defaults to the unified file and keeps explicit overrides", () => {
+  assert.equal(resolveEvalCasesPath(""), path.join(EVAL_ROOT, "eval_cases.v1.json"));
+  assert.equal(resolveEvalCasesPath("custom-cases.json"), path.join(HARNESS_ROOT, "custom-cases.json"));
+});
+
+test("loader reads the unified corpus directly and constructs every case invocation", async () => {
+  const corpusPath = path.join(EVAL_ROOT, "eval_cases.v1.json");
+  const source = JSON.parse(await readFile(corpusPath, "utf8"));
+  const loaded = loadEvalCases(corpusPath);
+  const expectedIds = source.test_cases.map((item) => item.id);
+
+  assert.equal(loaded.version, source.version);
+  assert.equal(loaded.source, corpusPath);
+  assert.equal(loaded.executable_version, null);
+  assert.equal(loaded.executable_source, null);
+  assert.equal(loaded.test_cases.length, 38);
+  assert.equal(new Set(loaded.test_cases.map((item) => item.id)).size, 38);
+  assert.deepEqual(loaded.test_cases.map((item) => item.id), expectedIds);
+
+  for (const [index, item] of loaded.test_cases.entries()) {
+    const original = source.test_cases[index];
+    assert.deepEqual(item.invocation, original.invocation || buildInvocation(original), item.id);
+  }
+});
 
 test("extractPayload prefers structured content", () => {
   assert.deepEqual(extractPayload({ structuredContent: { ok: true }, content: [] }), { ok: true });
@@ -68,6 +95,15 @@ test("active auth token is retained privately and cleared on disconnect", async 
 test("invocation construction and keyword failures remain deterministic", () => {
   const tc = { id: "CASE", target_type: "tool", target_name: "tool", harness_arguments: { value: 1 } };
   assert.deepEqual(buildInvocation(tc), { kind: "tool", name: "tool", arguments: { value: 1 } });
+  assert.deepEqual(buildInvocation({ target_type: "resource", target_name: "fppa://scope" }), {
+    kind: "resource",
+    uri: "fppa://scope",
+  });
+  assert.deepEqual(buildInvocation({ target_type: "prompt", target_name: "fppa_screening" }), {
+    kind: "prompt",
+    name: "fppa_screening",
+    arguments: {},
+  });
   assert.deepEqual(checkKeywords(["required", "missing"], "required output"), {
     found: ["required"],
     missing: ["missing"],
