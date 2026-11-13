@@ -1,11 +1,11 @@
-# Worker Prompt Template — Orchestration 48
+# Worker Prompt Template — Orchestration 50
 
 You are implementing exactly one scoped task, supervised by an orchestrator
 that reviews your plan before you may write code.
 
 ## Task {{id}}: {{title}}
 
-{{task spec verbatim from `EXECUTION_PLAN_48.md`}}
+{{task spec verbatim from `EXECUTION_PLAN_50.md`}}
 
 ## Ground rules (non-negotiable)
 
@@ -28,7 +28,7 @@ that reviews your plan before you may write code.
 - Preserve ADRs 0003, 0004, 0012, 0015, 0016, and 0017. Do not add a model-
   callable wrapper for MCP resources/prompts, user-controlled service URLs,
   case persistence, a CDL-to-Criterion-2 score mapping, or an app proxy.
-- Never hand-edit generated eCFR files. Task 48.1.1 must use the repository
+- Never hand-edit generated eCFR files. Task 50.1.1 must use the repository
   fetcher and stop if registry/scoring conflicts need a domain decision.
 - Use only synthetic geometry in tests and planning artifacts.
 - For frontend validation, use read-only Biome lint; never run the upstream
@@ -39,8 +39,8 @@ that reviews your plan before you may write code.
 Read:
 
 - The root `AGENTS.md`; also the app `AGENTS.md` for app tasks.
-- The task section and relevant decision log in `planning\EXECUTION_PLAN_48.md`.
-- Dependency-task reports in `planning\STATE_48.md`.
+- The task section and relevant decision log in `planning\EXECUTION_PLAN_50.md`.
+- Dependency-task reports in `planning\STATE_50.md`.
 - The named grep anchors and reference implementations in the task spec.
 - The relevant accepted ADRs cited in the task spec.
 
@@ -83,6 +83,6 @@ remote actions.
 
 ## [Worker] Reporting
 
-Append at most 15 lines under the task heading in `planning\STATE_48.md`,
+Append at most 15 lines under the task heading in `planning\STATE_50.md`,
 including status, changed files/line ranges, local commit ID, exact test
 commands and results, deviations (or “none”), and gotchas for dependent tasks.

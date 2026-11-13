@@ -1,4 +1,4 @@
-# EXECUTION PLAN 48: Guided AD-1006 Interview and CDL Map Context
+# EXECUTION PLAN 50: Guided AD-1006 Interview and CDL Map Context
 
 ## Goal & Scope
 
@@ -171,29 +171,29 @@ authoritative FPPA source or an automatic Criterion 2 score.
 
 | Wave | Task | Summary | Depends on |
 |---|---|---|---|
-| 1 | 48.1.1 | Refresh generated eCFR files and verify the existing Site Assessment registry | none |
-| 1 | 48.1.2 | Add the combined AOI / one-mile ring / 30 m CDL context tool | none |
-| 1 gate | - | eCFR and CDL contract gate | 48.1.1, 48.1.2 |
-| 2 | 48.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 48.1.1, 48.1.2 |
-| 2 | 48.2.2 | Add CDL raster context overlay and “Show CDL on map” summaries | 48.1.2 |
-| 2 gate | - | Chat/map integration gate | 48.2.1, 48.2.2 |
-| 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | 48.2.1, 48.2.2 |
+| 1 | 50.1.1 | Refresh generated eCFR files and verify the existing Site Assessment registry | none |
+| 1 | 50.1.2 | Add the combined AOI / one-mile ring / 30 m CDL context tool | none |
+| 1 gate | - | eCFR and CDL contract gate | 50.1.1, 50.1.2 |
+| 2 | 50.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 50.1.1, 50.1.2 |
+| 2 | 50.2.2 | Add CDL raster context overlay and “Show CDL on map” summaries | 50.1.2 |
+| 2 gate | - | Chat/map integration gate | 50.2.1, 50.2.2 |
+| 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | 50.2.1, 50.2.2 |
 
-### 48.1.1 — Refresh eCFR references and verify Site Assessment registry
+### 50.1.1 — Refresh eCFR references and verify Site Assessment registry
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Must edit:** generated files under `docs\cfr\` only if refreshed content
   differs: `title-7-part-657.xml`, `title-7-part-657.md`,
   `title-7-part-658.xml`, `title-7-part-658.md`, `manifest.json`; append the
-  task report to `planning\STATE_48.md`.
-- **Can create:** `planning\tasks\48.1.1.todo.md`.
+  task report to `planning\STATE_50.md`.
+- **Can create:** `planning\tasks\50.1.1.todo.md`.
 - **Depends on:** none.
 - **Specification:** Refresh the checked-in eCFR files using
   `scripts\fetch_ecfr.py`, then rerun the check. Compare the current
   `site_assessment.v1.json` question and scoring contract against the refreshed
   7 CFR § 658.5(b) text. Do not edit the registry or scoring implementation.
   If there is a mismatch, stop this task after recording exact conflicting
-  criteria and block 48.2.1 pending an explicit domain-owner decision.
+  criteria and block 50.2.1 pending an explicit domain-owner decision.
 - **Do not touch:** scoring registry, LESA algorithms, prompts, app code, or
   non-generated CFR documentation.
 - **Grep anchors:** `scripts\fetch_ecfr.py`; `docs\cfr\manifest.json`;
@@ -206,7 +206,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   is recorded in the task report. If the content conflicts, report the block
   rather than silently changing scoring.
 
-### 48.1.2 — Add combined CDL context analysis
+### 50.1.2 — Add combined CDL context analysis
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Must edit:** `src\fpac_soil_mcp\geometry.py`,
@@ -216,8 +216,8 @@ authoritative FPPA source or an automatic Criterion 2 score.
   `server.json`, and focused tests in `tests\test_geometry.py`,
   `tests\test_cdl_client.py`, `tests\test_cdl_models.py`,
   `tests\test_cdl_tools.py` (or a new `tests\test_cdl_context.py`); append the
-  task report to `planning\STATE_48.md`.
-- **Can create:** `planning\tasks\48.1.2.todo.md` and the optional focused
+  task report to `planning\STATE_50.md`.
+- **Can create:** `planning\tasks\50.1.2.todo.md` and the optional focused
   test file named above.
 - **Depends on:** none.
 - **Specification:** Add one registered MCP tool that accepts one validated
@@ -250,7 +250,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   `uv run ruff check .` and `uv run ruff format --check .`. Update all public
   MCP surface references listed above.
 
-### 48.2.1 — Add resource-backed conversational Site Assessment flow
+### 50.2.1 — Add resource-backed conversational Site Assessment flow
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Must edit:** `src\fpac_soil_mcp\prompts\fppa_prompts.py`,
@@ -259,10 +259,10 @@ authoritative FPPA source or an automatic Criterion 2 score.
   `apps\agent-fpac-soil-openai-sdk\agent_server\prompts\system_prompt.txt`,
   and focused app tests in
   `apps\agent-fpac-soil-openai-sdk\tests\test_agent_mcp_wiring.py` and/or
-  `test_agent_config.py`; append the task report to `planning\STATE_48.md`.
-- **Can create:** `planning\tasks\48.2.1.todo.md` and focused tests in the
+  `test_agent_config.py`; append the task report to `planning\STATE_50.md`.
+- **Can create:** `planning\tasks\50.2.1.todo.md` and focused tests in the
   listed test files.
-- **Depends on:** 48.1.1 and 48.1.2.
+- **Depends on:** 50.1.1 and 50.1.2.
 - **Specification:** Use the existing `fppa://site-assessment-criteria`
   resource as the single source for the 12 site questions and scoring bands.
   Read it in the agent server and provide it as agent context; do not expose a
@@ -279,7 +279,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   unavailable results without zero-filling.
 - **Do not touch:** Site Assessment scoring rules, `site_assessment.v1.json`,
   corridor workflow, assessment persistence, frontend files, or deployment
-  configuration. If 48.1.1 found a mismatch, this task is blocked until an
+  configuration. If 50.1.1 found a mismatch, this task is blocked until an
   explicit decision resolves it.
 - **Grep anchors:** `agent.py` `create_agent`, `_connect_fpac_agent`;
   `system_prompt.txt` `Required semantic rules`;
@@ -297,7 +297,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   tests\test_agent_mcp_wiring.py tests\test_agent_config.py -q`, plus app
   Ruff check/format check on owned files.
 
-### 48.2.2 — Add CDL map overlay and summary display
+### 50.2.2 — Add CDL map overlay and summary display
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Must edit:** `apps\agent-fpac-soil-openai-sdk\frontend\client\src\components\map\overlays.ts`,
@@ -305,10 +305,10 @@ authoritative FPPA source or an automatic Criterion 2 score.
   `ShowOnMapButton.tsx`, `apps\agent-fpac-soil-openai-sdk\frontend\client\src\components\message.tsx`,
   `apps\agent-fpac-soil-openai-sdk\AGENTS.md`, and
   `docs\decisions\0015-vendored-agent-app-frontend.md`; append the task report
-  to `planning\STATE_48.md`.
-- **Can create:** `planning\tasks\48.2.2.todo.md` and a focused
+  to `planning\STATE_50.md`.
+- **Can create:** `planning\tasks\50.2.2.todo.md` and a focused
   `components\map\` summary component.
-- **Depends on:** 48.1.2.
+- **Depends on:** 50.1.2.
 - **Specification:** Add the CDL ImageServer as a fixed, off-by-default
   raster context overlay with attribution and vintage/context labeling. Add a
   “Show CDL on map” action for the combined tool result; it opens the map and
@@ -348,7 +348,7 @@ Run serially after Wave 2:
   currently broken).
 - Agent-app Python checks: `make app-check` or its direct `uv run` test and
   Ruff equivalents.
-- Frontend: the read-only Biome lint and build command in 48.2.2.
+- Frontend: the read-only Biome lint and build command in 50.2.2.
 - Live integration: run `uv run --group dev pytest -m live_network`
   separately if external network access is available, as required for changed
   upstream integration behavior. This is not a deployed app test.
