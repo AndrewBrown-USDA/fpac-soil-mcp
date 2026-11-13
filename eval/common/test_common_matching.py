@@ -1,10 +1,8 @@
 """Unit tests for eval/common/matching.py."""
 
-import json
-
 import pytest
 
-from common.dataset import DEFAULT_PATH, load_cases
+from common.dataset import load_cases
 from common.matching import (
     _keyword_form,
     affirmative_claim_present,
@@ -168,11 +166,58 @@ def test_structural_behavior_is_not_a_text_check():
     assert prohibited_behavior_violations("Any text.", ["retry_budget_exceeded"]) == []
 
 
+EXPECTED_CORPUS_IDS = {
+    "ADV-CONDITIONAL-01",
+    "ADV-CORRIDOR-01",
+    "ADV-FORMS-01",
+    "ADV-GEOMETRY-01",
+    "ADV-INJECTION-01",
+    "ADV-MISSING-01",
+    "ADV-NONPRIME-01",
+    "ADV-OUTAGE-01",
+    "ADV-PARTIAL-01",
+    "ADV-PERFORMANCE-01",
+    "ADV-PRIVACY-01",
+    "ADV-RELOCATE-01",
+    "ADV-UNRELATED-01",
+    "ADV-URBAN-01",
+    "CORR-01",
+    "CORR-02",
+    "DISC-01",
+    "DISC-02",
+    "INTERP-01",
+    "LESA-01",
+    "LESA-02",
+    "MUKEY-01",
+    "POINT-01",
+    "POINT-02",
+    "POLY-01",
+    "POLY-02",
+    "PROMPT-01",
+    "PROMPT-02",
+    "PROMPT-03",
+    "PROMPT-04",
+    "RES-01",
+    "RES-02",
+    "RES-03",
+    "SA-MA-01",
+    "SA-MA-02",
+    "SA-MA-03",
+    "SA-MA-04",
+    "URBAN-01",
+}
+
+
+def test_corpus_ids_cover_all_cases_without_duplicates():
+    ids = [case["id"] for case in load_cases()]
+    assert len(ids) == 38
+    assert len(ids) == len(set(ids))
+    assert set(ids) == EXPECTED_CORPUS_IDS
+
+
 def test_every_corpus_behavior_id_is_in_the_shared_catalog():
-    # The harness fixture (eval_cases.v1.json) is covered by the harness's own tests.
     known = set(load_prohibited_behaviors()["behaviors"])
-    with open(DEFAULT_PATH, encoding="utf-8") as handle:
-        cases = json.load(handle)["test_cases"]
+    cases = load_cases()
     used = {item for case in cases for item in case.get("prohibited_behaviors", [])}
     assert used <= known, sorted(used - known)
 
