@@ -112,12 +112,12 @@
 
 - **Repo:** `AndrewBrown-USDA/fpac-soil-mcp` (`D:\workspace\fpac-soil-mcp`)
 - **Files in scope:**
-  - Must edit: `AGENTS.md`, `README.md`, `.github/skills/pi-mcp-eval/SKILL.md`, `eval/fpac_soil_mcp_harness/AGENTS.md`, `eval/fpac_soil_mcp_harness/.env.example`, `eval/fpac_soil_mcp_harness/README.md`, `eval/databricks/README.md`; delete `eval/prompt_test_cases.json`.
+  - Must edit: `AGENTS.md`, `README.md`, `.github/skills/pi-mcp-eval/SKILL.md`, `eval/fpac_soil_mcp_harness/AGENTS.md`, `eval/fpac_soil_mcp_harness/.env.example`, `eval/fpac_soil_mcp_harness/README.md`, `eval/databricks/README.md`, only the module docstring in `eval/common/dataset.py`, and only the fixture path constant in `tests/test_geometry.py`; delete `eval/prompt_test_cases.json`.
   - Can create: none. Scratch, if needed, only under `.development/48/`.
 - **Depends on:** 48.2.1 and 48.2.2.
-- **Spec:** Remove the duplicate prompt corpus only after every active reader has migrated. Update active setup, skill, harness, and Databricks documentation to name `eval/eval_cases.v1.json` as the single corpus, including the standalone harness deployment instructions and `EVAL_CASES_PATH` example. Preserve historical planning artifacts and past state reports unchanged.
-- **Constraints (do not touch):** Do not edit code, tests, historical plans/state, or the unified case data. Do not leave active source, config, or documentation references to `prompt_test_cases.json`.
-- **Grep anchors:** corpus references in root `AGENTS.md` and `README.md`; issue/fixture references in `.github/skills/pi-mcp-eval/SKILL.md`; default corpus and setup text in harness `AGENTS.md`, `.env.example`, and `README.md`; shared adversarial corpus paragraph in `eval/databricks/README.md`.
+- **Spec:** Remove the duplicate prompt corpus only after every active reader has migrated. Update active setup, skill, harness, and Databricks documentation to name `eval/eval_cases.v1.json` as the single corpus, including the standalone harness deployment instructions and `EVAL_CASES_PATH` example. Update the `eval/common/dataset.py` module docstring to identify the unified corpus. Update the fixture path constant in `tests/test_geometry.py` to use the unified corpus, without changing test logic. Preserve historical planning artifacts and past state reports unchanged.
+- **Constraints (do not touch):** Do not change runtime logic or test assertions. In `eval/common/dataset.py`, update only the module docstring; in `tests/test_geometry.py`, update only the fixture path constant. Do not edit historical plans/state or the unified case data. Do not leave active source, config, or documentation references to `prompt_test_cases.json`.
+- **Grep anchors:** corpus references in root `AGENTS.md` and `README.md`; issue/fixture references in `.github/skills/pi-mcp-eval/SKILL.md`; the module docstring in `eval/common/dataset.py`; `LESA_FIXTURE_PATH` in `tests/test_geometry.py`; default corpus and setup text in harness `AGENTS.md`, `.env.example`, and `README.md`; shared adversarial corpus paragraph in `eval/databricks/README.md`.
 - **Acceptance:** `git grep -n "prompt_test_cases\\.json" -- AGENTS.md README.md .github/skills/pi-mcp-eval eval` returns no matches, and `Test-Path eval\\prompt_test_cases.json` is false. Full wave gate passes.
 
 ## Hazards
