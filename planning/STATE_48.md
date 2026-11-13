@@ -18,8 +18,8 @@ Worker prompt: `planning/PROMPT_TEMPLATE_48.md`.
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 48.1.1 Reconcile corpus and validate unified schema | done | `150faaf` | Planning commit `0e65eb8`; all Wave 1 gates passed |
-| 2 | 48.2.1 Migrate Python evaluation readers and ID coverage | pending | | |
-| 2 | 48.2.2 Load the unified corpus directly in the harness | pending | | |
+| 2 | 48.2.1 Migrate Python evaluation readers and ID coverage | done | `2df7f78` | Targeted and Wave 2 gates passed |
+| 2 | 48.2.2 Load the unified corpus directly in the harness | done | `7524170` | Targeted and Wave 2 gates passed |
 | 3 | 48.3.1 Retire the duplicate corpus and update active references | pending | | |
 
 ## Task Reports
@@ -36,3 +36,23 @@ Worker prompt: `planning/PROMPT_TEMPLATE_48.md`.
 - Corpus checks: 38 unique rows; every Python source field preserved; all 19 prior harness rows and their five harness-only fields preserved; no stale behavior ID.
 - Deviations: none. Ruff formatting was applied after the initial format gate identified two in-scope files.
 - Dependency note: old corpus retained for the Wave 2 consumer migrations; Python `DEFAULT_PATH` now points to the unified corpus.
+
+## 48.2.1
+- Status: done; implementation commit `2df7f78` (`refactor(eval): migrate Python readers to unified corpus`).
+- Files: Pi runner/fixture, Databricks notebook reference, phase-4 contract test, and corpus matching test.
+- Targeted test: `uv run pytest eval/pi/test_agent_eval.py tests/eval/test_phase4_databricks_contract.py eval/common/test_common_matching.py -m "not agent_eval" -q` — 137 passed, 2 deselected.
+- Reference check: `rg -n "eval/eval_cases.v1.json" eval/databricks/run_t1_eval_notebook.py` — matched line 6.
+- Wave gate: offline Python — 964 passed, 45 deselected; Ruff check and format — passed.
+- Wave gate: harness `npm run check` — passed; `npm test` — 20 passed, 0 failed.
+- Deviations: none. The source copy comparison was replaced with direct unified-record assertions.
+- Dependency note: harness migration can proceed against the unified corpus; no duplicate-reader behavior remains in the Python consumers.
+
+## 48.2.2
+- Status: done; implementation commit `7524170` (`refactor(harness): load unified evaluation corpus`).
+- Files: harness config/loader and unit/HTTP smoke tests.
+- Targeted test: from `eval\fpac_soil_mcp_harness`, `npm run check && npm test` — passed; 20 passed, 0 failed.
+- Wave gate: offline Python — 964 passed, 45 deselected; Ruff check and format — passed.
+- Wave gate: harness `npm run check` — passed; `npm test` — 20 passed, 0 failed.
+- Coverage: direct loading, all 38 unique IDs, default/override paths, invocation derivation, and null overlay metadata.
+- Deviations: none.
+- Dependency note: active consumers now use `eval/eval_cases.v1.json`; Wave 3 may remove the duplicate and update active references.
