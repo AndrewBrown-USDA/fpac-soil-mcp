@@ -40,6 +40,16 @@ adjacency deferral remain in force.
   - Depends on: G3, G5, G6
 - **[G8]** PR #79 CDL integration is merged and validated before agricultural-land adjacency evaluation is expanded.
   - Depends on: existing PR #79 review/merge work
+- **[G16]** An authority-safe evidence contract defines how the agent chat/map workflow collects AD-1006 Site Assessment judgments and presents distinct machine-derived CDL context, analyst responses, rationale, provenance, and verification state.
+  - Depends on: G1
+- **[G17]** The agent chat interviews users conversationally across all 12 AD-1006 Site Assessment criteria, allows unknown/partial answers, captures rationale, and confirms the summary before submitting supported facts to the existing preliminary LESA calculator.
+  - Depends on: G16
+- **[G18]** The AOI map displays a full CDL class distribution using the latest verified vintage, with coverage, provenance, and preliminary-use limitations; it does not default to a binary agricultural percentage.
+  - Depends on: G16
+- **[G19]** The map displays a separate CDL class distribution for the one-mile buffer-minus-AOI ring as nearby land-cover context, not as a perimeter-contact ratio.
+  - Depends on: G18
+- **[G20]** The map displays a full CDL class distribution in a 30 m exterior band as a non-authoritative near-perimeter proxy, not literal boundary contact or verified Criterion 2 evidence.
+  - Depends on: G18
 
 ## Independent Backlog
 
