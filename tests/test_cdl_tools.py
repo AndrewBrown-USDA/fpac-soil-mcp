@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from pyproj import CRS
+
 from fpac_soil_mcp.authority import Provenance
 from fpac_soil_mcp.cdl_models import (
     CDLAnalysisStatus,
@@ -66,6 +68,25 @@ class OutOfExtentCDLClient(FakeCDLClient):
         )
 
 
+class WktSpatialReferenceCDLClient(FakeCDLClient):
+    def get_service_metadata(self):
+        return (
+            super()
+            .get_service_metadata()
+            .model_copy(
+                update={
+                    "spatial_reference": CRS.from_epsg(3857).to_wkt(),
+                    "full_extent": {
+                        "xmin": -1_000_000,
+                        "ymin": -1_000_000,
+                        "xmax": 1_000_000,
+                        "ymax": 1_000_000,
+                    },
+                }
+            )
+        )
+
+
 def test_cdl_tool_validates_geometry_and_propagates_histogram(monkeypatch):
     fake = FakeCDLClient()
     monkeypatch.setattr(cdl_tools, "_get_cdl_client", lambda: fake)
@@ -83,6 +104,21 @@ def test_cdl_tool_validates_geometry_and_propagates_histogram(monkeypatch):
     assert response.product_vintage == "2025"
     assert fake.submitted_geometry["rings"]
     assert fake.submitted_geometry["spatialReference"] == {"wkid": 4326}
+
+
+def test_cdl_tool_reprojects_geometry_for_wkt_spatial_reference(monkeypatch):
+    fake = WktSpatialReferenceCDLClient()
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", lambda: fake)
+
+    response = cdl_tools.analyze_cdl_histogram(
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
+        "2025",
+        [1],
+    )
+
+    assert response.status is CDLAnalysisStatus.SUCCESS
+    assert fake.submitted_geometry["spatialReference"] == {"wkt": CRS.from_epsg(3857).to_wkt()}
+    assert max(point[0] for ring in fake.submitted_geometry["rings"] for point in ring) > 100_000
 
 
 def test_cdl_tool_combines_all_polygon_features_in_feature_collection(monkeypatch):
@@ -237,6 +273,26 @@ def test_cdl_context_uses_one_vintage_for_three_non_overlapping_zones(monkeypatc
         1,
     ]
     assert len({call["geometry_hash"] for call in fake.submitted_histograms}) == 3
+
+
+def test_cdl_context_reprojects_each_zone_for_wkt_spatial_reference(monkeypatch):
+    fake = WktSpatialReferenceCDLClient()
+    monkeypatch.setattr(cdl_tools, "_get_cdl_client", lambda: fake)
+
+    response = cdl_tools.analyze_cdl_context(
+        {"type": "Polygon", "coordinates": [[[0, 0], [0.001, 0], [0.001, 0.001], [0, 0]]]}
+    )
+
+    assert response.status is CDLAnalysisStatus.SUCCESS
+    assert len(fake.submitted_histograms) == 3
+    assert all(
+        call["geometry"]["spatialReference"] == {"wkt": CRS.from_epsg(3857).to_wkt()}
+        for call in fake.submitted_histograms
+    )
+    assert all(
+        max(abs(point[0]) for ring in call["geometry"]["rings"] for point in ring) > 100
+        for call in fake.submitted_histograms
+    )
 
 
 def test_cdl_context_marks_incomplete_coverage_and_upstream_errors(monkeypatch):

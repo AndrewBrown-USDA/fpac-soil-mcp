@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any
 
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import transform, unary_union
 
@@ -71,6 +71,18 @@ def _parse_cdl_geometry(geojson: dict[str, Any] | str) -> Polygon | MultiPolygon
     return parse_geojson_geometry(value)
 
 
+def _service_spatial_reference(
+    value: str | None,
+) -> tuple[CRS, dict[str, int | str]]:
+    spatial_reference = value or "4326"
+    if spatial_reference.isdigit():
+        return (
+            CRS.from_user_input(f"EPSG:{spatial_reference}"),
+            {"wkid": int(spatial_reference)},
+        )
+    return CRS.from_user_input(spatial_reference), {"wkt": spatial_reference}
+
+
 def analyze_cdl_histogram(
     geojson: dict[str, Any] | str,
     product_vintage: str,
@@ -104,14 +116,11 @@ def analyze_cdl_histogram(
         geometry_hash = compute_geometry_hash(geometry)
         client = _get_cdl_client()
         metadata = client.get_service_metadata()
-        spatial_reference = metadata.spatial_reference or "4326"
-        if spatial_reference.isdigit() and spatial_reference != "4326":
-            geometry = transform(
-                Transformer.from_crs(
-                    "EPSG:4326", f"EPSG:{spatial_reference}", always_xy=True
-                ).transform,
-                geometry,
-            )
+        service_crs, service_reference = _service_spatial_reference(metadata.spatial_reference)
+        transformer = Transformer.from_crs(
+            CRS.from_user_input("EPSG:4326"), service_crs, always_xy=True
+        )
+        geometry = transform(transformer.transform, geometry)
         if not metadata.full_extent:
             return CDLHistogramResponse(
                 status=CDLAnalysisStatus.UNAVAILABLE,
@@ -138,7 +147,7 @@ def analyze_cdl_histogram(
         return client.analyze_polygon_histogram(
             geometry={
                 "rings": polygon_to_esri_rings(geometry),
-                "spatialReference": {"wkid": int(spatial_reference)},
+                "spatialReference": service_reference,
             },
             geometry_hash=geometry_hash,
             product_vintage=product_vintage,
@@ -174,7 +183,10 @@ def analyze_cdl_context(geojson: dict[str, Any] | str) -> CDLContextResponse:
         client = _get_cdl_client()
         metadata = client.get_service_metadata()
         selected_vintage = client.resolve_latest_product_vintage(metadata=metadata)
-        spatial_reference = metadata.spatial_reference or "4326"
+        service_crs, service_reference = _service_spatial_reference(metadata.spatial_reference)
+        transformer = Transformer.from_crs(
+            CRS.from_user_input("EPSG:4326"), service_crs, always_xy=True
+        )
         zones = (
             ("aoi", aoi),
             ("one_mile_ring", buffer_polygon(aoi, 1609.344)),
@@ -183,14 +195,7 @@ def analyze_cdl_context(geojson: dict[str, Any] | str) -> CDLContextResponse:
         zone_results = []
         for zone_name, zone_geometry in zones:
             zone_hash = compute_geometry_hash(zone_geometry)
-            service_geometry = zone_geometry
-            if spatial_reference.isdigit() and spatial_reference != "4326":
-                service_geometry = transform(
-                    Transformer.from_crs(
-                        "EPSG:4326", f"EPSG:{spatial_reference}", always_xy=True
-                    ).transform,
-                    service_geometry,
-                )
+            service_geometry = transform(transformer.transform, zone_geometry)
             if not metadata.full_extent:
                 zone_results.append(
                     _unavailable_context_zone(
@@ -224,9 +229,7 @@ def analyze_cdl_context(geojson: dict[str, Any] | str) -> CDLContextResponse:
             histogram = client.analyze_polygon_histogram(
                 geometry={
                     "rings": polygon_to_esri_rings(service_geometry),
-                    "spatialReference": {"wkid": int(spatial_reference)}
-                    if spatial_reference.isdigit()
-                    else {"wkt": spatial_reference},
+                    "spatialReference": service_reference,
                 },
                 geometry_hash=zone_hash,
                 product_vintage=selected_vintage,
