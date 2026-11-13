@@ -26,10 +26,12 @@ async def _empty_events():
 
 
 @pytest.fixture
-def patched(monkeypatch):
+def patched(monkeypatch, valid_site_assessment_criteria_resource):
     """Patch everything the handlers call; returns the mocks."""
     server = MagicMock(name="server")
+    server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
     mocks = SimpleNamespace(
+        server=server,
         run=AsyncMock(return_value=SimpleNamespace(new_items=[])),
         run_streamed=MagicMock(return_value=SimpleNamespace(stream_events=_empty_events)),
         update_current_trace=MagicMock(name="update_current_trace"),
