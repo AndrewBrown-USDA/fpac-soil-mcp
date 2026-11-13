@@ -484,12 +484,12 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 - **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases); Orchestration 46 (policy, adversarial evaluation, MCP/map safety, and Criterion 2 benchmark setup/evidence; see [execution plan](EXECUTION_PLAN_46.md), [state](STATE_46.md), and [46.4.2 evidence](evidence/46.4.2-performance.md)).
 - **Backlog:**
   - Proposed: move the T1 model client to AI Gateway.
-  - Proposed: run the T2 case corpus against deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent; the Plan 49 authenticated smoke client and run-as notebook provide a separate access check, not corpus evaluation.
+  - Deferred: run the T2 case corpus against deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent. The Plan 49 authenticated smoke client and notebook (a separate access check, not corpus evaluation) are built but their live acceptance is deferred to a post-hackathon USDA deployment with a provisioned service principal (D14; [state](STATE_49.md)).
   - Proposed: expand ground truth with domain-owner sign-off.
   - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
   - Deferred: verified agricultural-land adjacency and associated Criterion 2 scoring remain unavailable until PR #79/CDL integration is merged and validated and an authoritative adjacency source is approved.
 - **Exit criteria:** T0 contract tests and the deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for every ground-truth case; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
-- **Open decisions:** None for T2 authentication. The Plan 49 access path uses a dedicated Databricks run-as service principal with `CAN_USE`; deployed access evidence awaits external provisioning and verification. An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
+- **Open decisions:** T2 authentication is reopened (D14): the Databricks Apps proxy rejects the notebook-runtime token, so the D13 run-as path needs an OAuth M2M token for a dedicated service principal, which means a stored OAuth secret. An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
 - **Source:** [Tracks research, 4.2](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#42-track-e-evaluation).
 
 ### Track A: Agent App
@@ -551,6 +551,10 @@ From [Plan 37](EXECUTION_PLAN_37.md#decision-log):
 ### Planning Decision (2026-11-12)
 
 - D13: Track E T2 authentication uses dedicated Databricks service-principal M2M from a job/notebook run-as identity with only `CAN_USE` on `mcp-fpac-soil`. Unity Gateway registration and stateless Streamable HTTP remain separate deferred Track D decisions; deployed T2 smoke evidence is pending external provisioning and verification (Orchestration 49).
+
+### Planning Decision (2026-11-13)
+
+- D14: Defer Plan 49 live acceptance (49.2.1) and the T2 corpus to a post-hackathon USDA deployment. A live diagnostic showed the `mcp-fpac-soil` `/mcp` endpoint returns 401 for the Databricks notebook-runtime token regardless of app permission, so D13's run-as design does not authenticate as written. Resume requires a dedicated service principal with `CAN_USE` and an OAuth secret in a secret scope, an amendment of D13 for M2M with a stored secret, and the client fixes listed in [STATE_49](STATE_49.md).
 
 ---
 
