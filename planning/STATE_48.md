@@ -20,7 +20,7 @@ Worker prompt: `planning/PROMPT_TEMPLATE_48.md`.
 | 1 | 48.1.1 Reconcile corpus and validate unified schema | done | `150faaf` | Planning commit `0e65eb8`; all Wave 1 gates passed |
 | 2 | 48.2.1 Migrate Python evaluation readers and ID coverage | done | `2df7f78` | Targeted and Wave 2 gates passed |
 | 2 | 48.2.2 Load the unified corpus directly in the harness | done | `7524170` | Targeted and Wave 2 gates passed |
-| 3 | 48.3.1 Retire the duplicate corpus and update active references | pending | | |
+| 3 | 48.3.1 Retire the duplicate corpus and update active references | done | `b27bfeb` | Planning scope update `997988c`; all Wave 3 gates passed |
 
 ## Task Reports
 
@@ -56,3 +56,14 @@ Worker prompt: `planning/PROMPT_TEMPLATE_48.md`.
 - Coverage: direct loading, all 38 unique IDs, default/override paths, invocation derivation, and null overlay metadata.
 - Deviations: none.
 - Dependency note: active consumers now use `eval/eval_cases.v1.json`; Wave 3 may remove the duplicate and update active references.
+
+## 48.3.1
+- Status: done; implementation commit `b27bfeb` (`refactor(eval): retire duplicate prompt corpus`); planning scope update `997988c`.
+- Files: seven active docs/config files, deleted `eval/prompt_test_cases.json`, dataset module docstring, and geometry fixture path constant.
+- Targeted test: `uv run pytest tests/test_geometry.py -q` — 16 passed.
+- Acceptance: prescribed `git grep` — no matches; `Test-Path eval\prompt_test_cases.json` — false.
+- Wave gate: `uv run pytest -m "not live_network and not agent_eval" -q` — 964 passed, 45 deselected.
+- Wave gate: `uv run ruff check .` — passed; `uv run ruff format --check .` — passed (662 files formatted).
+- Wave gate: harness `npm run check` — passed; `npm test` — 20 passed, 0 failed.
+- Scope adjustment: initial acceptance/full-gate checks exposed the dataset module docstring and geometry fixture path; plan was re-scoped and only those references changed.
+- Deviations: none from the revised plan. No runtime logic or test assertions changed.
