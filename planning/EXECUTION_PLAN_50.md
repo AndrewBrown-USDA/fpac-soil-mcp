@@ -273,7 +273,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   `eval\databricks\test_databricks_agent.py`; append the task report to
   `planning\STATE_50.md`.
 - **Can create:** `planning\tasks\50.1.3.todo.md`.
-- **Depends on:** 50.1.1, 50.1.2, 50.1.3, and the Wave 1 gate.
+- **Depends on:** 50.1.1 and 50.1.2.
 - **Specification:** Resolve the Wave 1 failures found by the serial `make
   check`. Keep the `analyze_cdl_context` description identical in the runtime
   registration, README, manifest, and server metadata; start it with an
@@ -311,7 +311,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   `test_agent_config.py`; append the task report to `planning\STATE_50.md`.
 - **Can create:** `planning\tasks\50.2.1.todo.md` and focused tests in the
   listed test files.
-- **Depends on:** 50.1.1 and 50.1.2.
+- **Depends on:** 50.1.1, 50.1.2, 50.1.3, and the Wave 1 gate.
 - **Specification:** Use the existing `fppa://site-assessment-criteria`
   resource as the single source for the 12 site questions and scoring bands.
   Read it in the agent server and provide it as agent context; do not expose a
