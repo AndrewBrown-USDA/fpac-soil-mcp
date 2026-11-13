@@ -7,7 +7,7 @@ Deliver the approved PR #100 review fixes and guided Site Assessment interview/c
 
 ### 1. Merge and establish validation baseline
 - [x] Confirm the current branch is `feature/sa-checklist1` in `D:\workspace\fpac-soil-mcp`; preserve the existing `.worktrees\` and their registered worktrees.
-- [x] Merge local `main` into the task branch, resolving `planning\GOALS.md` by retaining both sides; do not fetch or perform any other remote action. Local `main` was already an ancestor, so the merge reported "Already up to date."
+- [ ] Merge `origin/main` into the task branch, resolving `planning\GOALS.md` by retaining both sides; use the locally available tracking ref and do not fetch or perform any other remote action.
 - [ ] Run `make check`, `make app-test`, `make app-lint`, and `make app-frontend-check`; record test counts and frontend lint/build results.
 - [ ] Report any breakage caused by Dependabot dependency bumps (including lockfiles and `mlflow`/`openai`/`agents` versions) to the user and pause that resolution until explicitly approved.
 
@@ -45,7 +45,7 @@ Deliver the approved PR #100 review fixes and guided Site Assessment interview/c
 
 ## Notes
 - Workspace and branch: `D:\workspace\fpac-soil-mcp`, `feature/sa-checklist1` (current HEAD `a1e1e66`); use the current workspace, not a Databricks clone. The requested branch is already checked out.
-- The user approved merging local `main` into this branch and resolving the `planning\GOALS.md` conflict by keeping both sides. No fetch, push, PR update, comment, or other remote action is authorized by this plan; pushes and review-thread replies require separate explicit approval.
+- The user specified `origin/main` as the merge source and approved resolving the `planning\GOALS.md` conflict by keeping both sides. The locally available `origin/main` is `16d592c`; it diverges from the current `HEAD` by 39/54 commits (`HEAD` only/origin only). No fetch, push, PR update, comment, or other remote action is authorized by this plan; pushes and review-thread replies require separate explicit approval.
 - Preserve the pre-existing untracked `.worktrees\` directory and all registered worktrees.
 - Replace the existing tracked root `TODO.md` with this plan. Track planning artifacts and commit the approved plan/status/archive separately using `docs(planning):` commits.
 - Pause and report Dependabot-related breakage before attempting a fix.
