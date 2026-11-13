@@ -14,7 +14,7 @@ Deliver the approved PR #100 review fixes and guided Site Assessment interview/c
 ### 2. Fix review findings and conservative missing-input scoring
 - [ ] Exclude CDL overlays from MapPanel identify and Use-as-AOI handling; add a test proving a CDL click makes no TIGERweb request.
 - [ ] Build CDL context and histogram coordinate reference systems from service WKID or WKT using `pyproj.CRS.from_user_input`; add non-4326 WKT service tests for both paths.
-- [ ] Validate Site Assessment criteria resource bands in `agent.py`: non-empty `band_id`/`label`, numeric-or-null points within `max_points`, and bounds consistent with the registry; disable interview on malformed resource and test each rejected field.
+- [x] Validate Site Assessment criteria resource bands in `agent.py`: non-empty `band_id`/`label`, numeric-or-null points within `max_points`, and bounds consistent with the registry; disable interview on malformed resource and test each rejected field. Tests and app lint pass; test fixtures now load the authoritative bundled registry.
 - [ ] Reject stale CDL results for unavailable/replaced AOIs in `ShowOnMapButton` before storing `cdlSummary`; add a replaced-AOI regression test.
 - [ ] Score unknown, unavailable, or skipped Site Assessment criteria at maximum points with `assumed_conservative` labels; keep the result undetermined and expose a separate conservative bound.
 - [ ] Update contracts/tests and the system prompt for conservative missing-input scoring, and add ADR 0018 documenting the decision.
