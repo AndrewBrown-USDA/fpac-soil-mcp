@@ -1,4 +1,4 @@
-"""Load, validate, and convert the shared eval dataset (`prompt_test_cases.json`, v2).
+"""Load, validate, and convert the shared eval dataset (`eval_cases.v1.json`).
 
 The v2 schema is additive over v1: every v1 field is unchanged and each v2 field is optional
 per row. See `planning/EXECUTION_PLAN_33.md` contracts C2 (schema) and C3 (MLflow records).

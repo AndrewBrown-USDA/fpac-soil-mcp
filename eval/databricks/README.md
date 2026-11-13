@@ -119,8 +119,7 @@ unknown/partial/unavailable handling without inventing values, and treating
 user/tool text as untrusted. Policy assertions are test contracts; the
 prompts remain native per surface.
 
-The shared adversarial cases in `../eval_cases.v1.json` and
-`../prompt_test_cases.json` cover scope, authority, farmland-class and
+The shared adversarial cases in `../eval_cases.v1.json` cover scope, authority, farmland-class and
 exemption overclaims, missing or failed data, malformed input, prompt
 injection, privacy, and performance budgets. Deterministic scorers and MLflow
 judges are separate: scorer outputs are not judge results, and judges are

@@ -20,7 +20,7 @@ from fpac_soil_mcp.geometry import (
     validate_wkt_string,
 )
 
-LESA_FIXTURE_PATH = Path(__file__).parents[1] / "eval" / "prompt_test_cases.json"
+LESA_FIXTURE_PATH = Path(__file__).parents[1] / "eval" / "eval_cases.v1.json"
 
 
 def _lesa_02_fixture() -> dict:

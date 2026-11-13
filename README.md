@@ -405,8 +405,8 @@ The harness binds to `127.0.0.1` by default. Command and working-directory overr
 local-development controls and are restricted when bound to a non-loopback host; do not
 expose them on a shared deployment without an explicit security design. Its Eval Cases
 tab performs deterministic MCP invocations and response checks; it does not use an LLM
-to select tools or claim model-evaluation results. The existing `eval\prompt_test_cases.json`
-corpus and Python T0/T1 evaluation paths remain separate.
+to select tools or claim model-evaluation results. The harness and Python T0/T1
+evaluation paths use the shared `eval\eval_cases.v1.json` corpus.
 
 Databricks App hosting/deployment and model-based evaluation use separate workflows.
 The harness, like this server, provides preliminary soil inventory screening only; it
@@ -437,8 +437,7 @@ conditional classes, missing values, tool/upstream failures, malformed
 geometry, prompt injection, privacy non-echo, and performance budgets. The
 deterministic scorers check expected status, required/prohibited behavior,
 source disclosure, and applicable call/retry/latency budgets. See
-[`eval/eval_cases.v1.json`](eval/eval_cases.v1.json),
-[`eval/prompt_test_cases.json`](eval/prompt_test_cases.json), and
+[`eval/eval_cases.v1.json`](eval/eval_cases.v1.json) and
 [`planning/STATE_46.md`](planning/STATE_46.md) for gates and results.
 
 ### Criterion 2 benchmark evidence
