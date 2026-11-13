@@ -46,7 +46,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 2 | 50.2.2 Add CDL map overlay and summary display | done | `987610d` / `8c672e0` | Planning commits `e781666` / `e41f5c1`; frontend lint/build and browser/CORS checks passed. |
 | 2 | 50.2.3 Synchronize AOI handler test mocks with criteria resource reads | done | `0ac9091` | Planning commits `d3d2256` / `02ba919`; focused and full app suites pass. |
 | 2 gate | Chat/map integration gate | done | | All Wave 2 tasks integrated; root and app suites pass, frontend build and map walkthrough pass. |
-| 3 gate | Serial validation and local browser walkthrough | pending | | Root `make check` and full app checks pass; live-network and integrated chat/map walkthrough remain. No deployed dev-app trial. |
+| 3 gate | Serial validation and local browser walkthrough | pending | | Root, app, frontend, and live-network checks pass; map-specific browser walkthrough passed. Integrated chat walkthrough awaits app-local Databricks authentication. No deployed dev-app trial. |
 
 ## Worker Worktrees
 
@@ -115,3 +115,10 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 - `uv run --frozen --python 3.11 pytest tests -q` — 183 passed.
 - App Ruff check and format check — passed.
 - Deviation: an initial focused test invocation ran in the primary worktree before integration and failed because the fixture was not yet present there; the isolated worktree rerun passed. No production files changed.
+
+## Final Wave 3 Gate
+- `make check` — Ruff check/format passed; 980 passed, 45 deselected.
+- `uv run --group dev pytest -m live_network` — 43 passed, 982 deselected.
+- Agent-app Python suite — 183 passed; app Ruff check and format check passed.
+- Frontend `npm ci`, read-only Biome lint, and `npm run build` passed in the task worktree; Biome reported 10 existing warnings.
+- Task 50.2.2's map-specific browser walkthrough verified the CDL summary, default-off toggle, and ImageServer tile response (HTTP 200 `image/png`). The integrated chat walkthrough in the final acceptance gate remains pending because app-local Databricks authentication is not configured. No deployed dev-app trial was attempted.
