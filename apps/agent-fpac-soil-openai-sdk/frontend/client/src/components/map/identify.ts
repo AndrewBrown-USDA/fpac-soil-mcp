@@ -1,5 +1,6 @@
 import { toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
+import type { OverlayId } from './overlays';
 
 // Identify and outline requests for the context overlays (D6, probe 44.1.2). Bases
 // are string constants; the only inputs are the clicked point (rounded) and a GEOID
@@ -14,6 +15,7 @@ const TIGERWEB_QUERY = {
 } as const;
 
 export type AreaOverlayId = keyof typeof TIGERWEB_QUERY;
+export type IdentifiableOverlayId = 'ssurgo' | AreaOverlayId;
 
 export type SoilInfo = {
   musym: string | null;
@@ -119,6 +121,31 @@ export async function identifyArea(
   const name = typeof props?.NAME === 'string' ? props.NAME : null;
   if (!geoid || !name || !GEOID.test(geoid)) return null;
   return { name, geoid };
+}
+
+export function isAreaOverlayId(id: OverlayId): id is AreaOverlayId {
+  return id === 'counties' || id === 'urban';
+}
+
+export function isIdentifiableOverlayId(id: OverlayId): id is IdentifiableOverlayId {
+  return id === 'ssurgo' || isAreaOverlayId(id);
+}
+
+export function identifyOverlaysAtPoint(
+  overlays: readonly OverlayId[],
+  lon: number,
+  lat: number,
+  signal: AbortSignal,
+): { overlayId: IdentifiableOverlayId; query: Promise<{ soil: SoilInfo | null } | { area: AreaInfo | null }> }[] {
+  return overlays.flatMap((overlayId) => {
+    if (overlayId === 'ssurgo') {
+      return [{ overlayId, query: identifySoil(lon, lat, signal).then((soil) => ({ soil })) }];
+    }
+    if (isAreaOverlayId(overlayId)) {
+      return [{ overlayId, query: identifyArea(overlayId, lon, lat, signal).then((area) => ({ area })) }];
+    }
+    return [];
+  });
 }
 
 // The exact outline (no `maxAllowableOffset`): Use as AOI never simplifies (D6).
