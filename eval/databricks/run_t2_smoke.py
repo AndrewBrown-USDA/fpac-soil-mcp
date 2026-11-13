@@ -164,14 +164,20 @@ async def run(argv: Sequence[str] | None = None) -> dict[str, str]:
     return await run_async()
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+async def main_async(argv: Sequence[str] | None = None) -> int:
+    """Run the smoke inside an existing event loop (for example a notebook cell)."""
     try:
-        result = asyncio.run(run(argv))
+        result = await run(argv)
     except SmokeError as exc:
         print(f"T2 smoke failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(result, sort_keys=True))
     return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry point; notebooks already run an event loop and must await main_async."""
+    return asyncio.run(main_async(argv))
 
 
 if __name__ == "__main__":

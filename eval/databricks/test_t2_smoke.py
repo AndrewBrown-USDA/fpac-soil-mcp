@@ -188,3 +188,36 @@ async def test_smoke_sanitizes_transport_and_auth_failures() -> None:
             lambda *_args, **_kwargs: BrokenClient(),
         )
     assert "super-secret-value" not in str(exc_info.value)
+
+
+async def test_main_async_runs_inside_an_existing_event_loop(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    async def successful_run(argv: object) -> dict[str, str]:
+        return {"status": "success"}
+
+    monkeypatch.setattr(smoke, "run", successful_run)
+
+    assert await smoke.main_async([]) == 0
+    assert '"status": "success"' in capsys.readouterr().out
+
+
+async def test_main_async_reports_only_the_sanitized_failure(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    async def failing_run(argv: object) -> dict[str, str]:
+        raise smoke.SmokeError("MCP initialization, discovery, or tool invocation failed.")
+
+    monkeypatch.setattr(smoke, "run", failing_run)
+
+    assert await smoke.main_async([]) == 1
+    assert "T2 smoke failed: MCP initialization" in capsys.readouterr().err
+
+
+def test_main_runs_without_an_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def successful_run(argv: object) -> dict[str, str]:
+        return {"status": "success"}
+
+    monkeypatch.setattr(smoke, "run", successful_run)
+
+    assert smoke.main([]) == 0

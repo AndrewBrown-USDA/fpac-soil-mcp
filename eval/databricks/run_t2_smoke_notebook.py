@@ -21,6 +21,7 @@ dbutils.library.restartPython()  # noqa: F821 -- Databricks notebook global
 
 # COMMAND ----------
 
+# DBTITLE 1,Run the T2 smoke
 import os
 import sys
 
@@ -30,8 +31,9 @@ for path in (os.path.dirname(here), here):
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from run_t2_smoke import main
+from run_t2_smoke import main_async
 
-exit_code = main([])
+# Notebook cells already run an event loop, so await instead of asyncio.run().
+exit_code = await main_async([])  # noqa: F704, PLE1142 -- notebook cells allow top-level await
 if exit_code:
     raise RuntimeError("The authenticated T2 smoke failed; see the sanitized error above.")
