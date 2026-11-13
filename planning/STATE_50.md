@@ -31,14 +31,15 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
   commands passed; use direct commands if the local Make executable remains
   unusable.
 - [!] `uv run python scripts\fetch_ecfr.py --check` reports title 7 Parts 657
-  and 658 XML differs from the manifest. Task 50.1.1 must refresh generated
-  files and verify the registry before guided scoring.
+  and 658 XML differs from the manifest. The refresh confirms the registry
+  does not encode the Criterion 7 five-point deductions as exact bands;
+  the owner authorized correcting that registry entry only.
 
 ## Wave Board
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 50.1.1 Refresh eCFR references and verify Site Assessment registry | pending | | Registry conflict blocks 50.2.1; do not silently edit scoring. |
+| 1 | 50.1.1 Refresh eCFR references and align Criterion 7 registry bands | pending | | Owner authorized this correction; any additional mismatch blocks 50.2.1. |
 | 1 | 50.1.2 Add combined CDL context analysis | pending | | Keep existing histogram tool compatible. |
 | 1 gate | eCFR and CDL contract gate | pending | | |
 | 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | pending | | Requires both Wave 1 tasks and no unresolved eCFR conflict. |

@@ -16,6 +16,9 @@ authoritative FPPA source or an automatic Criterion 2 score.
 - Refresh the generated eCFR reference files and verify the current
   Site Assessment registry against 7 CFR Part 658 before enabling the guided
   scoring flow.
+- Align only Criterion 7's registry score bands with the exact five-percentage-
+  point deductions in § 658.5(b)(7), as explicitly authorized after refresh
+  identified a mismatch.
 - Add one combined MCP CDL-context analysis that reuses the existing CDL
   client and returns full class distributions for the AOI, a one-mile
   buffer-minus-AOI ring, and a 30 m buffer-minus-AOI band, all using one
@@ -45,9 +48,8 @@ authoritative FPPA source or an automatic Criterion 2 score.
 - Automatically prefilling or awarding Criterion 2 points from CDL. The
   analyst continues to supply or confirm the criterion’s perimeter percentage
   with provenance.
-- Any changes to LESA scoring formulas or registry bands unless the eCFR
-  refresh reveals a conflict; in that case, stop and obtain an explicit
-  domain-owner decision before changing scoring.
+- Changes to LESA scoring algorithms or registry criteria other than the
+  specifically authorized correction to Criterion 7's registry score bands.
 - Corridor/CPA-106 interviewing, new assessment/case persistence, multiple
   AOIs, a generated CDL GeoJSON map layer, or a new front-end dependency.
 - A CDL proxy endpoint. If the fixed ImageServer overlay is blocked by browser
@@ -171,7 +173,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
 
 | Wave | Task | Summary | Depends on |
 |---|---|---|---|
-| 1 | 50.1.1 | Refresh generated eCFR files and verify the existing Site Assessment registry | none |
+| 1 | 50.1.1 | Refresh eCFR references and align Criterion 7 registry bands | none |
 | 1 | 50.1.2 | Add the combined AOI / one-mile ring / 30 m CDL context tool | none |
 | 1 gate | - | eCFR and CDL contract gate | 50.1.1, 50.1.2 |
 | 2 | 50.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 50.1.1, 50.1.2 |
@@ -179,23 +181,33 @@ authoritative FPPA source or an automatic Criterion 2 score.
 | 2 gate | - | Chat/map integration gate | 50.2.1, 50.2.2 |
 | 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | 50.2.1, 50.2.2 |
 
-### 50.1.1 — Refresh eCFR references and verify Site Assessment registry
+### 50.1.1 — Refresh eCFR references and align Criterion 7 registry bands
 
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Must edit:** generated files under `docs\cfr\` only if refreshed content
   differs: `title-7-part-657.xml`, `title-7-part-657.md`,
-  `title-7-part-658.xml`, `title-7-part-658.md`, `manifest.json`; append the
-  task report to `planning\STATE_50.md`.
+  `title-7-part-658.xml`, `title-7-part-658.md`, `manifest.json`;
+  `src\fpac_soil_mcp\data\site_assessment.v1.json`;
+  focused tests in `tests\test_site_assessment_contract.py` and, if needed,
+  `tests\test_site_assessment_resource.py`; append the task report to
+  `planning\STATE_50.md`.
 - **Can create:** `planning\tasks\50.1.1.todo.md`.
 - **Depends on:** none.
 - **Specification:** Refresh the checked-in eCFR files using
   `scripts\fetch_ecfr.py`, then rerun the check. Compare the current
   `site_assessment.v1.json` question and scoring contract against the refreshed
-  7 CFR § 658.5(b) text. Do not edit the registry or scoring implementation.
-  If there is a mismatch, stop this task after recording exact conflicting
-  criteria and block 50.2.1 pending an explicit domain-owner decision.
-- **Do not touch:** scoring registry, LESA algorithms, prompts, app code, or
-  non-generated CFR documentation.
+  7 CFR § 658.5(b) text. The refresh identified a Criterion 7 band mismatch,
+  and the domain owner explicitly authorized correcting that registry entry.
+  Use the 5-percentage-point deduction rule: 0 points at 50% or less of the
+  county average; 1 point above 50% through 55%; then one additional point
+  for each successive 5-point band through 9 points above 90% through 95%;
+  10 points above 95%, including at or above the average. Encode boundaries
+  without gaps or overlaps and test each threshold. Do not change any other
+  registry entry or scoring algorithm. Compare all remaining criteria and
+  record any additional mismatch; an additional mismatch blocks 50.2.1 pending
+  a separate explicit decision.
+- **Do not touch:** LESA scoring algorithms, registry entries other than
+  Criterion 7, prompts, app code, or non-generated CFR documentation.
 - **Grep anchors:** `scripts\fetch_ecfr.py`; `docs\cfr\manifest.json`;
   `src\fpac_soil_mcp\data\site_assessment.v1.json`.
 - **Reference implementation:** `planning\EXECUTION_PLAN_45.md` D9 and
@@ -203,8 +215,8 @@ authoritative FPPA source or an automatic Criterion 2 score.
 - **Acceptance:** `uv run python scripts\fetch_ecfr.py --check` passes after
   refresh; `uv run pytest tests\test_site_assessment_contract.py
   tests\test_site_assessment_resource.py -q` passes; registry/CFR comparison
-  is recorded in the task report. If the content conflicts, report the block
-  rather than silently changing scoring.
+  and Criterion 7 threshold tests are recorded in the task report. If any
+  additional content conflicts, report the block rather than changing scope.
 
 ### 50.1.2 — Add combined CDL context analysis
 

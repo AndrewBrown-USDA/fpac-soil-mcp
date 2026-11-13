@@ -29,7 +29,8 @@ that reviews your plan before you may write code.
   callable wrapper for MCP resources/prompts, user-controlled service URLs,
   case persistence, a CDL-to-Criterion-2 score mapping, or an app proxy.
 - Never hand-edit generated eCFR files. Task 50.1.1 must use the repository
-  fetcher and stop if registry/scoring conflicts need a domain decision.
+  fetcher and may change only Criterion 7's registry bands as authorized in
+  `EXECUTION_PLAN_50.md`.
 - Use only synthetic geometry in tests and planning artifacts.
 - For frontend validation, use read-only Biome lint; never run the upstream
   `npm run lint` or `lint:fix` scripts because they write files.
