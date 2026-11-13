@@ -18,7 +18,7 @@ Worker prompt: `planning/PROMPT_TEMPLATE_49.md`.
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 49.1.1 Build the authenticated T2 MCP smoke client | done | `be7870d`, `b524893`, `4117d07` | Targeted tests and serial `make check` passed; live access remains gated on external provisioning |
-| 2 | 49.2.1 Add the Databricks run-as entry point and record smoke evidence | blocked | `2e79852` | Notebook/docs implemented and checks pass; live smoke/evidence blocked pending external run-as principal and `CAN_USE` verification |
+| 2 | 49.2.1 Add the Databricks run-as entry point and record smoke evidence | deferred | `2e79852` | Notebook/docs implemented and checks pass; live diagnostic got 401 with the notebook-runtime token. Deferred to a post-hackathon USDA deployment with a provisioned service principal |
 
 ## Task Reports
 
@@ -35,7 +35,7 @@ Worker prompt: `planning/PROMPT_TEMPLATE_49.md`.
 - Gotchas: the live smoke is still blocked pending a dedicated Databricks run-as principal and `CAN_USE` grant.
 
 ## 49.2.1
-- Status: implementation done; deployed acceptance blocked because the dedicated service principal, run-as assignment, and `CAN_USE` grant remain unverified.
+- Status: deferred (2026-11-13, user decision). Implementation done; deployed acceptance not run. Resume in a post-hackathon USDA deployment where a dedicated service principal can be provisioned.
 - Files: `eval/databricks/run_t2_smoke_notebook.py`, `eval/databricks/README.md`.
 - Code commit: `2e79852`.
 - Targeted: `uv run --group eval-databricks pytest eval/databricks/test_t2_smoke.py -q` — 12 passed.
@@ -45,5 +45,6 @@ Worker prompt: `planning/PROMPT_TEMPLATE_49.md`.
 - Gotchas: do not claim deployed access success or create `planning/evidence/49.2.1-t2-smoke.md` until a workspace owner enables and verifies the required run-as identity/grant.
 - Blocker check (2026-11-13, read-only, on Databricks): `mcp-fpac-soil` (running from `main`) grants `CAN_USE` only to `team-03` and the two agent-app service principals; no T2 evaluation principal is granted.
 - Candidate `sp-mcp-eval` exists in the workspace, but its owner, purpose, and grants are not visible to non-admins (SCIM detail, account rule set, and `system.access` audit are admin-gated). No visible job runs as it and no repo code references it. Not used: the plan requires a dedicated principal.
-- Unblock needs a workspace/account admin to: name the `sp-mcp-eval` owner and say whether it is shared or approved for FPAC Soil T2 (else provision a dedicated principal); grant the requester the Service Principal User role on the chosen principal. Then grant it `CAN_USE` on `mcp-fpac-soil`, create the run-as job for `eval/databricks/run_t2_smoke_notebook`, and run the live smoke.
-- Open risk for the first live run: the Apps proxy has rejected PAT auth before; if the notebook-runtime token from `config.authenticate()` is not accepted, the smoke fails at MCP initialization and the client needs an OAuth M2M token path.
+- Live diagnostic (2026-11-13, as the CAN_MANAGE user on serverless; not acceptance, no evidence file): (1) the notebook wrapper's `main()` calls `asyncio.run()`, which raises "cannot be called from a running event loop" in a notebook cell; offline tests miss this. (2) Awaiting `run()` directly failed at MCP initialization; a raw `initialize` POST to `/mcp` with the SDK `runtime` Bearer token returned 401 (no session). The Apps proxy rejects the notebook-runtime token regardless of app permission, so a run-as job (same runtime token type) is very likely to fail the same way.
+- Resume steps: provision (or confirm owner of) a principal with `CAN_USE` on the app plus an OAuth secret in a secret scope; amend D2 (run-as, no stored credentials) for M2M; fix the notebook event-loop call; add an OAuth M2M token path to `run_t2_smoke.py` with offline tests; then run the live smoke and write `planning/evidence/49.2.1-t2-smoke.md`.
+- Side note: an unpinned `pip install -e` resolved `fastmcp` 4.2.0 vs 4.1.6 in `uv.lock`; unrelated to the 401.
