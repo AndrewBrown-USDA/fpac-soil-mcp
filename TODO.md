@@ -6,8 +6,8 @@ Deliver the approved PR #100 review fixes and guided Site Assessment interview/c
 ## Tasks
 
 ### 1. Merge and establish validation baseline
-- [ ] Confirm the current branch is `feature/sa-checklist1` in `D:\workspace\fpac-soil-mcp`; preserve the existing `.worktrees\` and their registered worktrees.
-- [ ] Merge local `main` into the task branch, resolving `planning\GOALS.md` by retaining both sides; do not fetch or perform any other remote action.
+- [x] Confirm the current branch is `feature/sa-checklist1` in `D:\workspace\fpac-soil-mcp`; preserve the existing `.worktrees\` and their registered worktrees.
+- [x] Merge local `main` into the task branch, resolving `planning\GOALS.md` by retaining both sides; do not fetch or perform any other remote action. Local `main` was already an ancestor, so the merge reported "Already up to date."
 - [ ] Run `make check`, `make app-test`, `make app-lint`, and `make app-frontend-check`; record test counts and frontend lint/build results.
 - [ ] Report any breakage caused by Dependabot dependency bumps (including lockfiles and `mlflow`/`openai`/`agents` versions) to the user and pause that resolution until explicitly approved.
 
