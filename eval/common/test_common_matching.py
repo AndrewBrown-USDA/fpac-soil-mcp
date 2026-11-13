@@ -210,7 +210,6 @@ EXPECTED_CORPUS_IDS = {
 
 def test_corpus_ids_cover_all_cases_without_duplicates():
     ids = [case["id"] for case in load_cases()]
-    assert len(ids) == 38
     assert len(ids) == len(set(ids))
     assert set(ids) == EXPECTED_CORPUS_IDS
 
