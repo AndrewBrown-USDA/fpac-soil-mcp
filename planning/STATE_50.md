@@ -40,7 +40,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 50.1.1 Refresh eCFR references and align Criterion 7 registry bands | pending | | Owner authorized this correction; any additional mismatch blocks 50.2.1. |
-| 1 | 50.1.2 Add combined CDL context analysis | pending | | Keep existing histogram tool compatible. |
+| 1 | 50.1.2 Add combined CDL context analysis | done | `2618442` | Keep existing histogram tool compatible. |
 | 1 gate | eCFR and CDL contract gate | pending | | |
 | 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | pending | | Requires both Wave 1 tasks and no unresolved eCFR conflict. |
 | 2 | 50.2.2 Add CDL map overlay and summary display | pending | | CORS failure blocks overlay; ask before proxy work. |
@@ -52,16 +52,17 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | Task | Path | Branch | Created (local) | Status |
 |---|---|---|---|---|
 | 50.1.1 | `.worktrees\50.1.1` | `feature/sa-checklist1-50.1.1-worker` | 2026-11-12 23:34:26 -08:00 | executing |
-| 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | executing |
+| 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | complete; retained |
 
 ## Task Reports
 
 ### 50.1.2 — Add combined CDL context analysis
-- Status: complete; implementation commit `011e4a9` (`feat(cdl): add combined CDL context analysis`); planning commit `4bab81e`.
+- Status: complete; integrated implementation commit `2618442` (`feat(cdl): add combined CDL context analysis`; worker commit `011e4a9`); integrated micro-plan commit `8d1f868` (worker commit `4bab81e`).
 - Added EPSG:6933 AOI exterior bands, latest uniquely verified vintage selection, per-zone full class evidence, and MCP registration/public metadata.
 - Changed: geometry, CDL client/models/tool registration, README, manifest, server metadata, and four focused test files.
 - `uv run pytest tests\test_geometry.py tests\test_cdl_client.py tests\test_cdl_models.py tests\test_cdl_tools.py -q` — 62 passed.
 - `uv run ruff check .` — passed.
 - `uv run ruff format --check .` — passed.
+- Orchestrator rerun in the worker worktree: targeted tests 62 passed; Ruff check and format check passed.
 - Deviations: none; same vintage is supplied to existing client analysis for all zones; no extra mosaic-lock contract was added.
 - Dependent-task note: context is preliminary CDL class evidence only; no agricultural-class policy, farmland status, or Criterion 2 percentage is provided.
