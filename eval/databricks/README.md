@@ -188,8 +188,35 @@ and [raw output](../../planning/evidence/46.4.2-performance.json).
 
 ## Deferred (T2)
 
-- T2 deployed-app evaluation (service principal or Unity Gateway MCP service);
-  Unity Gateway MCP service access currently returns 403.
+- T2 smoke against deployed `mcp-fpac-soil` `/mcp` is a separate authenticated
+  access check, not a T1 model evaluation or a run of the T2 case corpus. Its
+  notebook wrapper is `run_t2_smoke_notebook.py`; the tested client is
+  `run_t2_smoke.py`.
+- Before running the notebook, a workspace owner must provision and assign the
+  dedicated T2 evaluation service principal as the job/notebook run-as identity
+  and grant it only `CAN_USE` on the `mcp-fpac-soil` app. This external
+  provisioning is not performed by the notebook. Do not use a developer
+  identity, add a PAT/secret, or fall back to unauthenticated access.
+- Install the project and Databricks SDK in the notebook environment, then
+  restart Python when prompted. Open `eval/databricks/run_t2_smoke_notebook.py`
+  in the configured Databricks job/notebook and run all cells. For a local
+  offline check, use
+  `uv run --group eval-databricks pytest eval/databricks/test_t2_smoke.py -q`;
+  this does not verify deployed access.
+- On success, the runner emits sanitized JSON containing a timestamp, commit
+  SHA, endpoint host, generic `databricks-run-as` principal label, auth/session
+  modes, tool name, and status. It does not emit credentials, a full principal
+  identifier, or tool request/response bodies. Keep any retained evidence to
+  those sanitized fields.
+- Authentication, app URL resolution, MCP initialization/session negotiation,
+  tool discovery, and the smoke call are explicit failure conditions. Do not
+  treat an auth/transport failure, local test, or dry run as deployed success.
+  The static `explain_fppa_screening_scope` call avoids USDA/Census availability
+  dependencies; it does not establish upstream data-service health.
+- Unity Gateway MCP service access currently returns 403; Unity Gateway
+  registration and stateless Streamable HTTP are separate deferred decisions,
+  not fallback paths for this smoke. The deployed server's current stateful
+  session behavior is unchanged.
 - Scheduled serverless Lakeflow Job for recurring T1 runs.
 - Dataset expansion to 50+ rows and scope-refusal rows.
 - MLflow prompt registry and UC-backed dataset sync.
