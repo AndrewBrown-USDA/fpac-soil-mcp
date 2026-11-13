@@ -78,7 +78,12 @@ async function smokeTest(databricks) {
     const casesResponse = await fetch(`${base}/api/eval-cases`);
     assert.equal(casesResponse.status, 200);
     const cases = await casesResponse.json();
-    assert.equal(cases.executable_version, "1.0.0");
+    assert.equal(cases.executable_version, null);
+    assert.equal(cases.executable_source, null);
+    assert.equal(typeof cases.version, "string");
+    assert.match(cases.source, /eval_cases\.v1\.json$/);
+    assert.equal(cases.test_cases.length, 38);
+    assert.equal(new Set(cases.test_cases.map((item) => item.id)).size, 38);
     assert.ok(cases.test_cases.some((item) => item.id === "CORR-01"));
 
     const presetsResponse = await fetch(`${base}/api/presets`);

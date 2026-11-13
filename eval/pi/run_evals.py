@@ -34,7 +34,7 @@ from common.matching import (
 
 from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
-FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
+FIXTURES_PATH = REPO_ROOT / "eval" / "eval_cases.v1.json"
 MAX_CAPTURE_BYTES = 64 * 1024
 MAX_CAPTURE_LINES = 1000
 MAX_CAPTURE_EVENTS = 500

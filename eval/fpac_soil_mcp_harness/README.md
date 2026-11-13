@@ -17,7 +17,7 @@ eval/fpac_soil_mcp_harness/
   server.js             Express server + REST API bridging the browser to MCP
   lib/config.js         Environment/.env configuration
   lib/mcpBridge.js      MCP client wrapper (stdio, SSE, Streamable HTTP)
-  lib/evalCases.js      Maps eval/prompt_test_cases.json to concrete MCP invocations
+  lib/evalCases.js      Maps eval/eval_cases.v1.json to concrete MCP invocations
   public/index.html     UI shell
   public/styles.css     Styles
   public/app.js         UI logic (schema-driven forms, result rendering, SVG geometry preview)
@@ -73,9 +73,10 @@ URL ending in `/mcp`, supply a bearer token if required, and connect. Alternativ
 use a Databricks secret resource for `MCP_AUTH_TOKEN` if configuring it server-side.
 The hosted harness does not install or launch the Python MCP server.
 
-The Eval Cases tab needs the shared [prompt_test_cases.json](../prompt_test_cases.json).
-When deploying only this directory, include a copy in the deployment source root and set
-`EVAL_CASES_PATH=prompt_test_cases.json`; the normal repository layout uses the parent file.
+The Eval Cases tab uses the shared [evaluation corpus](../eval_cases.v1.json).
+When deploying only this directory, include `eval_cases.v1.json` in the deployment source
+root and set `EVAL_CASES_PATH=eval_cases.v1.json`; the normal repository layout uses
+`../eval_cases.v1.json`.
 
 Restrict app access to trusted developers/admins. Connections, bearer tokens, and call
 history are process-wide, not isolated per user; disabling command overrides alone does
@@ -88,7 +89,7 @@ not make the harness a production authorization boundary.
 | Tools | Lists all registered tools; builds an argument form from each tool's JSON input schema (GeoJSON/dict fields accept JSON or raw WKT strings); presets from eval cases plus negative/validation inputs; JSON editing mode; renders summary fields, regulatory notice, limitations, tables of map units / county segments, an SVG preview of input and returned geometries, and raw `CallToolResult` JSON. Ctrl+Enter runs the tool. |
 | Resources | Lists and reads `fppa://` resources (and templates, if any). |
 | Prompts | Renders MCP prompts with their arguments and shows the resulting messages. |
-| Eval Cases | Loads `eval/prompt_test_cases.json`, derives a direct MCP invocation for each case, runs one or all cases, and checks the response for `expected_keywords`. "Open" loads a case into the Tools/Prompts/Resources tab for editing. Results can be downloaded as JSON. |
+| Eval Cases | Loads `eval/eval_cases.v1.json`, derives a direct MCP invocation for each case, runs one or all cases, and checks the response for `expected_keywords`. "Open" loads a case into the Tools/Prompts/Resources tab for editing. Results can be downloaded as JSON. |
 | History | Server-side log of recent calls, durations, and errors. |
 | Server | Connection status, server capabilities and instructions, stderr tail (stdio), and `/health` + `/meta` checks (SSE/HTTP only). |
 
@@ -108,9 +109,8 @@ from this browser workbench. This harness does not provide model-based scoring, 
 readiness. The Databricks startup configuration above does not add model-based scoring
 or production security hardening.
 
-The shared adversarial corpus is in [`../eval_cases.v1.json`](../eval_cases.v1.json)
-and the browser's deterministic MCP cases are in
-[`../prompt_test_cases.json`](../prompt_test_cases.json). Deterministic
+The shared adversarial corpus and browser's deterministic MCP cases are in
+[`../eval_cases.v1.json`](../eval_cases.v1.json). Deterministic
 assertions check configured expected status/behavior and response evidence;
 they do not assess model judgment or establish production readiness. The
 versioned cross-surface prompt policy and its limits are summarized in the

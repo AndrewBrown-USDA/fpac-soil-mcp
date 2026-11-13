@@ -63,7 +63,7 @@ uv run pytest -m live_network
 - `eval\common\` - harness-neutral matching, dataset loader, and validation code shared by Pi and Databricks tiers.
 - `eval\contract\` - T0 offline contract tests over the in-memory FastMCP client.
 - `eval\pi\` - Pi agent evaluation runner and evaluation tests.
-- `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`.
+- `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`. The T2 access smoke (`run_t2_smoke.py` and its notebook) is deferred: Databricks Apps reject the notebook-runtime token (401), so it cannot pass until an OAuth M2M service-principal path exists (`planning\MASTER_PLAN.md` D14).
 - `eval\fpac_soil_mcp_harness\` - local Node.js browser client/workbench; see its nested `AGENTS.md`.
 - `apps\agent-fpac-soil-openai-sdk\` - Databricks chat agent app that calls the deployed MCP server; separate uv project; see its nested `AGENTS.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
@@ -177,6 +177,6 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 ### Browser Evaluation Harness
 
 - `eval\fpac_soil_mcp_harness\` is the local Node.js/Express browser harness for exercising the MCP server through stdio, SSE, or Streamable HTTP; see its nested `AGENTS.md` and `README.md`.
-- `eval\prompt_test_cases.json` contains shared tool, resource, and prompt evaluation cases consumed by the harness and Python evaluation runners.
+- `eval\eval_cases.v1.json` is the shared evaluation corpus used by the harness and Python evaluation runners.
 - From the repository root, use `Set-Location eval\fpac_soil_mcp_harness; npm install`, then `npm start` or `npm run dev`; run `npm run check` after JavaScript changes.
 - The harness defaults to `http://127.0.0.1:3030` and is a local client/workbench, not a production deployment or official FPPA determination system.

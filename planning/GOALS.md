@@ -1,34 +1,20 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-10
-Source State: `planning/STATE_46.md`; `planning/MASTER_PLAN.md`; `planning/EXECUTION_PLAN_46.md`
-
-## Current Milestone (Orchestration 46)
-
-Waves 2 and 3 passed; the Wave 4 Criterion 2 evidence gate passed with
-limitations. Task 46.4.2 is a five-run/two-worker manifest-only dry run, not
-measured service performance: latency, failure, and retry metrics are null;
-deployed `/mcp` and model-assisted results were not run. Wave 5 synchronizes
-the evaluation and submission documentation. Final serial validation passed:
-`make check` completed with 843 passed and 45 deselected, followed by
-`make app-check` with 177 passed. `make test-eval` was not run at that gate
-after an unqualified Pi model check returned `invalid_state`; the qualified
-GitHub Copilot model auth check is now ready, but the Pi 1.5.2 runner needs
-its native-MCP update before evaluation can run. The PR #79/CDL dependency and
-adjacency deferral remain in force.
+Last Updated: 2026-11-12
+Source State: `planning/STATE_48.md`; `planning/MASTER_PLAN.md`
 
 ## Circled Goal (Active)
 
-- **[G1]** A shared, versioned agent safety and evaluation contract governs the live agent app, FastMCP prompts, Pi evaluations, Databricks evaluations, and map summaries.
-  - Why now: This is the highest-leverage bottleneck. It directly addresses the current scope-refusal gap, prevents unsafe non-prime farmland and siting interpretations, and defines the semantic contracts needed before performance evidence or broader MCP hardening can be trusted.
-  - Exit criteria: One canonical policy is applied across all prompt surfaces; unrelated requests are refused; official determinations and siting recommendations are not produced; “not prime farmland” and urban overlap are not overinterpreted; outage/partial/unknown states remain explicit; adversarial tests and deterministic safety gates pass.
-  - First action: add the shared policy text and versioned adversarial case schema to the execution plan’s Wave 1 scope, then implement the live/app prompt contract tests.
+- **[G1]** The deployed MCP service has a documented, authenticated, and repeatable access path for T2 evaluation.
+  - Why now: T2 is the main bridge from offline/in-process evaluation to deployed behavior. Proving access and session handling unblocks transport-level evaluation and reproducible service evidence.
+  - Exit criteria: Dedicated service-principal M2M and the current Streamable HTTP session behavior are documented; a smoke run initializes deployed `/mcp`, discovers tools, calls `explain_fppa_screening_scope`, and records sanitized source and commit metadata.
+  - First action: Provision a dedicated T2 evaluation service principal with only `CAN_USE` on `mcp-fpac-soil` and configure the Databricks run-as identity.
 
 ## Sequenced Goals (Dependency DAG)
 
-- **[G2]** The shared adversarial evaluation corpus covers unrelated requests, official-determination requests, non-prime overinterpretation, relocation/site selection, urban exemption overclaims, missing data, partial outages, malformed inputs, prompt injection, privacy, and performance budgets.
+- **[G2]** T2 reproduces applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
   - Depends on: G1
-- **[G3]** Deterministic scorers and harness predicates enforce refusal, prohibited-claim absence, semantic status, provenance, privacy non-echo, tool-call budgets, retry ceilings, and latency budgets.
+- **[G3]** Criterion 2 performance and reliability claims are supported by repeatable measurements from the deployed service, including latency, retries, failures, and environment details.
   - Depends on: G2
 - **[G4]** Public MCP tools expose strict Pydantic input contracts and structured, source-aware failure envelopes without changing the preliminary-authority boundary.
   - Depends on: G1
@@ -50,27 +36,33 @@ adjacency deferral remain in force.
   - Depends on: G18
 - **[G20]** The map displays a full CDL class distribution in a 30 m exterior band as a non-authoritative near-perimeter proxy, not literal boundary contact or verified Criterion 2 evidence.
   - Depends on: G18
+- **[G21]** The spatial response envelope meets the remaining Phase 8 contract for status, provenance, authority, and privacy metadata.
+- **[G22]** Automated map-to-table checks enforce the 0.1% acreage-tolerance exit criterion.
+  - Depends on: G21
 
 ## Independent Backlog
 
-- **[G9]** The agent-app map MVP remains deployable, tested, and documented with stable AOI session-context behavior.
-- **[G10]** T2 evaluation against deployed `/mcp` reproduces applicable T1 cases with trace and provenance evidence.
-  - Depends on: G3
-- **[G11]** The MCP workbench exposes the shared adversarial cases and displays deterministic versus model-assisted results separately.
-  - Depends on: G2, G3
+- **[G6]** Offline demonstration mode runs both benchmark testbeds with explicit fixture-mode provenance.
+- **[G7]** The T1 model client uses AI Gateway and records non-null MLflow scores for every ground-truth case.
+- **[G8]** The agent app has a separate, repeatable deployed evaluation for its `/invocations` interface and supported chat/map flows.
+- **[G9]** The agent map supports the selected next geometry workflows, including corridor alternatives and labelled AOIs.
+- **[G10]** Evaluation ground truth has domain-owner sign-off for its expected facts, behaviors, and scoring criteria.
+- **[G11]** Deployment operations document health checks and least-privilege client grants.
 
 ## Deferred
 
-- **[G12]** Additional agricultural-land adjacency sources and derived Criterion 2 scoring are expanded.
-  - Trigger: PR #79/CDL integration is merged, validated, and the selected authoritative adjacency source is approved.
-- **[G13]** Production map persistence, multiple AOIs, custom basemaps, and other M2/M4 features are implemented.
-  - Trigger: G1, G5, and the current map contract are stable in deployed trials.
+- **[G12]** Production authorization, user identity/RBAC, official-system integrations, and agency security controls are established.
+  - Trigger: An agency-approved production operating model and ATO path are available.
+- **[G13]** Additional agricultural-land adjacency sources and derived Criterion 2 scoring are expanded.
+  - Trigger: PR #79/CDL integration is merged and validated, and an authoritative adjacency source is approved.
+- **[G14]** The deployed MCP service adopts stateless Streamable HTTP.
+  - Trigger: A separately scoped compatibility check confirms stateless transport behavior for supported clients and deployment infrastructure.
 
 ## Blocked / Pruned
 
-- **[G14]** The agent issues official FPPA/LESA determinations, signs AD-1006/CPA-106, grants legal exemptions, or selects preferred alternatives.
-  - Status: Pruned
-  - Reason: The repository’s authority boundary permits preliminary screening and neutral comparison only.
-- **[G15]** Criterion 2 performance claims are accepted without a reproducible benchmark artifact.
+- **[G15]** Issue #88 is linked to and closed by the completed corpus consolidation.
   - Status: Blocked / External Watch
-  - Reason: Deployed latency and upstream reliability depend on external services and must be measured in the target environment.
+  - Reason: The corpus implementation is complete in the current branch, but issue closure depends on delivering the changes through the appropriate PR and updating the external tracker.
+- **[G16]** The agent issues official FPPA/LESA determinations, signs AD-1006/CPA-106, grants legal exemptions, or selects preferred alternatives.
+  - Status: Pruned
+  - Reason: The repository's authority boundary permits preliminary screening and neutral comparison only.

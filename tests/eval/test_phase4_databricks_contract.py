@@ -5,13 +5,11 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
 from common.dataset import load_cases, load_gold_set, to_mlflow_records
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DATASET_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
-HARNESS_CASES_PATH = REPO_ROOT / "eval" / "eval_cases.v1.json"
+DATASET_PATH = REPO_ROOT / "eval" / "eval_cases.v1.json"
 SA_MA_IDS = ("SA-MA-01", "SA-MA-02", "SA-MA-03", "SA-MA-04")
 POLYGON = {
     "type": "Polygon",
@@ -25,11 +23,6 @@ POLYGON = {
         ]
     ],
 }
-
-
-def _read_harness_cases() -> dict[str, dict[str, Any]]:
-    data = json.loads(HARNESS_CASES_PATH.read_text(encoding="utf-8"))
-    return {case["id"]: case for case in data["test_cases"]}
 
 
 def test_sa_ma_cases_are_in_t1_records_and_keep_model_evidence_label() -> None:
@@ -47,44 +40,36 @@ def test_sa_ma_cases_are_in_t1_records_and_keep_model_evidence_label() -> None:
 
 def test_case_catalogs_align_without_unneeded_geometry() -> None:
     cases = load_cases(DATASET_PATH, ids=SA_MA_IDS)
-    harness_cases = _read_harness_cases()
 
     for case in cases:
-        harness = harness_cases[case["id"]]
-        for field in (
-            "target_type",
-            "target_name",
-            "user_prompt",
-            "expected_keywords",
-            "expected_facts",
-        ):
-            assert case[field] == harness[field], (case["id"], field)
-        assert harness["evidence_tier"] == case["evidence_tier"] == "model_assisted"
+        assert case["target_type"] in {"tool", "resource", "prompt"}
+        assert case["target_name"].strip()
+        assert case["user_prompt"].strip()
+        assert isinstance(case["expected_keywords"], list)
+        assert case["expected_facts"]
+        assert case["evidence_tier"] == "model_assisted"
     assert "sample_geometry" not in cases[0]
     assert "sample_geometry" not in cases[2]
 
 
 def test_tool_cases_include_matching_geometry_and_intended_arguments() -> None:
     cases = {case["id"]: case for case in load_cases(DATASET_PATH, ids=SA_MA_IDS)}
-    harness_cases = _read_harness_cases()
 
     for case_id, tool_name, geometry_key in (
         ("SA-MA-02", "calculate_preliminary_lesa", "geometry"),
         ("SA-MA-04", "analyze_farmland_by_polygon", "geojson"),
     ):
         case = cases[case_id]
-        harness = harness_cases[case_id]
         call = case["expected_tool_calls"][0]
         assert case["target_name"] == tool_name
         assert case["expected_tools"] == [tool_name]
         assert case["sample_geometry"] == POLYGON
+        assert case["invocation"]["name"] == tool_name
+        assert case["invocation"]["arguments"][geometry_key] == POLYGON
         assert call["name"] == tool_name
         assert call["arguments"][geometry_key] == POLYGON
         compact_geometry = json.dumps(POLYGON, separators=(",", ":"))
         assert compact_geometry in case["user_prompt"].replace(" ", "")
-        assert harness["sample_geometry"] == POLYGON
-        assert harness["invocation"]["name"] == tool_name
-        assert harness["invocation"]["arguments"][geometry_key] == POLYGON
 
     lesa_args = cases["SA-MA-02"]["expected_tool_calls"][0]["arguments"]
     assert lesa_args["project_name"] == "Synthetic SA-MA-02"

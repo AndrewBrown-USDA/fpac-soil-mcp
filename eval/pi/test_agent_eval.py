@@ -35,7 +35,7 @@ from pi.run_evals import (
 from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "prompt_test_cases.json"
+PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "eval_cases.v1.json"
 CAPTURE_FIXTURES_PATH = REPO_ROOT / "eval" / "fixtures" / "event_capture"
 
 

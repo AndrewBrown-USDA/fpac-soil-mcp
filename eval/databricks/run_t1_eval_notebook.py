@@ -3,7 +3,7 @@
 # MAGIC # T1 evaluation: ground-truth rows on serverless
 # MAGIC
 # MAGIC Runs the in-process MCP agent and MLflow scorers over the verified rows of
-# MAGIC `eval/prompt_test_cases.json`. Results are screening-quality findings, not
+# MAGIC `eval/eval_cases.v1.json`. Results are screening-quality findings, not
 # MAGIC official FPPA determinations. See `eval/databricks/README.md`.
 
 # COMMAND ----------

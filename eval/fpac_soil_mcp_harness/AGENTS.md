@@ -36,12 +36,12 @@ Use `MCP_MODE=http` and an `/mcp` URL for Streamable HTTP. The package currently
 - `server.js` - Express server, static-file host, REST API, MCP lifecycle, history, and startup/shutdown.
 - `lib\config.js` - environment loading, paths, host/port, transport configuration, and public configuration.
 - `lib\mcpBridge.js` - official MCP SDK client wrapper for stdio, SSE, and Streamable HTTP.
-- `lib\evalCases.js` - deterministic mapping from `..\prompt_test_cases.json` to tool, resource, and prompt invocations.
+- `lib\evalCases.js` - deterministic mapping from `..\eval_cases.v1.json` to tool, resource, and prompt invocations.
 - `public\index.html` - browser UI shell.
 - `public\app.js` - UI behavior, schema-driven forms, MCP calls, evaluation, and result rendering.
 - `public\styles.css` - browser harness styling.
 - `.env.example` - local configuration reference.
-- `..\prompt_test_cases.json` - shared evaluation cases.
+- `..\eval_cases.v1.json` - shared evaluation corpus.
 - `README.md` - harness usage, REST API, transports, and evaluation behavior.
 - `..\..\src\fpac_soil_mcp\` - Python MCP server exercised by this harness.
 
@@ -57,7 +57,7 @@ Use `MCP_MODE=http` and an `/mcp` URL for Streamable HTTP. The package currently
 
 ### Change Evaluation Cases
 
-1. Update `..\prompt_test_cases.json` for shared prompt/input coverage.
+1. Update `..\eval_cases.v1.json` for shared prompt/input coverage.
 2. Update `lib\evalCases.js` for explicit arguments, derivation, or presets.
 3. Keep deterministic mappings explicit; this harness does not use an LLM to select tools.
 4. Run `npm run check`.
@@ -93,7 +93,7 @@ Use the harness for MCP-surface checks when changing tools, resources, prompts, 
 - Default MCP command: `uv`.
 - Default MCP arguments: `run fpac-soil-mcp`.
 - Default MCP working directory: repository root.
-- Default evaluation file: `..\prompt_test_cases.json`.
+- Default evaluation file: `..\eval_cases.v1.json`.
 - Default per-call timeout: 180000 milliseconds.
 - Supported MCP modes: `stdio`, `sse`, and `http`.
 - `/health` and `/meta` are available through the harness only for SSE/HTTP connections.
@@ -106,7 +106,7 @@ Use the harness for MCP-surface checks when changing tools, resources, prompts, 
 
 - `README.md` - complete harness usage, feature overview, REST API, transport configuration, and evaluation mapping.
 - `.env.example` - environment variable reference.
-- `..\prompt_test_cases.json` - shared evaluation cases.
+- `..\eval_cases.v1.json` - shared evaluation corpus.
 - `..\run_evals.py` - Python evaluation runner.
 - `..\test_agent_eval.py` - Python evaluation tests.
 - `..\..\AGENTS.md` - repository-wide architecture and commands.

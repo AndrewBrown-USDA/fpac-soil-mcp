@@ -1,4 +1,4 @@
-// Loads eval/prompt_test_cases.json and derives concrete MCP invocations for each case.
+// Loads eval/eval_cases.v1.json and derives concrete MCP invocations for each case.
 //
 // The test-case file describes natural-language prompts for an LLM agent. This harness is
 // deterministic (no LLM): it maps each case to a direct tool call, resource read, or prompt
@@ -6,7 +6,6 @@
 // overrides below encode the parameters described in each user_prompt.
 
 import fs from "node:fs";
-import path from "node:path";
 
 // ---------------------------------------------------------------------------
 // Explicit per-case arguments for cases whose parameters live only in prose.
@@ -163,29 +162,26 @@ export function buildInvocation(tc) {
 
 export function loadEvalCases(file) {
   if (!fs.existsSync(file)) {
-    return { version: null, description: `Eval case file not found: ${file}`, test_cases: [], source: file };
+    return {
+      version: null,
+      executable_version: null,
+      description: `Eval case file not found: ${file}`,
+      test_cases: [],
+      source: file,
+      executable_source: null,
+    };
   }
   const data = JSON.parse(fs.readFileSync(file, "utf-8"));
-  const fixturePath = path.resolve(path.dirname(file), "eval_cases.v1.json");
-  let executable = [];
-  if (fs.existsSync(fixturePath)) {
-    const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf-8"));
-    executable = fixture.test_cases || [];
-  }
-  const byId = new Map(executable.map((tc) => [tc.id, tc]));
   const cases = (data.test_cases || []).map((tc) => {
-    const central = byId.get(tc.id);
-    const merged = central ? { ...tc, ...central } : tc;
-    return { ...merged, invocation: merged.invocation || buildInvocation(merged) };
+    return { ...tc, invocation: tc.invocation || buildInvocation(tc) };
   });
-  for (const tc of executable) if (!cases.some((item) => item.id === tc.id)) cases.push({ ...tc, invocation: tc.invocation || buildInvocation(tc) });
   return {
     version: data.version ?? null,
-    executable_version: executable.length ? "1.0.0" : null,
+    executable_version: null,
     description: data.description ?? "",
     test_cases: cases,
     source: file,
-    executable_source: executable.length ? fixturePath : null,
+    executable_source: null,
   };
 }
 

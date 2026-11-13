@@ -61,7 +61,7 @@ Do not interpret Pi output as an official FPPA determination, an NRCS form, or a
 ## Troubleshooting
 
 - **Pi not found:** install/configure Pi and verify `Get-Command pi`.
-- **Missing fixture:** verify `eval\prompt_test_cases.json` exists and is valid JSON.
+- **Missing fixture:** verify `eval\eval_cases.v1.json` exists and is valid JSON.
 - **Missing tool evidence:** inspect initialization/tool-list diagnostics; do not infer execution from prose.
 - **Timeout/startup failure:** rerun one case with a bounded timeout and retain sanitized diagnostics only when needed.
 - **Artifact rejection:** choose an external artifact root; repository-local retention is intentionally blocked.
