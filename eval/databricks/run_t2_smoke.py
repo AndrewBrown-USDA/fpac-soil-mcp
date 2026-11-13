@@ -116,7 +116,9 @@ async def _smoke(
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Smoke-test authenticated access to FPAC Soil MCP.")
+    parser = argparse.ArgumentParser(
+        description="Smoke-test authenticated access to FPAC Soil MCP."
+    )
     return parser.parse_args(argv)
 
 
@@ -141,7 +143,9 @@ async def run_async(
     except SmokeError:
         raise
     except Exception:  # noqa: BLE001 -- avoid disclosing optional-import/auth details
-        raise SmokeError("Could not initialize the Databricks-authenticated smoke client.") from None
+        raise SmokeError(
+            "Could not initialize the Databricks-authenticated smoke client."
+        ) from None
 
     return {
         "timestamp": datetime.now(UTC).isoformat(),

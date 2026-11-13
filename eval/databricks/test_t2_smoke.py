@@ -31,10 +31,10 @@ def test_resolve_endpoint_looks_up_app_and_adds_mcp_path() -> None:
         (None, "valid HTTPS URL"),
     ],
 )
-def test_resolve_endpoint_rejects_invalid_or_unavailable_urls(url: str | None, message: str) -> None:
-    workspace = SimpleNamespace(
-        apps=SimpleNamespace(get=lambda **kwargs: SimpleNamespace(url=url))
-    )
+def test_resolve_endpoint_rejects_invalid_or_unavailable_urls(
+    url: str | None, message: str
+) -> None:
+    workspace = SimpleNamespace(apps=SimpleNamespace(get=lambda **kwargs: SimpleNamespace(url=url)))
 
     with pytest.raises(smoke.SmokeError, match=message):
         smoke._resolve_endpoint(workspace)
@@ -105,7 +105,9 @@ async def test_smoke_initializes_discovers_and_calls_in_one_client_session() -> 
 
 
 @pytest.mark.asyncio
-async def test_run_async_returns_only_sanitized_success_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_async_returns_only_sanitized_success_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def successful_smoke(endpoint: str, auth: object, client_factory: object) -> None:
         assert endpoint == "https://soil.example/mcp"
         assert auth == "sdk-auth"
