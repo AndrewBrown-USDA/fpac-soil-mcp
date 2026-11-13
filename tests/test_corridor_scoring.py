@@ -92,7 +92,7 @@ def test_criterion_7_farm_size_calculation():
         project_farm_acres=350.0, county_average_farm_acres=200.0
     )
     assert pts == 10.0
-    assert "as large as or larger than average" in desc.lower()
+    assert "more than 95% of county average, including at or above average" in desc.lower()
 
     # Farm exactly 100% of county average -> 10 pts
     pts, desc = calculate_criterion_7_score(
@@ -106,7 +106,7 @@ def test_criterion_7_farm_size_calculation():
         project_farm_acres=120.0, county_average_farm_acres=200.0
     )
     assert pts == 2.0
-    assert "60% to less than 65% of county average" in desc
+    assert "More than 55% through 60% of county average; 2 points" in desc
 
     # Farm 50% or more below the county average -> 0 pts
     pts, desc = calculate_criterion_7_score(

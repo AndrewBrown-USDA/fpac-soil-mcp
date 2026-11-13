@@ -26,6 +26,7 @@ class TestServerInitialization:
         "get_farmland_classification_by_mukey",
         "analyze_farmland_by_polygon",
         "analyze_cdl_histogram",
+        "analyze_cdl_context",
         "calculate_preliminary_lesa",
         "get_soil_polygons_by_geometry",
         "check_urban_area_exemption",
@@ -58,7 +59,7 @@ class TestServerInitialization:
         tools = await server.list_tools()
         tool_names = [t.name for t in tools]
         assert set(tool_names) == self.EXPECTED_TOOLS
-        assert len(tool_names) == 11
+        assert len(tool_names) == 12
 
     def test_published_server_metadata_exposes_lesa_capabilities(self) -> None:
         with open("server.json", encoding="utf-8") as metadata_file:
@@ -91,8 +92,8 @@ class TestServerInitialization:
         )
         published_tools = {tool["name"]: tool["description"] for tool in metadata["tools"]}
 
-        assert len(manifest_tools) == 11
-        assert len(published_tools) == 11
+        assert len(manifest_tools) == 12
+        assert len(published_tools) == 12
         assert set(published_tools) == set(manifest_tools)
         assert published_tools == manifest_tools
 

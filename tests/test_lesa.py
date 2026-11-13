@@ -317,7 +317,7 @@ class TestSiteAssessmentRules:
             project_farm_acres=250.0, county_average_farm_acres=200.0
         )
         assert pts == 10.0
-        assert "As large as or larger than average" in desc
+        assert "More than 95% of county average, including at or above average" in desc
 
         # CFR deduction schedule: one point per complete 5% below average.
         for farm_acres, expected in (

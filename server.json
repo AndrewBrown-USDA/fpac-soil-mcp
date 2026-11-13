@@ -27,7 +27,7 @@
     },
     {
       "name": "analyze_cdl_context",
-      "description": "Return full USDA NASS Cropland Data Layer class distributions for a validated Polygon or MultiPolygon AOI, its non-overlapping one-mile exterior ring, and its non-overlapping 30 m exterior band. All zones use the latest uniquely verified vintage and report coverage, status, and provenance; results do not assign agricultural classes, farmland status, or Criterion 2 perimeter percentages."
+      "description": "Compute full USDA NASS Cropland Data Layer class distributions for a validated Polygon or MultiPolygon AOI, its one-mile exterior ring, and its 30 m exterior band. Each zone reports raw class codes/names, counts/shares, vintage, coverage, status, and provenance. Results are preliminary land-cover context only; they do not assign agricultural classes, farmland status, or Criterion 2 perimeter percentages."
     },
     {
       "name": "get_soil_polygons_by_geometry",

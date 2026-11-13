@@ -119,7 +119,7 @@ def register_tools(mcp: FastMCP) -> None:
     mcp.tool(
         name="analyze_cdl_context",
         description=(
-            "Return USDA NASS Cropland Data Layer class distributions for a validated Polygon or MultiPolygon AOI, "
+            "Compute full USDA NASS Cropland Data Layer class distributions for a validated Polygon or MultiPolygon AOI, "
             "its one-mile exterior ring, and its 30 m exterior band. Each zone reports raw class codes/names, "
             "counts/shares, vintage, coverage, status, and provenance. Results are preliminary land-cover context "
             "only; they do not assign agricultural classes, farmland status, or Criterion 2 perimeter percentages."
