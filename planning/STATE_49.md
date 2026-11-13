@@ -18,7 +18,7 @@ Worker prompt: `planning/PROMPT_TEMPLATE_49.md`.
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 49.1.1 Build the authenticated T2 MCP smoke client | done | `be7870d`, `b524893`, `4117d07` | Targeted tests and serial `make check` passed; live access remains gated on external provisioning |
-| 2 | 49.2.1 Add the Databricks run-as entry point and record smoke evidence | pending | - | Depends on 49.1.1 and external principal/grant |
+| 2 | 49.2.1 Add the Databricks run-as entry point and record smoke evidence | blocked | `2e79852` | Notebook/docs implemented and checks pass; live smoke/evidence blocked pending external run-as principal and `CAN_USE` verification |
 
 ## Task Reports
 
@@ -33,3 +33,13 @@ Worker prompt: `planning/PROMPT_TEMPLATE_49.md`.
 - Planning-only commits: `b4fd0a6`, `216d17c`, `1a428f1`, `e99e6c7`, `dd99091`.
 - Deviations: one Ruff import fix and a follow-up formatting remediation after the first two wave-gate failures; all resolved.
 - Gotchas: the live smoke is still blocked pending a dedicated Databricks run-as principal and `CAN_USE` grant.
+
+## 49.2.1
+- Status: implementation done; deployed acceptance blocked because the dedicated service principal, run-as assignment, and `CAN_USE` grant remain unverified.
+- Files: `eval/databricks/run_t2_smoke_notebook.py`, `eval/databricks/README.md`.
+- Code commit: `2e79852`.
+- Targeted: `uv run --group eval-databricks pytest eval/databricks/test_t2_smoke.py -q` — 12 passed.
+- Wave gate: `make check` — Ruff passed, 672 files formatted, 976 passed / 45 deselected.
+- Planning-only worker commit: `73fb0e2`; orchestrator closeout includes this state and the Track E auth decision.
+- Deviations: none in implementation; live smoke and sanitized evidence were not produced because the external prerequisite is not verified.
+- Gotchas: do not claim deployed access success or create `planning/evidence/49.2.1-t2-smoke.md` until a workspace owner enables and verifies the required run-as identity/grant.

@@ -484,12 +484,12 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 - **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases); Orchestration 46 (policy, adversarial evaluation, MCP/map safety, and Criterion 2 benchmark setup/evidence; see [execution plan](EXECUTION_PLAN_46.md), [state](STATE_46.md), and [46.4.2 evidence](evidence/46.4.2-performance.md)).
 - **Backlog:**
   - Proposed: move the T1 model client to AI Gateway.
-  - Proposed: T2 against the deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent.
+  - Proposed: run the T2 case corpus against deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent; the Plan 49 authenticated smoke client and run-as notebook provide a separate access check, not corpus evaluation.
   - Proposed: expand ground truth with domain-owner sign-off.
   - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
   - Deferred: verified agricultural-land adjacency and associated Criterion 2 scoring remain unavailable until PR #79/CDL integration is merged and validated and an authoritative adjacency source is approved.
 - **Exit criteria:** T0 contract tests and the deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for every ground-truth case; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
-- **Open decisions:** T2 authentication path (service principal M2M or Unity Gateway MCP service). An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
+- **Open decisions:** None for T2 authentication. The Plan 49 access path uses a dedicated Databricks run-as service principal with `CAN_USE`; deployed access evidence awaits external provisioning and verification. An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
 - **Source:** [Tracks research, 4.2](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#42-track-e-evaluation).
 
 ### Track A: Agent App
@@ -547,6 +547,10 @@ From [Plan 37](EXECUTION_PLAN_37.md#decision-log):
 - D6: Track A commits structure only: M0, then M1 spikes, then M2-M7 scoped after M1; AOI integration is blocked until R6 passes.
 - D7: No new or superseded ADRs in Plan 37; ADRs on the vendored frontend and AOI handoff are M0 and M1 exit items.
 - D12: Track E backlog is T1 to AI Gateway and T2 against deployed `/mcp`; WKT/GeoJSON upload is an open Track W decision; SDA maintenance-page handling is recorded as delivered in Phase 7.
+
+### Planning Decision (2026-11-12)
+
+- D13: Track E T2 authentication uses dedicated Databricks service-principal M2M from a job/notebook run-as identity with only `CAN_USE` on `mcp-fpac-soil`. Unity Gateway registration and stateless Streamable HTTP remain separate deferred Track D decisions; deployed T2 smoke evidence is pending external provisioning and verification (Orchestration 49).
 
 ---
 
