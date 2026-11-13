@@ -6,8 +6,8 @@ Remove the corpus-size assertion in `test_common_matching.py` that is implied by
 ## Tasks
 
 ### 1. Confirm the invariant
-- [ ] Verify `EXPECTED_CORPUS_IDS` contains the complete 38-ID set and the test retains both uniqueness and exact-set assertions.
-- [ ] Confirm the remaining Python dataset and harness loader/HTTP checks serve their distinct entry-point contracts and must remain.
+- [x] Verify `EXPECTED_CORPUS_IDS` contains the complete 38-ID set and the test retains both uniqueness and exact-set assertions.
+- [x] Confirm the remaining Python dataset and harness loader/HTTP checks serve their distinct entry-point contracts and must remain.
 
 ### 2. Remove the redundant assertion
 - [ ] Delete only `assert len(ids) == 38` from `test_corpus_ids_cover_all_cases_without_duplicates` in `eval/common/test_common_matching.py`.
