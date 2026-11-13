@@ -178,7 +178,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
 | 1 | 50.1.3 | Synchronize Wave 1 tool and Criterion 7 contracts | 50.1.1, 50.1.2 |
 | 1 gate | - | eCFR and CDL contract gate | 50.1.1, 50.1.2, 50.1.3 |
 | 2 | 50.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 50.1.1, 50.1.2, 50.1.3, Wave 1 gate |
-| 2 | 50.2.2 | Add CDL raster context overlay and “Show CDL on map” summaries | 50.1.2 |
+| 2 | 50.2.2 | Add CDL raster context overlay and “Show CDL on map” summaries | 50.1.2, Wave 1 gate |
 | 2 gate | - | Chat/map integration gate | 50.2.1, 50.2.2 |
 | 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | 50.2.1, 50.2.2 |
 
@@ -328,8 +328,9 @@ authoritative FPPA source or an automatic Criterion 2 score.
   unavailable results without zero-filling.
 - **Do not touch:** Site Assessment scoring rules, `site_assessment.v1.json`,
   corridor workflow, assessment persistence, frontend files, or deployment
-  configuration. If 50.1.1 found a mismatch, this task is blocked until an
-  explicit decision resolves it.
+  configuration. The Criterion 7 mismatch found by 50.1.1 was resolved under
+  the explicit owner authorization; any additional mismatch remains blocked
+  pending a separate decision.
 - **Grep anchors:** `agent.py` `create_agent`, `_connect_fpac_agent`;
   `system_prompt.txt` `Required semantic rules`;
   `fppa_prompts.py` `fppa_site_assessment_assistant_prompt`;
@@ -357,7 +358,7 @@ authoritative FPPA source or an automatic Criterion 2 score.
   to `planning\STATE_50.md`.
 - **Can create:** `planning\tasks\50.2.2.todo.md` and a focused
   `components\map\` summary component.
-- **Depends on:** 50.1.2.
+- **Depends on:** 50.1.2 and the Wave 1 gate.
 - **Specification:** Add the CDL ImageServer as a fixed, off-by-default
   raster context overlay with attribution and vintage/context labeling. Add a
   “Show CDL on map” action for the combined tool result; it opens the map and
