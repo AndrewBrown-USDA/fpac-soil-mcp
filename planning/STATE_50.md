@@ -43,8 +43,8 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 1 | 50.1.3 Synchronize Wave 1 tool and Criterion 7 contracts | done | `fb939eb` | Runtime/public metadata and existing assertions synchronized. |
 | 1 gate | eCFR and CDL contract gate | done | | Serial `make check`: 980 passed, 45 deselected; Ruff check and format passed. |
 | 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | done | `ea54cc2` / `a8d26cb` | Planning commits `cfba2bd` / `3ca4d3c`; focused acceptance and Ruff checks passed. |
-| 2 | 50.2.2 Add CDL map overlay and summary display | in progress | | Plan approved; planning commit `e781666`; CORS failure blocks overlay; ask before proxy work. |
-| 2 gate | Chat/map integration gate | pending | | |
+| 2 | 50.2.2 Add CDL map overlay and summary display | done | `987610d` / `8c672e0` | Planning commits `e781666` / `e41f5c1`; frontend lint/build and browser/CORS checks passed. |
+| 2 gate | Chat/map integration gate | done | | Both Wave 2 tasks integrated; focused acceptance checks passed. |
 | 3 gate | Serial validation and local browser walkthrough | pending | | No deployed dev-app trial. |
 
 ## Worker Worktrees
@@ -55,7 +55,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | complete; retained |
 | 50.1.3 | `.worktrees\50.1.3` | `feature/sa-checklist1-50.1.3-worker` | 2026-11-12 23:54:15 -08:00 | complete; retained |
 | 50.2.1 | `.worktrees\50.2.1` | `feature/sa-checklist1-50.2.1-worker` | 2026-11-13 00:04:29 -08:00 | complete; retained |
-| 50.2.2 | `.worktrees\50.2.2` | `feature/sa-checklist1-50.2.2-worker` | 2026-11-13 00:04:28 -08:00 | plan approved; execution in progress; retained |
+| 50.2.2 | `.worktrees\50.2.2` | `feature/sa-checklist1-50.2.2-worker` | 2026-11-13 00:04:28 -08:00 | complete; retained |
 
 ## Task Reports
 
@@ -97,3 +97,11 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 - `uv run pytest tests\test_prompts.py tests\test_site_assessment_resource.py -q` — 9 passed.
 - App acceptance tests — 49 passed, 1 existing pytest config warning; Ruff check and format check passed.
 - Deviations: none. CDL remains separate preliminary context and never supplies Criterion 2; supported LESA facts require explicit confirmation.
+
+### 50.2.2 — Add CDL map overlay and summary display
+- Status: complete; planning commits `e781666` / `e41f5c1`; implementation commits `987610d` / `8c672e0`.
+- Added fixed off-by-default ImageServer overlay and a result-only summary for AOI, one-mile ring, and 30 m band; added "Show CDL on map" without re-querying.
+- Changed: `CDLContextSummary.tsx` (1-182), `overlays.ts` (10, 73-82), `OverlayControl.tsx` (11), `ShowOnMapButton.tsx` (62-145), `MapResultContext.tsx` (4, 11), `MapPanel.tsx` (311, 695-720), `message.tsx` (47, 447-489), app `AGENTS.md` (40, 63), ADR 0015 (121-174).
+- `npm ci`; read-only Biome lint; `npm run build` — passed; lint reported 10 existing warnings.
+- Local browser walkthrough verified the summary, default-off toggle, and MapLibre tile requests; ImageServer returned HTTP 200 `image/png`, so no proxy was added.
+- Deviation: first `npm ci`/build ran in the primary worktree; only ignored frontend dependencies/build output were refreshed. Tracked primary changes remain the pre-existing eCFR XML edits; `.worktrees\` remains untracked.
