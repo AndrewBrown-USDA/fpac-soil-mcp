@@ -40,8 +40,8 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 |---|---|---|---|---|
 | 1 | 50.1.1 Refresh eCFR references and align Criterion 7 registry bands | done | `62b36b5` / `2ce093b` | No additional registry/CFR mismatch; see report. |
 | 1 | 50.1.2 Add combined CDL context analysis | done | `2618442` | Keep existing histogram tool compatible. |
-| 1 | 50.1.3 Synchronize Wave 1 tool and Criterion 7 contracts | pending | | Full `make check`: 971 passed, 9 failed, 45 deselected; this task addresses the contract/description failures. |
-| 1 gate | eCFR and CDL contract gate | pending | | Requires 50.1.3 and a passing serial `make check`. |
+| 1 | 50.1.3 Synchronize Wave 1 tool and Criterion 7 contracts | done | `fb939eb` | Runtime/public metadata and existing assertions synchronized. |
+| 1 gate | eCFR and CDL contract gate | done | | Serial `make check`: 980 passed, 45 deselected; Ruff check and format passed. |
 | 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | pending | | Requires all Wave 1 tasks and a passing gate. |
 | 2 | 50.2.2 Add CDL map overlay and summary display | pending | | CORS failure blocks overlay; ask before proxy work. |
 | 2 gate | Chat/map integration gate | pending | | |
@@ -53,7 +53,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 |---|---|---|---|---|
 | 50.1.1 | `.worktrees\50.1.1` | `feature/sa-checklist1-50.1.1-worker` | 2026-11-12 23:34:26 -08:00 | complete; retained |
 | 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | complete; retained |
-| 50.1.3 | `.worktrees\50.1.3` | `feature/sa-checklist1-50.1.3-worker` | 2026-11-12 23:54:15 -08:00 | executing; micro-plan `2f078c7` |
+| 50.1.3 | `.worktrees\50.1.3` | `feature/sa-checklist1-50.1.3-worker` | 2026-11-12 23:54:15 -08:00 | complete; retained |
 
 ## Task Reports
 
@@ -76,3 +76,14 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 - Orchestrator rerun in the worker worktree: targeted tests 62 passed; Ruff check and format check passed.
 - Deviations: none; same vintage is supplied to existing client analysis for all zones; no extra mosaic-lock contract was added.
 - Dependent-task note: context is preliminary CDL class evidence only; no agricultural-class policy, farmland status, or Criterion 2 percentage is provided.
+
+### 50.1.3 — Synchronize Wave 1 tool and Criterion 7 contracts
+- Status: complete; integrated implementation commit `fb939eb` (worker `8d9f268`); micro-plan commit `2f078c7`.
+- Synchronized the action-oriented `analyze_cdl_context` description across runtime, README, manifest, and server metadata; updated exact tool sets and counts.
+- Updated Criterion 7 description assertions without changing score bands or thresholds.
+- Changed: tool registration, README, manifest, server metadata, four test files, and two evaluation contract tests.
+- `uv run pytest tests\test_phase2_contracts.py tests\test_server.py tests\test_lesa.py tests\test_corridor_scoring.py eval\contract\test_contract.py eval\databricks\test_databricks_agent.py -q` — 108 passed, 1 skipped, 3 deselected.
+- `uv run ruff check .` — passed; `uv run ruff format --check .` — passed.
+- Orchestrator rerun in the task worktree: same targeted results and lint/format checks passed.
+- Deviations: the initial test invocation ran in the primary worktree before integration and showed the expected failures; the scoped rerun in the task worktree passed. No primary eCFR XML files were staged or altered.
+- Wave 1 gate: final serial `make check` passed with 980 passed and 45 deselected.
