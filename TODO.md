@@ -7,9 +7,9 @@ Deliver the approved PR #100 review fixes and guided Site Assessment interview/c
 
 ### 1. Merge and establish validation baseline
 - [x] Confirm the current branch is `feature/sa-checklist1` in `D:\workspace\fpac-soil-mcp`; preserve the existing `.worktrees\` and their registered worktrees.
-- [ ] Merge `origin/main` into the task branch, resolving `planning\GOALS.md` by retaining both sides; use the locally available tracking ref and do not fetch or perform any other remote action.
-- [ ] Run `make check`, `make app-test`, `make app-lint`, and `make app-frontend-check`; record test counts and frontend lint/build results.
-- [ ] Report any breakage caused by Dependabot dependency bumps (including lockfiles and `mlflow`/`openai`/`agents` versions) to the user and pause that resolution until explicitly approved.
+- [x] Merge `origin/main` into the task branch, resolving `planning\GOALS.md` by retaining both sides; use the locally available tracking ref and do not fetch or perform any other remote action. Merge commit: `1759c65`; origin-side goals were assigned unique IDs G21/G22 to avoid collisions.
+- [x] Run `make check`, `make app-test`, `make app-lint`, and `make app-frontend-check`; record test counts and frontend lint/build results. Merged tree: root 1,017 passed / 45 deselected, 4,645 files formatted; app 183 passed, Ruff check/format passed; frontend lint 0 errors / 10 warnings and client/server builds passed.
+- [x] Report dependency-related breakage: no lockfile or `mlflow`/`openai`/`agents` test/build breakage found; the app tests passed with the updated lockfile. `npm ci` reported 10 audit advisories (4 low, 6 moderate); no automatic dependency fixes were applied.
 
 ### 2. Fix review findings and conservative missing-input scoring
 - [ ] Exclude CDL overlays from MapPanel identify and Use-as-AOI handling; add a test proving a CDL click makes no TIGERweb request.
@@ -45,10 +45,11 @@ Deliver the approved PR #100 review fixes and guided Site Assessment interview/c
 
 ## Notes
 - Workspace and branch: `D:\workspace\fpac-soil-mcp`, `feature/sa-checklist1` (current HEAD `a1e1e66`); use the current workspace, not a Databricks clone. The requested branch is already checked out.
-- The user specified `origin/main` as the merge source and approved resolving the `planning\GOALS.md` conflict by keeping both sides. The locally available `origin/main` is `16d592c`; it diverges from the current `HEAD` by 39/54 commits (`HEAD` only/origin only). No fetch, push, PR update, comment, or other remote action is authorized by this plan; pushes and review-thread replies require separate explicit approval.
+- The user specified `origin/main` as the merge source and approved resolving the `planning\GOALS.md` conflict by keeping both sides. The locally available `origin/main` was `16d592c`, merged by commit `1759c65`; colliding origin-side goal identifiers were renumbered to G21/G22. No fetch, push, PR update, comment, or other remote action is authorized by this plan; pushes and review-thread replies require separate explicit approval.
 - Preserve the pre-existing untracked `.worktrees\` directory and all registered worktrees.
 - Replace the existing tracked root `TODO.md` with this plan. Track planning artifacts and commit the approved plan/status/archive separately using `docs(planning):` commits.
 - Pause and report Dependabot-related breakage before attempting a fix.
+- The frontend install took about 8 minutes; its `db:migrate` step skipped safely because no database configuration was present.
 - The frontend validation gate is lint and build; do not add `tsc` because upstream already fails it. Validate the CDL type correction with a targeted test.
 - A pasted WKT/GeoJSON AOI counts as the AOI for automatic CDL context.
 - Answers/comments/provenance remain structured tool-call items in conversation history and MLflow traces; Lakebase persistence is deferred to a follow-up PR.
