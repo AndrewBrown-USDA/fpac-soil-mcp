@@ -175,8 +175,9 @@ authoritative FPPA source or an automatic Criterion 2 score.
 |---|---|---|---|
 | 1 | 50.1.1 | Refresh eCFR references and align Criterion 7 registry bands | none |
 | 1 | 50.1.2 | Add the combined AOI / one-mile ring / 30 m CDL context tool | none |
-| 1 gate | - | eCFR and CDL contract gate | 50.1.1, 50.1.2 |
-| 2 | 50.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 50.1.1, 50.1.2 |
+| 1 | 50.1.3 | Synchronize Wave 1 tool and Criterion 7 contracts | 50.1.1, 50.1.2 |
+| 1 gate | - | eCFR and CDL contract gate | 50.1.1, 50.1.2, 50.1.3 |
+| 2 | 50.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 50.1.1, 50.1.2, 50.1.3, Wave 1 gate |
 | 2 | 50.2.2 | Add CDL raster context overlay and “Show CDL on map” summaries | 50.1.2 |
 | 2 gate | - | Chat/map integration gate | 50.2.1, 50.2.2 |
 | 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | 50.2.1, 50.2.2 |
@@ -261,6 +262,42 @@ authoritative FPPA source or an automatic Criterion 2 score.
   tests\test_cdl_models.py tests\test_cdl_tools.py -q`, then
   `uv run ruff check .` and `uv run ruff format --check .`. Update all public
   MCP surface references listed above.
+
+### 50.1.3 — Synchronize Wave 1 tool and Criterion 7 contracts
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Must edit:** `src\fpac_soil_mcp\tools\__init__.py`, `README.md`,
+  `manifest.yaml`, `server.json`, `tests\test_phase2_contracts.py`,
+  `tests\test_server.py`, `tests\test_lesa.py`,
+  `tests\test_corridor_scoring.py`, `eval\contract\test_contract.py`,
+  `eval\databricks\test_databricks_agent.py`; append the task report to
+  `planning\STATE_50.md`.
+- **Can create:** `planning\tasks\50.1.3.todo.md`.
+- **Depends on:** 50.1.1, 50.1.2, 50.1.3, and the Wave 1 gate.
+- **Specification:** Resolve the Wave 1 failures found by the serial `make
+  check`. Keep the `analyze_cdl_context` description identical in the runtime
+  registration, README, manifest, and server metadata; start it with an
+  action-oriented verb accepted by the contract test. Update tool-count and
+  expected-name assertions to include the new public tool, without weakening
+  exact-set or metadata-consistency checks. Update Criterion 7 description
+  assertions to reflect the corrected registry band label while preserving
+  score and threshold assertions.
+- **Do not touch:** CDL analysis behavior, Criterion 7 score bands, LESA
+  scoring algorithms, prompts, app code, or unrelated evaluation cases.
+- **Grep anchors:** `tools\__init__.py` `analyze_cdl_context`;
+  `test_server.py` `EXPECTED_TOOLS` and published metadata checks;
+  `eval\contract\test_contract.py` expected tool set and counts;
+  `eval\databricks\test_databricks_agent.py` tool count;
+  Criterion 7 description assertions in the named scoring tests.
+- **Reference implementations:** existing runtime/published tool metadata
+  equality checks in `tests\test_server.py`; exact tool-set tests in
+  `eval\contract\test_contract.py`.
+- **Acceptance:** the focused tests below pass and preserve exact runtime,
+  manifest, and `server.json` tool-set/description agreement:
+  `uv run pytest tests\test_phase2_contracts.py tests\test_server.py
+  tests\test_lesa.py tests\test_corridor_scoring.py
+  eval\contract\test_contract.py eval\databricks\test_databricks_agent.py -q`.
+  `uv run ruff check .` and `uv run ruff format --check .` pass.
 
 ### 50.2.1 — Add resource-backed conversational Site Assessment flow
 

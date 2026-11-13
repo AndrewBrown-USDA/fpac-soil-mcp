@@ -31,18 +31,18 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
   commands passed; use direct commands if the local Make executable remains
   unusable.
 - [!] `uv run python scripts\fetch_ecfr.py --check` reports title 7 Parts 657
-  and 658 XML differs from the manifest. The refresh confirms the registry
-  does not encode the Criterion 7 five-point deductions as exact bands;
-  the owner authorized correcting that registry entry only.
+  and 658 XML differs from the manifest at baseline; task 50.1.1 refreshed the
+  references and verified the registry correction.
 
 ## Wave Board
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 50.1.1 Refresh eCFR references and align Criterion 7 registry bands | pending | | Owner authorized this correction; any additional mismatch blocks 50.2.1. |
+| 1 | 50.1.1 Refresh eCFR references and align Criterion 7 registry bands | done | `62b36b5` / `2ce093b` | No additional registry/CFR mismatch; see report. |
 | 1 | 50.1.2 Add combined CDL context analysis | done | `2618442` | Keep existing histogram tool compatible. |
-| 1 gate | eCFR and CDL contract gate | pending | | |
-| 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | pending | | Requires both Wave 1 tasks and no unresolved eCFR conflict. |
+| 1 | 50.1.3 Synchronize Wave 1 tool and Criterion 7 contracts | pending | | Full `make check`: 971 passed, 9 failed, 45 deselected; this task addresses the contract/description failures. |
+| 1 gate | eCFR and CDL contract gate | pending | | Requires 50.1.3 and a passing serial `make check`. |
+| 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | pending | | Requires all Wave 1 tasks and a passing gate. |
 | 2 | 50.2.2 Add CDL map overlay and summary display | pending | | CORS failure blocks overlay; ask before proxy work. |
 | 2 gate | Chat/map integration gate | pending | | |
 | 3 gate | Serial validation and local browser walkthrough | pending | | No deployed dev-app trial. |
@@ -51,10 +51,19 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 
 | Task | Path | Branch | Created (local) | Status |
 |---|---|---|---|---|
-| 50.1.1 | `.worktrees\50.1.1` | `feature/sa-checklist1-50.1.1-worker` | 2026-11-12 23:34:26 -08:00 | executing |
+| 50.1.1 | `.worktrees\50.1.1` | `feature/sa-checklist1-50.1.1-worker` | 2026-11-12 23:34:26 -08:00 | complete; retained |
 | 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | complete; retained |
 
 ## Task Reports
+
+### 50.1.1 — Refresh eCFR references and align Criterion 7 registry bands
+- Status: complete; integrated eCFR commit `62b36b5` (worker `0dc5b11`); registry/test commit `2ce093b` (worker `6b54542`); micro-plan commit `2ac6917`.
+- Refreshed Parts 657/658 to 2026-11-10; XML hashes unchanged. Criteria 1–6 and 8–12 match refreshed § 658.5(b); no additional mismatch was found.
+- Criterion 7 now uses 0 at or below 50%, 1 above 50% through 55%, successive five-point bands through 9 above 90% through 95%, and 10 above 95%.
+- `uv run python scripts\fetch_ecfr.py --check` — passed.
+- `uv run pytest tests\test_site_assessment_contract.py tests\test_site_assessment_resource.py -q` — 34 passed.
+- Deviations: none. Primary-worktree generated outputs were checked and committed; no scoring algorithm or other registry entry changed.
+- Gate note: the post-integration `make check` exposed 9 failures in public-tool counts/descriptions and legacy Criterion 7 text assertions; task 50.1.3 is planned to resolve them.
 
 ### 50.1.2 — Add combined CDL context analysis
 - Status: complete; integrated implementation commit `2618442` (`feat(cdl): add combined CDL context analysis`; worker commit `011e4a9`); integrated micro-plan commit `8d1f868` (worker commit `4bab81e`).
