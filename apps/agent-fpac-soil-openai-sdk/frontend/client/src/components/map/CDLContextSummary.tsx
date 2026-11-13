@@ -58,8 +58,9 @@ export function parseCDLContextResult(value: unknown): CDLContextResult | null {
   if (typeof candidate === 'string') {
     try {
       candidate = JSON.parse(candidate);
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof SyntaxError) return null;
+      throw error;
     }
   }
   if (
