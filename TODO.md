@@ -12,7 +12,7 @@ Fix the two open PR #98 review findings in the shared evaluation corpus validato
 
 ### 2. Validation and implementation commit
 - [x] Run `uv run pytest eval/common/test_common_dataset.py`, `make check`, and `git diff --check`.
-- [ ] Review and commit only the validator and test changes in one focused Conventional Commit.
+- [x] Review and commit only the validator and test changes in one focused Conventional Commit.
 
 ## Notes
 - Work on the current PR head branch `refactor/eval-corpus1`; do not fetch, rebase, merge, or push.
@@ -20,3 +20,4 @@ Fix the two open PR #98 review findings in the shared evaluation corpus validato
 - Preserve prior planning changes and `.worktrees/`; do not stage unrelated existing files or post PR replies.
 - Draft replies were prepared in `planning/TODO_20261113-2.md`; posting remains outside this implementation request.
 - Validation: targeted dataset tests 63 passed; `make check` passed with 973 passed and 45 deselected; Ruff check/format and `git diff --check` passed.
+- Implementation commit: `eeeff57` (`fix(eval): validate nullable schemas and invocation kinds`).
