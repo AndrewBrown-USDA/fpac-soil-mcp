@@ -179,8 +179,9 @@ authoritative FPPA source or an automatic Criterion 2 score.
 | 1 gate | - | eCFR and CDL contract gate | 50.1.1, 50.1.2, 50.1.3 |
 | 2 | 50.2.1 | Add resource-backed guided chat interview and confirmed LESA handoff | 50.1.1, 50.1.2, 50.1.3, Wave 1 gate |
 | 2 | 50.2.2 | Add CDL raster context overlay and “Show CDL on map” summaries | 50.1.2, Wave 1 gate |
-| 2 gate | - | Chat/map integration gate | 50.2.1, 50.2.2 |
-| 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | 50.2.1, 50.2.2 |
+| 2 | 50.2.3 | Synchronize AOI handler test mocks with criteria resource reads | 50.2.1 |
+| 2 gate | - | Chat/map integration gate | 50.2.1, 50.2.2, 50.2.3 |
+| 3 gate | - | Serial offline/live-when-required checks and local browser walkthrough | Wave 2 gate |
 
 ### 50.1.1 — Refresh eCFR references and align Criterion 7 registry bands
 
@@ -388,6 +389,32 @@ authoritative FPPA source or an automatic Criterion 2 score.
   lint --skip=nursery/useSortedClasses --skip=style/useTemplate .; npm run
   build`. Do not run upstream write-mode lint scripts. Update ADR 0015’s
   local-change list and app `AGENTS.md` in the same task.
+
+### 50.2.3 — Synchronize AOI handler test mocks with criteria resource reads
+
+- **Repo:** `D:\workspace\fpac-soil-mcp`
+- **Must edit:**
+  `apps\agent-fpac-soil-openai-sdk\tests\conftest.py`,
+  `apps\agent-fpac-soil-openai-sdk\tests\test_aoi_context.py`, and
+  `apps\agent-fpac-soil-openai-sdk\tests\test_aoi_handoff.py`.
+- **Can create:** `planning\tasks\50.2.3.todo.md`.
+- **Depends on:** 50.2.1.
+- **Specification:** Task 50.2.1 added an asynchronous
+  `fppa://site-assessment-criteria` resource read whenever the MCP connection
+  is healthy. The full app suite found existing AOI handler mocks that do not
+  provide this resource result. Add a reusable valid resource fixture, wire the
+  affected mock servers to return it asynchronously, and update any
+  `create_agent` call expectations for the validated context. Preserve the
+  AOI, tool-call binding, coordinate-redaction, model-input, and trace-session
+  assertions; do not change production code or weaken the tests.
+- **Do not touch:** app runtime code, MCP server contracts, other tests,
+  frontend files, or deployment configuration.
+- **Acceptance:** from the app directory, run
+  `uv run --frozen --python 3.11 pytest tests\test_aoi_context.py
+  tests\test_aoi_handoff.py -q`, then the full
+  `uv run --frozen --python 3.11 pytest tests -q`; run Ruff check and format
+  check on `tests\conftest.py`, `tests\test_aoi_context.py`, and
+  `tests\test_aoi_handoff.py`.
 
 ## Final Acceptance Gate
 

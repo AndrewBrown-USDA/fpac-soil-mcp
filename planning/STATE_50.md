@@ -44,8 +44,9 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 1 gate | eCFR and CDL contract gate | done | | Serial `make check`: 980 passed, 45 deselected; Ruff check and format passed. |
 | 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | done | `ea54cc2` / `a8d26cb` | Planning commits `cfba2bd` / `3ca4d3c`; focused acceptance and Ruff checks passed. |
 | 2 | 50.2.2 Add CDL map overlay and summary display | done | `987610d` / `8c672e0` | Planning commits `e781666` / `e41f5c1`; frontend lint/build and browser/CORS checks passed. |
-| 2 gate | Chat/map integration gate | done | | Both Wave 2 tasks integrated; focused acceptance checks passed. |
-| 3 gate | Serial validation and local browser walkthrough | pending | | No deployed dev-app trial. |
+| 2 | 50.2.3 Synchronize AOI handler test mocks with criteria resource reads | pending | | Added after full app suite found 14 AOI mock failures; no production-code issue identified. |
+| 2 gate | Chat/map integration gate | pending | | Reopened for 50.2.3 and full app-suite regression check. |
+| 3 gate | Serial validation and local browser walkthrough | pending | | Root `make check` passed; app suite and combined local walkthrough remain. No deployed dev-app trial. |
 
 ## Worker Worktrees
 
