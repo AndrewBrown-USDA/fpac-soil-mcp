@@ -42,7 +42,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 1 | 50.1.2 Add combined CDL context analysis | done | `2618442` | Keep existing histogram tool compatible. |
 | 1 | 50.1.3 Synchronize Wave 1 tool and Criterion 7 contracts | done | `fb939eb` | Runtime/public metadata and existing assertions synchronized. |
 | 1 gate | eCFR and CDL contract gate | done | | Serial `make check`: 980 passed, 45 deselected; Ruff check and format passed. |
-| 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | in progress | | Plan approved; planning commit `cfba2bd`; requires all Wave 1 tasks and a passing gate. |
+| 2 | 50.2.1 Add resource-backed conversational Site Assessment flow | done | `ea54cc2` / `a8d26cb` | Planning commits `cfba2bd` / `3ca4d3c`; focused acceptance and Ruff checks passed. |
 | 2 | 50.2.2 Add CDL map overlay and summary display | in progress | | Plan approved; planning commit `e781666`; CORS failure blocks overlay; ask before proxy work. |
 | 2 gate | Chat/map integration gate | pending | | |
 | 3 gate | Serial validation and local browser walkthrough | pending | | No deployed dev-app trial. |
@@ -54,7 +54,7 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 | 50.1.1 | `.worktrees\50.1.1` | `feature/sa-checklist1-50.1.1-worker` | 2026-11-12 23:34:26 -08:00 | complete; retained |
 | 50.1.2 | `.worktrees\50.1.2` | `feature/sa-checklist1-50.1.2-worker` | 2026-11-12 23:34:30 -08:00 | complete; retained |
 | 50.1.3 | `.worktrees\50.1.3` | `feature/sa-checklist1-50.1.3-worker` | 2026-11-12 23:54:15 -08:00 | complete; retained |
-| 50.2.1 | `.worktrees\50.2.1` | `feature/sa-checklist1-50.2.1-worker` | 2026-11-13 00:04:29 -08:00 | plan approved; execution in progress; retained |
+| 50.2.1 | `.worktrees\50.2.1` | `feature/sa-checklist1-50.2.1-worker` | 2026-11-13 00:04:29 -08:00 | complete; retained |
 | 50.2.2 | `.worktrees\50.2.2` | `feature/sa-checklist1-50.2.2-worker` | 2026-11-13 00:04:28 -08:00 | plan approved; execution in progress; retained |
 
 ## Task Reports
@@ -89,3 +89,11 @@ Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 - Orchestrator rerun in the task worktree: same targeted results and lint/format checks passed.
 - Deviations: the initial test invocation ran in the primary worktree before integration and showed the expected failures; the scoped rerun in the task worktree passed. No primary eCFR XML files were staged or altered.
 - Wave 1 gate: final serial `make check` passed with 980 passed and 45 deselected.
+
+### 50.2.1 — Add resource-backed conversational Site Assessment flow
+- Status: complete; planning commits `cfba2bd` / `3ca4d3c`; implementation commits `ea54cc2` / `a8d26cb`.
+- Validates and supplies the existing criteria resource as agent context; resource/transport failures disable the interview explicitly, while unexpected errors propagate.
+- Updated the guided interview prompts and added focused resource-context, unavailable-resource, confirmation-policy, and error-handling tests.
+- `uv run pytest tests\test_prompts.py tests\test_site_assessment_resource.py -q` — 9 passed.
+- App acceptance tests — 49 passed, 1 existing pytest config warning; Ruff check and format check passed.
+- Deviations: none. CDL remains separate preliminary context and never supplies Criterion 2; supported LESA facts require explicit confirmation.
