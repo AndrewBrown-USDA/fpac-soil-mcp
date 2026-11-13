@@ -1,12 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { MapBlock } from './mapLayers';
+import type { CDLContextResult } from './CDLContextSummary';
 
 // The one map result the panel shows: a finished screening or a tool card's
 // "Show on map". The last action wins. React state only, never stored or logged.
 export type ShownMapResult = {
   origin: 'screening' | 'tool';
-  block: MapBlock;
+  block?: MapBlock;
+  cdlSummary?: CDLContextResult;
   regulatory_notice: string | null;
   tool?: string;
   toolCallId?: string;

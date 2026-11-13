@@ -44,6 +44,7 @@ import {
 import { Streamdown } from 'streamdown';
 import { useApproval } from '@/hooks/use-approval';
 import { MAP_TOOLS, ShowOnMapButton } from './map/ShowOnMapButton';
+import { parseCDLContextResult } from './map/CDLContextSummary';
 
 const PurePreviewMessage = ({
   message,
@@ -446,7 +447,10 @@ const ToolPartRenderer = ({
   }
 
   const showOnMap =
-    state === 'output-available' && !errorText && MAP_TOOLS.has(toolName);
+    state === 'output-available' &&
+    !errorText &&
+    (MAP_TOOLS.has(toolName) ||
+      (toolName === 'analyze_cdl_context' && parseCDLContextResult(output) !== null));
 
   return (
     <Tool defaultOpen={true}>
@@ -472,7 +476,12 @@ const ToolPartRenderer = ({
           />
         )}
         {showOnMap && (
-          <ShowOnMapButton tool={toolName} toolCallId={toolCallId} input={input} />
+          <ShowOnMapButton
+            tool={toolName}
+            toolCallId={toolCallId}
+            input={input}
+            output={output}
+          />
         )}
       </ToolContent>
     </Tool>

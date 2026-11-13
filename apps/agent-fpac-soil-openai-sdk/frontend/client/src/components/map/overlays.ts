@@ -7,7 +7,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 
 export const CONTEXT_LABEL = 'Context layer, not an analysis result';
 
-export type OverlayId = 'ssurgo' | 'counties' | 'urban';
+export type OverlayId = 'ssurgo' | 'counties' | 'urban' | 'cdl';
 
 export type Overlay = {
   id: OverlayId;
@@ -34,6 +34,9 @@ const TIGERWEB_COUNTY_TILES =
 
 const TIGERWEB_URBAN_TILES =
   'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Urban/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&layers=show:0&f=image';
+
+const CDL_TILES =
+  'https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&pixelType=U8&f=image';
 
 export const OVERLAYS: readonly Overlay[] = [
   {
@@ -65,6 +68,16 @@ export const OVERLAYS: readonly Overlay[] = [
     source: 'US Census Bureau TIGERweb',
     vintage: 'Census 2020 Urban Areas',
     attribution: 'US Census Bureau TIGERweb',
+  },
+  {
+    id: 'cdl',
+    title: 'Cropland Data Layer',
+    tiles: CDL_TILES,
+    minzoom: 5,
+    opacity: 0.7,
+    source: 'USDA NASS Cropland Data Layer ImageServer',
+    vintage: 'Service mosaic; may differ from analysis vintage',
+    attribution: 'USDA NASS Cropland Data Layer',
   },
 ] as const;
 

@@ -4,7 +4,12 @@ import type { Overlay, OverlayId } from './overlays';
 
 export type OverlayFlags = Record<OverlayId, boolean>;
 
-export const NO_OVERLAYS: OverlayFlags = { ssurgo: false, counties: false, urban: false };
+export const NO_OVERLAYS: OverlayFlags = {
+  ssurgo: false,
+  counties: false,
+  urban: false,
+  cdl: false,
+};
 
 function statusText(
   overlay: Overlay,

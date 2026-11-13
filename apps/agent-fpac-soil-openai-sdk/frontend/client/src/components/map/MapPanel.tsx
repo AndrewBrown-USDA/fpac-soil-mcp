@@ -34,6 +34,7 @@ import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
 import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
+import { CDLContextSummary } from './CDLContextSummary';
 import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
 import type { OverlayFlags } from './OverlayControl';
 import { OVERLAYS, addOverlay, overlayIdForSource, removeOverlay } from './overlays';
@@ -306,6 +307,13 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       clearMapBlock(map);
       return;
     }
+    clearMapBlock(map);
+    if (shown.cdlSummary) {
+      const bounds = aoiRef.current ? geometryBounds(aoiRef.current) : null;
+      if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+      return;
+    }
+    if (!shown.block) return;
     // Server layers draw below the panel's own AOI outline (`aoi-line`).
     renderMapBlock(map, shown.block, 'aoi-line');
     // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
@@ -683,14 +691,18 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className={originBadge}>Tool result</span>
-            <h3 className="font-medium text-sm">Map of {shown.tool} result</h3>
+            <h3 className="font-medium text-sm">
+              {shown.cdlSummary ? 'CDL context summary' : `Map of ${shown.tool} result`}
+            </h3>
             {screeningMap && (
               <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
                 Back to screening
               </Button>
             )}
           </div>
-          {shown.regulatory_notice ? (
+          {shown.cdlSummary ? (
+            <CDLContextSummary result={shown.cdlSummary} />
+          ) : shown.regulatory_notice ? (
             <div className={NOTICE_CARD}>
               <h3 className="font-semibold text-sm">Regulatory notice</h3>
               <p className="mt-1 whitespace-pre-line">{shown.regulatory_notice}</p>
@@ -700,9 +712,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               Regulatory notice missing - treat this result as invalid.
             </p>
           )}
-          <div className={RESULT_CARD}>
-            <MapLegend block={shown.block} />
-          </div>
+          {shown.block && (
+            <div className={RESULT_CARD}>
+              <MapLegend block={shown.block} />
+            </div>
+          )}
         </div>
       ) : (
         screening.status === 'done' &&
