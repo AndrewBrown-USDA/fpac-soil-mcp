@@ -69,8 +69,12 @@ def _write(tmp_path: Path, cases: list[dict[str, Any]], version: str = "2.0.0") 
 
 def test_checked_in_dataset_validates() -> None:
     cases = load_cases()
-    assert len(cases) >= 20
+    assert len(cases) == 38
+    assert len({case["id"] for case in cases}) == 38
     assert dataset_version(DEFAULT_PATH).split(".")[0] in {"1", "2"}
+    assert all(
+        "silent_nccpi_fallback" not in case.get("prohibited_behaviors", []) for case in cases
+    )
     by_id = {case["id"]: case for case in cases}
     for case_id in ("SA-MA-01", "SA-MA-03"):
         assert "expected_tool_calls" not in by_id[case_id], (
@@ -194,6 +198,72 @@ def test_adversarial_field_validation(field: str, value: Any, message: str) -> N
 def test_unknown_prohibited_behavior_id_is_rejected() -> None:
     with pytest.raises(ValueError, match="unknown behavior ID 'future_behavior'"):
         validate_cases([_row(prohibited_behaviors=["future_behavior"])])
+
+
+def test_stale_prohibited_behavior_id_is_rejected() -> None:
+    with pytest.raises(ValueError, match="unknown behavior ID 'silent_nccpi_fallback'"):
+        validate_cases([_row(prohibited_behaviors=["silent_nccpi_fallback"])])
+
+
+def test_harness_only_fields_validate() -> None:
+    validate_cases(
+        [
+            _row(
+                assertions={"predicates": ["containsRegulatoryLimitation"]},
+                invocation={"kind": "tool", "name": "lookup", "arguments": {}},
+                expected_result={
+                    "type": "object",
+                    "required": ["available"],
+                    "properties": {"available": {"type": "boolean"}},
+                },
+                ownership={
+                    "maintainer": "evaluation",
+                    "regulatory_approval_required": True,
+                },
+                protected_regulatory_assertions=["not_official_fppa_determination"],
+            )
+        ]
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("assertions", {"predicates": [1]}, "assertions: expected an object"),
+        ("assertions", {"predicates": []}, "assertions: expected an object"),
+        (
+            "invocation",
+            {"kind": "unknown", "name": "lookup", "arguments": {}},
+            "invocation.kind: expected tool, resource, or prompt",
+        ),
+        (
+            "invocation",
+            {"kind": [], "name": "lookup", "arguments": {}},
+            "invocation.kind: expected tool, resource, or prompt",
+        ),
+        (
+            "invocation",
+            {"kind": "tool", "name": "lookup", "arguments": []},
+            "invocation.arguments: expected an object",
+        ),
+        ("expected_result", [], "expected_result: expected an object"),
+        ("expected_result", {"type": "not-a-type"}, "expected_result.type: expected a supported"),
+        ("expected_result", {"type": {}}, "expected_result.type: expected a supported"),
+        (
+            "ownership",
+            {"maintainer": "evaluation", "regulatory_approval_required": "yes"},
+            "ownership: expected maintainer string",
+        ),
+        (
+            "protected_regulatory_assertions",
+            ["ok", 1],
+            "protected_regulatory_assertions: expected a non-empty list of strings",
+        ),
+    ],
+)
+def test_harness_only_field_validation(field: str, value: Any, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        validate_cases([_row(**{field: value})])
 
 
 def test_structural_prohibited_behavior_requires_its_budget_field() -> None:

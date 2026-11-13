@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-DEFAULT_PATH = Path(__file__).resolve().parents[1] / "prompt_test_cases.json"
+DEFAULT_PATH = Path(__file__).resolve().parents[1] / "eval_cases.v1.json"
 GOLD_SET_PATH = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "phase4_gold_set.json"
 # Shared scorer catalog (also read by common.matching and the browser harness).
 PROHIBITED_BEHAVIORS_PATH = Path(__file__).with_name("prohibited_behaviors.v1.json")
@@ -59,7 +59,22 @@ ADVERSARIAL_FIELDS = frozenset(
         "latency_budget_ms",
     }
 )
-ALLOWED_FIELDS = frozenset(REQUIRED_V1_FIELDS) | OPTIONAL_V1_FIELDS | V2_FIELDS | ADVERSARIAL_FIELDS
+HARNESS_FIELDS = frozenset(
+    {
+        "assertions",
+        "invocation",
+        "expected_result",
+        "ownership",
+        "protected_regulatory_assertions",
+    }
+)
+ALLOWED_FIELDS = (
+    frozenset(REQUIRED_V1_FIELDS)
+    | OPTIONAL_V1_FIELDS
+    | V2_FIELDS
+    | ADVERSARIAL_FIELDS
+    | HARNESS_FIELDS
+)
 
 # Agent-side tools that expose MCP resources and prompts (contract C4).
 SYNTHETIC_TOOLS = frozenset({"read_resource", "get_prompt"})
@@ -165,6 +180,33 @@ def _is_str_list(value: Any) -> bool:
     return isinstance(value, list) and all(isinstance(item, str) for item in value)
 
 
+def _result_schema_errors(value: Any, where: str) -> list[str]:
+    if not isinstance(value, dict):
+        return [f"{where}: expected an object"]
+    errors: list[str] = []
+    if set(value) - {"type", "required", "properties"}:
+        errors.append(f"{where}: unknown schema keys")
+    if not isinstance(value.get("type"), str) or value["type"] not in {
+        "object",
+        "array",
+        "boolean",
+        "string",
+        "number",
+        "integer",
+    }:
+        errors.append(f"{where}.type: expected a supported JSON schema type")
+    if "required" in value and not _is_str_list(value["required"]):
+        errors.append(f"{where}.required: expected a list of strings")
+    if "properties" in value:
+        properties = value["properties"]
+        if not isinstance(properties, dict) or not all(isinstance(key, str) for key in properties):
+            errors.append(f"{where}.properties: expected an object with string keys")
+        else:
+            for name, schema in properties.items():
+                errors.extend(_result_schema_errors(schema, f"{where}.properties.{name}"))
+    return errors
+
+
 def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
     errors: list[str] = []
 
@@ -191,6 +233,57 @@ def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
     ):
         if field in case and not _is_str_list(case[field]):
             err(field, "expected a list of strings")
+
+    if "assertions" in case:
+        assertions = case["assertions"]
+        if (
+            not isinstance(assertions, dict)
+            or set(assertions) != {"predicates"}
+            or not _is_str_list(assertions.get("predicates"))
+            or not assertions["predicates"]
+        ):
+            err("assertions", "expected an object with a non-empty predicates list of strings")
+
+    if "invocation" in case:
+        invocation = case["invocation"]
+        if not isinstance(invocation, dict):
+            err("invocation", "expected an object")
+        else:
+            if set(invocation) != {"kind", "name", "arguments"}:
+                err("invocation", "expected exactly kind, name, and arguments")
+            if not isinstance(invocation.get("kind"), str) or invocation["kind"] not in {
+                "tool",
+                "resource",
+                "prompt",
+            }:
+                err("invocation.kind", "expected tool, resource, or prompt")
+            if not isinstance(invocation.get("name"), str) or not invocation["name"]:
+                err("invocation.name", "expected a non-empty string")
+            if not isinstance(invocation.get("arguments"), dict):
+                err("invocation.arguments", "expected an object")
+
+    if "expected_result" in case:
+        errors.extend(_result_schema_errors(case["expected_result"], f"{row_id}.expected_result"))
+
+    if "ownership" in case:
+        ownership = case["ownership"]
+        if (
+            not isinstance(ownership, dict)
+            or set(ownership) != {"maintainer", "regulatory_approval_required"}
+            or not isinstance(ownership.get("maintainer"), str)
+            or not ownership["maintainer"]
+            or not isinstance(ownership.get("regulatory_approval_required"), bool)
+        ):
+            err(
+                "ownership",
+                "expected maintainer string and regulatory_approval_required bool",
+            )
+
+    if "protected_regulatory_assertions" in case and (
+        not _is_str_list(case["protected_regulatory_assertions"])
+        or not case["protected_regulatory_assertions"]
+    ):
+        err("protected_regulatory_assertions", "expected a non-empty list of strings")
 
     if _is_str_list(case.get("prohibited_behaviors")):
         catalog = _prohibited_behavior_catalog()
