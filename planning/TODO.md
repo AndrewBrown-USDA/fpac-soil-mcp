@@ -10,10 +10,10 @@ Remove the corpus-size assertion in `test_common_matching.py` that is implied by
 - [x] Confirm the remaining Python dataset and harness loader/HTTP checks serve their distinct entry-point contracts and must remain.
 
 ### 2. Remove the redundant assertion
-- [ ] Delete only `assert len(ids) == 38` from `test_corpus_ids_cover_all_cases_without_duplicates` in `eval/common/test_common_matching.py`.
+- [x] Delete only `assert len(ids) == 38` from `test_corpus_ids_cover_all_cases_without_duplicates` in `eval/common/test_common_matching.py`.
 
 ### 3. Validate and commit
-- [ ] Run `uv run pytest eval/common/test_common_matching.py -q`.
+- [x] Run `uv run pytest eval/common/test_common_matching.py -q`.
 - [ ] Run `git diff --check`, review the exact staged diff, and commit the focused test change as `test(eval): remove redundant corpus count assertion`.
 - [ ] Mark completed tasks and commit planning progress separately with a `docs(planning):` message.
 - [ ] Archive this plan as `planning/TODO_20261112-1.md` in a separate planning-only commit.
