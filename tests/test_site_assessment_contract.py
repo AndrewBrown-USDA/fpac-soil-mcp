@@ -53,6 +53,39 @@ def test_fixture_anchors_every_criterion_and_expected_score_to_cfr() -> None:
             )
 
 
+@pytest.mark.parametrize(
+    ("value", "expected_points"),
+    [
+        (50, 0),
+        (50.0001, 1),
+        (55, 1),
+        (55.0001, 2),
+        (60, 2),
+        (60.0001, 3),
+        (65, 3),
+        (65.0001, 4),
+        (70, 4),
+        (70.0001, 5),
+        (75, 5),
+        (75.0001, 6),
+        (80, 6),
+        (80.0001, 7),
+        (85, 7),
+        (85.0001, 8),
+        (90, 8),
+        (90.0001, 9),
+        (95, 9),
+        (95.0001, 10),
+        (100, 10),
+    ],
+)
+def test_criterion_7_uses_exact_five_point_deduction_thresholds(
+    value: float, expected_points: int
+) -> None:
+    criterion = SITE_ASSESSMENT_REGISTRY.criterion(7)
+    assert criterion.score_for_value(value) == expected_points
+
+
 def test_numeric_out_of_band_is_distinct_from_unknown() -> None:
     criterion = SITE_ASSESSMENT_REGISTRY.criterion(1)
     assert criterion.band_for(None).band_id == "unknown"
