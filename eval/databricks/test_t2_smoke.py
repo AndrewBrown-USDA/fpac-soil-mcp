@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import httpx2
 import pytest
-
 import run_t2_smoke as smoke
 
 

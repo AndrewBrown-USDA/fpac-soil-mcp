@@ -7,9 +7,10 @@ import asyncio
 import json
 import subprocess
 import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 from urllib.parse import urlsplit
 
 _HERE = Path(__file__).resolve().parent
