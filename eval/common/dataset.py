@@ -193,6 +193,7 @@ def _result_schema_errors(value: Any, where: str) -> list[str]:
         "string",
         "number",
         "integer",
+        "null",
     }:
         errors.append(f"{where}.type: expected a supported JSON schema type")
     if "required" in value and not _is_str_list(value["required"]):
@@ -249,18 +250,25 @@ def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
         if not isinstance(invocation, dict):
             err("invocation", "expected an object")
         else:
-            if set(invocation) != {"kind", "name", "arguments"}:
-                err("invocation", "expected exactly kind, name, and arguments")
-            if not isinstance(invocation.get("kind"), str) or invocation["kind"] not in {
+            kind = invocation.get("kind")
+            if not isinstance(kind, str) or kind not in {
                 "tool",
                 "resource",
                 "prompt",
             }:
                 err("invocation.kind", "expected tool, resource, or prompt")
-            if not isinstance(invocation.get("name"), str) or not invocation["name"]:
-                err("invocation.name", "expected a non-empty string")
-            if not isinstance(invocation.get("arguments"), dict):
-                err("invocation.arguments", "expected an object")
+            elif kind == "resource":
+                if set(invocation) != {"kind", "uri"}:
+                    err("invocation", "expected exactly kind and uri")
+                if not isinstance(invocation.get("uri"), str) or not invocation["uri"]:
+                    err("invocation.uri", "expected a non-empty string")
+            else:
+                if set(invocation) != {"kind", "name", "arguments"}:
+                    err("invocation", "expected exactly kind, name, and arguments")
+                if not isinstance(invocation.get("name"), str) or not invocation["name"]:
+                    err("invocation.name", "expected a non-empty string")
+                if not isinstance(invocation.get("arguments"), dict):
+                    err("invocation.arguments", "expected an object")
 
     if "expected_result" in case:
         errors.extend(_result_schema_errors(case["expected_result"], f"{row_id}.expected_result"))

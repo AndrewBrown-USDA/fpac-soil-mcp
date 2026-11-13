@@ -227,6 +227,22 @@ def test_harness_only_fields_validate() -> None:
 
 
 @pytest.mark.parametrize(
+    "invocation",
+    [
+        {"kind": "tool", "name": "lookup", "arguments": {}},
+        {"kind": "resource", "uri": "fppa://regulatory-notice"},
+        {"kind": "prompt", "name": "guide", "arguments": {}},
+    ],
+)
+def test_invocation_shapes_validate(invocation: dict[str, Any]) -> None:
+    validate_cases([_row(invocation=invocation)])
+
+
+def test_nullable_expected_result_schema_validates() -> None:
+    validate_cases([_row(expected_result={"type": "null"})])
+
+
+@pytest.mark.parametrize(
     ("field", "value", "message"),
     [
         ("assertions", {"predicates": [1]}, "assertions: expected an object"),
@@ -245,6 +261,31 @@ def test_harness_only_fields_validate() -> None:
             "invocation",
             {"kind": "tool", "name": "lookup", "arguments": []},
             "invocation.arguments: expected an object",
+        ),
+        (
+            "invocation",
+            {"kind": "resource", "uri": "fppa://regulatory-notice", "name": "notice"},
+            "invocation: expected exactly kind and uri",
+        ),
+        (
+            "invocation",
+            {"kind": "resource"},
+            "invocation: expected exactly kind and uri",
+        ),
+        (
+            "invocation",
+            {"kind": "resource", "uri": ""},
+            "invocation.uri: expected a non-empty string",
+        ),
+        (
+            "invocation",
+            {"kind": "prompt", "name": "guide"},
+            "invocation: expected exactly kind, name, and arguments",
+        ),
+        (
+            "invocation",
+            {"kind": "tool", "name": "lookup", "arguments": {}, "uri": "unused"},
+            "invocation: expected exactly kind, name, and arguments",
         ),
         ("expected_result", [], "expected_result: expected an object"),
         ("expected_result", {"type": "not-a-type"}, "expected_result.type: expected a supported"),
