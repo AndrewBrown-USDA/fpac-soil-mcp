@@ -35,6 +35,14 @@ async def test_site_assessment_prompt_uses_registry_and_preserves_authority_boun
     assert "agency personnel consider" in text
     assert "must provide in-depth consideration" not in text
     assert "Consider alternative sites if available" not in text
+    assert "one criterion at a time" in text
+    assert "record unknown or unavailable facts" in text
+    assert "preserve skipped answers as such" in text
+    assert "never as zero" in text
+    assert "combined CDL context automatically once" in text
+    assert "never use it to answer or score Criterion 2" in text
+    assert "ask for explicit confirmation" in text
+    assert "Do not submit or score before the user confirms" in text
 
 
 @pytest.mark.asyncio

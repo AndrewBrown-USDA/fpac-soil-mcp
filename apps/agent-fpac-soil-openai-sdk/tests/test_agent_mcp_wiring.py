@@ -6,6 +6,7 @@ driven with asyncio.run (the app has no pytest-asyncio).
 """
 
 import asyncio
+import json
 import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -20,6 +21,22 @@ DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp
 
 def _request() -> ResponsesAgentRequest:
     return ResponsesAgentRequest(input=[{"role": "user", "content": "hi"}])
+
+
+def _criteria_resource() -> SimpleNamespace:
+    payload = {
+        "schema_version": "1.0",
+        "criteria": [
+            {
+                "criterion_number": number,
+                "question": f"Question {number}?",
+                "citation": f"7 CFR § 658.5(b)({number})",
+                "bands": [{"label": "Unknown or unavailable", "points": None}],
+            }
+            for number in range(1, 13)
+        ],
+    }
+    return SimpleNamespace(contents=[SimpleNamespace(text=json.dumps(payload))])
 
 
 async def _empty_events():
@@ -38,6 +55,7 @@ def _clear_env(monkeypatch):
 def patched(monkeypatch):
     """Patch everything the handlers call; returns the mocks."""
     server = MagicMock(name="server")
+    server.read_resource = AsyncMock(return_value=_criteria_resource())
     mocks = SimpleNamespace(
         server=server,
         workspace_client=MagicMock(name="WorkspaceClient"),
@@ -137,8 +155,13 @@ def test_handler_healthy_path(patched, caplog, run_handler):
     servers_arg = patched.connect.await_args.args[1]
     assert servers_arg == [patched.server]
     patched.create_agent.assert_called_once_with(
-        mcp_servers=[patched.server], tools_unavailable=False
+        mcp_servers=[patched.server],
+        tools_unavailable=False,
+        site_assessment_context=agent_module._site_assessment_criteria_context(
+            _criteria_resource()
+        ),
     )
+    patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
     assert not [r for r in caplog.records if r.name == agent_module.__name__]
 
 
@@ -167,3 +190,28 @@ def test_stream_runs_agent_from_mcp(patched):
 
 def test_template_server_removed():
     assert not hasattr(agent_module, "init_mcp_server")
+
+
+def test_invalid_site_assessment_resource_disables_interview_context(patched):
+    patched.server.read_resource.return_value = SimpleNamespace(
+        contents=[SimpleNamespace(text='{"schema_version":"1.0","criteria":[]}')]
+    )
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+    assert (
+        patched.create_agent.call_args.kwargs["site_assessment_context"]
+        == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+
+
+def test_validated_resource_context_contains_all_criteria():
+    context = agent_module._site_assessment_criteria_context(_criteria_resource())
+    assert "fppa://site-assessment-criteria" in context
+    assert all(f"Question {number}?" in context for number in range(1, 13))
+    assert "Unknown or unavailable" in context
