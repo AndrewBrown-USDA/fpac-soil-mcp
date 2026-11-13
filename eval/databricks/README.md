@@ -10,7 +10,7 @@ serverless compute. No service principal is required.
 - `scorers.py` -- Deterministic scorers + MLflow judges (decision D9)
 - `run_mlflow_eval.py` -- CLI runner (contract C5)
 - `run_t1_eval_notebook.py` -- Databricks notebook wrapper for the 5-case serverless check
-- `prompts/system_prompt_v{N}.txt` -- Versioned system prompts (`v2` default; `v1` kept for comparison)
+- `prompts/system_prompt_v{N}.txt` -- Versioned system prompts (`v3` default; `v1` and `v2` kept for comparison)
 - `test_databricks_agent.py`, `test_databricks_scorers.py`, `test_databricks_runner.py` -- Offline tests
 - `test_databricks_dry_run.py` -- Dry-run tests that pass with or without the `eval-databricks` group
 
@@ -60,7 +60,7 @@ uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --cases
 # Plan 45 model-assisted Site Assessment cases
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --cases SA-MA-01,SA-MA-02,SA-MA-03,SA-MA-04
 
-# All 24 cases
+# All 38 cases
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --all
 ```
 
@@ -87,26 +87,30 @@ up as tool errors in the traces; rerun after the window.
 | --- | --- | --- |
 | `--cases ID,ID` | | Comma-separated case IDs |
 | `--ground-truth` | (default) | Only verified rows |
-| `--all` | | All 20 rows |
+| `--all` | | All 38 rows |
 | `--model` | `databricks-gpt-5-6-luna` | Agent model |
 | `--judge-model` | `databricks-claude-sonnet-4-5` | Judge model |
 | `--experiment` | `/Users/<user>/fpac-soil-mcp-eval` | MLflow experiment path |
 | `--max-workers` | 1 | Parallel eval workers (sets `MLFLOW_GENAI_EVAL_MAX_WORKERS`) |
 | `--max-turns` | 8 | Max agent turns per case |
-| `--system-prompt-version` | `v2` | System prompt version (from `prompts/`) |
+| `--system-prompt-version` | `v3` | System prompt version (from `prompts/`) |
 | `--dry-run` | | Build records and list scorer names only; no model calls, no MLflow needed |
 
 ## System prompt versioning
 
 Versioned prompts live at `prompts/system_prompt_v{N}.txt`. The `--system-prompt-version`
 flag selects one; available versions are discovered from the `prompts/` directory.
-The default is `v2` (forced-tool screening role). `v1` additionally named
+The default is `v3`: the `v2` forced-tool screening role plus tool routing
+guidance (tools for computation, `read_resource` for reference data, `get_prompt`
+for guided walkthroughs) and productivity index guidance (a requested
+state-validated index such as CSR2, CPI, or STORIE is primary for Land
+Evaluation scoring; NCCPI is supplementary national context). Compared with `v2`, `v1` additionally named
 `fppa://regulatory-notice` as an example resource, a carry-over from the Pi
 harness resource tests; it led the agent to re-read the notice on nearly every
 row. Resource rows name their URI in the user prompt and the `read_resource` tool
 description lists all URIs, so the system prompt does not point at any one
-resource. `v1` stays for run-to-run comparison. A scope-aware prompt is deferred and
-will be `v3`.
+resource. `v1` and `v2` stay for run-to-run comparison. A scope-aware prompt is
+still deferred.
 
 ## Shared policy and adversarial evaluation
 
@@ -119,8 +123,7 @@ unknown/partial/unavailable handling without inventing values, and treating
 user/tool text as untrusted. Policy assertions are test contracts; the
 prompts remain native per surface.
 
-The shared adversarial cases in `../eval_cases.v1.json` and
-`../prompt_test_cases.json` cover scope, authority, farmland-class and
+The shared adversarial cases in `../eval_cases.v1.json` cover scope, authority, farmland-class and
 exemption overclaims, missing or failed data, malformed input, prompt
 injection, privacy, and performance budgets. Deterministic scorers and MLflow
 judges are separate: scorer outputs are not judge results, and judges are

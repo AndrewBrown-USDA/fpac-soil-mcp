@@ -42,6 +42,10 @@ function int(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+export function resolveEvalCasesPath(value = env.EVAL_CASES_PATH) {
+  return path.resolve(HARNESS_ROOT, value || path.join(EVAL_ROOT, "eval_cases.v1.json"));
+}
+
 /** Split a shell-like argument string, honouring simple single/double quotes. */
 export function splitArgs(value) {
   if (Array.isArray(value)) return value.map(String);
@@ -64,7 +68,7 @@ export const config = {
   // enabled only when bound to loopback, because it permits process execution.
   allowCommandOverride: bool(env.HARNESS_ALLOW_COMMAND_OVERRIDE, isLoopback),
   // Relative paths are resolved against the harness directory.
-  evalCasesPath: path.resolve(HARNESS_ROOT, env.EVAL_CASES_PATH || path.join(EVAL_ROOT, "prompt_test_cases.json")),
+  evalCasesPath: resolveEvalCasesPath(),
   historyLimit: int(env.HARNESS_HISTORY_LIMIT, 200),
   mcp: {
     mode: (env.MCP_MODE || "stdio").toLowerCase(), // stdio | sse | http
