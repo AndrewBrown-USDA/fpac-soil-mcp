@@ -69,8 +69,8 @@ def get_farmland_classification_by_point(
             query_type="point",
             input_query={"latitude": latitude, "longitude": longitude},
             map_units=[],
-            coverage_status="error",
-            error_details=ToolError(
+            coverage_status="no_data",
+            error=ToolError(
                 code="upstream_error",
                 message=str(exc),
                 source="USDA NRCS Soil Data Access (SDA)",
@@ -80,7 +80,7 @@ def get_farmland_classification_by_point(
                 endpoint=client.base_url,
                 timestamp_utc=timestamp,
             ),
-            limitations=[*REGULATORY_LIMITATIONS, f"SDA query error: {exc}"],
+            limitations=[*REGULATORY_LIMITATIONS, f"Query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
         )
 
@@ -110,7 +110,7 @@ def get_farmland_classification_by_point(
         query_type="point",
         input_query={"latitude": latitude, "longitude": longitude},
         map_units=map_units,
-        coverage_status="complete",
+        coverage_status="covered",
         source=QuerySource(
             service="USDA NRCS Soil Data Access",
             endpoint=client.base_url,
@@ -148,8 +148,8 @@ def get_farmland_classification_by_mukey(
             query_type="mukey",
             input_query={"mukey": mukey},
             map_units=[],
-            coverage_status="error",
-            error_details=ToolError(
+            coverage_status="no_data",
+            error=ToolError(
                 code="validation_error",
                 message=str(exc),
                 source="mukey parameter validation",
@@ -168,8 +168,8 @@ def get_farmland_classification_by_mukey(
             query_type="mukey",
             input_query={"mukey": mukey},
             map_units=[],
-            coverage_status="error",
-            error_details=ToolError(
+            coverage_status="no_data",
+            error=ToolError(
                 code="upstream_error",
                 message=str(exc),
                 source="USDA NRCS Soil Data Access (SDA)",
@@ -179,7 +179,7 @@ def get_farmland_classification_by_mukey(
                 endpoint=client.base_url,
                 timestamp_utc=timestamp,
             ),
-            limitations=[*REGULATORY_LIMITATIONS, f"SDA query error: {exc}"],
+            limitations=[*REGULATORY_LIMITATIONS, f"Query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
         )
 
@@ -207,7 +207,7 @@ def get_farmland_classification_by_mukey(
         query_type="mukey",
         input_query={"mukey": mukey},
         map_units=map_units,
-        coverage_status="complete",
+        coverage_status="covered",
         source=QuerySource(
             service="USDA NRCS Soil Data Access",
             endpoint=client.base_url,
