@@ -163,7 +163,7 @@ def get_farmland_classification_by_mukey(
                 endpoint=client.base_url,
                 timestamp_utc=timestamp,
             ),
-            limitations=[*REGULATORY_LIMITATIONS, f"Validation error: {exc}"],
+            limitations=[*REGULATORY_LIMITATIONS, f"Query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
         )
     except SDAClientError as exc:
