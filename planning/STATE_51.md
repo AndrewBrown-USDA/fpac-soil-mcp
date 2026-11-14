@@ -54,7 +54,7 @@ documentation.
 | 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | done | `2899a61` / `062bc30`; follow-ups `aafb797` / `abc1f9f`, `38c544f` / `9f65159`; merges `1afeecb`, `f5cd0a7`, `ef99795` | Conservative assumptions, regression contracts, and formatting verified. |
 | 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; follow-up `e251d92` / `b4a1ce0`; merges `c7e3e5d`, `7412853` | Structured tools and scoped app Ruff checks verified. |
 | 1 gate | Foundation contract checks | done | | Root: 1,023 passed, 45 deselected; Ruff check/format passed. App: 206 passed; Ruff check/format passed on changed owned files. |
-| 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | in_progress | | Micro-plan requested; worker preparing. |
+| 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | done | `b569a95` / `fc46ec6` / `4d30ac3`; merge `b0cb2bd` | Soil-first/site-only sequencing, combined CDL guidance, and ordered/prohibited-tool replay contracts verified. |
 | 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | in_progress | | Micro-plan requested; worker preparing. |
 | 2 gate | Interview flow and frontend checks | pending | | |
 | 3 | 51.3.1 Confirm-only matching-history gate | pending | | |
@@ -71,7 +71,7 @@ here.
 |---|---|---|---|---|
 | 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
-| 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist2-51.2.1-worker` | 2026-11-13 17:33:03 -08:00 | planning; retain |
+| 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist2-51.2.1-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
 | 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist2-51.2.2-worker` | 2026-11-13 17:33:03 -08:00 | planning; retain |
 
 ## Task Reports
@@ -93,6 +93,13 @@ here.
 - `uv run --frozen --python 3.11 pytest tests\test_site_assessment_tools.py tests\test_agent_construction.py tests\test_agent_mcp_wiring.py tests\test_history_normalization.py -q` — 51 passed, 1 existing `asyncio_mode` warning.
 - Final app `uv run --frozen --python 3.11 pytest tests -q` — 206 passed, 122 existing warnings. Ruff check and format passed on the seven changed owned Python files.
 - Whole-app Ruff also identified 19 findings in other app files and formatting issues in `scripts/app_diagnostics.py` and `scripts/start_app.py`; left untouched. Shared `history.py` was not changed. Answer records use `type: site_assessment_answer`; outputs are JSON strings in function-call history.
+
+### 51.2.1 — Sequence the interview and CDL evaluation
+- Status: complete; planning commits `b569a95`, `fc46ec6`; code commit `4d30ac3`; integrated merge `b0cb2bd`.
+- Updated root/app prompts and tests for soil-first screening, site-only Start/Skip, completion/confirmation ordering, one combined CDL context call, and no histogram follow-up.
+- Added replay cases `SA-MA-05/06`; eval validation and scorers now check ordered tool subsequences and prohibited tools.
+- Root targeted prompt/dataset/scorer tests — 75 passed, 1 skipped; contract/eval tests — 61 passed, 1 skipped, 2 deselected; app prompt test — 33 passed.
+- No deviations or remote actions.
 
 ## Final Acceptance
 
