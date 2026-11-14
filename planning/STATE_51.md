@@ -45,8 +45,8 @@ documentation.
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | pending | | |
-| 1 | 51.1.2 Structured Site Assessment tool/history contract | pending | | |
+| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | | Approved micro-plan; worker executing. |
+| 1 | 51.1.2 Structured Site Assessment tool/history contract | in_progress | | Approved micro-plan; worker executing. |
 | 1 gate | Foundation contract checks | pending | | Serial targeted rerun by orchestrator. |
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | pending | | |
 | 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | pending | | |
@@ -60,6 +60,11 @@ documentation.
 Preserve all pre-existing worktrees from orchestration 50. Add new `51.*`
 worktrees only when a wave starts; record their path, branch, and disposition
 here.
+
+| Task | Path | Branch | Created (local) | Status |
+|---|---|---|---|---|
+| 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | executing; retain |
+| 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | executing; retain |
 
 ## Task Reports
 
