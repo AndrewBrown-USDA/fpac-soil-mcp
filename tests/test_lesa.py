@@ -578,9 +578,10 @@ class TestSiteAssessmentRules:
 
         for number in (1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12):
             assumption = scored[number]
-            assert assumption["assumed_points"] == SITE_ASSESSMENT_REGISTRY.criterion(
-                number
-            ).max_points
+            assert (
+                assumption["assumed_points"]
+                == SITE_ASSESSMENT_REGISTRY.criterion(number).max_points
+            )
             assert assumption["evidence_status"] == "assumed (no evidence)"
             assert assumption["input_authority"] == "unavailable"
             assert assumption["is_verified"] is False
