@@ -46,7 +46,7 @@ documentation.
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | | Approved micro-plan; worker executing. |
-| 1 | 51.1.2 Structured Site Assessment tool/history contract | in_progress | | Approved micro-plan; worker executing. |
+| 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; merge `c7e3e5d` | Targeted tests passed; no deviations. |
 | 1 gate | Foundation contract checks | pending | | Serial targeted rerun by orchestrator. |
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | pending | | |
 | 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | pending | | |
@@ -64,11 +64,18 @@ here.
 | Task | Path | Branch | Created (local) | Status |
 |---|---|---|---|---|
 | 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | executing; retain |
-| 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | executing; retain |
+| 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 
 ## Task Reports
 
 <!-- Append one concise report per completed task; keep each to 15 lines max. -->
+
+### 51.1.2 — Add the structured Site Assessment tool contract
+- Status: complete; planning commit `f76e146`, implementation commit `4fe9fea`, integrated by merge `c7e3e5d`.
+- Added resource-backed question and answer function tools; agent construction enables them only with validated criteria context.
+- Added tests for resource-derived choices/citations/points, provenance, unknown/skipped records, supplied-point rejection, and history pass-through.
+- `uv run --frozen --python 3.11 pytest tests\test_site_assessment_tools.py tests\test_agent_construction.py tests\test_agent_mcp_wiring.py tests\test_history_normalization.py -q` — 51 passed, 1 existing `asyncio_mode` warning.
+- Deviations: none; shared `history.py` was not changed. Dependent-task note: answer records use `type: site_assessment_answer`; tool outputs are JSON strings in function-call output history.
 
 ## Final Acceptance
 
