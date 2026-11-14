@@ -123,7 +123,11 @@ def get_farmland_classification_by_point(
 
 def get_farmland_classification_by_mukey(
     mukey: Annotated[
-        str | int, Field(description="SSURGO Map Unit Key (numeric positive integer)")
+        str,
+        Field(
+            pattern=r"^[1-9][0-9]*$",
+            description="SSURGO Map Unit Key (numeric positive integer)",
+        ),
     ],
 ) -> FarmlandClassificationResponse:
     """Query USDA NRCS Soil Data Access for soil map unit details by Map Unit Key (mukey).
