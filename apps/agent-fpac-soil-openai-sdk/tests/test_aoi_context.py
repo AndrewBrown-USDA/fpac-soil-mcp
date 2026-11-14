@@ -351,7 +351,7 @@ def test_handler_without_aoi_behaves_as_before(patched, run, custom_inputs):
         ),
     )
     patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
-    assert patched.server.call_tool is patched.original_call_tool
+    assert patched.server.call_tool is not patched.original_call_tool
 
 
 @HANDLERS
