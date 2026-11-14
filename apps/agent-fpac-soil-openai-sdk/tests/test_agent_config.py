@@ -86,6 +86,7 @@ def test_prompt_carries_shared_policy():
 
 def test_prompt_preserves_site_assessment_interview_and_confirmation_rules():
     prompt = config.load_system_prompt().lower()
+    interview_rules = prompt.split("site assessment interview behavior:", 1)[1]
     assert "use the validated criteria resource supplied in context as the sole source" in prompt
     assert "ask one criterion at a time" in prompt
     assert "preserve unknown, unavailable, and skipped values as such" in prompt
@@ -94,9 +95,9 @@ def test_prompt_preserves_site_assessment_interview_and_confirmation_rules():
     assert "never supply or score the criterion 2 site-perimeter percentage" in prompt
     assert "do not submit or score before confirmation" in prompt
     assert "complete answer/evidence summary" in prompt
-    assert "assumed (no evidence)" in prompt
-    assert "separate conservative upper bound" in prompt
-    assert "keep the actual result undetermined" in prompt
+    assert "assumed (no evidence)" in interview_rules
+    assert "separate conservative upper bound" in interview_rules
+    assert "keep the actual result undetermined" in interview_rules
 
 
 @pytest.mark.parametrize(
