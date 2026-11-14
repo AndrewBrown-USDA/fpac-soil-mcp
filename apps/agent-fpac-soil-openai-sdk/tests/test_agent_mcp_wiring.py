@@ -198,16 +198,27 @@ def test_invalid_site_assessment_resource_disables_interview_context(patched):
     )
 
 
-def _confirmed_site_summary(resource, state="answered", band_id="range_20_90_1"):
+def _confirmed_site_summary(
+    resource,
+    state="answered",
+    band_id="range_20_90_1",
+    criterion_number=1,
+    confirmed=True,
+):
     criteria = json.loads(resource.contents[0].text)
-    band = next(band for band in criteria["criteria"][0]["bands"] if band["id"] == band_id)
+    criterion = next(
+        criterion
+        for criterion in criteria["criteria"]
+        if criterion["criterion_number"] == criterion_number
+    )
+    band = next(band for band in criterion["bands"] if band["id"] == band_id)
     return {
         "type": "site_assessment_confirmed_summary",
-        "confirmed": True,
+        "confirmed": confirmed,
         "answers": [
             {
                 "type": "site_assessment_answer",
-                "criterion_number": 1,
+                "criterion_number": criterion_number,
                 "answer_state": state,
                 "answer": band_id if state == "answered" else None,
                 "selected_band": band if state != "skipped" else None,
@@ -271,6 +282,76 @@ def test_site_assessment_mcp_gate_is_consistent_for_invoke_and_stream(
         "matching-skipped",
     }
     if should_forward:
+        forwarded_call.assert_awaited_once()
+        assert tool_results[0].isError is False
+    else:
+        forwarded_call.assert_not_awaited()
+        assert tool_results[0].isError is True
+        assert tool_results[0].content[0].text
+
+
+@pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])
+@pytest.mark.parametrize(
+    ("case", "band_id", "confirmed", "project_acres", "county_average", "criterion7_fact"),
+    [
+        ("missing-confirmation", "below_average_8", True, 180, 200, None),
+        ("unconfirmed", "below_average_8", False, 180, 200, None),
+        ("incomplete-pair", "below_average_8", True, 180, None, None),
+        ("missing-criterion7-answer", "range_20_90_1", True, 180, 200, None),
+        ("mismatched-band", "below_average_9", True, 180, 200, None),
+        ("conflicting-dual-inputs", "below_average_8", True, 180, 200, 85),
+        ("matching-band", "below_average_8", True, 180, 200, None),
+    ],
+)
+def test_farm_acre_criterion7_gate_is_consistent_for_invoke_and_stream(
+    patched,
+    run_handler,
+    case,
+    band_id,
+    confirmed,
+    project_acres,
+    county_average,
+    criterion7_fact,
+):
+    summary = _confirmed_site_summary(
+        patched.server.read_resource.return_value,
+        band_id=band_id,
+        criterion_number=1 if case == "missing-criterion7-answer" else 7,
+        confirmed=confirmed,
+    )
+    request_content = "hello" if case == "missing-confirmation" else json.dumps(summary)
+    site_inputs = {"project_farm_acres": project_acres}
+    if county_average is not None:
+        site_inputs["county_average_farm_acres"] = county_average
+    if criterion7_fact is not None:
+        site_inputs["criteria_facts"] = {"7": {"percentage": criterion7_fact}}
+    tool_arguments = {
+        "project_type": "site",
+        "site_assessment_inputs": site_inputs,
+    }
+    forwarded_call = patched.server.call_tool
+    tool_results = []
+
+    async def run_agent(*args, **kwargs):
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        return SimpleNamespace(new_items=[])
+
+    async def stream_events():
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        if False:
+            yield None
+
+    patched.run.side_effect = run_agent
+    patched.run_streamed.side_effect = lambda *args, **kwargs: SimpleNamespace(
+        stream_events=stream_events
+    )
+    run_handler(_request(request_content))
+
+    if case == "matching-band":
         forwarded_call.assert_awaited_once()
         assert tool_results[0].isError is False
     else:

@@ -67,8 +67,15 @@ def validate_site_assessment_call(
         raise SiteAssessmentGateError(
             "Site Assessment inputs are required and must match a confirmed summary."
         )
+    farm_acre_band = _criterion7_farm_acre_band(site_inputs, criteria_payload)
     criteria_facts = site_inputs.get("criteria_facts")
-    if not isinstance(criteria_facts, dict) or not criteria_facts:
+    if criteria_facts is None:
+        criteria_facts = {}
+    if not isinstance(criteria_facts, dict):
+        raise SiteAssessmentGateError(
+            "Resource-backed Site Assessment facts must be a criterion mapping."
+        )
+    if not criteria_facts and farm_acre_band is None:
         raise SiteAssessmentGateError(
             "Resource-backed Site Assessment facts are required to match the confirmed summary."
         )
@@ -90,13 +97,36 @@ def validate_site_assessment_call(
 
     answer_by_number = _canonical_answers(answers, criteria_payload)
     facts_by_number = _normalize_fact_numbers(criteria_facts)
-    if set(answer_by_number) != set(facts_by_number):
+    expected_numbers = set(facts_by_number)
+    if farm_acre_band is not None:
+        criterion7_answer = answer_by_number.get(7)
+        if (
+            criterion7_answer is None
+            or criterion7_answer["answer_state"] != "answered"
+            or criterion7_answer["band_id"] != farm_acre_band["id"]
+        ):
+            raise SiteAssessmentGateError(
+                "Farm-acre inputs must match a confirmed answered Criterion 7 band."
+            )
+        criterion7_fact = facts_by_number.get(7)
+        if criterion7_fact is not None:
+            fact_band = _band_for_fact(criteria_payload, 7, criterion7_fact)
+            if fact_band is None or fact_band["id"] != farm_acre_band["id"]:
+                raise SiteAssessmentGateError("Farm-acre and Criterion 7 fact inputs conflict.")
+        expected_numbers.add(7)
+    if set(answer_by_number) != expected_numbers:
         raise SiteAssessmentGateError(
             "Submitted Site Assessment inputs do not match the confirmed answers."
         )
 
     for number, answer in answer_by_number.items():
-        fact = facts_by_number[number]
+        fact = facts_by_number.get(number)
+        if number == 7 and farm_acre_band is not None and fact is None:
+            continue
+        if fact is None:
+            raise SiteAssessmentGateError(
+                "Submitted Site Assessment inputs do not match the confirmed answers."
+            )
         state = answer["answer_state"]
         if state == "answered":
             band = _band_for_fact(criteria_payload, number, fact)
@@ -120,6 +150,51 @@ def validate_site_assessment_call(
             )
 
     return arguments
+
+
+def _criterion7_farm_acre_band(
+    site_inputs: dict[str, Any], criteria_payload: dict[str, Any]
+) -> dict[str, Any] | None:
+    project_acres = site_inputs.get("project_farm_acres")
+    county_average = site_inputs.get("county_average_farm_acres")
+    has_project_acres = project_acres is not None
+    has_county_average = county_average is not None
+    if has_project_acres != has_county_average:
+        raise SiteAssessmentGateError(
+            "project_farm_acres and county_average_farm_acres must be supplied together."
+        )
+    if not has_project_acres:
+        return None
+    if (
+        not _is_finite_number(project_acres)
+        or isinstance(project_acres, bool)
+        or project_acres < 0
+        or not _is_finite_number(county_average)
+        or isinstance(county_average, bool)
+        or county_average <= 0
+    ):
+        raise SiteAssessmentGateError("Farm-acre inputs must be finite and county acres positive.")
+    try:
+        percentage = project_acres / county_average * 100
+    except OverflowError:
+        raise SiteAssessmentGateError("Farm-acre ratio must be finite.") from None
+    if not math.isfinite(percentage):
+        raise SiteAssessmentGateError("Farm-acre ratio must be finite.")
+    band = _band_for_fact(criteria_payload, 7, {"percentage": percentage})
+    if band is None or band.get("points") is None:
+        raise SiteAssessmentGateError(
+            "Farm-acre inputs do not resolve to an available Criterion 7 registry band."
+        )
+    return band
+
+
+def _is_finite_number(value: Any) -> bool:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def _latest_summary(history_items: list[dict[str, Any]]) -> dict[str, Any] | None:
