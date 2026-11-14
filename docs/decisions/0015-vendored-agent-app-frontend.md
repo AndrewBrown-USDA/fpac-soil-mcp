@@ -147,7 +147,16 @@ Modified upstream files:
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again
-  (Plan 50.2.2).
+  (Plan 50.2.2); reject CDL map context storage when the active AOI is absent
+  or its reference/geometry no longer matches the AOI captured for the result
+  (Plan 51.2.2).
+* `client/src/components/message.tsx`: render resource-backed
+  `get_site_assessment_question` output as a distinct interview card and
+  structured `site_assessment_confirmed_summary` text as a separate review
+  card. Card actions send the exact `site_assessment_answer` and confirmed
+  summary records as JSON chat messages (Plan 51.2.2).
+* `package.json`: add the test-only `test:site-assessment` Playwright script;
+  no dependencies or lockfile changes (Plan 51.2.2).
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
 * `packages/ai-sdk-providers/src/providers-server.ts`: request-scoped AOI
@@ -171,6 +180,16 @@ Added paths:
   Plan 50.2.2 adds `client/src/components/map/CDLContextSummary.tsx` to show the
   complete server-returned class distributions, source, vintage, status,
   coverage and limitations for the AOI and both exterior zones.
+* `client/src/components/site-assessment-cards.tsx`: resource-driven question
+  choices, evidence/comment/provenance fields, explicit unknown/skipped
+  records, and a distinct assumptions/Confirm/Edit review card (Plan 51.2.2).
+* `client/site-assessment-fixture.html` and
+  `client/src/components/site-assessment-fixture.tsx`: isolated browser
+  fixture for card and AOI interaction tests (Plan 51.2.2).
+* `playwright.site-assessment.config.ts` and
+  `tests/site-assessment/cards.spec.ts`: isolated Playwright configuration and
+  coverage for emitted answer/confirmation records and stale CDL refusal
+  (Plan 51.2.2).
 * `client/src/assets/ncss-acronym-color.png` and
   `client/src/assets/ncss-acronym-white.png`: official NCSS acronym-only logo
   variants prepared from the
