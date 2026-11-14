@@ -1,22 +1,30 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-12
+Last Updated: 2026-11-14
 Source State: `planning/STATE_48.md`; `planning/MASTER_PLAN.md`
 
 ## Circled Goal (Active)
 
-- **[G1]** The deployed MCP service has a documented, authenticated, and repeatable access path for T2 evaluation.
-  - Why now: T2 is the main bridge from offline/in-process evaluation to deployed behavior. Proving access and session handling unblocks transport-level evaluation and reproducible service evidence.
-  - Exit criteria: Dedicated service-principal M2M and the current Streamable HTTP session behavior are documented; a smoke run initializes deployed `/mcp`, discovers tools, calls `explain_fppa_screening_scope`, and records sanitized source and commit metadata.
-  - First action: Provision a dedicated T2 evaluation service principal with only `CAN_USE` on `mcp-fpac-soil` and configure the Databricks run-as identity.
+- **[G17]** `src/fpac_soil_mcp` is organized into layered subpackages (`core/`, `models/`, `spatial/`, `clients/`, `domain/`, `mcp/`) with zero circular-import workarounds, unified LESA/corridor scoring in `domain/lesa.py`, and all existing tests (`make check`, `make test-eval`) passing.
+  - Why now: Eliminates circular-import workarounds (`map_contract.py`, `lesa_tools.py`), unifies duplicated LESA/SA logic, and creates the clean `mcp/context.py` + `mcp/tools/` seam needed for canonical MCP `_meta` / `ToolResult` adoption (`G18`) and tool interface normalization (`G19`).
+  - Exit criteria: `make check` and `make test-eval` pass with 0 failures; zero lazy/mid-file circular-import workarounds in `src/fpac_soil_mcp`.
+  - First action: Create `src/fpac_soil_mcp/core/` and `src/fpac_soil_mcp/models/` and move the zero-I/O base modules first.
 
 ## Sequenced Goals (Dependency DAG)
 
+- **[G18]** Map-enabled tools (`analyze_farmland_by_polygon`, `analyze_corridor_fppa`, `get_soil_polygons_by_geometry`) read `include_map` from MCP request `_meta` via `Context` and return `ToolResult(structured_content=..., meta={"map": ...})`, removing `include_map` from LLM-facing tool schemas and updating `apps/agent-fpac-soil-openai-sdk` to use `_meta`.
+  - Depends on: G17
+- **[G19]** All 11 MCP tools use consistent `geometry` parameter naming, typed Pydantic/`ToolResult` returns, and uniform `ToolResult(is_error=True, ...)` error handling, with `manifest.yaml`, `server.json`, and `eval/contract/` updated to match.
+  - Depends on: G17
+- **[G20]** Large or deferred map layers are exposed via an MCP resource template (`fppa://map/{geometry_hash}/layers`) with `ResourceLink` references when `ToolResult.meta["map"]` truncates layers.
+  - Depends on: G18
+- **[G1]** The deployed MCP service has a documented, authenticated, and repeatable access path for T2 evaluation.
 - **[G2]** T2 reproduces applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
   - Depends on: G1
 - **[G3]** Criterion 2 performance and reliability claims are supported by repeatable measurements from the deployed service, including latency, retries, failures, and environment details.
   - Depends on: G2
 - **[G4]** The spatial response envelope meets the remaining Phase 8 contract for status, provenance, authority, and privacy metadata.
+  - Depends on: G18
 - **[G5]** Automated map-to-table checks enforce the 0.1% acreage-tolerance exit criterion.
   - Depends on: G4
 
