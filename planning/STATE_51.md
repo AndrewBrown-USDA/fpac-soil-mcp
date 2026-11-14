@@ -45,7 +45,7 @@ documentation.
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | `2899a61` / `062bc30`; merge `1afeecb` | Focused tests pass; full-suite gate found three stale-contract assertions; revised micro-plan pending. |
+| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | `2899a61` / `062bc30`; merge `1afeecb` | Revised micro-plan approved; worker fixing three Wave 1 regression assertions. |
 | 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; merge `c7e3e5d` | Targeted tests passed; no deviations. |
 | 1 gate | Foundation contract checks | in_progress | | Root pytest: 1,020 passed, 45 deselected, 3 failed; see regression follow-up. |
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | pending | | |
