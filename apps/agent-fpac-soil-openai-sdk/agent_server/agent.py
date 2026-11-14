@@ -211,8 +211,7 @@ def _site_assessment_criteria_context(result: object) -> str:
     if sorted(numbers) != list(range(1, 13)):
         raise ValueError("Site Assessment resource criterion numbers are incomplete.")
     return (
-        f"{SITE_ASSESSMENT_CONTEXT_PREFIX}"
-        f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
+        f"{SITE_ASSESSMENT_CONTEXT_PREFIX}{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
     )
 
 
@@ -220,9 +219,7 @@ def _site_assessment_payload_from_context(context: str | None) -> dict | None:
     """Recover the payload only from the context string built by the validated resource path."""
     if not context or not context.startswith(SITE_ASSESSMENT_CONTEXT_PREFIX):
         return None
-    serialized, separator, _ = context[len(SITE_ASSESSMENT_CONTEXT_PREFIX) :].partition(
-        "\n```"
-    )
+    serialized, separator, _ = context[len(SITE_ASSESSMENT_CONTEXT_PREFIX) :].partition("\n```")
     if not separator:
         return None
     payload = json.loads(serialized)

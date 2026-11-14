@@ -2,13 +2,12 @@ import asyncio
 import json
 
 import pytest
-
-from agents.tool import ToolContext
 from agent_server.agent import (
     _site_assessment_criteria_context,
     _site_assessment_payload_from_context,
 )
 from agent_server.site_assessment_tools import create_site_assessment_tools
+from agents.tool import ToolContext
 
 
 def _tools(valid_site_assessment_criteria_resource):
@@ -34,9 +33,7 @@ def test_question_tool_returns_only_registry_defined_question_and_schedule(
     question_tool, answer_tool = _tools(valid_site_assessment_criteria_resource)
 
     question = _invoke(question_tool, {"criterion_number": 1})
-    criterion = json.loads(
-        valid_site_assessment_criteria_resource.contents[0].text
-    )["criteria"][0]
+    criterion = json.loads(valid_site_assessment_criteria_resource.contents[0].text)["criteria"][0]
 
     assert question["question"] == criterion["question"]
     assert question["citation"] == criterion["citation"]

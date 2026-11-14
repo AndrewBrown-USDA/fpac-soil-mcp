@@ -103,9 +103,7 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
     ]
 
 
-def _reject_unknown_parameters(
-    tool: FunctionTool, allowed_parameters: set[str]
-) -> FunctionTool:
+def _reject_unknown_parameters(tool: FunctionTool, allowed_parameters: set[str]) -> FunctionTool:
     invoke_tool = tool.on_invoke_tool
 
     async def invoke(context: Any, raw_arguments: str) -> Any:
@@ -139,11 +137,9 @@ def _find_band(criterion: dict[str, Any], answer: str | float) -> dict[str, Any]
             continue
         lower = band["min"]
         upper = band.get("max")
-        lower_matches = value > lower or (
-            band.get("min_inclusive", True) and value == lower
-        )
-        upper_matches = upper is None or value < upper or (
-            band.get("max_inclusive", False) and value == upper
+        lower_matches = value > lower or (band.get("min_inclusive", True) and value == lower)
+        upper_matches = (
+            upper is None or value < upper or (band.get("max_inclusive", False) and value == upper)
         )
         if lower_matches and upper_matches:
             return band
