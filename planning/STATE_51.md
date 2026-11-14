@@ -43,6 +43,8 @@ documentation.
   answer records under `answers`. CDL staleness compares active `aoi_ref` and
   geometry; an exact reattachment is equivalent, with no added generation
   token. Plan contract recorded in `752cbf7`.
+- The user waived running Playwright; retain the fixture, but do not block
+  local integration on browser availability. Plan amendment D11 records this.
 - Planning files are tracked; commit them separately with
   `docs(planning):` after plan approval.
 - No remote actions are authorized by this plan.
@@ -55,7 +57,7 @@ documentation.
 | 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; follow-up `e251d92` / `b4a1ce0`; merges `c7e3e5d`, `7412853` | Structured tools and scoped app Ruff checks verified. |
 | 1 gate | Foundation contract checks | done | | Root: 1,023 passed, 45 deselected; Ruff check/format passed. App: 206 passed; Ruff check/format passed on changed owned files. |
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | done | `b569a95` / `fc46ec6` / `4d30ac3`; merge `b0cb2bd` | Soil-first/site-only sequencing, combined CDL guidance, and ordered/prohibited-tool replay contracts verified. |
-| 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | in_progress | | Micro-plan requested; worker preparing. |
+| 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | in_progress | | Implementation is in the worker worktree; Playwright was waived. Biome lint and frontend build pass; implementation commit/integration pending. |
 | 2 gate | Interview flow and frontend checks | pending | | |
 | 3 | 51.3.1 Confirm-only matching-history gate | pending | | |
 | 3 gate | Serial integrated local acceptance | pending | | |
@@ -72,7 +74,7 @@ here.
 | 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist2-51.2.1-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
-| 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist2-51.2.2-worker` | 2026-11-13 17:33:03 -08:00 | planning; retain |
+| 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist2-51.2.2-worker` | 2026-11-13 17:33:03 -08:00 | implementation uncommitted; retain |
 
 ## Task Reports
 
@@ -105,8 +107,9 @@ here.
 
 - [x] Root tests and Ruff checks pass serially; 1,023 passed, 45 deselected; Ruff check/format passed.
 - [x] Agent-app tests and Ruff checks pass on changed owned files; 206 passed; scoped Ruff check/format passed.
-- [ ] Playwright question/confirmation tests, read-only Biome lint, and
-  frontend build pass.
+- [!] Playwright execution waived by explicit user instruction; keep the
+  fixture/test. Read-only Biome lint passed with 10 existing warnings and the
+  frontend production build passed.
 - [ ] Review final diff and ensure no user-owned edits or remote actions were
   included.
 - [ ] Dev-app trial and review-thread replies remain blocked until separately

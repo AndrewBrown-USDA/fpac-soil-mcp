@@ -90,6 +90,7 @@ dependency rather than adding React Testing Library/jsdom.
 | D8 | Frontend validation remains lint/build; do not add `tsc` because upstream already fails it. | Approved plan constraint in `TODO.md` and app `AGENTS.md`. |
 | D9 | Local implementation commits are allowed after worker micro-plan approval and verification; remote actions remain separately gated. | User requires approval for pushes; no remote action is authorized by this plan. |
 | D10 | Frontend recognizes `get_site_assessment_question` and `record_site_assessment_answer` by their existing tool names and preserves the 51.1.2 answer record fields. Confirm emits `type: site_assessment_confirmed_summary`, `confirmed: true`, and an `answers` array of those unchanged records. CDL results are stale when no AOI is active or its `aoi_ref`/geometry differs; a reattached AOI with the same reference and geometry is equivalent, so no new generation token is added. | Aligns frontend history with the completed tool contract and gives the confirmation gate a stable record while avoiding unrelated AOI-state changes. |
+| D11 | The user waived executing the Playwright suite; keep its fixture/test deliverable, but do not block integration on browser availability. | Explicit user instruction: “proceed without playwright”. |
 
 ## Reconnaissance and Hazards
 
@@ -342,8 +343,10 @@ orchestrator gate.
   exact structured answer, comment/provenance, Confirm/Edit behavior, and
   replaced-AOI refusal before `mapResult.show`. Run from
   `apps\agent-fpac-soil-openai-sdk\frontend`:
-  `npm run test:site-assessment`; then run the app's read-only frontend lint
-  and build gate (`npm ci`, `npx biome lint --skip=nursery/useSortedClasses --skip=style/useTemplate .`, `npm run build`). Do not run write-mode lint or `tsc`.
+  `npm run test:site-assessment` (execution waived by D11); then run the app's
+  read-only frontend lint and build gate: `npm ci`, `npx biome lint
+  --skip=nursery/useSortedClasses --skip=style/useTemplate .`, and
+  `npm run build`. Do not run write-mode lint or `tsc`.
 
 ### 51.3.1 — Enforce the matching confirmed-summary gate
 
@@ -395,9 +398,10 @@ After all tasks are integrated, run serially:
    `uv run ruff format --check .`.
 2. Agent app: `uv run --frozen --python 3.11 pytest tests -q`,
    `uv run ruff check`/`ruff format --check` on the owned app files.
-3. Frontend: `npm run test:site-assessment`, read-only Biome lint, and
-   `npm run build` (through `make app-frontend-check` if the host Make target
-   is usable; otherwise direct equivalents). Do not add a TypeScript check.
+3. Frontend: `npm run test:site-assessment` (waived by D11), read-only Biome
+   lint, and `npm run build` (through `make app-frontend-check` if the host
+   Make target is usable; otherwise direct equivalents). Do not add a
+   TypeScript check.
 4. Confirm baseline counts and any existing warnings in `STATE_51.md`; do not
    fix unrelated audit or lint findings.
 
