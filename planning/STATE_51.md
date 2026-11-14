@@ -45,9 +45,9 @@ documentation.
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | `2899a61` / `062bc30`; merge `1afeecb` | Revised micro-plan approved; worker fixing three Wave 1 regression assertions. |
-| 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; merge `c7e3e5d` | Targeted tests passed; no deviations. |
-| 1 gate | Foundation contract checks | in_progress | | Root pytest: 1,020 passed, 45 deselected, 3 failed; see regression follow-up. |
+| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | `2899a61` / `062bc30`; follow-up `aafb797` / `abc1f9f`; merges `1afeecb`, `f5cd0a7` | Targeted tests and root pytest pass; approved formatting follow-up executing. |
+| 1 | 51.1.2 Structured Site Assessment tool/history contract | in_progress | `f76e146` / `4fe9fea`; merge `c7e3e5d` | App suite passes; explicit Ruff follow-up plan revision requested. |
+| 1 gate | Foundation contract checks | in_progress | | Root pytest: 1,023 passed, 45 deselected; root Ruff check passed but format check failed. App pytest: 206 passed; Ruff check/format follow-ups pending. |
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | pending | | |
 | 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | pending | | |
 | 2 gate | Interview flow and frontend checks | pending | | |
