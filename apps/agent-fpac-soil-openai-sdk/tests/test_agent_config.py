@@ -87,11 +87,19 @@ def test_prompt_carries_shared_policy():
 def test_prompt_preserves_site_assessment_interview_and_confirmation_rules():
     prompt = config.load_system_prompt().lower()
     interview_rules = prompt.split("site assessment interview behavior:", 1)[1]
+    screening = interview_rules.index("complete and report preliminary soil screening first")
+    offer = interview_rules.index("then offer start/skip")
+    interview_complete = interview_rules.index("complete the interview before any interview-based")
+    confirmation = interview_rules.index("ask for explicit user confirmation")
+    assert screening < offer < interview_complete < confirmation
+    assert "only for non-linear site (le) projects" in interview_rules
+    assert "do not offer it for corridor projects" in interview_rules
     assert "use the validated criteria resource supplied in context as the sole source" in prompt
     assert "ask one criterion at a time" in prompt
     assert "preserve unknown, unavailable, and skipped values as such" in prompt
-    assert "when the user has an attached aoi during the site assessment interview" in prompt
-    assert "request combined cdl context automatically once" in prompt
+    assert "when an attached aoi or pasted wkt/geojson aoi is in scope" in prompt
+    assert "request combined cdl context automatically exactly once" in prompt
+    assert "do not make a separate histogram request after obtaining combined cdl context" in prompt
     assert "never supply or score the criterion 2 site-perimeter percentage" in prompt
     assert "do not submit or score before confirmation" in prompt
     assert "complete answer/evidence summary" in prompt
