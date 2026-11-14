@@ -167,6 +167,8 @@ orchestrator gate.
   `src\fpac_soil_mcp\models.py`,
   `tests\test_lesa.py`,
   `tests\test_site_assessment_contract.py`,
+  `tests\test_tools.py`,
+  `tests\eval\test_phase4_databricks_contract.py`,
   `eval\eval_cases.v1.json`,
   `apps\agent-fpac-soil-openai-sdk\agent_server\prompts\system_prompt.txt`,
   `apps\agent-fpac-soil-openai-sdk\tests\test_agent_config.py`,
@@ -182,8 +184,10 @@ orchestrator gate.
   undetermined and expose a separate conservative bound. Do not represent an
   assumption as evidence or as a completed/official LESA score. Update the
   system prompt's no-zero-fill rule without weakening no-invented-values or
-  authority limits. Update SA-MA-02 to expect this contract. Document the
-  owner-approved rule as ADR 0018 and index it.
+  authority limits. Preserve the app prompt's canonical FPAC policy block;
+  place the Site Assessment-specific bound clarification in its interview
+  rules. Update SA-MA-02 and directly coupled test expectations to this
+  contract. Document the owner-approved rule as ADR 0018 and index it.
 - **Do not touch:** Site Assessment registry bands or CFR text, interview UI,
   prompt sequencing, MCP tool wiring, AOI handling, dependency manifests, or
   remote resources.
@@ -198,8 +202,9 @@ orchestrator gate.
 - **Acceptance:** focused tests prove omitted, unknown, unavailable, and
   skipped criteria get maximum points only as labelled assumptions, preserve
   an undetermined result, and expose a distinct conservative bound; known
-  evidence keeps existing scoring. Run from root:
-  `uv run pytest tests\test_lesa.py tests\test_site_assessment_contract.py -q`.
+  evidence keeps existing scoring. Also verify the updated eval contract,
+  tool assertion, and canonical app-policy copy. Run from root:
+  `uv run pytest tests\test_lesa.py tests\test_site_assessment_contract.py tests\test_tools.py tests\eval\test_phase4_databricks_contract.py tests\test_prompts.py -q`.
   Run from the app directory:
   `uv run --frozen --python 3.11 pytest tests\test_agent_config.py -q`.
 
