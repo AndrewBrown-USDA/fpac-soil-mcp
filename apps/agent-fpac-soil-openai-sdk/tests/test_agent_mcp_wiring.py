@@ -311,3 +311,32 @@ def test_validated_resource_context_contains_all_criteria(valid_site_assessment_
     payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
     assert all(criterion["question"] in context for criterion in payload["criteria"])
     assert "Unknown or unavailable" in context
+
+
+def test_valid_resource_wires_tools_into_agent(
+    monkeypatch, valid_site_assessment_criteria_resource
+):
+    server = MagicMock(name="server")
+    server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
+    monkeypatch.setattr(agent_module, "WorkspaceClient", MagicMock())
+    monkeypatch.setattr(agent_module, "init_fpac_mcp_server", MagicMock(return_value=server))
+    monkeypatch.setattr(
+        agent_module,
+        "connect_healthy_mcp_servers",
+        AsyncMock(return_value=([server], [])),
+    )
+    constructed = MagicMock(name="Agent")
+    monkeypatch.setattr(agent_module, "Agent", constructed)
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+
+    assert [tool.name for tool in constructed.call_args.kwargs["tools"]] == [
+        "get_site_assessment_question",
+        "record_site_assessment_answer",
+    ]

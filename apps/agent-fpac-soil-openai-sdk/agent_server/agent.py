@@ -43,6 +43,7 @@ from agent_server.config import (
     uses_reasoning_effort_none,
 )
 from agent_server.history import normalize_history_items
+from agent_server.site_assessment_tools import create_site_assessment_tools
 from agent_server.utils import get_session_id, process_agent_stream_events
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,10 @@ SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE = (
     "criteria are unavailable. Other available preliminary screening may continue."
 )
 RESOURCE_READ_USER_ERROR_PREFIX = "Failed to read resource on MCP server "
+SITE_ASSESSMENT_CONTEXT_PREFIX = (
+    "Authoritative, validated Site Assessment criteria resource "
+    f"({SITE_ASSESSMENT_CRITERIA_URI}; use these questions and bands only):\n```json\n"
+)
 
 
 def _is_finite_number(value: object) -> bool:
@@ -206,10 +211,24 @@ def _site_assessment_criteria_context(result: object) -> str:
     if sorted(numbers) != list(range(1, 13)):
         raise ValueError("Site Assessment resource criterion numbers are incomplete.")
     return (
-        "Authoritative, validated Site Assessment criteria resource "
-        f"({SITE_ASSESSMENT_CRITERIA_URI}; use these questions and bands only):\n"
-        f"```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
+        f"{SITE_ASSESSMENT_CONTEXT_PREFIX}"
+        f"{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
     )
+
+
+def _site_assessment_payload_from_context(context: str | None) -> dict | None:
+    """Recover the payload only from the context string built by the validated resource path."""
+    if not context or not context.startswith(SITE_ASSESSMENT_CONTEXT_PREFIX):
+        return None
+    serialized, separator, _ = context[len(SITE_ASSESSMENT_CONTEXT_PREFIX) :].partition(
+        "\n```"
+    )
+    if not separator:
+        return None
+    payload = json.loads(serialized)
+    if not isinstance(payload, dict) or not isinstance(payload.get("criteria"), list):
+        return None
+    return payload
 
 
 @lru_cache(maxsize=1)
@@ -289,11 +308,19 @@ def create_agent(
         model_settings = ModelSettings(reasoning=Reasoning(effort="none"))
     else:
         model_settings = ModelSettings()
+    site_assessment_payload = None
+    if not tools_unavailable:
+        site_assessment_payload = _site_assessment_payload_from_context(site_assessment_context)
+    tools = (
+        create_site_assessment_tools(site_assessment_payload)
+        if site_assessment_payload is not None
+        else []
+    )
     return Agent(
         name="FPAC Soil Agent",
         instructions=instructions,
         model=model,
-        tools=[],
+        tools=tools,
         mcp_servers=mcp_servers or [],
         model_settings=model_settings,
     )
