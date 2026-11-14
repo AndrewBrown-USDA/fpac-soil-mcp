@@ -43,6 +43,7 @@ from agent_server.config import (
     uses_reasoning_effort_none,
 )
 from agent_server.history import normalize_history_items
+from agent_server.site_assessment_gate import bind_site_assessment_gate
 from agent_server.site_assessment_tools import create_site_assessment_tools
 from agent_server.utils import get_session_id, process_agent_stream_events
 
@@ -323,7 +324,11 @@ def create_agent(
     )
 
 
-async def _connect_fpac_agent(stack: AsyncExitStack, aoi: ActiveAoi | None = None) -> Agent:
+async def _connect_fpac_agent(
+    stack: AsyncExitStack,
+    aoi: ActiveAoi | None = None,
+    history_items: list[dict] | None = None,
+) -> Agent:
     # WorkspaceClient() authenticates as the app's service principal, not the user.
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
     # traceback), so the request still runs.
@@ -365,6 +370,11 @@ async def _connect_fpac_agent(stack: AsyncExitStack, aoi: ActiveAoi | None = Non
                 exc_info=True,
             )
             site_assessment_context = SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    bind_site_assessment_gate(
+        server,
+        history_items or [],
+        _site_assessment_payload_from_context(site_assessment_context),
+    )
     if aoi is not None:
         return create_agent(
             mcp_servers=servers,
@@ -383,10 +393,10 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
     if session_id := get_session_id(request):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
     configure_openai_client()
+    messages = normalize_history_items([i.model_dump() for i in request.input])
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = await _connect_fpac_agent(stack, read_active_aoi(request))
-        messages = normalize_history_items([i.model_dump() for i in request.input])
+        agent = await _connect_fpac_agent(stack, read_active_aoi(request), messages)
         result = await Runner.run(agent, messages)
         return ResponsesAgentResponse(output=[item.to_input_item() for item in result.new_items])
 
@@ -398,10 +408,10 @@ async def stream_handler(
     if session_id := get_session_id(request):
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
     configure_openai_client()
+    messages = normalize_history_items([i.model_dump() for i in request.input])
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = await _connect_fpac_agent(stack, read_active_aoi(request))
-        messages = normalize_history_items([i.model_dump() for i in request.input])
+        agent = await _connect_fpac_agent(stack, read_active_aoi(request), messages)
         result = Runner.run_streamed(agent, input=messages)
 
         async for event in process_agent_stream_events(result.stream_events()):

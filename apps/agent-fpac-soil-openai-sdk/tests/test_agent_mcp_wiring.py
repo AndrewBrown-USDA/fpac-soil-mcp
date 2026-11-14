@@ -22,8 +22,8 @@ from mlflow.types.responses import ResponsesAgentRequest
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
 
 
-def _request() -> ResponsesAgentRequest:
-    return ResponsesAgentRequest(input=[{"role": "user", "content": "hi"}])
+def _request(content: str = "hi") -> ResponsesAgentRequest:
+    return ResponsesAgentRequest(input=[{"role": "user", "content": content}])
 
 
 async def _empty_events():
@@ -43,6 +43,7 @@ def patched(monkeypatch, valid_site_assessment_criteria_resource):
     """Patch everything the handlers call; returns the mocks."""
     server = MagicMock(name="server")
     server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
+    server.call_tool = AsyncMock(return_value=SimpleNamespace(isError=False))
     mocks = SimpleNamespace(
         server=server,
         workspace_client=MagicMock(name="WorkspaceClient"),
@@ -63,13 +64,13 @@ def patched(monkeypatch, valid_site_assessment_criteria_resource):
     return mocks
 
 
-def _run_invoke():
-    return asyncio.run(agent_module.invoke_handler(_request()))
+def _run_invoke(request=None):
+    return asyncio.run(agent_module.invoke_handler(request or _request()))
 
 
-def _run_stream():
+def _run_stream(request=None):
     async def collect():
-        return [event async for event in agent_module.stream_handler(_request())]
+        return [event async for event in agent_module.stream_handler(request or _request())]
 
     return asyncio.run(collect())
 
@@ -195,6 +196,87 @@ def test_invalid_site_assessment_resource_disables_interview_context(patched):
         patched.create_agent.call_args.kwargs["site_assessment_context"]
         == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
     )
+
+
+def _confirmed_site_summary(resource, state="answered", band_id="range_20_90_1"):
+    criteria = json.loads(resource.contents[0].text)
+    band = next(band for band in criteria["criteria"][0]["bands"] if band["id"] == band_id)
+    return {
+        "type": "site_assessment_confirmed_summary",
+        "confirmed": True,
+        "answers": [
+            {
+                "type": "site_assessment_answer",
+                "criterion_number": 1,
+                "answer_state": state,
+                "answer": band_id if state == "answered" else None,
+                "selected_band": band if state != "skipped" else None,
+                "points": band["points"] if state == "answered" else None,
+                "evidence": "",
+                "comment": "",
+                "provenance": "user",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])
+@pytest.mark.parametrize(
+    ("case", "state", "fact", "band_id"),
+    [
+        ("missing-confirmation", "answered", 24, "range_20_90_1"),
+        ("malformed-confirmation", "answered", 24, "range_20_90_1"),
+        ("absent-inputs", "answered", None, "range_20_90_1"),
+        ("stale-answer", "answered", 24, "range_20_90_2"),
+        ("matching-answer", "answered", 24, "range_20_90_1"),
+        ("matching-unknown", "unknown", "unknown", "unknown"),
+        ("matching-skipped", "skipped", "skipped", "below_20"),
+    ],
+)
+def test_site_assessment_mcp_gate_is_consistent_for_invoke_and_stream(
+    patched, run_handler, case, state, fact, band_id
+):
+    summary = _confirmed_site_summary(patched.server.read_resource.return_value, state, band_id)
+    if case == "malformed-confirmation":
+        summary["answers"] = "invalid"
+    request_content = "hello" if case == "missing-confirmation" else json.dumps(summary)
+    tool_arguments = {"project_type": "site"}
+    if case != "absent-inputs":
+        tool_arguments["site_assessment_inputs"] = {"criteria_facts": {"1": {"percentage": fact}}}
+    forwarded_call = patched.server.call_tool
+    tool_results = []
+
+    async def run_agent(*args, **kwargs):
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        return SimpleNamespace(new_items=[])
+
+    async def stream_events():
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        if False:
+            yield None
+
+    patched.run.side_effect = run_agent
+    patched.run_streamed.side_effect = lambda *args, **kwargs: SimpleNamespace(
+        stream_events=stream_events
+    )
+    run_handler(_request(request_content))
+
+    should_forward = case in {
+        "matching-answer",
+        "matching-unknown",
+        "matching-skipped",
+    }
+    if should_forward:
+        forwarded_call.assert_awaited_once()
+        assert tool_results[0].isError is False
+    else:
+        forwarded_call.assert_not_awaited()
+        assert tool_results[0].isError is True
+        assert tool_results[0].content[0].text
 
 
 @pytest.mark.parametrize(
