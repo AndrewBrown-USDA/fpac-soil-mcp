@@ -1,7 +1,7 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-12
-Source State: `planning/STATE_48.md`; `planning/MASTER_PLAN.md`
+Last Updated: 2026-11-13
+Source State: `planning/STATE_51.md`; `planning/MASTER_PLAN.md`
 
 ## Circled Goal (Active)
 
@@ -39,6 +39,22 @@ Source State: `planning/STATE_48.md`; `planning/MASTER_PLAN.md`
 - **[G21]** The spatial response envelope meets the remaining Phase 8 contract for status, provenance, authority, and privacy metadata.
 - **[G22]** Automated map-to-table checks enforce the 0.1% acreage-tolerance exit criterion.
   - Depends on: G21
+- **[G23]** A validated-resource-backed Site Assessment tool records criterion questions, selected bands, evidence, comments, provenance, and unknown/skipped states as structured conversation items.
+  - Depends on: G16, G17
+- **[G24]** Site Assessment question and summary cards make registry-defined questions, choices, citations, and point schedules clear, and let users answer, edit, or confirm structured records.
+  - Depends on: G23
+- **[G25]** The preliminary LESA call is blocked unless its submitted Site Assessment answers match a confirmed summary in conversation history.
+  - Depends on: G24
+- **[G26]** Automated acceptance evidence verifies interview sequencing, answer-to-band scoring, conservative missing-input handling, and the confirmation gate.
+  - Depends on: G25, G28, G29, G30
+- **[G27]** The approved dev-app trial confirms the guided interview, confirmed-summary gate, and preliminary-only result behavior.
+  - Depends on: G26
+- **[G28]** Missing, unknown, unavailable, and skipped Site Assessment inputs receive labelled conservative maximum points while the result remains undetermined and exposes a separate conservative bound.
+  - Depends on: G17
+- **[G29]** A CDL result cannot be shown on the map after its AOI has been replaced or detached.
+  - Depends on: G18
+- **[G30]** A LESA request screens first, offers Start/Skip before any interview-based LESA call, and requests combined CDL context at most once for an attached or pasted AOI.
+  - Depends on: G23
 
 ## Independent Backlog
 
