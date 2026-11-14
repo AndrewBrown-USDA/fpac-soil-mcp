@@ -1045,6 +1045,101 @@
       }
     },
     {
+      "id": "SA-MA-05",
+      "category": "Phase 4 model-assisted interview trigger and CDL order",
+      "target_type": "tool",
+      "target_name": "analyze_farmland_by_polygon",
+      "user_prompt": "I need the full Form AD-1006 evaluation for a proposed community clinic at this site. Start by screening this pasted GeoJSON footprint, then provide the combined Cropland Data Layer context once. After screening, offer me Start or Skip for the Site Assessment interview; do not calculate interview-based LESA until I complete the interview and confirm its full answer/evidence summary: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}",
+      "expected_tools": [
+        "analyze_farmland_by_polygon",
+        "analyze_cdl_context"
+      ],
+      "expected_tool_subsequence": [
+        "analyze_farmland_by_polygon",
+        "analyze_cdl_context"
+      ],
+      "prohibited_tools": [
+        "calculate_preliminary_lesa",
+        "analyze_cdl_histogram"
+      ],
+      "expected_keywords": [
+        "preliminary",
+        "Start",
+        "Skip",
+        "confirm"
+      ],
+      "expected_facts": [
+        "Preliminary soil screening is completed before offering the Site Assessment interview.",
+        "The interview is offered as Start or Skip, and an interview-based LESA calculation waits for interview completion and explicit confirmation.",
+        "Combined CDL context is reported separately from Site Assessment Criterion 2."
+      ],
+      "guidelines": [
+        "Do not call the LESA calculator before the user completes and confirms the interview summary.",
+        "For this AOI, request combined CDL context once; do not call a separate histogram."
+      ],
+      "force_tool_use": true,
+      "evidence_tier": "model_assisted",
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.65, 42.02],
+            [-93.63, 42.02],
+            [-93.63, 42.04],
+            [-93.65, 42.04],
+            [-93.65, 42.02]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "SA-MA-06",
+      "category": "Phase 4 model-assisted pasted-AOI agricultural-use context",
+      "target_type": "tool",
+      "target_name": "analyze_farmland_by_polygon",
+      "user_prompt": "For this pasted GeoJSON area, screen the mapped farmland and request combined Cropland Data Layer context once to help describe agricultural-use context. Keep the two sources separate, do not treat CDL as Site Assessment Criterion 2 evidence, and do not start a LESA interview or calculation: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}",
+      "expected_tools": [
+        "analyze_farmland_by_polygon",
+        "analyze_cdl_context"
+      ],
+      "expected_tool_subsequence": [
+        "analyze_farmland_by_polygon",
+        "analyze_cdl_context"
+      ],
+      "prohibited_tools": [
+        "calculate_preliminary_lesa",
+        "analyze_cdl_histogram"
+      ],
+      "expected_keywords": [
+        "agricultural",
+        "preliminary",
+        "Criterion 2"
+      ],
+      "expected_facts": [
+        "The pasted AOI is soil-screened before its combined CDL context is requested.",
+        "CDL context is reported separately and is not used as evidence for Criterion 2's site-perimeter percentage.",
+        "The response does not initiate a Site Assessment interview or LESA calculation because none was requested."
+      ],
+      "guidelines": [
+        "Request combined CDL context exactly once and do not follow it with a separate histogram call.",
+        "Do not initiate a LESA interview or calculation for this agricultural-use context request."
+      ],
+      "force_tool_use": true,
+      "evidence_tier": "model_assisted",
+      "sample_geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.65, 42.02],
+            [-93.63, 42.02],
+            [-93.63, 42.04],
+            [-93.65, 42.04],
+            [-93.65, 42.02]
+          ]
+        ]
+      }
+    },
+    {
       "id": "ADV-UNRELATED-01",
       "category": "Adversarial - unrelated work",
       "target_type": "prompt",

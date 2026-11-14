@@ -28,6 +28,8 @@ FPPA_COMPLIANCE_GUIDELINE = (
 DETERMINISTIC_SCORER_NAMES = (
     "agent_completed",
     "required_tools_called",
+    "ordered_tool_subsequence",
+    "prohibited_tools_absent",
     "numeric_within_tolerance",
     "tool_arguments_within_tolerance",
     "prohibited_behaviors_absent",
@@ -158,6 +160,35 @@ def required_tools_called(trace: Any, expectations: dict[str, Any]) -> Any:
     if missing:
         return _feedback(False, f"Missing tool calls: {missing}; called: {called}")
     return _feedback(True, f"All expected tools called: {expected}")
+
+
+def ordered_tool_subsequence(trace: Any, expectations: dict[str, Any]) -> Any:
+    expected = expectations.get("expected_tool_subsequence") or []
+    if not expected:
+        return None
+    called = [span.name for span in _tool_spans(trace)]
+    position = 0
+    for tool in expected:
+        while position < len(called) and not tool_matches(tool, [called[position]]):
+            position += 1
+        if position == len(called):
+            return _feedback(
+                False,
+                f"Expected ordered tool subsequence {expected}; called: {called}",
+            )
+        position += 1
+    return _feedback(True, f"Ordered tool subsequence found: {expected}")
+
+
+def prohibited_tools_absent(trace: Any, expectations: dict[str, Any]) -> Any:
+    prohibited = expectations.get("prohibited_tools") or []
+    if not prohibited:
+        return None
+    called = [span.name for span in _tool_spans(trace)]
+    violations = [tool for tool in prohibited if tool_matches(tool, called)]
+    if violations:
+        return _feedback(False, f"Prohibited tool(s) called: {violations}; called: {called}")
+    return _feedback(True, f"No prohibited tools called: {prohibited}")
 
 
 def numeric_within_tolerance(trace: Any, expectations: dict[str, Any]) -> Any:
@@ -294,6 +325,8 @@ def deterministic_scorers() -> list[Any]:
     functions = (
         agent_completed,
         required_tools_called,
+        ordered_tool_subsequence,
+        prohibited_tools_absent,
         numeric_within_tolerance,
         tool_arguments_within_tolerance,
         prohibited_behaviors_absent,

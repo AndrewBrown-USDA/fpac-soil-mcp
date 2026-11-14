@@ -23,8 +23,13 @@ async def test_site_assessment_prompt_uses_registry_and_preserves_authority_boun
     server = create_mcp_server()
     result = await server.render_prompt("fppa_site_assessment_assistant", {})
     text = result.messages[0].content.text
+    soil_screening = text.index("complete preliminary soil screening first")
+    offer_interview = text.index("offer Start/Skip")
+    assert soil_screening < offer_interview
     assert "Part V (Land Evaluation" in text
     assert "Part VI (Site Assessment" in text
+    assert "only for non-linear site (Land Evaluation, LE) projects" in text
+    assert "do not offer the interview for corridor projects" in text
     assert "fppa://site-assessment-criteria" in text
     assert "unknown or unavailable" in text.lower()
     assert "never guess facts or invent points" in text
@@ -39,8 +44,11 @@ async def test_site_assessment_prompt_uses_registry_and_preserves_authority_boun
     assert "record unknown or unavailable facts" in text
     assert "preserve skipped answers as such" in text
     assert "never as zero" in text
-    assert "combined CDL context automatically once" in text
+    assert "combined CDL context automatically exactly once" in text
+    assert "attached or supplied as pasted WKT/GeoJSON" in text
+    assert "Do not follow it with a separate CDL histogram request" in text
     assert "never use it to answer or score Criterion 2" in text
+    assert "Do not make an interview-based preliminary LESA calculation before the interview is complete" in text
     assert "ask for explicit confirmation" in text
     assert "Do not submit or score before the user confirms" in text
 

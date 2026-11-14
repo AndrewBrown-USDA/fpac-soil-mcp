@@ -32,6 +32,8 @@ OPTIONAL_V1_FIELDS = frozenset({"sample_geometry"})
 V2_FIELDS = frozenset(
     {
         "expected_tool_calls",
+        "expected_tool_subsequence",
+        "prohibited_tools",
         "expected_facts",
         "numeric_expectations",
         "guidelines",
@@ -82,6 +84,8 @@ SYNTHETIC_TOOLS = frozenset({"read_resource", "get_prompt"})
 # v2 fields copied into MLflow `expectations` when present and non-empty (contract C3).
 EXPECTATION_FIELDS = (
     "expected_tool_calls",
+    "expected_tool_subsequence",
+    "prohibited_tools",
     "expected_facts",
     "numeric_expectations",
     "evidence_tier",
@@ -230,10 +234,15 @@ def _row_errors(case: dict[str, Any], row_id: str) -> list[str]:
         "guidelines",
         "required_behaviors",
         "prohibited_behaviors",
+        "expected_tool_subsequence",
+        "prohibited_tools",
         "source_disclosure",
     ):
         if field in case and not _is_str_list(case[field]):
             err(field, "expected a list of strings")
+
+    if "expected_tool_subsequence" in case and not case["expected_tool_subsequence"]:
+        err("expected_tool_subsequence", "expected a non-empty list of strings")
 
     if "assertions" in case:
         assertions = case["assertions"]
