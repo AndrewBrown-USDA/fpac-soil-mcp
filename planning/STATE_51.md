@@ -37,6 +37,12 @@ documentation.
   a matching confirmed-summary history record. No second MCP Approve step.
 - Use existing Playwright for frontend interactions; no new component-test
   dependency and no TypeScript-check gate.
+- Use `get_site_assessment_question` and `record_site_assessment_answer` as
+  the existing UI contracts. Confirm emits
+  `type: site_assessment_confirmed_summary`, `confirmed: true`, and unchanged
+  answer records under `answers`. CDL staleness compares active `aoi_ref` and
+  geometry; an exact reattachment is equivalent, with no added generation
+  token. Plan contract recorded in `752cbf7`.
 - Planning files are tracked; commit them separately with
   `docs(planning):` after plan approval.
 - No remote actions are authorized by this plan.
