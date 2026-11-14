@@ -259,7 +259,7 @@ def test_farm_acre_ratio_requires_matching_confirmed_criterion7_band(
         confirmed=confirmed,
     )
 
-    if case in {"valid", "matching-dual-inputs"}:
+    if case == "valid":
         assert (
             validate_site_assessment_call(
                 "calculate_preliminary_lesa",

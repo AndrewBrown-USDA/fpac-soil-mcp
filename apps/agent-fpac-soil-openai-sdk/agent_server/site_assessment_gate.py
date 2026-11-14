@@ -67,13 +67,18 @@ def validate_site_assessment_call(
         raise SiteAssessmentGateError(
             "Site Assessment inputs are required and must match a confirmed summary."
         )
-    farm_acre_band = _criterion7_farm_acre_band(site_inputs, criteria_payload)
     criteria_facts = site_inputs.get("criteria_facts")
     if criteria_facts is None:
         criteria_facts = {}
     if not isinstance(criteria_facts, dict):
         raise SiteAssessmentGateError(
             "Resource-backed Site Assessment facts must be a criterion mapping."
+        )
+    facts_by_number = _normalize_fact_numbers(criteria_facts)
+    farm_acre_band = _criterion7_farm_acre_band(site_inputs, criteria_payload)
+    if farm_acre_band is not None and 7 in facts_by_number:
+        raise SiteAssessmentGateError(
+            "Farm-acre inputs cannot be combined with a Criterion 7 fact."
         )
     if not criteria_facts and farm_acre_band is None:
         raise SiteAssessmentGateError(
@@ -96,7 +101,6 @@ def validate_site_assessment_call(
         )
 
     answer_by_number = _canonical_answers(answers, criteria_payload)
-    facts_by_number = _normalize_fact_numbers(criteria_facts)
     expected_numbers = set(facts_by_number)
     if farm_acre_band is not None:
         criterion7_answer = answer_by_number.get(7)
@@ -108,11 +112,6 @@ def validate_site_assessment_call(
             raise SiteAssessmentGateError(
                 "Farm-acre inputs must match a confirmed answered Criterion 7 band."
             )
-        criterion7_fact = facts_by_number.get(7)
-        if criterion7_fact is not None:
-            fact_band = _band_for_fact(criteria_payload, 7, criterion7_fact)
-            if fact_band is None or fact_band["id"] != farm_acre_band["id"]:
-                raise SiteAssessmentGateError("Farm-acre and Criterion 7 fact inputs conflict.")
         expected_numbers.add(7)
     if set(answer_by_number) != expected_numbers:
         raise SiteAssessmentGateError(

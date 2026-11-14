@@ -300,6 +300,7 @@ def test_site_assessment_mcp_gate_is_consistent_for_invoke_and_stream(
         ("missing-criterion7-answer", "range_20_90_1", True, 180, 200, None),
         ("mismatched-band", "below_average_9", True, 180, 200, None),
         ("conflicting-dual-inputs", "below_average_8", True, 180, 200, 85),
+        ("matching-dual-inputs", "below_average_8", True, 180, 200, 90),
         ("matching-band", "below_average_8", True, 180, 200, None),
     ],
 )
