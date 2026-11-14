@@ -105,6 +105,28 @@ class NormalizeHistoryItemsTest(unittest.TestCase):
         ]
         self.assertEqual(normalize_history_items(messages), messages)
 
+    def test_structured_site_assessment_tool_history_is_untouched(self):
+        messages = [
+            {
+                "type": "function_call",
+                "call_id": "call_123",
+                "name": "record_site_assessment_answer",
+                "arguments": (
+                    '{"criterion_number":1,"answer_state":"unknown","answer":null,'
+                    '"evidence":"","comment":"not known","provenance":"user"}'
+                ),
+            },
+            {
+                "type": "function_call_output",
+                "call_id": "call_123",
+                "output": (
+                    '{"type":"site_assessment_answer","criterion_number":1,'
+                    '"answer_state":"unknown","points":null,"provenance":"user"}'
+                ),
+            },
+        ]
+        self.assertEqual(normalize_history_items(messages), messages)
+
 
 if __name__ == "__main__":
     unittest.main()
