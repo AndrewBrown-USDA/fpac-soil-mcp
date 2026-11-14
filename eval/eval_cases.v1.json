@@ -764,7 +764,7 @@
       "category": "Phase 4 model-assisted missing-input handling",
       "target_type": "tool",
       "target_name": "calculate_preliminary_lesa",
-      "user_prompt": "For project Synthetic SA-MA-02, use project_type site and calculate the preliminary LESA result using NCCPI for this AOI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Report missing criteria as unavailable or incomplete, not zero; do not invent points or claim a threshold result from an unevaluable total.",
+      "user_prompt": "For project Synthetic SA-MA-02, use project_type site and calculate the preliminary LESA result using NCCPI for this AOI: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}. No Part VI Site Assessment facts or farm-size inputs are available. Keep the actual result undetermined and do not claim a threshold result. If the tool returns a conservative bound, identify each registry-maximum value only as an assumed value with no evidence, not as evidence or an actual score.",
       "expected_tools": [
         "calculate_preliminary_lesa"
       ],
@@ -811,12 +811,13 @@
       ],
       "expected_facts": [
         "The requested calculator input is a GeoJSON site polygon with no Site Assessment facts or farm-size inputs supplied.",
-        "Missing Part VI facts remain unavailable or incomplete rather than being treated as zero.",
-        "An unevaluable total is not presented as meeting or failing the statutory threshold.",
+        "Missing Part VI criteria remain explicitly labelled assumed (no evidence) at the registry maximum, and are not represented as evidence or awarded points.",
+        "The actual Site Assessment and total LESA result remain undetermined; any conservative bound is separate and is not presented as a threshold result.",
         "The result is preliminary and not an official FPPA determination, LESA score, or completed form."
       ],
       "guidelines": [
-        "Do not fabricate subjective Site Assessment points, treat missing inputs as zero, or claim a threshold result from an unevaluable total.",
+        "Do not fabricate evidence or an actual Site Assessment score; report registry-maximum values only as labelled assumptions within a distinct conservative bound.",
+        "Do not claim a threshold result from an unevaluable actual total.",
         "The agent may retrieve regulatory context resources before calling the calculation tool."
       ],
       "force_tool_use": true,

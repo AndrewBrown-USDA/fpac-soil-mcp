@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from fpac_soil_mcp.models import SiteAssessmentCriterion
 from fpac_soil_mcp.site_assessment import (
     SITE_ASSESSMENT_REGISTRY,
     SiteAssessmentCriterionDefinition,
@@ -103,6 +104,45 @@ def test_unknown_and_deferred_inputs_remain_unavailable() -> None:
     assert criterion.score_for_value(95) is None
     assert criterion.score_for_value(95, provenance="analyst interview notes") == 10
     assert criterion.score_for_value(None, provenance="analyst interview notes") is None
+
+
+def test_conservative_assumption_is_separate_from_evidence_and_awarded_points() -> None:
+    criterion = SiteAssessmentCriterion(
+        criterion_number=1,
+        name="Criterion 1",
+        max_points=20,
+        awarded_points=0,
+        assumed_points=20,
+        evidence_status="assumed (no evidence)",
+        input_authority="unavailable",
+        assumption_provenance="Registry maximum assumed under ADR 0018.",
+    )
+
+    assert criterion.awarded_points == 0
+    assert criterion.assumed_points == 20
+    assert criterion.source_provenance == []
+    assert criterion.is_verified is False
+    assert criterion.is_automated is False
+
+    with pytest.raises(ValidationError, match="separate assumed_points"):
+        SiteAssessmentCriterion(
+            criterion_number=1,
+            name="Criterion 1",
+            max_points=20,
+            evidence_status="assumed (no evidence)",
+        )
+
+    with pytest.raises(ValidationError, match="cannot be verified"):
+        SiteAssessmentCriterion(
+            criterion_number=1,
+            name="Criterion 1",
+            max_points=20,
+            assumed_points=20,
+            evidence_status="assumed (no evidence)",
+            input_authority="unavailable",
+            assumption_provenance="Registry maximum assumed under ADR 0018.",
+            is_verified=True,
+        )
 
 
 def test_cfr_ranges_define_representative_point_conventions() -> None:

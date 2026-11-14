@@ -94,6 +94,9 @@ def test_prompt_preserves_site_assessment_interview_and_confirmation_rules():
     assert "never supply or score the criterion 2 site-perimeter percentage" in prompt
     assert "do not submit or score before confirmation" in prompt
     assert "complete answer/evidence summary" in prompt
+    assert "assumed (no evidence)" in prompt
+    assert "separate conservative upper bound" in prompt
+    assert "keep the actual result undetermined" in prompt
 
 
 @pytest.mark.parametrize(
