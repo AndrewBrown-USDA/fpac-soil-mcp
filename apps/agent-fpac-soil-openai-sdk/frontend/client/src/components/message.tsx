@@ -45,6 +45,12 @@ import { Streamdown } from 'streamdown';
 import { useApproval } from '@/hooks/use-approval';
 import { MAP_TOOLS, ShowOnMapButton } from './map/ShowOnMapButton';
 import { parseCDLContextResult } from './map/CDLContextSummary';
+import {
+  parseSiteAssessmentQuestion,
+  parseSiteAssessmentSummary,
+  SiteAssessmentQuestionCard,
+  SiteAssessmentSummaryCard,
+} from './site-assessment-cards';
 
 const PurePreviewMessage = ({
   message,
@@ -180,6 +186,7 @@ const PurePreviewMessage = ({
                   submitApproval={submitApproval}
                   isSubmitting={isSubmitting}
                   pendingApprovalId={pendingApprovalId}
+                  sendMessage={sendMessage}
                 />
               );
             }
@@ -207,6 +214,32 @@ const PurePreviewMessage = ({
                     key={key}
                     className="-mb-2 mt-0 border-l-4 pl-2 text-muted-foreground"
                   >{`# ${formatNamePart(part)}`}</Streamdown>
+                );
+              }
+              const structuredSummary = parseSiteAssessmentSummary(
+                joinMessagePartSegments(parts),
+              );
+              if (structuredSummary) {
+                return (
+                  <SiteAssessmentSummaryCard
+                    key={key}
+                    summary={structuredSummary}
+                    onConfirm={(record) =>
+                      sendMessage({
+                        role: 'user',
+                        parts: [{ type: 'text', text: JSON.stringify(record) }],
+                      })
+                    }
+                    onEdit={() =>
+                      sendMessage({
+                        role: 'user',
+                        parts: [{
+                          type: 'text',
+                          text: 'Edit the Site Assessment answers in the review summary.',
+                        }],
+                      })
+                    }
+                  />
                 );
               }
               if (mode === 'view') {
@@ -339,12 +372,14 @@ const MessageToolGroup = ({
   submitApproval,
   isSubmitting,
   pendingApprovalId,
+  sendMessage,
 }: {
   tools: ToolPart[];
   isLoading: boolean;
   submitApproval: ReturnType<typeof useApproval>['submitApproval'];
   isSubmitting: boolean;
   pendingApprovalId: string | null;
+  sendMessage: UseChatHelpers<ChatMessage>['sendMessage'];
 }) => {
   const isMultiple = tools.length > 1;
   return (
@@ -362,6 +397,7 @@ const MessageToolGroup = ({
           submitApproval={submitApproval}
           isSubmitting={isSubmitting}
           pendingApprovalId={pendingApprovalId}
+          sendMessage={sendMessage}
         />
       ))}
     </div>
@@ -374,12 +410,14 @@ const ToolPartRenderer = ({
   submitApproval,
   isSubmitting,
   pendingApprovalId,
+  sendMessage,
 }: {
   part: ToolPart;
   isLoading: boolean;
   submitApproval: ReturnType<typeof useApproval>['submitApproval'];
   isSubmitting: boolean;
   pendingApprovalId: string | null;
+  sendMessage: UseChatHelpers<ChatMessage>['sendMessage'];
 }) => {
   const { toolCallId, input, state, errorText, output, toolName } = part;
 
@@ -451,6 +489,27 @@ const ToolPartRenderer = ({
     !errorText &&
     (MAP_TOOLS.has(toolName) ||
       (toolName === 'analyze_cdl_context' && parseCDLContextResult(output) !== null));
+
+  if (
+    toolName === 'get_site_assessment_question' &&
+    state === 'output-available' &&
+    !errorText
+  ) {
+    const question = parseSiteAssessmentQuestion(output);
+    if (question) {
+      return (
+        <SiteAssessmentQuestionCard
+          question={question}
+          onRecord={(record) =>
+            sendMessage({
+              role: 'user',
+              parts: [{ type: 'text', text: JSON.stringify(record) }],
+            })
+          }
+        />
+      );
+    }
+  }
 
   return (
     <Tool defaultOpen={true}>

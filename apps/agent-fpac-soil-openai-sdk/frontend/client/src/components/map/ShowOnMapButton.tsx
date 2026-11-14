@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
+import equal from 'fast-deep-equal';
 import { Button } from '@/components/ui/button';
 import { useOptionalActiveAoi } from './ActiveAoiContext';
 import { inlineLayers } from './mapLayers';
@@ -54,10 +55,15 @@ export function ShowOnMapButton({
   const mapResult = useOptionalMapResult();
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const activeAoi = aoiContext?.activeAoi ?? null;
+  const refs = aoiRefs(input);
+  const cdlAoiAtResult = useRef(
+    tool === 'analyze_cdl_context' && activeAoi
+      ? { aoi_ref: activeAoi.aoi_ref, geometry: activeAoi.geometry }
+      : null,
+  ).current;
   if (!aoiContext || !mapResult) return null;
 
-  const activeAoi = aoiContext.activeAoi;
-  const refs = aoiRefs(input);
   const isObject = !!input && typeof input === 'object' && !Array.isArray(input);
   const cdlSummary = tool === 'analyze_cdl_context' ? parseCDLContextResult(output) : null;
   const unavailable = !isObject
@@ -71,6 +77,18 @@ export function ShowOnMapButton({
       if (!cdlSummary) {
         setStatus('error');
         setMessage('This CDL result does not contain a displayable summary.');
+        return;
+      }
+      const currentAoi = aoiContext.activeAoi;
+      if (
+        !cdlAoiAtResult ||
+        !currentAoi ||
+        currentAoi.aoi_ref !== cdlAoiAtResult.aoi_ref ||
+        !equal(currentAoi.geometry, cdlAoiAtResult.geometry) ||
+        (refs.length > 0 && !refs.some((ref) => ref.trim() === cdlAoiAtResult.aoi_ref))
+      ) {
+        setStatus('error');
+        setMessage('This CDL result is stale because its AOI is no longer active.');
         return;
       }
       mapResult.show({
