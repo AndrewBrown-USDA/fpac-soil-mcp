@@ -45,9 +45,9 @@ documentation.
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | in_progress | `2899a61` / `062bc30`; follow-up `aafb797` / `abc1f9f`; merges `1afeecb`, `f5cd0a7` | Targeted tests and root pytest pass; approved formatting follow-up executing. |
-| 1 | 51.1.2 Structured Site Assessment tool/history contract | in_progress | `f76e146` / `4fe9fea`; merge `c7e3e5d` | App suite passes; explicit Ruff follow-up plan revision requested. |
-| 1 gate | Foundation contract checks | in_progress | | Root pytest: 1,023 passed, 45 deselected; root Ruff check passed but format check failed. App pytest: 206 passed; Ruff check/format follow-ups pending. |
+| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | done | `2899a61` / `062bc30`; follow-ups `aafb797` / `abc1f9f`, `38c544f` / `9f65159`; merges `1afeecb`, `f5cd0a7`, `ef99795` | Regression tests and formatting fixes passed targeted validation; shared gate remains in progress. |
+| 1 | 51.1.2 Structured Site Assessment tool/history contract | in_progress | `f76e146` / `4fe9fea`; merge `c7e3e5d` | App suite passes; approved scoped Ruff follow-up executing. |
+| 1 gate | Foundation contract checks | in_progress | | Root pytest: 1,023 passed, 45 deselected; root Ruff check passed; root format check awaits post-format rerun. App pytest: 206 passed; approved scoped Ruff follow-up executing. |
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | pending | | |
 | 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | pending | | |
 | 2 gate | Interview flow and frontend checks | pending | | |
@@ -63,7 +63,7 @@ here.
 
 | Task | Path | Branch | Created (local) | Status |
 |---|---|---|---|---|
-| 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | executing; retain |
+| 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 
 ## Task Reports
