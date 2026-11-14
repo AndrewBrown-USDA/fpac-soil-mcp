@@ -45,6 +45,10 @@ documentation.
   token. Plan contract recorded in `752cbf7`.
 - The user waived running Playwright; retain the fixture, but do not block
   local integration on browser availability. Plan amendment D11 records this.
+- Parent review found that `project_farm_acres` and
+  `county_average_farm_acres` independently score Criterion 7. Plan amendment
+  D12 requires these inputs to match a confirmed Criterion 7 registry band
+  before forwarding; task 51.3.1 remains in progress pending the worker fix.
 - Planning files are tracked; commit them separately with
   `docs(planning):` after plan approval.
 - No remote actions are authorized by this plan.
@@ -59,7 +63,7 @@ documentation.
 | 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | done | `b569a95` / `fc46ec6` / `4d30ac3`; merge `b0cb2bd` | Soil-first/site-only sequencing, combined CDL guidance, and ordered/prohibited-tool replay contracts verified. |
 | 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | done | `0e570ca` / `ad26df0` / `9a8276d`; merge `28dd305` | Cards and stale-AOI guard integrated; lint/build pass; Playwright execution waived by user. |
 | 2 gate | Interview flow and frontend checks | done | | Task 51.2.1 targeted tests pass; frontend Biome lint/build pass. Playwright waived by user. |
-| 3 | 51.3.1 Confirm-only matching-history gate | in_progress | | Micro-plan approved; implementation in progress in `.worktrees\51.3.1`. |
+| 3 | 51.3.1 Confirm-only matching-history gate | in_progress | | Parent review found an unconfirmed Criterion 7 farm-acre scoring path; D12 added, follow-up required in `.worktrees\51.3.1`. |
 | 3 gate | Serial integrated local acceptance | pending | | |
 | 4 | Conditional dev-app trial | blocked | | Requires separate user approval to push/redeploy. |
 
@@ -75,7 +79,7 @@ here.
 | 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist2-51.2.1-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
 | 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist2-51.2.2-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
-| 51.3.1 | `.worktrees\51.3.1` | `feature/sa-checklist2-51.3.1-worker` | 2026-11-13 18:56:53 -08:00 | planning; retain |
+| 51.3.1 | `.worktrees\51.3.1` | `feature/sa-checklist2-51.3.1-worker` | 2026-11-13 18:56:53 -08:00 | follow-up required; retain |
 
 ## Task Reports
 

@@ -91,6 +91,7 @@ dependency rather than adding React Testing Library/jsdom.
 | D9 | Local implementation commits are allowed after worker micro-plan approval and verification; remote actions remain separately gated. | User requires approval for pushes; no remote action is authorized by this plan. |
 | D10 | Frontend recognizes `get_site_assessment_question` and `record_site_assessment_answer` by their existing tool names and preserves the 51.1.2 answer record fields. Confirm emits `type: site_assessment_confirmed_summary`, `confirmed: true`, and an `answers` array of those unchanged records. CDL results are stale when no AOI is active or its `aoi_ref`/geometry differs; a reattached AOI with the same reference and geometry is equivalent, so no new generation token is added. | Aligns frontend history with the completed tool contract and gives the confirmation gate a stable record while avoiding unrelated AOI-state changes. |
 | D11 | The user waived executing the Playwright suite; keep its fixture/test deliverable, but do not block integration on browser availability. | Explicit user instruction: “proceed without playwright”. |
+| D12 | When either `project_farm_acres` or `county_average_farm_acres` is supplied to the interview-flow LESA call, require both; when both are supplied, derive Criterion 7's registry band and require that answer to be present in the confirmed summary before forwarding the call. | Parent review found these inputs independently score Criterion 7, so matching only `criteria_facts` would leave an unconfirmed scoring path. |
 
 ## Reconnaissance and Hazards
 
@@ -371,6 +372,11 @@ orchestrator gate.
   user approval; do not add or require a second MCP Approve action. Derive
   selected points from validated resource band IDs/registry rules, not
   model-supplied points.
+  Treat `project_farm_acres` and `county_average_farm_acres` as Criterion 7
+  scoring inputs: reject an incomplete pair, derive the registry band from
+  their ratio when both are supplied, and require it to match a confirmed
+  Criterion 7 answer. Reject conflicting dual representations rather than
+  forwarding them.
   Preserve explicit unknown/skipped records and the existing
   preliminary-authority boundary. Corridor flows remain outside the
   Site Assessment interview gate.
@@ -387,7 +393,8 @@ orchestrator gate.
   without confirmation or on mismatch, is called after a matching Confirm,
   including when the confirmed summary records Skip/unknown states, and
   behaves consistently for invoke and stream handlers. Tests also prove
-  points cannot be overridden by the model. Run from the app directory:
+  points cannot be overridden by the model, and unconfirmed or mismatched
+  farm-acre inputs cannot score Criterion 7. Run from the app directory:
   `uv run --frozen --python 3.11 pytest tests\test_site_assessment_gate.py tests\test_agent_mcp_wiring.py -q`.
 
 ## Integrated Acceptance Gate
