@@ -219,13 +219,19 @@ class TestSoilTools:
 
 
 class TestFPPATools:
-    def test_missing_criterion_10_category_is_unavailable(self) -> None:
+    def test_missing_criterion_10_category_is_assumed_at_registry_maximum(self) -> None:
         scored = _score_registry_facts(
             {"10": {"is_verified": True, "justification": "No category provided."}}
         )[10]
+        criterion_max = SITE_ASSESSMENT_REGISTRY.criterion(10).max_points
 
         assert scored["input_authority"] == "unavailable"
-        assert scored["evidence_status"] == "unavailable"
+        assert scored["evidence_status"] == "assumed (no evidence)"
+        assert scored["assumed_points"] == criterion_max
+        assert scored["is_verified"] is False
+        assert f"Registry maximum ({criterion_max:g} points)" in scored["assumption_provenance"]
+        assert "ADR 0018" in scored["assumption_provenance"]
+        assert "no criterion evidence" in scored["assumption_provenance"]
         assert "awarded_points" not in scored
 
     @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
