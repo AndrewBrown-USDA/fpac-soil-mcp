@@ -24,6 +24,7 @@ from fpac_soil_mcp.models import (
     PreliminaryLESAResponse,
     ProductivityIndexType,
     SiteAssessmentInputs,
+    SiteAssessmentSummary,
 )
 from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
 from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE
@@ -31,13 +32,43 @@ from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
 
 
 def _score_registry_facts(
-    facts: dict[str, Any] | None, project_type: str = "site"
+    facts: dict[str, Any] | None,
+    project_type: str = "site",
+    excluded_criteria: set[int] | None = None,
 ) -> dict[int, dict[str, Any]]:
     scored: dict[int, dict[str, Any]] = {}
     if facts is None:
-        return scored
+        facts = {}
     if not isinstance(facts, dict):
         raise TypeError("criteria_facts must be a mapping of criterion numbers to fact inputs.")
+    point_limits = (
+        CORRIDOR_CRITERIA_MAX_POINTS if project_type == "corridor" else SITE_CRITERIA_MAX_POINTS
+    )
+
+    def assumed_input(number: int, raw_input: dict[str, Any] | None = None) -> dict[str, Any]:
+        maximum = float(point_limits[number])
+        assumption_provenance = (
+            f"Registry maximum ({maximum:g} points) assumed under ADR 0018; "
+            "no criterion evidence was supplied."
+        )
+        return {
+            **(raw_input or {}),
+            "assumed_points": maximum,
+            "assumption_provenance": assumption_provenance,
+            "is_automated": False,
+            "is_verified": False,
+            "input_authority": "unavailable",
+            "evidence_status": "assumed (no evidence)",
+            "justification": (
+                f"No evidence supplied for criterion {number}; {maximum:g} registry-maximum "
+                "points are shown only as a conservative assumption."
+            ),
+        }
+
+    excluded_criteria = set(excluded_criteria or set())
+    if project_type == "corridor":
+        excluded_criteria.update({5, 6})
+
     for raw_number, raw_input in facts.items():
         try:
             number = int(raw_number)
@@ -49,6 +80,8 @@ def _score_registry_facts(
             raise ValueError(f"Duplicate Site Assessment criterion input: {number}.")
         if not isinstance(raw_input, dict):
             raise TypeError(f"Criterion {number} fact input must be a mapping.")
+        if project_type == "corridor" and number in {5, 6}:
+            continue
         definition = SITE_ASSESSMENT_REGISTRY.criterion(number)
         value = raw_input.get("value", raw_input.get("answer"))
         if value is None:
@@ -71,6 +104,8 @@ def _score_registry_facts(
                     "unavailable",
                     "not available",
                     "not provided",
+                    "skipped",
+                    "skip",
                 }:
                     raise ValueError(
                         f"Criterion {number} fact value is not valid for its registry."
@@ -108,13 +143,7 @@ def _score_registry_facts(
             None,
         )
         if selected is None or selected.points is None:
-            scored[number] = {
-                **raw_input,
-                "is_automated": False,
-                "input_authority": "unavailable",
-                "evidence_status": "unavailable",
-                "justification": "Registry fact is unknown or unavailable; not scored.",
-            }
+            scored[number] = assumed_input(number, raw_input)
             continue
         is_verified = raw_input.get("is_verified") is True
         source_provenance = raw_input.get("source_provenance", [])
@@ -163,7 +192,71 @@ def _score_registry_facts(
                 f"{points:g}/{maximum:g} points."
             ),
         }
+    for number in range(1, 13):
+        if number not in scored and number not in excluded_criteria:
+            scored[number] = assumed_input(number)
     return scored
+
+
+def _apply_conservative_site_assessment_bound(
+    response: PreliminaryLESAResponse,
+    assumptions: dict[int, dict[str, Any]],
+) -> PreliminaryLESAResponse:
+    assumed_criteria = {
+        number: input_data
+        for number, input_data in assumptions.items()
+        if input_data.get("evidence_status") == "assumed (no evidence)"
+    }
+    if not assumed_criteria:
+        return response
+
+    criteria = []
+    applied_assumptions = False
+    for criterion in response.site_assessment.criteria:
+        assumption = assumed_criteria.get(criterion.criterion_number)
+        has_scored_evidence = (
+            criterion.evidence_status == "measured"
+            and criterion.input_authority in {"verified", "machine_estimate"}
+        )
+        if assumption is not None and not has_scored_evidence:
+            applied_assumptions = True
+            criterion = type(criterion).model_validate(
+                {
+                    **criterion.model_dump(),
+                    "assumed_points": float(assumption["assumed_points"]),
+                    "assumption_provenance": assumption["assumption_provenance"],
+                    "evidence_status": "assumed (no evidence)",
+                    "input_authority": "unavailable",
+                    "is_verified": False,
+                    "is_automated": False,
+                }
+            )
+        criteria.append(criterion)
+
+    if not applied_assumptions:
+        return response
+
+    site_assessment = SiteAssessmentSummary.model_validate(
+        {
+            **response.site_assessment.model_dump(),
+            "criteria": criteria,
+            "evaluation_status": "incomplete",
+        }
+    )
+    le_score = response.land_evaluation.candidate_le_score
+    upper_bound = None
+    if le_score is not None:
+        assumed_sa = sum(
+            criterion.awarded_points + (criterion.assumed_points or 0.0)
+            for criterion in criteria
+        )
+        upper_bound = round(min(260.0, le_score + assumed_sa), 2)
+    return response.model_copy(
+        update={
+            "site_assessment": site_assessment,
+            "conservative_total_lesa_upper_bound": upper_bound,
+        }
+    )
 
 
 from fpac_soil_mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
@@ -431,12 +524,27 @@ def calculate_preliminary_lesa(
             raise ValueError(
                 f"Conflicting fact and point override for criterion(s): {sorted(overlap)}."
             )
-    scored_registry_facts = _score_registry_facts(fact_inputs, norm_project_type)
+    project_farm_acres = sa_inputs.get("project_farm_acres")
+    county_average_farm_acres = sa_inputs.get("county_average_farm_acres")
+    excluded_assumption_criteria = set(override_numbers)
+    if project_farm_acres is not None and county_average_farm_acres is not None:
+        excluded_assumption_criteria.add(7)
+    scored_registry_facts = _score_registry_facts(
+        fact_inputs,
+        norm_project_type,
+        excluded_criteria=excluded_assumption_criteria,
+    )
     criteria_inputs.update(scored_registry_facts)
     if not criteria_inputs and not any(
         key in sa_inputs for key in ("criteria_inputs", "criteria_facts")
     ):
         criteria_inputs = sa_inputs
+    for number, fact_input in scored_registry_facts.items():
+        if fact_input.get("evidence_status") == "assumed (no evidence)":
+            criteria_inputs[number] = {
+                **criteria_inputs.get(number, criteria_inputs.get(str(number), {})),
+                "evidence_status": "unavailable",
+            }
     if isinstance(criteria_inputs, dict):
         point_limits = (
             CORRIDOR_CRITERIA_MAX_POINTS
@@ -478,9 +586,6 @@ def calculate_preliminary_lesa(
         criterion_two = dict(criteria_inputs.get(2, criteria_inputs.get("2", {})) or {})
         criterion_two["perimeter_evidence"] = perimeter_evidence
         criteria_inputs[2] = criterion_two
-    project_farm_acres = sa_inputs.get("project_farm_acres")
-    county_average_farm_acres = sa_inputs.get("county_average_farm_acres")
-
     lesa_response = evaluate_lesa(
         project_name=project_name,
         land_evaluation=le_summary,
@@ -489,6 +594,10 @@ def calculate_preliminary_lesa(
         project_farm_acres=project_farm_acres,
         county_average_farm_acres=county_average_farm_acres,
         productivity_index=normalized_productivity_index,
+    )
+    lesa_response = _apply_conservative_site_assessment_bound(
+        lesa_response,
+        scored_registry_facts,
     )
 
     for criterion in lesa_response.site_assessment.criteria:

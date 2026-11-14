@@ -32,6 +32,11 @@ from fpac_soil_mcp.models import (
     ProductivityIndexType,
     SiteAssessmentSummary,
 )
+from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
+from fpac_soil_mcp.tools.lesa_tools import (
+    _apply_conservative_site_assessment_bound,
+    _score_registry_facts,
+)
 
 
 @pytest.fixture
@@ -560,6 +565,75 @@ class TestSiteAssessmentRules:
 
         assert summary.evaluation_status == "incomplete"
         assert sum(c.input_authority == "unavailable" for c in summary.criteria) == 11
+
+    def test_registry_facts_use_maximum_assumptions_only_for_missing_inputs(self) -> None:
+        scored = _score_registry_facts(
+            {
+                1: {"value": "unknown"},
+                2: {"value": "unavailable"},
+                3: {"value": "skipped"},
+                5: {"value": "two_miles_or_more", "is_verified": True},
+            }
+        )
+
+        for number in (1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12):
+            assumption = scored[number]
+            assert assumption["assumed_points"] == SITE_ASSESSMENT_REGISTRY.criterion(
+                number
+            ).max_points
+            assert assumption["evidence_status"] == "assumed (no evidence)"
+            assert assumption["input_authority"] == "unavailable"
+            assert assumption["is_verified"] is False
+            assert assumption["is_automated"] is False
+            assert "no criterion evidence" in assumption["assumption_provenance"]
+
+        known = scored[5]
+        assert known["evidence_status"] == "provided"
+        assert known["awarded_points"] > 0
+        assert "assumed_points" not in known
+
+    def test_missing_criteria_produce_only_a_separate_conservative_bound(self) -> None:
+        assumptions = _score_registry_facts(None)
+        scoring_inputs = {
+            number: {**input_data, "evidence_status": "unavailable"}
+            for number, input_data in assumptions.items()
+        }
+        land_evaluation = LandEvaluationSummary(candidate_le_score=80.0)
+        response = evaluate_lesa(
+            project_name="Missing Site Assessment",
+            land_evaluation=land_evaluation,
+            site_assessment=scoring_inputs,
+        )
+        response = _apply_conservative_site_assessment_bound(response, assumptions)
+
+        assert response.site_assessment.evaluation_status == "incomplete"
+        assert response.site_assessment.total_points == 0.0
+        assert response.total_lesa_score is None
+        assert response.threshold_status == "not_evaluated"
+        assert response.mandatory_alternatives_required is None
+        assert response.conservative_total_lesa_upper_bound == 240.0
+        assert all(
+            criterion.evidence_status == "assumed (no evidence)"
+            and criterion.input_authority == "unavailable"
+            and criterion.awarded_points == 0.0
+            and criterion.assumed_points == criterion.max_points
+            and criterion.source_provenance == []
+            and criterion.assumption_provenance
+            for criterion in response.site_assessment.criteria
+        )
+
+    def test_assumptions_exclude_supplied_and_farm_size_criteria(self) -> None:
+        scored = _score_registry_facts(
+            None,
+            excluded_criteria={4, 7},
+        )
+        corridor_scored = _score_registry_facts(None, project_type="corridor")
+
+        assert 4 not in scored
+        assert 7 not in scored
+        assert len(scored) == 10
+        assert 5 not in corridor_scored
+        assert 6 not in corridor_scored
 
     def test_bare_float_site_assessment_does_not_evaluate_threshold(self) -> None:
         response = evaluate_lesa(
