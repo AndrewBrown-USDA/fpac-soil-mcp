@@ -93,6 +93,7 @@ dependency rather than adding React Testing Library/jsdom.
 | D11 | The user waived executing the Playwright suite; keep its fixture/test deliverable, but do not block integration on browser availability. | Explicit user instruction: “proceed without playwright”. |
 | D12 | When either `project_farm_acres` or `county_average_farm_acres` is supplied to the interview-flow LESA call, require both; when both are supplied, derive Criterion 7's registry band and require that answer to be present in the confirmed summary before forwarding the call. | Parent review found these inputs independently score Criterion 7, so matching only `criteria_facts` would leave an unconfirmed scoring path. |
 | D13 | Reject any Criterion 7 fact supplied together with the farm-acre pair, even when both representations resolve to the same band. | The downstream LESA evaluator rejects simultaneous Criterion 7 fact and farm-acre inputs; the gate must return the explicit error before forwarding instead of allowing an avoidable MCP failure. |
+| D14 | Install the confirmation wrapper on the request-scoped MCP server whether or not an AOI is active; update the AOI-context test that expected the unwrapped call boundary while preserving AOI behavior. | The gate must protect site LESA calls independently of AOI state; integrated tests exposed an obsolete assertion about wrapper identity. |
 
 ## Reconnaissance and Hazards
 
@@ -355,7 +356,8 @@ orchestrator gate.
 - **Repo:** `D:\workspace\fpac-soil-mcp`
 - **Must edit:**
   `apps\agent-fpac-soil-openai-sdk\agent_server\agent.py`,
-  `apps\agent-fpac-soil-openai-sdk\tests\test_agent_mcp_wiring.py`.
+  `apps\agent-fpac-soil-openai-sdk\tests\test_agent_mcp_wiring.py`,
+  `apps\agent-fpac-soil-openai-sdk\tests\test_aoi_context.py`.
 - **Can create:**
   `apps\agent-fpac-soil-openai-sdk\agent_server\site_assessment_gate.py`,
   `apps\agent-fpac-soil-openai-sdk\tests\test_site_assessment_gate.py`.
@@ -379,6 +381,8 @@ orchestrator gate.
   Criterion 7 answer. Reject any simultaneous explicit Criterion 7 fact and
   farm-acre pair, even if both resolve to the same band, because the
   downstream evaluator prohibits both representations.
+  Bind the gate on every request-scoped MCP server, with or without an AOI;
+  preserve AOI context behavior and update its test for the expected wrapper.
   Preserve explicit unknown/skipped records and the existing
   preliminary-authority boundary. Corridor flows remain outside the
   Site Assessment interview gate.
@@ -399,7 +403,7 @@ orchestrator gate.
   farm-acre inputs cannot score Criterion 7, and simultaneous Criterion 7
   facts and farm-acre inputs are rejected before forwarding. Run from the app
   directory:
-  `uv run --frozen --python 3.11 pytest tests\test_site_assessment_gate.py tests\test_agent_mcp_wiring.py -q`.
+  `uv run --frozen --python 3.11 pytest tests\test_site_assessment_gate.py tests\test_agent_mcp_wiring.py tests\test_aoi_context.py -q`.
 
 ## Integrated Acceptance Gate
 
