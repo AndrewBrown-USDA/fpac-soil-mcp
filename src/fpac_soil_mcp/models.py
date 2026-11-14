@@ -851,9 +851,7 @@ class PreliminaryLESAResponse(BaseModel):
     @classmethod
     def validate_conservative_total_lesa_upper_bound(cls, v: float | None) -> float | None:
         if v is not None and (not math.isfinite(v) or v < 0.0 or v > 260.0):
-            raise ValueError(
-                "conservative_total_lesa_upper_bound must be between 0.0 and 260.0"
-            )
+            raise ValueError("conservative_total_lesa_upper_bound must be between 0.0 and 260.0")
         return v
 
     @model_validator(mode="after")

@@ -247,8 +247,7 @@ def _apply_conservative_site_assessment_bound(
     upper_bound = None
     if le_score is not None:
         assumed_sa = sum(
-            criterion.awarded_points + (criterion.assumed_points or 0.0)
-            for criterion in criteria
+            criterion.awarded_points + (criterion.assumed_points or 0.0) for criterion in criteria
         )
         upper_bound = round(min(260.0, le_score + assumed_sa), 2)
     return response.model_copy(
