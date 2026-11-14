@@ -48,8 +48,8 @@ documentation.
 | 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | done | `2899a61` / `062bc30`; follow-ups `aafb797` / `abc1f9f`, `38c544f` / `9f65159`; merges `1afeecb`, `f5cd0a7`, `ef99795` | Conservative assumptions, regression contracts, and formatting verified. |
 | 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; follow-up `e251d92` / `b4a1ce0`; merges `c7e3e5d`, `7412853` | Structured tools and scoped app Ruff checks verified. |
 | 1 gate | Foundation contract checks | done | | Root: 1,023 passed, 45 deselected; Ruff check/format passed. App: 206 passed; Ruff check/format passed on changed owned files. |
-| 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | pending | | |
-| 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | pending | | |
+| 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | in_progress | | Micro-plan requested; worker preparing. |
+| 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | in_progress | | Micro-plan requested; worker preparing. |
 | 2 gate | Interview flow and frontend checks | pending | | |
 | 3 | 51.3.1 Confirm-only matching-history gate | pending | | |
 | 3 gate | Serial integrated local acceptance | pending | | |
@@ -65,6 +65,8 @@ here.
 |---|---|---|---|---|
 | 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
+| 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist2-51.2.1-worker` | 2026-11-13 17:33:03 -08:00 | planning; retain |
+| 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist2-51.2.2-worker` | 2026-11-13 17:33:03 -08:00 | planning; retain |
 
 ## Task Reports
 
