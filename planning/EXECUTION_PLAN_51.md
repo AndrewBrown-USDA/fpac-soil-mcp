@@ -89,6 +89,7 @@ dependency rather than adding React Testing Library/jsdom.
 | D7 | Track planning artifacts and commit them separately from implementation using `docs(planning):`. | Recorded in the approved `TODO.md` planning notes. |
 | D8 | Frontend validation remains lint/build; do not add `tsc` because upstream already fails it. | Approved plan constraint in `TODO.md` and app `AGENTS.md`. |
 | D9 | Local implementation commits are allowed after worker micro-plan approval and verification; remote actions remain separately gated. | User requires approval for pushes; no remote action is authorized by this plan. |
+| D10 | Frontend recognizes `get_site_assessment_question` and `record_site_assessment_answer` by their existing tool names and preserves the 51.1.2 answer record fields. Confirm emits `type: site_assessment_confirmed_summary`, `confirmed: true`, and an `answers` array of those unchanged records. CDL results are stale when no AOI is active or its `aoi_ref`/geometry differs; a reattached AOI with the same reference and geometry is equivalent, so no new generation token is added. | Aligns frontend history with the completed tool contract and gives the confirmation gate a stable record while avoiding unrelated AOI-state changes. |
 
 ## Reconnaissance and Hazards
 
@@ -312,6 +313,11 @@ orchestrator gate.
   question tool item. Show the criterion's nature, question, citation,
   resource-defined band choices and points, relevant evaluation information
   available in the resource, optional evidence/comment input, and provenance.
+  Identify the question through the existing
+  `get_site_assessment_question` tool name and keep answer records in the
+  `record_site_assessment_answer` contract from 51.1.2. The Confirm action
+  emits a `site_assessment_confirmed_summary` record with `confirmed: true`
+  and an `answers` array containing the unchanged structured answer records.
   Provide explicit unknown/skipped choices without inventing score bands.
   Emit the selected choice as a structured answer record. Render the complete
   review summary separately from response prose, including assumption labels,
@@ -352,14 +358,16 @@ orchestrator gate.
 - **Specification:** Enforce the gate at the agent-side MCP call boundary for
   both `invoke_handler` and `stream_handler`. Before forwarding any site
   `calculate_preliminary_lesa` call in the interview flow—including a
-  confirmed Skip or unknown-only summary—require a structured confirmed
-  summary record in the current request history whose canonical answers and
-  statuses exactly match the submitted Site Assessment inputs. Do not bypass
-  the gate merely because inputs are absent. Reject missing confirmation,
-  stale/mismatched answers, and invalid confirmation with an explicit tool
-  error and no MCP call. Keep summary-card Confirm as the only user approval;
-  do not add or require a second MCP Approve action. Derive selected points
-  from validated resource band IDs/registry rules, not model-supplied points.
+  confirmed Skip or unknown-only summary—require a
+  `site_assessment_confirmed_summary` record with `confirmed: true` and an
+  `answers` array in the current request history. Its canonical answers and
+  statuses must exactly match the submitted Site Assessment inputs. Do not
+  bypass the gate merely because inputs are absent. Reject missing
+  confirmation, stale/mismatched answers, and invalid confirmation with an
+  explicit tool error and no MCP call. Keep summary-card Confirm as the only
+  user approval; do not add or require a second MCP Approve action. Derive
+  selected points from validated resource band IDs/registry rules, not
+  model-supplied points.
   Preserve explicit unknown/skipped records and the existing
   preliminary-authority boundary. Corridor flows remain outside the
   Site Assessment interview gate.
