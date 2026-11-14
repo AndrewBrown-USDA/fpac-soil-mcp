@@ -78,7 +78,7 @@ def get_farmland_classification_by_point(
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
-                query_timestamp=timestamp,
+                timestamp_utc=timestamp,
             ),
             limitations=[*REGULATORY_LIMITATIONS, f"SDA query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
@@ -94,7 +94,7 @@ def get_farmland_classification_by_point(
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
-                query_timestamp=timestamp,
+                timestamp_utc=timestamp,
             ),
             limitations=[
                 *REGULATORY_LIMITATIONS,
@@ -114,7 +114,7 @@ def get_farmland_classification_by_point(
         source=QuerySource(
             service="USDA NRCS Soil Data Access",
             endpoint=client.base_url,
-            query_timestamp=timestamp,
+            timestamp_utc=timestamp,
         ),
         limitations=REGULATORY_LIMITATIONS,
         regulatory_notice=REGULATORY_NOTICE,
@@ -157,7 +157,7 @@ def get_farmland_classification_by_mukey(
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
-                query_timestamp=timestamp,
+                timestamp_utc=timestamp,
             ),
             limitations=[*REGULATORY_LIMITATIONS, f"Validation error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
@@ -177,7 +177,7 @@ def get_farmland_classification_by_mukey(
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
-                query_timestamp=timestamp,
+                timestamp_utc=timestamp,
             ),
             limitations=[*REGULATORY_LIMITATIONS, f"SDA query error: {exc}"],
             regulatory_notice=REGULATORY_NOTICE,
@@ -192,7 +192,7 @@ def get_farmland_classification_by_mukey(
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
-                query_timestamp=timestamp,
+                timestamp_utc=timestamp,
             ),
             limitations=[
                 *REGULATORY_LIMITATIONS,
@@ -211,7 +211,7 @@ def get_farmland_classification_by_mukey(
         source=QuerySource(
             service="USDA NRCS Soil Data Access",
             endpoint=client.base_url,
-            query_timestamp=timestamp,
+            timestamp_utc=timestamp,
         ),
         limitations=REGULATORY_LIMITATIONS,
         regulatory_notice=REGULATORY_NOTICE,
