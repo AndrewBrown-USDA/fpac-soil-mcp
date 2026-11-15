@@ -29,8 +29,8 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 54.1.1 Compact accessible map controls and cursor defaults | done | `cc7560c` | G42; integrated app checks pass |
-| 2 | 54.2.1 Map-pane server legend and authoritative CDL key | done | `d76c7cc` | G43; targeted checks pass |
-| 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | pending | | G49; test-purpose metadata caveat |
+| 2 | 54.2.1 Map-pane server legend and authoritative CDL key | done | `d76c7cc` | G43; targeted + integrated checks pass |
+| 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | done | `d37e63e` | G49; fixed endpoint; test-purpose caveat |
 | 3 | 54.3.1 Returned SSURGO visibility on new results | pending | | G44 |
 | 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | pending | | G45 |
 | 5 | 54.5.1 Direct stateless corridor screening route | pending | | G46 |
@@ -58,6 +58,7 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 - Status: done; code commit `d76c7cc` (`feat(map): show result and CDL legends`).
 - Changed map `MapPanel.tsx`, `Legend.tsx`, `OverlayControl.tsx`, added `CDLLegend.tsx` and `cdlLegend.ts`, legend fixture/config/spec, frontend `package.json` test script, and ADR 0015 local-change ledger.
 - From `apps/agent-fpac-soil-openai-sdk/frontend`: `npm run test:map-legend` 4 passed; `npm run test:map-identify` 2 passed. `git diff --check` passed.
+- Orchestrator reruns: `npm run test:map-legend` 4 passed; `npm run test:map-identify` 2 passed.
 - Deviations: none. A first screening-switch assertion matched both the map and existing Results-tab legends; scoping it to the map legend passed.
 - Gotchas: CDL table contains 133 official NASS records; fixture aborts external HTTPS. Orchestrator owns lint/build and full suites; 54.2.2 follows due shared files.
 
@@ -66,8 +67,15 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 - Status: done; code commit `d37e63e` (`feat(map): use USDA FPAC NAIP imagery`).
 - Changed `frontend/client/src/components/map/overlays.ts`, `OverlayControl.tsx`, `overlays.test.ts` (paths relative to app), and ADR 0015.
 - From `apps/agent-fpac-soil-openai-sdk/frontend`: `node --import tsx --test client/src/components/map/overlays.test.ts` passed (3 tests); root `git diff --check` passed.
+- Orchestrator rerun: `node --import tsx --test client/src/components/map/overlays.test.ts` 3 passed.
 - Deviations: none. Initial component-render assertion failed because the Node TSX loader expected a React global; replaced it with a test of the shared caveat text.
 - Gotchas: metadata labels purpose `test:202407180638 naip service`; availability may change. No live verification; orchestrator owns shared/full suites.
+
+### Wave 2 integrated gate
+
+- `make app-check`: 266 passed; Ruff check/format passed.
+- `make app-frontend-check`: passed; 11 lint warnings, 10 npm advisories, ephemeral DB migration skip, and existing Vite/chunk warnings.
+- `git diff --check`: passed; working tree clean after planning commit.
 
 ## Final Acceptance
 
