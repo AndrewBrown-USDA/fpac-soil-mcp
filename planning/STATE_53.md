@@ -32,9 +32,9 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 4 | 53.3.1 Fixed NAIP imagery overlay | done | `d4a8c8a` | Fixed ImageServer request shape; live export probe timed out |
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `2f0963c` | Focused ordering tests and build pass |
 | 4 | 53.3.3 Improved map legends and layer semantics | done | `fe28270` | Existing identify seam used; no dedicated legend fixture |
-| 5 | 53.4.1 Map/Results tabs and post-screening switch | done | `6690470` | Isolated Playwright fixture mirrors tab flow; production MapPanel not mounted |
+| 5 | 53.4.1 Map/Results tabs and post-screening switch | done | `6690470`, `9643b4b` | Isolated fixture; lint correction committed |
 | 5 | 53.4.2 Identify wording and accessibility polish | done | `7e30d4b` | Phrase absent; screening notice assertion retained |
-| 6 | Integrated serial validation and handoff | pending | | |
+| 6 | Integrated serial validation and handoff | done | | All planned local gates pass; caveats recorded below |
 
 ## Worker Worktrees
 
@@ -87,10 +87,11 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - NAIP export endpoint remained unreachable from this environment (HTTP 000 timeout); actual browser imagery rendering remains unverified.
 
 ### 53.4.1 — Keep screening results visible in Map/Results tabs
-- Status: done; implementation `6690470`.
+- Status: done; implementation `6690470`, fixture lint correction `9643b4b`.
 - Added Map/Results ARIA tabs, empty state, automatic Results selection after screening, return-to-Map, and preserved screening result navigation; ADR 0015 updated.
-- `npm run test:map-tabs` — 2 passed; `git diff --check` passed.
+- `npm run test:map-tabs` — 2 passed after implementation and after lint correction; `git diff --check` passed.
 - The isolated Playwright fixture mirrors the tab flow but does not mount production `MapPanel` or its map/screening providers; production integration remains unverified in browser.
+- Integrated lint initially found fixture-only missing button type and non-null assertion; focused correction resolved both. No other errors.
 - No dependencies or remote actions.
 
 ### 53.4.2 — Tighten identify wording and UI accessibility
@@ -115,9 +116,18 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 
 ## Final Acceptance
 
-- [ ] All task reports and code commits recorded.
-- [ ] `make app-check` passes.
-- [ ] `make app-frontend-check` passes; existing warnings are documented.
-- [ ] Focused Playwright and map identify suites pass, or explicitly documented as unavailable/waived.
-- [ ] `git diff --check` passes; ADR 0015 ledger is complete.
-- [ ] No remote actions performed.
+- [x] All task reports and code commits recorded.
+- [x] `make app-check` passes (266 passed).
+- [x] `make app-frontend-check` passes; 11 warnings are documented (10 prior warnings and one MapPanel exhaustive-dependency warning); 10 npm advisories remain.
+- [x] Focused Playwright and map identify suites pass: chat export 3, map tabs 2, site assessment 4, map identify 2; production MapPanel browser integration and NAIP imagery display remain unverified as noted.
+- [x] `git diff --check` passes; ADR 0015 ledger reviewed for all changed/added frontend paths.
+- [x] No remote actions performed.
+
+### Integrated gate — final
+- `make check` — 993 passed, 3 skipped, 45 deselected; Ruff check/format passed.
+- `make app-check` — 266 passed; app Ruff check/format passed.
+- `make app-frontend-check` — passed; lint had no errors and 11 warnings, client/server builds passed; database migration skipped without local DB configuration.
+- Focused Playwright: `test:site-assessment` 4 passed, `test:chat-export` 3 passed, `test:map-tabs` 2 passed. `test:map-identify` 2 passed.
+- Combined focused Node tests for chat export, AOI export, distance, map controls, overlays, and identify — 17 passed.
+- Existing Vite/React deprecation and chunk-size warnings, 10 npm audit advisories, and one new exhaustive-dependency warning in `MapPanel.tsx` remain documented. No remote operations.
+- The first integrated frontend lint run found two fixture errors in `map-tabs-fixture.tsx`; commit `9643b4b` fixed both, and the final `make app-frontend-check` rerun passed.
