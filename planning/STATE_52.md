@@ -144,3 +144,37 @@ here.
 ### Integrated gate (wave 3) — 2026-11-15
 - Root eval test `test_prompt_dataset_schema_and_completeness` failed on CDL tools added to `manifest.yaml`. Fixed in `15dab08`: CDL-01/CDL-02 prompt cases added to `eval/eval_cases.v1.json`; corpus size (42) and ID set updated in `eval/common/`; tool count 12 in `eval/pi/test_agent_eval.py`.
 - Root `pytest -m "not live_network"` — 994 passed, 3 skipped, 43 deselected. Root Ruff check/format passed.
+
+## Local stand-in for the dev-app trial (2026-11-15)
+
+Plan and log: `planning/TODO_LOCAL_DEV_TRIAL.md`. No push, deploy, or remote action.
+
+**Command:** `make trial-local` (opt-in; not in `make check`). It starts its own MCP
+server on a free port, runs the scenario, and stops the server. Use
+`cd apps/agent-fpac-soil-openai-sdk && uv run python scripts/trial_local.py --mcp-url http://127.0.0.1:PORT/mcp`
+for an already running server. Result: 19 checks passed.
+
+**What it proves against the real local `/mcp` (Streamable HTTP):**
+1. Question and choices come from the criteria tool, built from the served `fppa://site-assessment-criteria` resource.
+2. Answer records keep `type`, comment, evidence, provenance, and derived points.
+3. `calculate_preliminary_lesa` is refused (no MCP call made) with no confirmation, no summary, mismatched facts, a missing answer-set member, and a Criterion 7 fact plus farm acres.
+4. A matching confirmed summary reaches LESA. Skipped, unknown, and unasked criteria are conservative maximums labelled `assumed (no evidence)`.
+5. Result is undetermined: `total_lesa_score` null, `threshold_status` `not_evaluated`, separate `conservative_total_lesa_upper_bound`, preliminary notice present.
+6. The script makes no claim about AOI geometry in traces (ADR 0016).
+
+**Defect found and fixed (production code):** the served resource carried null `min`/`max`,
+default `min_inclusive`/`max_inclusive`, and null `point_range`/`representative_*` on
+every band, so the app validator rejected it and disabled the interview. App tests passed
+only because their fixture reads the raw registry file. `fppa_resources.py` now serves each
+band with `exclude_unset=True`; `tests/test_site_assessment_resource.py` covers it. This
+likely affects the dev apps until redeployed.
+
+**Not reproducible locally:**
+- Chat UI, real model, Databricks auth, `FPAC_MCP_APP` resolution: the script uses a scripted stub model and a stub workspace client (a real `WorkspaceClient()` blocks contacting a Databricks host). Port 8090 is a llama.cpp Qwen3.6-35B server with completion capability only; it is not wired in.
+- Start/Skip clicks, Confirm/Edit cards, and answer records surviving real conversation turns need the frontend (`npm run test:site-assessment`, Playwright, waived) or the dev apps.
+- The LESA success path calls live USDA SDA, so it needs network access.
+
+**Local-vs-dev gaps that could change results:**
+- Confirmed summaries are built here as the question cards do (`answer` = band id). The model-facing tool records numeric percentage answers as the value (22), which the gate would reject if placed in a summary; only UI-built summaries are accepted.
+- Facts need `is_verified`, `source_provenance`, and a justification (the registry marks all 12 criteria as requiring verification); a model that omits them gets a tool error.
+- Dev deployment code and registry may differ from this checkout until the branch is pushed.
