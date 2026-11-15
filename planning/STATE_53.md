@@ -33,7 +33,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `2f0963c` | Focused ordering tests and build pass |
 | 4 | 53.3.3 Improved map legends and layer semantics | done | `fe28270` | Existing identify seam used; no dedicated legend fixture |
 | 5 | 53.4.1 Map/Results tabs and post-screening switch | done | `6690470` | Isolated Playwright fixture mirrors tab flow; production MapPanel not mounted |
-| 5 | 53.4.2 Identify wording and accessibility polish | pending | | Disjoint files |
+| 5 | 53.4.2 Identify wording and accessibility polish | done | `7e30d4b` | Phrase absent; screening notice assertion retained |
 | 6 | Integrated serial validation and handoff | pending | | |
 
 ## Worker Worktrees
@@ -92,6 +92,12 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - `npm run test:map-tabs` — 2 passed; `git diff --check` passed.
 - The isolated Playwright fixture mirrors the tab flow but does not mount production `MapPanel` or its map/screening providers; production integration remains unverified in browser.
 - No dependencies or remote actions.
+
+### 53.4.2 — Tighten identify wording and UI accessibility
+- Status: done; implementation `7e30d4b`.
+- Removed the estimate phrase from the map-unit identify popup only; test asserts the screening regulatory notice remains; ADR 0015 updated.
+- `npm run test:map-identify` — 2 passed; `git diff --check` passed.
+- No unrelated copy or regulatory language changed; no remote actions.
 
 ### 53.3.1 — Add the fixed NAIP imagery context layer
 - Status: done; implementation `d4a8c8a`.
