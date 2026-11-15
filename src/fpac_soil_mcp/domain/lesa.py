@@ -795,6 +795,16 @@ class FarmSizeCriterionEvaluator(CriterionEvaluator):
 class StandardCriterionEvaluator(CriterionEvaluator):
     """Evaluator for standard or custom-weighted criteria."""
 
+    def __init__(
+        self,
+        criterion_number: int,
+        max_points: float = 15.0,
+        name: str = "Standard Criterion",
+        require_rationale: bool = False,
+    ) -> None:
+        super().__init__(criterion_number, max_points, name)
+        self.require_rationale = require_rationale
+
     def evaluate(
         self,
         crit_input: dict[str, Any] | None = None,
@@ -814,8 +824,16 @@ class StandardCriterionEvaluator(CriterionEvaluator):
         is_automated = bool(input_data.get("is_automated", False)) if explicit_override else False
         input_authority = "analyst_proposed" if explicit_override else "unavailable"
 
-        if not str(justification).strip() and not is_automated and explicit_override:
+        if (
+            self.require_rationale
+            and not str(justification).strip()
+            and not is_automated
+            and explicit_override
+        ):
             raise ValueError("Analyst-proposed criterion points require a rationale.")
+
+        if not justification and not is_automated and explicit_override:
+            justification = f"Points ({awarded}/{self.max_points}) entered without explicit justification rationale."
 
         return CriterionEvaluation(
             criterion_number=self.criterion_number,
@@ -866,7 +884,9 @@ def get_criterion_evaluators(
         elif crit_num == 7:
             evaluators[crit_num] = FarmSizeCriterionEvaluator(crit_num, limit, name)
         else:
-            evaluators[crit_num] = StandardCriterionEvaluator(crit_num, limit, name)
+            evaluators[crit_num] = StandardCriterionEvaluator(
+                crit_num, limit, name, require_rationale=not is_corridor
+            )
 
     return evaluators
 
