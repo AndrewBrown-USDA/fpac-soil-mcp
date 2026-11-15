@@ -19,7 +19,7 @@ APP_PYTHON  ?= 3.11
 # Files this repo owns in the app; the remaining template runtime files are not linted.
 APP_LINT_PATHS := $(addprefix $(APP_DIR)/,agent_server/agent.py agent_server/aoi_context.py agent_server/config.py agent_server/geo.py agent_server/history.py tests)
 
-.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval criterion2-benchmark eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check ecfr ecfr-check
+.PHONY: help install sync requirements run run-sse run-http test test-unit test-live test-eval criterion2-benchmark eval eval-databricks lint lint-fix format format-check check clean docker-build docker-run all app-test app-lint app-frontend-check app-check trial-local ecfr ecfr-check
 
 help: ## Show this help message with available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -48,6 +48,9 @@ test-unit: test ## Alias for offline test suite
 
 app-test: ## Run the agent app's offline tests (uses the committed uv.lock)
 	cd $(APP_DIR) && $(UV) run --frozen --python $(APP_PYTHON) pytest tests -q
+
+trial-local: ## Opt-in: local Site Assessment trial (own MCP server on a free port; live USDA SDA)
+	cd $(APP_DIR) && $(UV) run --frozen --python $(APP_PYTHON) python scripts/trial_local.py
 
 app-lint: ## Ruff check + format check on the agent app files this repo owns
 	$(UV) run ruff check $(APP_LINT_PATHS)

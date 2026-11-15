@@ -38,7 +38,14 @@ def register_fppa_resources(mcp: FastMCP) -> None:
     @mcp.resource("fppa://site-assessment-criteria")
     def get_site_assessment_criteria_resource() -> str:
         """Validated Site Assessment questions, answer forms, and scoring rules."""
-        return json.dumps(
-            SITE_ASSESSMENT_REGISTRY.model_dump(mode="json", by_alias=True),
-            indent=2,
-        )
+        payload = SITE_ASSESSMENT_REGISTRY.model_dump(mode="json", by_alias=True)
+        # Serve each band exactly as the registry specifies it: defaulted null bounds
+        # and inclusivity flags make strict clients reject the whole criteria payload.
+        for criterion, dumped in zip(
+            SITE_ASSESSMENT_REGISTRY.criteria, payload["criteria"], strict=True
+        ):
+            dumped["bands"] = [
+                band.model_dump(mode="json", by_alias=True, exclude_unset=True)
+                for band in criterion.bands
+            ]
+        return json.dumps(payload, indent=2)

@@ -101,6 +101,16 @@ Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)
   exact outline and refuses it above 2000 vertices instead of simplifying.
   SSURGO identify has no farmland class; run screening for that.
 
+### Local Site Assessment trial (headless)
+
+`make trial-local` (repo root) is an opt-in stand-in for the dev-app trial. It starts
+its own MCP server on a free port (Streamable HTTP, `/mcp`), then drives this app's
+real `McpServer` client, criteria-resource validation, interview tools, and
+confirmed-summary gate with a scripted model. It needs network access to USDA SDA, no
+Databricks or model credentials, and is not part of `make check` or `make app-test`.
+Use `uv run python scripts/trial_local.py --mcp-url http://127.0.0.1:PORT/mcp` here to
+reuse a running server. See `planning/STATE_52.md` for what it cannot reproduce.
+
 ### Dev trial apps
 
 Branch trials use two dev apps deployed from git on the feature branch, so the
