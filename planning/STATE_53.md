@@ -29,7 +29,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 2 | 53.1.2 Explicit chat export actions and warning | done | `0818dc8`, `450f9e5` | Frontend wave gate passed after focused lint correction |
 | 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | done | `51369e1` | Focused AOI export and map identify tests pass |
 | 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | done | `f79ebc7` | No MapPanel fixture; testable seams cover controls |
-| 4 | 53.3.1 Fixed NAIP imagery overlay | pending | | |
+| 4 | 53.3.1 Fixed NAIP imagery overlay | done | `d4a8c8a` | Fixed ImageServer request shape; live export probe timed out |
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | pending | | Sequenced after 53.3.1 |
 | 4 | 53.3.3 Improved map legends and layer semantics | pending | | Disjoint files from overlay tasks |
 | 5 | 53.4.1 Map/Results tabs and post-screening switch | pending | | Depends on 53.2.2 and 53.3.3 |
@@ -73,6 +73,13 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - No isolated MapPanel Playwright fixture was available; bounds/reset, visibility/data separation, and measurement cancellation are covered by pure seams.
 - Serial wave gate: `make check` — 993 passed, 3 skipped, 45 deselected; `make app-check` — 266 passed; `make app-frontend-check` passed (11 lint warnings, 10 existing; one new exhaustive-dependency warning in MapPanel, no errors; npm audit 10 advisories).
 - No dependencies or remote actions.
+
+### 53.3.1 — Add the fixed NAIP imagery context layer
+- Status: done; implementation `d4a8c8a`.
+- Added fixed NAIP ImageServer `exportImage` overlay, default-off control, source/vintage/attribution metadata, tests, and ADR 0015 entries.
+- `overlays.test.ts` — 1 passed; `npm run test:map-identify` — 1 passed; `git diff --check` passed.
+- Service metadata advertises dynamic ImageServer and wildcard CORS, with no cached `tileInfo`; the fixed export probe timed out (HTTP 000), so actual imagery rendering remains unverified.
+- No user-provided URLs, dependency changes, or remote Git actions.
 
 ## Final Acceptance
 
