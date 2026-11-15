@@ -29,7 +29,7 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 54.1.1 Compact accessible map controls and cursor defaults | done | `cc7560c` | G42; integrated app checks pass |
-| 2 | 54.2.1 Map-pane server legend and authoritative CDL key | pending | | G43 |
+| 2 | 54.2.1 Map-pane server legend and authoritative CDL key | done | `d76c7cc` | G43; targeted checks pass |
 | 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | pending | | G49; test-purpose metadata caveat |
 | 3 | 54.3.1 Returned SSURGO visibility on new results | pending | | G44 |
 | 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | pending | | G45 |
@@ -52,6 +52,14 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 - Integrated gates: `make app-check` 266 passed; `make app-frontend-check` passed with 11 baseline warnings, 10 npm advisories, ephemeral DB migration skip, and existing build warnings.
 - Deviations: none. A first rectangle completion test used dragging and failed; Terra Draw defaults to click–move–click, and the corrected test passed.
 - Gotchas: fixture mounts the production panel and aborts external HTTPS; cursor is a canvas CSS override in draw/measure modes. Orchestrator owns frontend lint/build and full suites.
+
+### 54.2.1 — Map-pane server legend and authoritative CDL key
+
+- Status: done; code commit `d76c7cc` (`feat(map): show result and CDL legends`).
+- Changed map `MapPanel.tsx`, `Legend.tsx`, `OverlayControl.tsx`, added `CDLLegend.tsx` and `cdlLegend.ts`, legend fixture/config/spec, frontend `package.json` test script, and ADR 0015 local-change ledger.
+- From `apps/agent-fpac-soil-openai-sdk/frontend`: `npm run test:map-legend` 4 passed; `npm run test:map-identify` 2 passed. `git diff --check` passed.
+- Deviations: none. A first screening-switch assertion matched both the map and existing Results-tab legends; scoping it to the map legend passed.
+- Gotchas: CDL table contains 133 official NASS records; fixture aborts external HTTPS. Orchestrator owns lint/build and full suites; 54.2.2 follows due shared files.
 
 ## Final Acceptance
 
