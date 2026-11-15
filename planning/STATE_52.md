@@ -170,11 +170,13 @@ band with `exclude_unset=True`; `tests/test_site_assessment_resource.py` covers 
 likely affects the dev apps until redeployed.
 
 **Not reproducible locally:**
-- Chat UI, real model, Databricks auth, `FPAC_MCP_APP` resolution: the script uses a scripted stub model and a stub workspace client (a real `WorkspaceClient()` blocks contacting a Databricks host). Port 8090 is a llama.cpp Qwen3.6-35B server with completion capability only; it is not wired in.
-- Start/Skip clicks, Confirm/Edit cards, and answer records surviving real conversation turns need the frontend (`npm run test:site-assessment`, Playwright, waived) or the dev apps.
-- The LESA success path calls live USDA SDA, so it needs network access.
+- A full model-generated 12-criterion interview through Confirm → LESA has not been demonstrated in the browser. Live UI proved soil screening and one resource-backed Criterion 1 answer turn; the answer tool now canonicalizes the band ID. `make trial-local` independently proves the LESA refusal and matching-confirmation paths against a local MCP server.
+- Model-generated free-form numeric answers were not demonstrated; the real UI answer came from selecting a resource-defined band. The app answer tool also supports numeric values and has offline tests.
+- Frontend Playwright now passes 3 Site Assessment card tests; the fourth AOI-map fixture test is skipped because its expected “Attach AOI” control is absent from that isolated fixture. This is unrelated to answer/confirmation behavior.
+- App checks: `make app-check` passed (262 tests); frontend `test:local-auth` passed; frontend build passed. Biome lint produced existing warnings and no errors.
+- Opt-in `make trial-local` completed 19/19 checks, including live USDA SDA polygon screening and LESA success. Result is preliminary and undetermined when evidence is absent; the conservative upper bound is separately labelled. Do not treat this as an official determination or form.
 
 **Local-vs-dev gaps that could change results:**
-- Confirmed summaries are built here as the question cards do (`answer` = band id). The model-facing tool records numeric percentage answers as the value (22), which the gate would reject if placed in a summary; only UI-built summaries are accepted.
-- Facts need `is_verified`, `source_provenance`, and a justification (the registry marks all 12 criteria as requiring verification); a model that omits them gets a tool error.
-- Dev deployment code and registry may differ from this checkout until the branch is pushed.
+- `FPAC_LOCAL_DEV=1` is an explicit loopback-only synthetic session and local provider route. Configure `AGENT_MODEL` with the exact model ID reported by `http://127.0.0.1:8090/v1/models`, `LOCAL_LLM_BASE_URL=http://127.0.0.1:8090/v1`, and `FPAC_MCP_URL=http://127.0.0.1:<port>/mcp`; local mode fails closed rather than resolving deployed defaults.
+- Live browser answer-card submits a registry band ID and now retains evidence, comment, provenance, verification status, source provenance, justification, and registry-derived points. The corresponding tool accepts either a numeric answer or a registry band identifier and emits canonical band IDs.
+- Dev deployment code and registry may differ from this checkout until the branch is pushed; no push/deploy was performed.
