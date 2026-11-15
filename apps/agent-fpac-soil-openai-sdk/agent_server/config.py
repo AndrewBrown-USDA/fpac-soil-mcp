@@ -33,7 +33,9 @@ def agent_model() -> str:
         model = os.environ.get("AGENT_MODEL", "").strip()
         if not model:
             raise ValueError("FPAC_LOCAL_DEV requires AGENT_MODEL to name the local model.")
-        return model
+        # The Agents SDK interprets the first slash as a provider prefix. llama.cpp
+        # model IDs may be filesystem paths, so route them explicitly to OpenAI.
+        return model if "/" not in model else f"openai/{model}"
     return _env_or_default("AGENT_MODEL", DEFAULT_AGENT_MODEL)
 
 

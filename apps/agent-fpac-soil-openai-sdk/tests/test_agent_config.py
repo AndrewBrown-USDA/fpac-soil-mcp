@@ -64,6 +64,8 @@ def test_local_dev_requires_model_id(monkeypatch):
         config.agent_model()
     monkeypatch.setenv("AGENT_MODEL", "llama-local")
     assert config.agent_model() == "llama-local"
+    monkeypatch.setenv("AGENT_MODEL", "/models/local/model.gguf")
+    assert config.agent_model() == "openai//models/local/model.gguf"
 
 
 def test_defaults_when_blank(monkeypatch):
