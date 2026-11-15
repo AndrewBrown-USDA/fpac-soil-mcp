@@ -12,6 +12,27 @@ declare global {
   }
 }
 
+export function localDevSession(
+  enabled: boolean,
+  remoteAddress: string | undefined,
+): AuthSession | undefined {
+  if (
+    !enabled ||
+    !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remoteAddress ?? '')
+  ) {
+    return undefined;
+  }
+  return {
+    user: {
+      id: 'local-dev-user',
+      email: 'local-dev@localhost',
+      name: 'Local Development User',
+      preferredUsername: 'local-dev',
+      type: 'regular',
+    },
+  };
+}
+
 /**
  * Middleware to authenticate requests and attach session to request object
  */
@@ -20,6 +41,15 @@ export async function authMiddleware(
   _res: Response,
   next: NextFunction,
 ) {
+  const session = localDevSession(
+    process.env.FPAC_LOCAL_DEV === '1',
+    req.socket.remoteAddress,
+  );
+  if (session) {
+    req.session = session;
+    return next();
+  }
+
   try {
     const session = await getAuthSession({
       getRequestHeader: (name: string) =>
