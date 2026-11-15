@@ -94,11 +94,11 @@ function layerNotes(layer: MapLayer): string[] {
 
 // Server legends, one block per layer, in the order drawn (top layer first); text
 // codes keep meaning off colour alone. Warnings from the server follow the layers.
-export function MapLegend({ block }: { block: MapBlock }) {
+export function MapLegend({ block, compact = false }: { block: MapBlock; compact?: boolean }) {
   const layers = drawOrder(block.layers).reverse();
   if (layers.length === 0) return null;
   return (
-    <div>
+    <div className={compact ? 'text-xs' : undefined}>
       <h3 className="font-medium text-sm">Map layers</h3>
       <p className="mt-1 text-muted-foreground text-xs">
         Screening result layers are shown here. Context overlays such as imagery provide geographic

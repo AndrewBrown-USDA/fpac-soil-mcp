@@ -1,5 +1,6 @@
 import { Layers } from 'lucide-react';
 import { useState } from 'react';
+import { CDLLegend } from './CDLLegend';
 import {
   CONTEXT_LABEL,
   OVERLAYS,
@@ -147,6 +148,7 @@ export function OverlayControl({
           );
         })}
       </fieldset>
+      {on.cdl && <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2"><CDLLegend /></div>}
     </details>
   );
 }

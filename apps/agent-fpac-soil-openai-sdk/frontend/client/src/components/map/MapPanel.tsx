@@ -38,6 +38,7 @@ import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
+import { CDLLegend } from './CDLLegend';
 import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
 import { CDLContextSummary } from './CDLContextSummary';
@@ -751,6 +752,15 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             onOpenChange={setLayersOpen}
             onToggle={toggleOverlay}
           />
+          {(shown?.block || shown?.cdlSummary) && (
+            <details className="absolute top-2 left-2 z-10 max-w-[min(16rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+              <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
+              <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
+                {shown.block && <MapLegend block={shown.block} compact />}
+                {shown.cdlSummary && <CDLLegend />}
+              </div>
+            </details>
+          )}
           <div aria-live="polite" className="absolute bottom-2 left-2 z-10 max-w-[18rem]">
             {identifyHint && (
               <p className="flex items-center gap-2 rounded-md border border-border bg-popover px-2 py-1 text-popover-foreground text-xs shadow-md">

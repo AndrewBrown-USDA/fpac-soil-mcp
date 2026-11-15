@@ -89,6 +89,13 @@ to upstream for every file this repo has not changed.
 
 ### Local changes
 
+* `client/src/components/map/MapPanel.tsx`, `Legend.tsx`, `OverlayControl.tsx`,
+  `CDLLegend.tsx`, and `cdlLegend.ts`: accessible map-pane server legend and
+  USDA NASS CDL context key, without changing server symbology.
+* `client/map-legend-fixture.html`, `client/src/components/map/map-legend-fixture.tsx`,
+  `playwright.map-legend.config.ts`, `tests/map-legend/legend.spec.ts`, and
+  `package.json`: isolated legend browser coverage and test script.
+
 * `client/src/components/map/MapPanel.tsx`: compact accessible icon controls,
   crosshair drawing/measurement cursor, and miles as the initial distance unit.
 * `client/map-toolbar-fixture.html`, `client/src/components/map/map-toolbar-fixture.tsx`,
