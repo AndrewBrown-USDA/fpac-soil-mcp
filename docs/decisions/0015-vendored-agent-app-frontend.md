@@ -203,6 +203,15 @@ Added paths:
 * `client/src/components/map/aoiExport.ts` and
   `client/src/components/map/aoiExport.test.ts`: serialize the current AOI as
   labeled GeoJSON and sanitize download filenames (Plan 53.2.1).
+* `client/src/components/map/MapPanel.tsx`: map navigation/reset, independent
+  AOI and returned-result visibility controls, and line measurement UI (Plan
+  53.2.2).
+* `client/src/components/map/distance.ts` and
+  `client/src/components/map/distance.test.ts`: geodesic line-distance
+  calculation and unit conversions (Plan 53.2.2).
+* `client/src/components/map/mapControls.ts` and
+  `client/src/components/map/mapControls.test.ts`: testable bounds, initial
+  view, visibility, and measurement-cancellation seams (Plan 53.2.2).
 * `client/src/components/site-assessment-cards.tsx`: resource-driven question
   choices, evidence/comment/provenance, verification, source, and justification
   fields, explicit unknown/skipped records, and a distinct

@@ -12,7 +12,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, Copy, Download, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
+import { Check, Copy, Download, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
@@ -49,6 +49,9 @@ import { StatusMessage } from './StatusMessage';
 import type { StatusVariant } from './StatusMessage';
 import { useScreening } from './useScreening';
 import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
+import { lineDistance } from './distance';
+import type { DistanceUnit } from './distance';
+import { aoiViewBounds, INITIAL_MAP_VIEW, measurementModeAfterCancel, setLayerVisibility } from './mapControls';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
 // Metadata checked 2026-10-30: 256 px Web Mercator tiles, cached to zoom 16, CORS *.
@@ -82,6 +85,10 @@ const LEFT_BUTTON_ONLY = {
 };
 
 const emptyCollection = { type: 'FeatureCollection' as const, features: [] };
+const lineCollection = (points: number[][]) => ({
+  type: 'FeatureCollection' as const,
+  features: points.length > 1 ? [{ type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: points } }] : [],
+});
 
 type MapPanelProps = {
   onCloseMap: () => void;
@@ -104,6 +111,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [overlayLoading, setOverlayLoading] = useState<OverlayFlags>(NO_OVERLAYS);
   const [zoom, setZoom] = useState(3);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [aoiVisible, setAoiVisible] = useState(true);
+  const [resultsVisible, setResultsVisible] = useState(true);
+  const [measuring, setMeasuring] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
+  const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('kilometers');
   // Short hint when a click has nothing to identify (no layer on, or none in range).
   const [identifyHint, setIdentifyHint] = useState<string | null>(null);
   // Identify popup (D6): MapLibre popup whose content is rendered through a portal.
@@ -155,8 +167,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const map = new MapLibreMap({
       container: containerRef.current,
       style: BASE_STYLE,
-      center: [-98, 39],
-      zoom: 3,
+      center: INITIAL_MAP_VIEW.center,
+      zoom: INITIAL_MAP_VIEW.zoom,
       maxZoom: 18,
       attributionControl: { compact: true },
     });
@@ -188,6 +200,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         source: 'aoi',
         paint: { 'line-color': '#1f4e9c', 'line-width': 2.5 },
       });
+      map.addSource('measurement', { type: 'geojson', data: lineCollection([]) });
+      map.addLayer({ id: 'measurement-line', type: 'line', source: 'measurement', paint: { 'line-color': '#d21f3c', 'line-width': 3, 'line-dasharray': [2, 1] } });
 
       const draw = new TerraDraw({
         adapter: new TerraDrawMapLibreGLAdapter({ map }),
@@ -268,6 +282,21 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     source?.setData(featureCollection(aoi));
   }, [aoi, mapReady]);
 
+  useEffect(() => {
+    if (!mapReady) return;
+    const source = mapRef.current?.getSource('measurement') as GeoJSONSource | undefined;
+    source?.setData(lineCollection(measurePoints) as never);
+  }, [measurePoints, mapReady]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    setLayerVisibility(map.setLayoutProperty.bind(map), ['aoi-line'], aoiVisible);
+    const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
+    setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
+  }, [aoiVisible, resultsVisible, mapReady, shown]);
+
   // The latest valid screening becomes the AOI's chat summary. A result without its
   // regulatory notice is invalid (ADR 0003) and is not attached.
   useEffect(() => {
@@ -328,6 +357,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (!shown.block) return;
     // Server layers draw below the panel's own AOI outline (`aoi-line`).
     renderMapBlock(map, shown.block, 'aoi-line');
+    const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
+    setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
     // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
     // its layers (a corridor has no AOI).
     const bounds =
@@ -335,7 +366,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         ? geometryBounds(aoiRef.current)
         : (shown.block.bounds ?? null);
     if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
-  }, [shown, mapReady]);
+  }, [shown, mapReady, resultsVisible]);
 
   // Add or remove overlays to match the toggles; a removed overlay forgets its error.
   useEffect(() => {
@@ -361,6 +392,10 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const map = mapRef.current;
     if (!map) return;
     const onClick = (event: MapMouseEvent) => {
+      if (measuring) {
+        setMeasurePoints((points) => [...points, [event.lngLat.lng, event.lngLat.lat]]);
+        return;
+      }
       if (mode !== 'static') return;
       const on = OVERLAYS.filter((overlay) => overlayOn[overlay.id]);
       const identifiable = on.filter((overlay) => isIdentifiableOverlayId(overlay.id));
@@ -439,7 +474,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     return () => {
       map.off('click', onClick);
     };
-  }, [mapReady, mode, overlayOn]);
+  }, [mapReady, mode, overlayOn, measuring]);
 
   // The hint clears itself after a few seconds.
   useEffect(() => {
@@ -463,8 +498,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   }, [sections, popupNode]);
 
   const chooseMode = (next: DrawMode) => {
+    if (measuring) setMeasuring(false);
     drawRef.current?.setMode(next);
     setMode(next);
+  };
+
+  const zoomToAoi = () => {
+    const bounds = aoiViewBounds(aoiRef.current);
+    if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+  };
+  const resetMapView = () => mapRef.current?.easeTo({ center: INITIAL_MAP_VIEW.center, zoom: INITIAL_MAP_VIEW.zoom });
+  const cancelMeasurement = () => {
+    setMeasuring(false);
+    setMeasurePoints([]);
+    if (drawRef.current?.getMode() !== 'static') drawRef.current?.setMode(measurementModeAfterCancel());
   };
 
   const onPasted = (geometry: PolygonGeometry) => {
@@ -665,6 +712,29 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
                 <Trash2 aria-hidden="true" />
                 Clear
               </Button>
+            </div>
+          </div>
+          <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>Map view</span>
+            <div className="flex flex-wrap gap-1.5">
+              <Button type="button" size="sm" onClick={zoomToAoi} disabled={!aoi}>Zoom to AOI</Button>
+              <Button type="button" size="sm" onClick={resetMapView}>Reset map</Button>
+              <Button type="button" size="sm" aria-pressed={aoiVisible} onClick={() => setAoiVisible((v) => !v)}>AOI outline</Button>
+              <Button type="button" size="sm" aria-pressed={resultsVisible} onClick={() => setResultsVisible((v) => !v)}>Result boundaries</Button>
+            </div>
+          </div>
+          <div role="group" aria-label="Line measurement" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>Measure distance</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button type="button" size="sm" aria-pressed={measuring} onClick={() => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasuring(true); } }}>
+                <Ruler aria-hidden="true" /> {measuring ? 'Cancel measure' : 'Measure line'}
+              </Button>
+              <select aria-label="Distance unit" value={measureUnit} onChange={(event) => setMeasureUnit(event.target.value as DistanceUnit)} className="rounded border bg-background px-2 py-1 text-sm">
+                <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
+              </select>
+              {measuring && <span role="status">Measurement active: click map to add points.</span>}
+              {measurePoints.length > 0 && <span role="status">{lineDistance(measurePoints, measureUnit).toFixed(2)} {measureUnit}</span>}
+              {measurePoints.length > 0 && <Button type="button" size="sm" onClick={() => setMeasurePoints([])}>Clear measurement</Button>}
             </div>
           </div>
         </div>
