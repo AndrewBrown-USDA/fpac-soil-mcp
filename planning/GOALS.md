@@ -1,17 +1,18 @@
 # Project Goals (`planning/GOALS.md`)
 
 Last Updated: 2026-11-15
-Source State: `planning/STATE_52.md`; `planning/MASTER_PLAN.md`
+Source State: `planning/STATE_53.md`; `planning/MASTER_PLAN.md`; user-approved map/UI priorities
 
 ## Circled Goal (Active)
 
-- **[G25]** The preliminary LESA call is blocked unless its submitted Site Assessment answers match a confirmed summary in conversation history, and Criterion 7 farm-acre inputs match a confirmed registry band.
-  - Why now: G25 is the only internal critical-path item that can finish within 24 hours. It unblocks G26 (acceptance evidence) and then G27 (dev-app trial). G1 is externally gated, so it cannot be the active focus.
-  - Exit criteria: Root and agent-app test suites pass with the D12/D13 preflight rejection and the D14 coupled AOI-context fixes; root Ruff check and format pass. The Databricks-authenticated chat trial stays open until local auth is configured.
-  - First action: Resume worker worktree `.worktrees\52.3.1` (branch `feature/sa-checklist2-52.3.1-worker`) and apply the D12/D13 preflight fix.
+- **[G42]** Agent-app map controls use compact icon-only buttons with accessible hover/focus labels; drawing and measuring use a crosshair cursor; distance measurement defaults to miles.
+  - Why now: User-selected usability-first bottleneck; improves the map workspace for every following map task and is independently verifiable.
+  - Exit criteria: Focused frontend tests verify icon controls expose accessible names/tooltips, active drawing/measurement uses a crosshair rather than a hand cursor, and miles is the initial measure unit; frontend lint/build pass.
+  - First action: Inspect MapPanel toolbar/button and cursor lifecycle anchors, current tooltip patterns, and test seams; draft the 54.1.1 micro-plan.
 
 ## Sequenced Goals (Dependency DAG)
 
+- **[G25]** The preliminary LESA call is blocked unless its submitted Site Assessment answers match a confirmed conversation summary, and Criterion 7 farm-acre inputs match a confirmed registry band. *(Completed in Plan 52; retained as the prerequisite for G26.)*
 - **[G26]** Automated acceptance evidence verifies interview sequencing, answer-to-band scoring, conservative missing-input handling, and the confirmation gate.
   - Depends on: G25, G28, G29, G30
 - **[G27]** The approved dev-app trial confirms the guided interview, confirmed-summary gate, and preliminary-only result behavior.
@@ -63,13 +64,28 @@ Source State: `planning/STATE_52.md`; `planning/MASTER_PLAN.md`
   - Depends on: G31
 - **[G34]** Large or deferred map layers are exposed via an MCP resource template (`fppa://map/{geometry_hash}/layers`) with `ResourceLink` references when `ToolResult.meta["map"]` truncates layers.
   - Depends on: G32
+- **[G43]** The map pane displays the current server-provided screening legend and a CDL code/color key sourced from the official USDA NASS legend, without treating context imagery as analysis evidence.
+  - Depends on: G42
+- **[G49]** The fixed NAIP context overlay uses the user-selected USDA FPAC `conus_naip` ImageServer through a fixed `exportImage` request, with its test-purpose metadata caveat documented.
+  - Depends on: G42, G43
+- **[G44]** Returned SSURGO farmland-result polygons become visible when new screening results return, while the separate SSURGO context overlay remains an independent user-controlled layer.
+  - Depends on: G42, G43
+- **[G45]** ADR 0016 and the app's stateless session context support a corridor input distinct from polygon AOI, containing a primary centerline, alternatives, indirect/staging geometry, and buffer settings.
+  - Depends on: G42
+- **[G46]** The app exposes a validated, untraced map route that submits corridor inputs to the existing `analyze_corridor_fppa` tool and returns a bounded display result with its server map block and regulatory notice.
+  - Depends on: G45
+- **[G47]** Corridor inputs attach to chat as separate per-conversation context, can be detached, and are substituted only into the existing corridor tool call without requiring the model to copy coordinates.
+  - Depends on: G45
+- **[G48]** The map supports drawing/editing a primary corridor centerline, alternative centerlines, and indirect/staging polygons; a required per-side buffer distance and units feed both direct map screening and chat handoff, with screening kept preliminary.
+  - Depends on: G45, G46, G47
+- **[G38]** The agent map supports selected geometry workflows, including corridor alternatives and labelled AOIs.
+  - Depends on: G42, G43, G44, G45, G46, G47, G48, G49
 
 ## Independent Backlog
 
 - **[G35]** Offline demonstration mode runs both benchmark testbeds with explicit fixture-mode provenance.
 - **[G36]** The T1 model client uses AI Gateway and records non-null MLflow scores for every ground-truth case.
 - **[G37]** The agent app has a separate, repeatable deployed evaluation for its `/invocations` interface and supported chat/map flows.
-- **[G38]** The agent map supports the selected next geometry workflows, including corridor alternatives and labelled AOIs.
 - **[G39]** Evaluation ground truth has domain-owner sign-off for its expected facts, behaviors, and scoring criteria.
 - **[G40]** Deployment operations document health checks and least-privilege client grants.
 
