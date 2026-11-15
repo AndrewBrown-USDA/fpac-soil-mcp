@@ -61,12 +61,34 @@ def test_answer_record_derives_points_and_preserves_provenance(
     )
 
     assert record["type"] == "site_assessment_answer"
-    assert record["answer"] == 24.0
+    assert record["answer"] == record["selected_band"]["id"] == "range_20_90_1"
     assert record["selected_band"]["id"] == "range_20_90_1"
     assert record["points"] == record["selected_band"]["points"] == 1
     assert record["evidence"] == "user measurement"
     assert record["comment"] == "field note"
     assert record["provenance"] == "user"
+
+
+def test_answer_record_accepts_card_band_id_and_keeps_canonical_answer(
+    valid_site_assessment_criteria_resource,
+):
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+
+    record = _invoke(
+        answer_tool,
+        {
+            "criterion_number": 1,
+            "answer_state": "answered",
+            "answer": "range_20_90_1",
+            "evidence": "verified local trial evidence",
+            "comment": "card submitted the registry band ID",
+            "provenance": "user",
+        },
+    )
+
+    assert record["answer"] == "range_20_90_1"
+    assert record["selected_band"]["id"] == "range_20_90_1"
+    assert record["points"] == 1
 
 
 @pytest.mark.parametrize(

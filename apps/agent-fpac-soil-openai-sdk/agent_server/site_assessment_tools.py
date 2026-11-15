@@ -78,7 +78,7 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
             "type": "site_assessment_answer",
             "criterion_number": criterion_number,
             "answer_state": answer_state,
-            "answer": answer,
+            "answer": selected_band["id"] if selected_band is not None else None,
             "selected_band": selected_band,
             "points": selected_band["points"] if selected_band is not None else None,
             "evidence": evidence,
@@ -117,16 +117,17 @@ def _reject_unknown_parameters(tool: FunctionTool, allowed_parameters: set[str])
 
 
 def _find_band(criterion: dict[str, Any], answer: str | float) -> dict[str, Any] | None:
-    if criterion["answer_type"] == "qualitative":
-        normalized = str(answer).strip().casefold()
-        return next(
-            (
-                band
-                for band in criterion["bands"]
-                if normalized in {band["id"].casefold(), band["label"].strip().casefold()}
-            ),
-            None,
-        )
+    normalized = str(answer).strip().casefold()
+    named_band = next(
+        (
+            band
+            for band in criterion["bands"]
+            if normalized in {band["id"].casefold(), band["label"].strip().casefold()}
+        ),
+        None,
+    )
+    if named_band is not None or criterion["answer_type"] == "qualitative":
+        return named_band
 
     try:
         value = float(answer)
