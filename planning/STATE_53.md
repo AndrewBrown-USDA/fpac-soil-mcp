@@ -28,7 +28,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 1 | 53.1.1 Chat export serialization and privacy boundary | done | `66b8026`, `6545876` | ADR 0015 ledger scope amendment recorded; targeted tests pass |
 | 2 | 53.1.2 Explicit chat export actions and warning | done | `0818dc8`, `450f9e5` | Frontend wave gate passed after focused lint correction |
 | 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | done | `51369e1` | Focused AOI export and map identify tests pass |
-| 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | pending | | Sequenced after 53.2.1; MapPanel hotspot |
+| 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | done | `f79ebc7` | No MapPanel fixture; testable seams cover controls |
 | 4 | 53.3.1 Fixed NAIP imagery overlay | pending | | |
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | pending | | Sequenced after 53.3.1 |
 | 4 | 53.3.3 Improved map legends and layer semantics | pending | | Disjoint files from overlay tasks |
@@ -65,6 +65,14 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - Added local-only AOI label UI, GeoJSON copy/download, clipboard feedback, sanitized filenames, serializer tests, and ADR 0015 entries.
 - `node --import tsx --test client/src/components/map/aoiExport.test.ts` — 3 passed; `npm run test:map-identify` — 1 passed; diff check passed.
 - Label is component-local and excluded from `ActiveAoi` context and server/chat payloads; no dependencies or remote actions.
+
+### 53.2.2 — Add map navigation, boundary visibility, and line measurement
+- Status: done; implementation `f79ebc7`.
+- Added AOI zoom/reset, independent AOI/result visibility controls, geodesic line distance with units, and cancel/clear interaction; ADR 0015 ledger updated.
+- `distance.test.ts` + `mapControls.test.ts` — 5 passed; `npm run test:map-identify` — 1 passed; `git diff --check` passed.
+- No isolated MapPanel Playwright fixture was available; bounds/reset, visibility/data separation, and measurement cancellation are covered by pure seams.
+- Serial wave gate: `make check` — 993 passed, 3 skipped, 45 deselected; `make app-check` — 266 passed; `make app-frontend-check` passed (11 lint warnings, 10 existing; one new exhaustive-dependency warning in MapPanel, no errors; npm audit 10 advisories).
+- No dependencies or remote actions.
 
 ## Final Acceptance
 

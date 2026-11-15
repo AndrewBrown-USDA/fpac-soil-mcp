@@ -137,11 +137,11 @@ At most two workers run concurrently. Use worktrees for parallel workers. Tasks 
 ### 53.2.2 — Add map navigation, boundary visibility, and line measurement
 
 - **Repo:** `/home/andrew/work/fpac-soil-mcp`
-- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`; measurement helper/test files may be created.
-- **Can create:** focused distance/unit helper and tests under `client/src/components/map/`.
+- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`, `docs/decisions/0015-vendored-agent-app-frontend.md`.
+- **Can create:** focused distance/unit helper and tests, plus small testable map-control helpers/tests under `client/src/components/map/` if needed to verify fit/reset, visibility-vs-data, and measurement lifecycle without an isolated MapPanel browser fixture.
 - **Depends on:** 53.2.1; tasks are sequenced because both may edit `MapPanel.tsx`. Never run two workers editing MapPanel concurrently.
 - **Specification:** Add Zoom to AOI using geometry bounds, Reset map to initial extent/view, independent visibility toggles for AOI outline and returned polygon/vector boundaries, and line-distance measurement with selectable units. Measurement must be separate from AOI drawing/editing, visibly indicate active mode, support cancellation/clear, show measured distance, and use a documented geodesic or MapLibre distance method consistent with geometry helpers. Preserve vector-result rendering and AOI state regardless of visibility toggles.
-- **Do not touch:** overlay catalog/order implementation, chat export, server contracts, or AOI persistence contract.
+- **Do not touch:** overlay catalog/order implementation, chat export, server contracts, or AOI persistence contract. Record every changed/added vendored frontend path in ADR 0015's `### Local changes` ledger in the same task change.
 - **Grep anchors:** MapLibre initialization/load handlers; Terra Draw modes; `geometryBounds`; `renderMapBlock`, `clearMapBlock`; toolbar `toolButton`; map container controls.
 - **Reference implementations:** existing polygon/rectangle/select Terra Draw modes; `geometryBounds` and geodesic helpers in map `geojson.ts`.
 - **Acceptance:** focused tests verify bounds fit, reset extent, toggles only change visibility (not data), measurement computes known synthetic line lengths in selectable units, and mode cancellation. Add Playwright interaction coverage where the existing isolated fixture can host MapPanel; otherwise test pure helper and document browser limitation.
