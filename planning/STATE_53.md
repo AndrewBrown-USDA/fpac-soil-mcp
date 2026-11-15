@@ -32,7 +32,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 4 | 53.3.1 Fixed NAIP imagery overlay | done | `d4a8c8a` | Fixed ImageServer request shape; live export probe timed out |
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `2f0963c` | Focused ordering tests and build pass |
 | 4 | 53.3.3 Improved map legends and layer semantics | done | `fe28270` | Existing identify seam used; no dedicated legend fixture |
-| 5 | 53.4.1 Map/Results tabs and post-screening switch | pending | | Depends on 53.2.2 and 53.3.3 |
+| 5 | 53.4.1 Map/Results tabs and post-screening switch | done | `6690470` | Isolated Playwright fixture mirrors tab flow; production MapPanel not mounted |
 | 5 | 53.4.2 Identify wording and accessibility polish | pending | | Disjoint files |
 | 6 | Integrated serial validation and handoff | pending | | |
 
@@ -85,6 +85,13 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - `make app-check` — 266 passed; app Ruff check/format passed.
 - `make app-frontend-check` — passed; 11 lint warnings (10 existing plus the MapPanel exhaustive-dependency warning), 10 npm advisories, DB migration skipped without config, and existing Vite/chunk warnings.
 - NAIP export endpoint remained unreachable from this environment (HTTP 000 timeout); actual browser imagery rendering remains unverified.
+
+### 53.4.1 — Keep screening results visible in Map/Results tabs
+- Status: done; implementation `6690470`.
+- Added Map/Results ARIA tabs, empty state, automatic Results selection after screening, return-to-Map, and preserved screening result navigation; ADR 0015 updated.
+- `npm run test:map-tabs` — 2 passed; `git diff --check` passed.
+- The isolated Playwright fixture mirrors the tab flow but does not mount production `MapPanel` or its map/screening providers; production integration remains unverified in browser.
+- No dependencies or remote actions.
 
 ### 53.3.1 — Add the fixed NAIP imagery context layer
 - Status: done; implementation `d4a8c8a`.

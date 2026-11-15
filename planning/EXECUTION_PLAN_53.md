@@ -185,11 +185,11 @@ At most two workers run concurrently. Use worktrees for parallel workers. Tasks 
 ### 53.4.1 — Keep screening results visible in Map/Results tabs
 
 - **Repo:** `/home/andrew/work/fpac-soil-mcp`
-- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx` and a small tab component under map directory if needed.
+- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`, `docs/decisions/0015-vendored-agent-app-frontend.md`, and a small tab component under map directory if needed.
 - **Can create:** focused Playwright fixture/spec or component helper if existing map fixture can support it.
 - **Depends on:** 53.2.2 and 53.3.3.
 - **Specification:** Replace the current vertically stacked, scroll-to-results layout with Map and Results tabs. Keep the map reachable, show an appropriate empty state before screening, and automatically switch to Results after a successful screening; expose a clear return-to-Map action. Tool-result views must remain understandable and not silently replace or discard screening state. Preserve responsive sizing and screen-reader tab semantics.
-- **Do not touch:** server screening endpoint/data contract, chat export, AOI state or screening calculations.
+- **Do not touch:** server screening endpoint/data contract, chat export, AOI state or screening calculations. Record every changed/added vendored frontend path in ADR 0015's `### Local changes` ledger in the same task change.
 - **Grep anchors:** section return JSX, `screening.status`, `screeningMap`, `showScreening`, `ScreeningResults`, result origin header in `MapPanel.tsx`.
 - **Reference implementations:** existing accessible tabs in the client UI (search before adding dependencies); current `MapPanel` result-origin and Back to screening controls.
 - **Acceptance:** Playwright verifies initial Map selection, successful screening selects Results, result details remain in viewport/panel, return to Map works, and tool-result switching preserves screening data. Run focused map Playwright suite plus frontend lint/build.
