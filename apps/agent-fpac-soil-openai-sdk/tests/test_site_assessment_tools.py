@@ -91,6 +91,31 @@ def test_answer_record_accepts_card_band_id_and_keeps_canonical_answer(
     assert record["points"] == 1
 
 
+def test_answer_record_preserves_verification_sources_and_justification(
+    valid_site_assessment_criteria_resource,
+):
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+
+    record = _invoke(
+        answer_tool,
+        {
+            "criterion_number": 1,
+            "answer_state": "answered",
+            "answer": 24.0,
+            "evidence": "field observation",
+            "comment": "checked with the assessor",
+            "provenance": "user",
+            "is_verified": True,
+            "source_provenance": ["county land-use map", "field record"],
+            "justification": "These sources establish the reported percentage.",
+        },
+    )
+
+    assert record["is_verified"] is True
+    assert record["source_provenance"] == ["county land-use map", "field record"]
+    assert record["justification"] == "These sources establish the reported percentage."
+
+
 @pytest.mark.parametrize(
     ("answer_state", "provenance"),
     [("unknown", "agent"), ("skipped", "tool")],

@@ -51,10 +51,14 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
         criterion_number: int,
         answer_state: Literal["answered", "unknown", "skipped"],
         answer: str | float | None,
-        evidence: str,
-        comment: str,
-        provenance: Literal["user", "agent", "tool"],
+        evidence: str = "",
+        comment: str = "",
+        provenance: Literal["user", "agent", "tool"] = "user",
+        is_verified: bool = False,
+        source_provenance: list[str] | None = None,
+        justification: str = "",
     ) -> str:
+        """Record one choice and its evidence/provenance; points are registry-derived."""
         criterion = criteria.get(criterion_number)
         if criterion is None:
             raise ValueError("criterion_number must identify a Site Assessment criterion.")
@@ -84,6 +88,9 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
             "evidence": evidence,
             "comment": comment,
             "provenance": provenance,
+            "is_verified": is_verified,
+            "source_provenance": source_provenance or [],
+            "justification": justification,
         }
         return json.dumps(record, ensure_ascii=False)
 
@@ -98,6 +105,9 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
                 "evidence",
                 "comment",
                 "provenance",
+                "is_verified",
+                "source_provenance",
+                "justification",
             },
         ),
     ]
