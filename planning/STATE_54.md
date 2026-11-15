@@ -4,11 +4,11 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 
 ## Baseline
 
-- [x] Repository `/home/andrew/work/fpac-soil-mcp`, branch `feature/local-dev-trial`, clean at `d4fefd7` before planning edits.
+- [x] Repository `/home/andrew/work/fpac-soil-mcp`, branch `feature/local-dev-trial`, clean at `f05b84c` before baseline rerun.
 - [x] Existing Plan 53 final gates at this exact code commit: `make check` 993 passed, 3 skipped, 45 deselected; `make app-check` 266 passed; `make app-frontend-check` passed.
 - [x] Frontend baseline caveats from Plan 53: 11 lint warnings (including one MapPanel exhaustive-dependency warning), 10 npm audit advisories, existing Vite/React/chunk warnings; build passed.
 - [x] Planning artifacts tracked; plan-only commits remain separate from implementation commits.
-- [ ] Re-run baseline only if code/branch changes before wave 1.
+- [x] Re-ran baseline at `f05b84c`: `make check` 993 passed/3 skipped/45 deselected; `make app-check` 266 passed; `make app-frontend-check` passed with 11 existing warnings, 10 npm advisories, ephemeral DB migration skip, and existing build warnings.
 
 ## Decisions
 
