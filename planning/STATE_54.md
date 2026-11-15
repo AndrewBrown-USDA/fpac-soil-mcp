@@ -61,6 +61,14 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 - Deviations: none. A first screening-switch assertion matched both the map and existing Results-tab legends; scoping it to the map legend passed.
 - Gotchas: CDL table contains 133 official NASS records; fixture aborts external HTTPS. Orchestrator owns lint/build and full suites; 54.2.2 follows due shared files.
 
+### 54.2.2 — Fixed USDA FPAC NAIP ImageServer
+
+- Status: done; code commit `d37e63e` (`feat(map): use USDA FPAC NAIP imagery`).
+- Changed `frontend/client/src/components/map/overlays.ts`, `OverlayControl.tsx`, `overlays.test.ts` (paths relative to app), and ADR 0015.
+- From `apps/agent-fpac-soil-openai-sdk/frontend`: `node --import tsx --test client/src/components/map/overlays.test.ts` passed (3 tests); root `git diff --check` passed.
+- Deviations: none. Initial component-render assertion failed because the Node TSX loader expected a React global; replaced it with a test of the shared caveat text.
+- Gotchas: metadata labels purpose `test:202407180638 naip service`; availability may change. No live verification; orchestrator owns shared/full suites.
+
 ## Final Acceptance
 
 - [ ] All task reports and implementation commits recorded.
