@@ -180,3 +180,22 @@ likely affects the dev apps until redeployed.
 - `FPAC_LOCAL_DEV=1` is an explicit loopback-only synthetic session and local provider route. Configure `AGENT_MODEL` with the exact model ID reported by `http://127.0.0.1:8090/v1/models`, `LOCAL_LLM_BASE_URL=http://127.0.0.1:8090/v1`, and `FPAC_MCP_URL=http://127.0.0.1:<port>/mcp`; local mode fails closed rather than resolving deployed defaults.
 - Live browser answer-card submits a registry band ID and now retains evidence, comment, provenance, verification status, source provenance, justification, and registry-derived points. The corresponding tool accepts either a numeric answer or a registry band identifier and emits canonical band IDs.
 - Dev deployment code and registry may differ from this checkout until the branch is pushed; no push/deploy was performed.
+
+## Optional local MLflow traces (2026-11-15)
+
+- Local tracing remains off unless both `FPAC_LOCAL_DEV=1` and
+  `FPAC_LOCAL_MLFLOW_TRACING=1` are set. The default SQLite database is
+  `~/.local/share/fpac-soil/mlflow/mlflow.db`; `FPAC_LOCAL_MLFLOW_DIR` can
+  select another absolute directory. The override produces a local SQLite URI,
+  not an arbitrary remote tracking endpoint.
+- `make app-check` passed: 266 tests; Ruff check/format passed. Frontend local
+  auth and Site Assessment suites passed (4/4), and its production build passed.
+- Opt-in smoke test created an MLflow span, flushed asynchronous logging, and
+  found the `local-tracing-smoke` trace by searching the `fpac-soil-local`
+  experiment in the SQLite store.
+- Traces may include prompts, answers, tool arguments/results, and session IDs;
+  geometry may be recorded in agent/MCP tool traces. Do not enable tracing for
+  personal or Section 1619 producer data unless the machine/environment is
+  approved. `/api/geo/screen` and `/api/geo/map` remain untraced.
+- Local tracing does not change deployed behavior when `FPAC_LOCAL_DEV` is
+  unset. No push or deployment.
