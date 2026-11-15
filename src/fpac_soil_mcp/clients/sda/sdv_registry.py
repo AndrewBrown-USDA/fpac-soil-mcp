@@ -14,11 +14,7 @@ from types import MappingProxyType
 from typing import Any
 
 from fpac_soil_mcp.clients.sda.client import SDAValidationError
-
-try:
-    from fpac_soil_mcp.models.lesa import SUPPORTED_INDEX_MSG
-except ImportError:
-    from fpac_soil_mcp.models import SUPPORTED_INDEX_MSG
+from fpac_soil_mcp.models.lesa import SUPPORTED_INDEX_MSG
 
 # ---------------------------------------------------------------------------
 # SDV metadata-driven rating contract (ADR 0014)

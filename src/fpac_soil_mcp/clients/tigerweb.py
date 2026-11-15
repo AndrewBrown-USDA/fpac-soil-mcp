@@ -42,27 +42,15 @@ from fpac_soil_mcp.models.integration import (
     IntegrationStatus,
     UrbanExemptionRecord,
 )
-
-try:
-    from fpac_soil_mcp.spatial.geometry import (
-        GeometryValidationError,
-        calculate_acreage,
-        calculate_geodesic_length,
-        compute_geometry_hash,
-        normalize_ring_winding,
-        parse_geojson_geometry,
-    )
-    from fpac_soil_mcp.spatial.geometry import polygon_to_esri_rings as _polygon_to_esri_rings
-except ImportError:
-    from fpac_soil_mcp.geometry import (  # type: ignore[no-redef]
-        GeometryValidationError,
-        calculate_acreage,
-        calculate_geodesic_length,
-        compute_geometry_hash,
-        normalize_ring_winding,
-        parse_geojson_geometry,
-    )
-    from fpac_soil_mcp.geometry import polygon_to_esri_rings as _polygon_to_esri_rings  # type: ignore[no-redef]
+from fpac_soil_mcp.spatial.geometry import (
+    GeometryValidationError,
+    calculate_acreage,
+    calculate_geodesic_length,
+    compute_geometry_hash,
+    normalize_ring_winding,
+    parse_geojson_geometry,
+)
+from fpac_soil_mcp.spatial.geometry import polygon_to_esri_rings as _polygon_to_esri_rings
 
 logger = logging.getLogger(__name__)
 

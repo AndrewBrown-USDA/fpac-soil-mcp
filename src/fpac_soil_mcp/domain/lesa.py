@@ -34,6 +34,7 @@ from fpac_soil_mcp.core.constants import (
     SITE_CRITERIA_NAMES,
     STATUTORY_DETERMINATIONS,
 )
+from fpac_soil_mcp.domain.site_assessment import SITE_ASSESSMENT_REGISTRY
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     LandEvaluationSummary,
@@ -43,11 +44,6 @@ from fpac_soil_mcp.models.lesa import (
     SiteAssessmentCriterion,
     SiteAssessmentSummary,
 )
-
-try:
-    from fpac_soil_mcp.domain.site_assessment import SITE_ASSESSMENT_REGISTRY
-except ImportError:
-    from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
 
 __all__ = [
     "CORRIDOR_CRITERIA_MAX_POINTS",

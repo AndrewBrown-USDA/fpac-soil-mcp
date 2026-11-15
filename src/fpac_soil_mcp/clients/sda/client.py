@@ -14,41 +14,17 @@ from typing import Any
 
 import httpx
 
-try:
-    from fpac_soil_mcp.core.config import settings
-except ImportError:
-    from fpac_soil_mcp.config import settings
-
-try:
-    from fpac_soil_mcp.core.errors import DomainError, UpstreamError, ValidationError
-except ImportError:
-    DomainError = Exception  # type: ignore[assignment,misc]
-    ValidationError = ValueError  # type: ignore[assignment,misc]
-    UpstreamError = Exception  # type: ignore[assignment,misc]
-
-try:
-    from fpac_soil_mcp.spatial.geometry import (
-        GeometryValidationError,
-        validate_and_sanitize_polygon_wkt,
-    )
-except ImportError:
-    from fpac_soil_mcp.geometry import (
-        GeometryValidationError,
-        validate_and_sanitize_polygon_wkt,
-    )
-
-try:
-    from fpac_soil_mcp.clients.http import (
-        HttpRequestError,
-        HttpStatusError,
-        execute_http_request_with_retry,
-    )
-except ImportError:
-    from fpac_soil_mcp.http_client import (
-        HttpRequestError,
-        HttpStatusError,
-        execute_http_request_with_retry,
-    )
+from fpac_soil_mcp.clients.http import (
+    HttpRequestError,
+    HttpStatusError,
+    execute_http_request_with_retry,
+)
+from fpac_soil_mcp.core.config import settings
+from fpac_soil_mcp.core.errors import DomainError, UpstreamError, ValidationError
+from fpac_soil_mcp.spatial.geometry import (
+    GeometryValidationError,
+    validate_and_sanitize_polygon_wkt,
+)
 
 logger = logging.getLogger(__name__)
 
