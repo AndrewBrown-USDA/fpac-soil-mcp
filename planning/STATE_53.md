@@ -25,7 +25,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 53.1.1 Chat export serialization and privacy boundary | pending | | |
+| 1 | 53.1.1 Chat export serialization and privacy boundary | done | `66b8026`, `6545876` | ADR 0015 ledger scope amendment recorded; targeted tests pass |
 | 2 | 53.1.2 Explicit chat export actions and warning | pending | | Depends on 53.1.1 |
 | 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | pending | | |
 | 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | pending | | Sequenced after 53.2.1; MapPanel hotspot |
@@ -44,6 +44,13 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 ## Task Reports
 
 <!-- Append concise reports (15 lines max per task). -->
+
+### 53.1.1 — Define chat export serialization and privacy boundary
+- Status: done; implementation `66b8026`, ADR ledger correction `6545876`.
+- Added deterministic JSON/Markdown serialization and tests in `client/src/lib/chatExport.ts` and `client/src/lib/chatExport.test.ts`.
+- ADR 0015 now lists both added paths; plan scope was amended after app guidance revealed its required local-change ledger.
+- `node --import tsx --test client/src/lib/chatExport.test.ts` — 4 passed, 0 failed (worker and orchestrator reruns).
+- No dependencies or manifests changed; no remote actions.
 
 ## Final Acceptance
 

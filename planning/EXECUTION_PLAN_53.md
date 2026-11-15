@@ -101,11 +101,11 @@ At most two workers run concurrently. Use worktrees for parallel workers. Tasks 
 ### 53.1.1 — Define chat export serialization and privacy boundary
 
 - **Repo:** `/home/andrew/work/fpac-soil-mcp`
-- **Must edit:** none.
+- **Must edit:** `docs/decisions/0015-vendored-agent-app-frontend.md`.
 - **Can create:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/lib/chatExport.ts`, `apps/agent-fpac-soil-openai-sdk/frontend/client/src/lib/chatExport.test.ts`.
 - **Depends on:** none.
-- **Specification:** Create deterministic Markdown and JSON serialization for current-chat user-visible messages and available raw tool names, arguments, and results, including geometry. Exclude hidden reasoning, server traces, credentials, and unrelated chat history. Include clear sensitivity metadata/warning copy in UI integration contract. Avoid exposing tool data merely by rendering it; export occurs only on explicit user action. Handle absent/partial/streaming values without fabricating data.
-- **Do not touch:** server agent/history APIs, AOI context contract, dependency manifests, or map components.
+- **Specification:** Create deterministic Markdown and JSON serialization for current-chat user-visible messages and available raw tool names, arguments, and results, including geometry. Exclude hidden reasoning, server traces, credentials, and unrelated chat history. Include clear sensitivity metadata/warning copy in UI integration contract. Avoid exposing tool data merely by rendering it; export occurs only on explicit user action. Handle absent/partial/streaming values without fabricating data. Record both created frontend paths in ADR 0015's `### Local changes` ledger in the same task change, as required by the app guidance. This requirement was added after the initial implementation commit because the original task scope omitted the repository rule.
+- **Do not touch:** server agent/history APIs, AOI context contract, dependency manifests, or map components. Do not edit files other than the two specified frontend files and ADR 0015.
 - **Grep anchors:** `ChatMessage`, `message.parts`, `ToolPartRenderer`, `ToolPart` in `message.tsx`; node test scripts and `@playwright/test` in frontend package manifest.
 - **Reference implementations:** current message-part parsing/rendering in `message.tsx`; `identify.test.ts` pure helper test pattern.
 - **Acceptance:** unit tests assert deterministic Markdown/JSON, visible text and raw tool inputs/outputs retained, geometry preserved, hidden/non-exportable fields excluded, and empty/partial messages handled. Run from `frontend/`: `node --import tsx --test client/src/lib/chatExport.test.ts`.
