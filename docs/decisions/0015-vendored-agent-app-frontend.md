@@ -149,6 +149,11 @@ Modified upstream files:
   control (Plan 53.3.1); accessible raster/context ordering controls with
   browser-local persistence, keeping result vectors and AOI boundaries above
   rasters (Plan 53.3.2).
+* `client/src/components/map/Legend.tsx` and
+  `client/src/components/map/ScreeningResults.tsx`: clarify that fixed context
+  overlays are geographic reference, add text alternatives for server legend
+  symbols, and constrain the legend card height on smaller viewports (Plan
+  53.3.3); server legend values and the regulatory notice remain unchanged.
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again
