@@ -26,7 +26,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 53.1.1 Chat export serialization and privacy boundary | done | `66b8026`, `6545876` | ADR 0015 ledger scope amendment recorded; targeted tests pass |
-| 2 | 53.1.2 Explicit chat export actions and warning | pending | | Depends on 53.1.1 |
+| 2 | 53.1.2 Explicit chat export actions and warning | done | `0818dc8`, `450f9e5` | Frontend wave gate passed after focused lint correction |
 | 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | pending | | |
 | 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | pending | | Sequenced after 53.2.1; MapPanel hotspot |
 | 4 | 53.3.1 Fixed NAIP imagery overlay | pending | | |
@@ -51,6 +51,14 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - ADR 0015 now lists both added paths; plan scope was amended after app guidance revealed its required local-change ledger.
 - `node --import tsx --test client/src/lib/chatExport.test.ts` — 4 passed, 0 failed (worker and orchestrator reruns).
 - No dependencies or manifests changed; no remote actions.
+
+### 53.1.2 — Add explicit chat export actions and warning
+- Status: done; implementation `0818dc8`, lint correction `450f9e5`.
+- Added explicit Markdown/JSON export menu, sensitivity confirmation, download behavior, isolated Playwright fixture/spec, and ADR 0015 ledger entries; no dependencies added.
+- `npm run test:chat-export` — 3 passed, 0 failed; `git diff --check` passed.
+- Initial `make app-frontend-check` flagged new button-type/non-null-assertion errors; one focused retry fixed them. Rerun passed lint/build with 10 existing warnings and 10 npm advisories.
+- Wave gate: `make check` — 993 passed, 3 skipped, 45 deselected; `make app-check` — 266 passed; `make app-frontend-check` passed.
+- Existing upstream warnings/deprecations and no-database migration skip remain; no remote actions.
 
 ## Final Acceptance
 
