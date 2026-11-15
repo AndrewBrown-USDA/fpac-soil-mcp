@@ -134,7 +134,7 @@ Modified upstream files:
 * `client/src/components/map/farmlandClasses.ts`: keeps unknown/unrecognized
   classification labels distinct from explicit not-prime farmland rather than
   defaulting unrecognized values to `not_prime`.
-* `client/src/components/map/MapPanel.tsx`: uses the NCSS acronym-only logo in
+ * `client/src/components/map/MapPanel.tsx`: uses the NCSS acronym-only logo in
   the map-panel header, with the official color and white variants for light
   and dark themes (NCSS Visual Standards Guide, March 2018); Vite-managed
   imports ensure the assets are included in the frontend build. It also shows
@@ -142,7 +142,10 @@ Modified upstream files:
   re-query (Plan 50.2.2); provides a browser-only AOI label and explicit
    GeoJSON copy/download actions (Plan 53.2.1); accessible Map/Results tabs,
    automatic Results selection on completed screening, and retained screening
-   details while viewing tool results (Plan 53.4.1).
+    details while viewing tool results (Plan 53.4.1).
+ * `client/src/components/map/IdentifyPopup.tsx`: removes “Preliminary machine
+   estimate” from the map-unit identify popup only (Plan 53.4.2); screening
+   authority notices elsewhere remain unchanged.
 * `client/src/components/map/overlays.ts` and
   `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
   ImageServer raster context overlay, with attribution and vintage/context
@@ -214,9 +217,12 @@ Added paths:
 * `client/src/components/map/aoiExport.ts` and
   `client/src/components/map/aoiExport.test.ts`: serialize the current AOI as
   labeled GeoJSON and sanitize download filenames (Plan 53.2.1).
-* `client/src/components/map/MapPanel.tsx`: map navigation/reset, independent
+ * `client/src/components/map/MapPanel.tsx`: map navigation/reset, independent
   AOI and returned-result visibility controls, and line measurement UI (Plan
-  53.2.2).
+   53.2.2).
+ * `client/src/components/map/identify.test.ts`: verifies the identify popup
+   omits the estimate phrase while screening retains its authority notice (Plan
+   53.4.2).
 * `client/src/components/map/distance.ts` and
   `client/src/components/map/distance.test.ts`: geodesic line-distance
   calculation and unit conversions (Plan 53.2.2).
