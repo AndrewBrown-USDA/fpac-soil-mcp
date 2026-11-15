@@ -125,11 +125,11 @@ At most two workers run concurrently. Use worktrees for parallel workers. Tasks 
 ### 53.2.1 — Add browser-only AOI label and GeoJSON exchange
 
 - **Repo:** `/home/andrew/work/fpac-soil-mcp`
-- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`.
+- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`, `docs/decisions/0015-vendored-agent-app-frontend.md`.
 - **Can create:** focused AOI export helper and unit test under `client/src/components/map/`.
 - **Depends on:** none.
 - **Specification:** Add an optional user-specified label associated with the current AOI, visible in the map/AOI UI and included as GeoJSON feature properties when copying or downloading. Copy and save the drawn/loaded AOI as valid GeoJSON. Handle clipboard errors and sanitize filename. Keep label local to browser UI/export; do not add it to ActiveAoi chat/MCP payload, summary, or server requests. Preserve geometry validation and existing AOI replacement/reset behavior.
-- **Do not touch:** `agent_server/`, chat custom inputs, `ActiveAoi` geometry/summary contract, server routes, or map result schema.
+- **Do not touch:** `agent_server/`, chat custom inputs, `ActiveAoi` geometry/summary contract, server routes, or map result schema. Record each changed/added vendored frontend path in ADR 0015's `### Local changes` ledger in the same task change.
 - **Grep anchors:** `replaceAoi`, `onPasted`, `clear`, `aoi`, and AOI toolbar in `MapPanel.tsx`; `ActiveAoi` and storage functions in `ActiveAoiContext.tsx`; GeoJSON feature helpers in `geojson.ts`.
 - **Reference implementations:** existing `featureCollection`/`toPolygonGeometry` in `geojson.ts`; browser clipboard/download patterns in frontend if present.
 - **Acceptance:** unit/Playwright coverage proves label appears in UI and exported GeoJSON properties, exported geometry round-trips through existing validation, copy/download work, and label is absent from `activeAoi` request context. Focused test command to be added by task; run `npm run test:map-identify` as regression.

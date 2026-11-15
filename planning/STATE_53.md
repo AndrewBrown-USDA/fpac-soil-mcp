@@ -27,7 +27,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 |---|---|---|---|---|
 | 1 | 53.1.1 Chat export serialization and privacy boundary | done | `66b8026`, `6545876` | ADR 0015 ledger scope amendment recorded; targeted tests pass |
 | 2 | 53.1.2 Explicit chat export actions and warning | done | `0818dc8`, `450f9e5` | Frontend wave gate passed after focused lint correction |
-| 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | pending | | |
+| 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | done | `51369e1` | Focused AOI export and map identify tests pass |
 | 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | pending | | Sequenced after 53.2.1; MapPanel hotspot |
 | 4 | 53.3.1 Fixed NAIP imagery overlay | pending | | |
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | pending | | Sequenced after 53.3.1 |
@@ -59,6 +59,12 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - Initial `make app-frontend-check` flagged new button-type/non-null-assertion errors; one focused retry fixed them. Rerun passed lint/build with 10 existing warnings and 10 npm advisories.
 - Wave gate: `make check` — 993 passed, 3 skipped, 45 deselected; `make app-check` — 266 passed; `make app-frontend-check` passed.
 - Existing upstream warnings/deprecations and no-database migration skip remain; no remote actions.
+
+### 53.2.1 — Add browser-only AOI label and GeoJSON exchange
+- Status: done; implementation `51369e1`.
+- Added local-only AOI label UI, GeoJSON copy/download, clipboard feedback, sanitized filenames, serializer tests, and ADR 0015 entries.
+- `node --import tsx --test client/src/components/map/aoiExport.test.ts` — 3 passed; `npm run test:map-identify` — 1 passed; diff check passed.
+- Label is component-local and excluded from `ActiveAoi` context and server/chat payloads; no dependencies or remote actions.
 
 ## Final Acceptance
 
