@@ -28,7 +28,7 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 54.1.1 Compact accessible map controls and cursor defaults | pending | | G42 |
+| 1 | 54.1.1 Compact accessible map controls and cursor defaults | done | `cc7560c` | G42; integrated app checks pass |
 | 2 | 54.2.1 Map-pane server legend and authoritative CDL key | pending | | G43 |
 | 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | pending | | G49; test-purpose metadata caveat |
 | 3 | 54.3.1 Returned SSURGO visibility on new results | pending | | G44 |
@@ -46,9 +46,10 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 
 ### 54.1.1 — Compact accessible map controls and cursor defaults
 
-- Status: implemented; code commit `cc7560c` (`feat(map): compact accessible toolbar controls`); awaiting orchestrator integration.
+- Status: done; code commit `cc7560c` (`feat(map): compact accessible toolbar controls`); planning report commit `5eda878`.
 - Changed `frontend/client/src/components/map/MapPanel.tsx`, toolbar fixture HTML/TSX, `frontend/playwright.map-toolbar.config.ts`, `frontend/tests/map-toolbar/toolbar.spec.ts`, `frontend/package.json`, and ADR 0015 local-change ledger (paths relative to app except ADR).
 - From `apps/agent-fpac-soil-openai-sdk/frontend`: `npm run test:map-toolbar` 3 passed; `npm run test:map-identify` 2 passed. `git diff --check` passed.
+- Integrated gates: `make app-check` 266 passed; `make app-frontend-check` passed with 11 baseline warnings, 10 npm advisories, ephemeral DB migration skip, and existing build warnings.
 - Deviations: none. A first rectangle completion test used dragging and failed; Terra Draw defaults to click–move–click, and the corrected test passed.
 - Gotchas: fixture mounts the production panel and aborts external HTTPS; cursor is a canvas CSS override in draw/measure modes. Orchestrator owns frontend lint/build and full suites.
 
