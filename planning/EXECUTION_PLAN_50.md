@@ -22,6 +22,7 @@
 - **2026-11-14 (D1)**: Update all imports across `tests/` and `eval/` directly in Orchestration 50 with **no** top-level backwards-compatibility shims.
 - **2026-11-14 (D2)**: Track `planning/EXECUTION_PLAN_50.md`, `PROMPT_TEMPLATE_50.md`, `STATE_50.md`, and `tasks/50.*` in Git; commit them separately as `docs(planning):`.
 - **2026-11-14 (D3)**: Max 4 concurrent workers per wave (strictly disjoint file scopes), `flash` worker model, escalate to `hydrogen` / coordinator after 2 consecutive failures.
+- **2026-11-14 (D4)**: Re-scoped `50.6.1` (escalation rung 4). Wave 5 left `try/except ImportError` fallbacks to flat modules in `clients/sda/client.py`, `clients/sda/sdv_registry.py`, `clients/tigerweb.py`, and `domain/lesa.py`, plus a lazy `constants` import in `tigerweb.py`. Those fallbacks now sit in 50.6.1's scope so the flat deletion does not break them or hide breakage. No new task; no shims remain.
 
 ## Wave Table
 
@@ -117,7 +118,7 @@
 
 ### `50.6.1` — Remove old flat modules & full verification
 - **Repo**: `fpac-soil-mcp`
-- **Files in scope**: Delete old flat files in `src/fpac_soil_mcp/` (keeping `__init__.py`, `data/`, and the 6 new subpackages).
+- **Files in scope**: Must edit `src/fpac_soil_mcp/clients/sda/client.py`, `clients/sda/sdv_registry.py`, `clients/tigerweb.py`, `domain/lesa.py` (re-scope D4: remove fallbacks to flat modules). Delete old flat files in `src/fpac_soil_mcp/` (keeping `__init__.py`, `data/`, and the 6 new subpackages).
 - **Depends on**: `50.5.1`, `50.5.2`
-- **Spec**: Remove the superseded flat `.py` files and old `tools/`, `resources/`, `prompts/` directories under `src/fpac_soil_mcp/`. Run `make check` and `make test-eval` to verify zero regressions.
+- **Spec**: Replace each `try/except ImportError` fallback to a flat module with the direct layered import. Move `tigerweb.py`'s lazy `constants` import to module top via `core.constants`. Remove the superseded flat `.py` files and old `tools/`, `resources/`, `prompts/` directories under `src/fpac_soil_mcp/`. Run `make check` and `make test-eval` to verify zero regressions.
 - **Acceptance**: `make check && make test-eval` exits 0.
