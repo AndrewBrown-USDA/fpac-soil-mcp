@@ -228,15 +228,15 @@ def get_farmland_classification_by_mukey(
 
 def get_soil_interpretations(
     mukeys: Annotated[list[str | int], Field(min_length=1, max_length=1000)],
-    rule_name: Literal["NCCPI v3 - National Commodity Crop Productivity Index (Universal)"] = (
-        "NCCPI v3 - National Commodity Crop Productivity Index (Universal)"
+    rule_name: Literal["NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"] = (
+        "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
     ),
 ) -> dict[str, Any]:
     """Retrieve component-weighted soil interpretations (such as NCCPI v3) for a list of mukeys.
 
     Args:
         mukeys: List of positive integer SSURGO map unit keys (up to 1000).
-        rule_name: SDA interpretation rule name. Defaults to NCCPI v3 Universal.
+        rule_name: SDA interpretation rule name. Defaults to NCCPI (Ver 3.0), the name in the SDA cointerp table.
 
     Returns:
         Dictionary mapping mukey to interpretation rating result, plus query metadata.

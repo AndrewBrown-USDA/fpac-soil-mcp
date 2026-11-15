@@ -204,6 +204,8 @@ EXPECTED_CORPUS_IDS = {
     "SA-MA-02",
     "SA-MA-03",
     "SA-MA-04",
+    "SA-MA-05",
+    "SA-MA-06",
     "URBAN-01",
 }
 
