@@ -171,6 +171,11 @@ Modified upstream files:
 
 Added paths:
 
+* `client/src/lib/chatExport.ts` and `client/src/lib/chatExport.test.ts`:
+  deterministic current-chat Markdown and JSON serializers that retain visible
+  text and available raw tool names, inputs and outputs (including geometry),
+  exclude hidden/non-exportable content, and expose a sensitivity warning
+  contract for explicit user-initiated exports (Plan 53.1.1).
 * `client/src/components/map/**`: map panel (MapLibre and Terra Draw AOI
   drawing, GeoJSON paste and file input, `/api/geo/screen` client, farmland
   class mapping, legend, results table, regulatory notice, error states, the
