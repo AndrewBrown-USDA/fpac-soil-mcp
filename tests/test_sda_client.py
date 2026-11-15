@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from fpac_soil_mcp.sda_client import (
+from fpac_soil_mcp.clients.sda import (
     ALLOWED_SDV_TABLES,
     SQL_MUKEY_LOOKUP,
     SQL_POINT_LOOKUP,
@@ -658,7 +658,7 @@ class TestSDAClientExecution:
             client.lookup_sdv_attribute("Farmland; DROP TABLE sdvattribute;--")
 
     def test_build_dynamic_sdv_query_cointerp(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+        from fpac_soil_mcp.clients.sda import build_dynamic_sdv_query
 
         meta = {
             "attributename": "National Commodity Crop Productivity Index",
@@ -743,7 +743,7 @@ class TestSDAClientExecution:
 
     def test_dynamic_sdv_query_preserves_valid_state_index_99(self) -> None:
         """CSR2 SQL does not screen 99 (a valid CSR2 value); 99 is not a CSR2 sentinel."""
-        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY
+        from fpac_soil_mcp.clients.sda import SDV_RATING_REGISTRY
 
         query = build_dynamic_sdv_query(_sdv(_CSR2), "'1001'")
         assert "m.iacornsr IS NOT NULL" in query
@@ -760,7 +760,7 @@ class TestSDAClientExecution:
             build_dynamic_sdv_query(meta, "'1001'")
 
     def test_build_dynamic_sdv_query_invalid_table(self) -> None:
-        from fpac_soil_mcp.sda_client import build_dynamic_sdv_query
+        from fpac_soil_mcp.clients.sda import build_dynamic_sdv_query
 
         meta = {
             "attributetablename": "unauthorized_table",
@@ -1005,7 +1005,7 @@ class TestSDAClientExecution:
 
     def test_csr2_sql_template_uses_mapunit_table(self) -> None:
         """Verify the CSR2 registry builder queries mapunit.iacornsr directly."""
-        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY, build_sdv_rating_query
+        from fpac_soil_mcp.clients.sda import SDV_RATING_REGISTRY, build_sdv_rating_query
 
         sql = build_sdv_rating_query(SDV_RATING_REGISTRY["csr2"], ["406439"])
         assert "m.iacornsr" in sql
@@ -1103,7 +1103,7 @@ class TestSDAClientExecution:
 
     def test_cpi_sql_template_uses_component_table(self) -> None:
         """Verify the CPI registry builder queries component.cropprodindex."""
-        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY, build_sdv_rating_query
+        from fpac_soil_mcp.clients.sda import SDV_RATING_REGISTRY, build_sdv_rating_query
 
         sql = build_sdv_rating_query(SDV_RATING_REGISTRY["cpi"], ["660750"])
         assert "c.cropprodindex" in sql
@@ -1202,7 +1202,7 @@ class TestSDAClientExecution:
 
     def test_storie_uses_dominant_condition_cointerp(self) -> None:
         """Verify Storie routes to the cointerp Dominant Condition builder (D4/D5)."""
-        from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY, build_sdv_rating_query
+        from fpac_soil_mcp.clients.sda import SDV_RATING_REGISTRY, build_sdv_rating_query
 
         sql = build_sdv_rating_query(SDV_RATING_REGISTRY["storie"], ["461792"])
         assert "cointerp" in sql

@@ -14,9 +14,9 @@ import pytest
 from fastmcp import FastMCP
 from shapely.geometry import box
 
-from fpac_soil_mcp.config import settings
-from fpac_soil_mcp.sda_client import SDAClient, SDAClientError
-from fpac_soil_mcp.tools import register_tools
+from fpac_soil_mcp.clients.sda import SDAClient, SDAClientError
+from fpac_soil_mcp.core.config import settings
+from fpac_soil_mcp.mcp.tools import register_tools
 
 TOOL = "get_soil_polygons_by_geometry"
 POLYGON = {
@@ -58,7 +58,7 @@ def sda():
     client = MagicMock(spec=SDAClient)
     client.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
     client.get_spatial_intersection.side_effect = lambda *a, **kw: [dict(r) for r in ROWS]
-    with patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient", return_value=client):
+    with patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient", return_value=client):
         yield client
 
 

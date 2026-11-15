@@ -2,14 +2,14 @@ from datetime import UTC, datetime
 
 from pyproj import CRS
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.cdl_models import (
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.mcp.tools import cdl_tools
+from fpac_soil_mcp.models.cdl import (
     CDLAnalysisStatus,
     CDLHistogramBin,
     CDLHistogramResponse,
     CDLServiceMetadata,
 )
-from fpac_soil_mcp.tools import cdl_tools
 
 
 class FakeCDLClient:
@@ -321,7 +321,7 @@ def test_cdl_context_marks_incomplete_coverage_and_upstream_errors(monkeypatch):
 
 
 def test_cdl_context_reports_vintage_ambiguity(monkeypatch):
-    from fpac_soil_mcp.cdl_client import CDLVintageAmbiguous
+    from fpac_soil_mcp.clients.cdl import CDLVintageAmbiguous
 
     class AmbiguousVintageClient(FakeCDLClient):
         def resolve_latest_product_vintage(self, *, metadata):

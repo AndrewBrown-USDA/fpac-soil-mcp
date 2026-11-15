@@ -14,8 +14,8 @@ from typing import Any, TypeVar
 import httpx
 import pytest
 
-from fpac_soil_mcp.http_client import HttpRequestError, HttpStatusError
-from fpac_soil_mcp.sda_client import (
+from fpac_soil_mcp.clients.http import HttpRequestError, HttpStatusError
+from fpac_soil_mcp.clients.sda import (
     SDV_CONTRACT_FIELDS,
     SDAClient,
     SDAQueryError,

@@ -7,19 +7,19 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.corridor_analysis import (
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.domain.corridor_analyzer import (
     CorridorAnalyzer,
     _coverage_is_complete,
     _get_corridor_ratings,
 )
-from fpac_soil_mcp.integration_models import (
+from fpac_soil_mcp.models.integration import (
     CountyAgProfile,
     IntegrationStatus,
     UrbanExemptionRecord,
 )
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "corridor" / "multi_county_corridors.json"
 
@@ -122,7 +122,7 @@ def test_corridor_analysis_two_counties():
     ]
 
     # Partition returns 2 segments summing to total buffered acreage
-    from fpac_soil_mcp.geometry import buffer_centerline, calculate_acreage
+    from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
 
     buf = buffer_centerline(sc2["centerline"], sc2["buffer_distance"], sc2["buffer_units"])
     tot_ac = calculate_acreage(buf)
@@ -232,7 +232,7 @@ def test_corridor_analysis_with_indirect_staging_and_alternatives(alternative_ra
         {"state_fips": "17", "county_fips": "043", "county_name": "DuPage", "state_name": "IL"},
     ]
 
-    from fpac_soil_mcp.geometry import (
+    from fpac_soil_mcp.spatial.geometry import (
         buffer_centerline,
         calculate_acreage,
         erase_geometries,
@@ -362,7 +362,7 @@ def test_corridor_analysis_reconciliation_failure_warning(caplog):
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]
 
-    from fpac_soil_mcp.geometry import buffer_centerline, calculate_acreage
+    from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
 
     centerline = {
         "type": "LineString",
@@ -781,7 +781,7 @@ def test_corridor_analysis_with_county_partition_geometry_models():
     """Verify analyze_corridor processes CountyPartitionGeometry Pydantic model objects."""
     from shapely.geometry import box
 
-    from fpac_soil_mcp.integration_models import CountyPartitionGeometry
+    from fpac_soil_mcp.models.integration import CountyPartitionGeometry
 
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
@@ -806,7 +806,7 @@ def test_corridor_analysis_with_county_partition_geometry_models():
     ]
     # Return actual CountyPartitionGeometry model instance
     poly = box(-93.80, 42.02, -93.60, 42.04)
-    from fpac_soil_mcp.geometry import calculate_acreage
+    from fpac_soil_mcp.spatial.geometry import calculate_acreage
 
     acres = calculate_acreage(poly)
 
@@ -929,8 +929,8 @@ def test_corridor_storie_uses_registry_scale_when_county_maximum_is_unavailable(
 @pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
 def test_corridor_fallback_source_matches_registry_provenance(index):
     """Corridor fallback provenance comes from the SDV registry (stable D8 IDs)."""
-    from fpac_soil_mcp import corridor_analysis
-    from fpac_soil_mcp.sda_client import SDV_RATING_REGISTRY
+    from fpac_soil_mcp.clients.sda import SDV_RATING_REGISTRY
+    from fpac_soil_mcp.domain import corridor_analyzer as corridor_analysis
 
     assert corridor_analysis._INDEX_SOURCES[index] == SDV_RATING_REGISTRY[index].provenance_id
     assert corridor_analysis._INDEX_SENTINELS[index] == SDV_RATING_REGISTRY[index].sentinels
@@ -938,7 +938,7 @@ def test_corridor_fallback_source_matches_registry_provenance(index):
 
 def test_corridor_sentinels_and_rule_unchanged_by_registry_dedupe():
     """Deduping onto the registry keeps the previous corridor sentinel values and NCCPI rule."""
-    from fpac_soil_mcp import corridor_analysis
+    from fpac_soil_mcp.domain import corridor_analyzer as corridor_analysis
 
     assert corridor_analysis._INDEX_SOURCES == {
         "nccpi": "SDA:NCCPI_V3",

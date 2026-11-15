@@ -20,15 +20,15 @@ import pytest
 from common.dataset import load_gold_set
 from common.matching import match_expected
 
-from fpac_soil_mcp.app import create_mcp_server
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.constants import REGULATORY_NOTICE
-from fpac_soil_mcp.integration_models import IntegrationStatus, UrbanExemptionRecord
-from fpac_soil_mcp.lesa import evaluate_land_evaluation, evaluate_lesa
-from fpac_soil_mcp.models import MapUnitProductivityRating
-from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
-from fpac_soil_mcp.sda_client import SDAClient, SDAQueryError
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
+from fpac_soil_mcp.clients.sda import SDAClient, SDAQueryError
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.core.constants import REGULATORY_NOTICE
+from fpac_soil_mcp.domain.lesa import evaluate_land_evaluation, evaluate_lesa
+from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
+from fpac_soil_mcp.mcp.app import create_mcp_server
+from fpac_soil_mcp.models.integration import IntegrationStatus, UrbanExemptionRecord
+from fpac_soil_mcp.models.lesa import MapUnitProductivityRating
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = REPO_ROOT / "manifest.yaml"
@@ -234,7 +234,7 @@ def _gold_scenario(case_id: str) -> dict[str, Any]:
     if case_id == "partial-rated-coverage":
         return _partial_land_evaluation()
     if case_id == "urban-partial-overlap":
-        from fpac_soil_mcp.geometry import calculate_acreage, parse_geojson_geometry
+        from fpac_soil_mcp.spatial.geometry import calculate_acreage, parse_geojson_geometry
 
         geometry = parse_geojson_geometry(
             {
@@ -410,7 +410,7 @@ async def test_farmland_class_listing_cites_its_authority() -> None:
 async def test_soil_queries_carry_regulatory_notice(
     tool_name: str, arguments: dict[str, Any]
 ) -> None:
-    with patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient", _sda_factory(_prime_handler)):
+    with patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient", _sda_factory(_prime_handler)):
         async with fastmcp.Client(create_mcp_server()) as client:
             result = await client.call_tool(tool_name, arguments)
 
@@ -438,7 +438,7 @@ async def test_invalid_inputs_return_structured_errors(
         requests.append(request)
         return httpx.Response(500)
 
-    with patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient", _sda_factory(record)):
+    with patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient", _sda_factory(record)):
         async with fastmcp.Client(create_mcp_server()) as client:
             result = await client.call_tool(tool_name, arguments, raise_on_error=False)
 

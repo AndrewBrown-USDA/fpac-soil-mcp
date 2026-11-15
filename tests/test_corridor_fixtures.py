@@ -5,7 +5,7 @@ from pathlib import Path
 
 from shapely.geometry import MultiPolygon, Polygon
 
-from fpac_soil_mcp.geometry import (
+from fpac_soil_mcp.spatial.geometry import (
     buffer_centerline,
     calculate_acreage,
     erase_geometries,

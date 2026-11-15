@@ -27,9 +27,9 @@ from typing import Any
 
 from common.dataset import case_forces_tool_use
 
-from fpac_soil_mcp.app import create_mcp_server
-from fpac_soil_mcp.privacy import sanitize_public_payload
-from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
+from fpac_soil_mcp.core.privacy import sanitize_public_payload
+from fpac_soil_mcp.mcp.app import create_mcp_server
+from fpac_soil_mcp.mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _PROMPT_FILE = re.compile(r"^system_prompt_(v\d+)\.txt$")

@@ -10,8 +10,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from fpac_soil_mcp import sda_client
-from fpac_soil_mcp.sda_client import (
+from fpac_soil_mcp.clients import sda as sda_client
+from fpac_soil_mcp.clients.sda import (
     SDV_CONTRACT_FIELDS,
     SDV_RATING_REGISTRY,
     SDV_REGISTRY_VERSION,
@@ -86,7 +86,7 @@ class TestRegistry:
             assert spec.value_column == "interphr"
 
     def test_existing_selectors_match_productivity_semantics(self) -> None:
-        from fpac_soil_mcp.sda_client import PRODUCTIVITY_SEMANTICS
+        from fpac_soil_mcp.clients.sda import PRODUCTIVITY_SEMANTICS
 
         for key in ("nccpi", "csr2", "cpi", "storie"):
             spec = SDV_RATING_REGISTRY[key]
@@ -247,7 +247,7 @@ class TestResolveSdvSpec:
         assert constraints == {}
 
     def test_sdvattribute_not_in_allowed_tables(self) -> None:
-        from fpac_soil_mcp.sda_client import ALLOWED_SDV_TABLES
+        from fpac_soil_mcp.clients.sda import ALLOWED_SDV_TABLES
 
         assert "sdvattribute" not in ALLOWED_SDV_TABLES
         assert "cointerp" in ALLOWED_SDV_TABLES
@@ -287,7 +287,7 @@ class TestCoverageAndCountyMaxStates:
         assert result["sdv_provenance"]["spec_id"] == "csr2"
 
     def test_allowed_tables_are_the_registry_tables(self) -> None:
-        from fpac_soil_mcp.sda_client import ALLOWED_SDV_TABLES
+        from fpac_soil_mcp.clients.sda import ALLOWED_SDV_TABLES
 
         assert isinstance(ALLOWED_SDV_TABLES, frozenset)
         assert ALLOWED_SDV_TABLES == {s.table for s in SDV_RATING_REGISTRY.values()}

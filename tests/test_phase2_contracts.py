@@ -6,10 +6,10 @@ from pathlib import Path
 import httpx
 from fastmcp import FastMCP
 
-from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
-from fpac_soil_mcp.tools import register_tools
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
+from fpac_soil_mcp.mcp.tools import register_tools
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "aoi" / "benchmark_50_aois.json"
 

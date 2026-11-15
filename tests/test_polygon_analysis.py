@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer, categorize_farmland_class
-from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE, SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
+from fpac_soil_mcp.clients.sda import PRODUCTIVITY_PROVENANCE, SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer, categorize_farmland_class
 
 GEOJSON = {
     "type": "Polygon",
@@ -384,7 +384,7 @@ def test_analyze_polygon_fully_covered():
 
     # Geodesic area for this box in Iowa is approx 21744.4 acres or similar calculated value
     # Let's mock spatial table to match total_aoi_acres exactly
-    from fpac_soil_mcp.geometry import calculate_acreage, parse_geojson_geometry
+    from fpac_soil_mcp.spatial.geometry import calculate_acreage, parse_geojson_geometry
 
     geom = parse_geojson_geometry(geojson)
     total_aoi = calculate_acreage(geom)

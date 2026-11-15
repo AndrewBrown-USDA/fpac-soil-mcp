@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from fpac_soil_mcp.geometry import calculate_acreage, parse_geojson_geometry
+from fpac_soil_mcp.spatial.geometry import calculate_acreage, parse_geojson_geometry
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "aoi" / "benchmark_50_aois.json"
 

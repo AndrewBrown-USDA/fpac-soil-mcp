@@ -1,8 +1,8 @@
 import pytest
 
-from fpac_soil_mcp.corridor_analysis import _feature_ratings
-from fpac_soil_mcp.lesa import calculate_relative_ratings, evaluate_land_evaluation
-from fpac_soil_mcp.sda_client import PRODUCTIVITY_PROVENANCE
+from fpac_soil_mcp.clients.sda import PRODUCTIVITY_PROVENANCE
+from fpac_soil_mcp.domain.corridor_analyzer import _feature_ratings
+from fpac_soil_mcp.domain.lesa import calculate_relative_ratings, evaluate_land_evaluation
 
 
 @pytest.mark.parametrize(
