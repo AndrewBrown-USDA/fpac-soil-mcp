@@ -1,4 +1,4 @@
-# Execution Plan 50: Layered Module Refactor (`G17`)
+# Execution Plan 50: Layered Module Refactor (`G31`)
 
 ## Goal & Scope
 
@@ -10,8 +10,8 @@
   - Removing lazy/mid-file circular imports (`map_contract.py`, `lesa_tools.py`, `tigerweb_client.py`)
   - Updating `tests/`, `eval/`, `pyproject.toml`, and `main.py` imports directly
 - **Out of scope**:
-  - Changing MCP tool schemas, `_meta` / `ToolResult` adoption (`G18`), or tool argument/error normalization (`G19`)
-  - Adding `fppa://map/{geometry_hash}/layers` resource templates (`G20`)
+  - Changing MCP tool schemas, `_meta` / `ToolResult` adoption (`G32`), or tool argument/error normalization (`G33`)
+  - Adding `fppa://map/{geometry_hash}/layers` resource templates (`G34`)
   - Modifying `apps/agent-fpac-soil-openai-sdk/` (it is a separate MCP client project communicating over `/mcp`)
 - **Verbatim constraints**:
   - "Update all imports across `tests/` and `eval/` directly in the same orchestration with no top-level shims."
@@ -99,7 +99,7 @@
 - **Repo**: `fpac-soil-mcp`
 - **Files in scope**: Can create `src/fpac_soil_mcp/mcp/{__init__.py,app.py,routes.py,context.py}` and `src/fpac_soil_mcp/mcp/{tools,resources,prompts}/__init__.py` + submodules. Must edit `pyproject.toml`, `main.py`, `src/fpac_soil_mcp/__init__.py`.
 - **Depends on**: `50.3.1`, `50.3.2`, `50.3.3`
-- **Spec**: Port `app.py`, `routes.py`, `tools/*`, `resources/*`, `prompts/*` into `mcp/`. Add `mcp/context.py` (stub for `G18`). Remove tool-to-tool import in `mcp/tools/lesa.py` (call `CorridorAnalyzer` / `domain.lesa` directly). Update `pyproject.toml` console script to `fpac_soil_mcp.mcp.app:main` and `main.py` to import from `fpac_soil_mcp.mcp.app`.
+- **Spec**: Port `app.py`, `routes.py`, `tools/*`, `resources/*`, `prompts/*` into `mcp/`. Add `mcp/context.py` (stub for `G32`). Remove tool-to-tool import in `mcp/tools/lesa.py` (call `CorridorAnalyzer` / `domain.lesa` directly). Update `pyproject.toml` console script to `fpac_soil_mcp.mcp.app:main` and `main.py` to import from `fpac_soil_mcp.mcp.app`.
 - **Acceptance**: `uv run python -c "from fpac_soil_mcp.mcp.app import create_mcp_server; s = create_mcp_server()"` exits 0.
 
 ### `50.5.1` — Update `tests/` imports

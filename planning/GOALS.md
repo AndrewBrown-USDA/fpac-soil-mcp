@@ -1,6 +1,6 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-13
+Last Updated: 2026-11-14
 Source State: `planning/STATE_51.md`; `planning/MASTER_PLAN.md`
 
 ## Circled Goal (Active)
@@ -55,6 +55,17 @@ Source State: `planning/STATE_51.md`; `planning/MASTER_PLAN.md`
   - Depends on: G18
 - **[G30]** A LESA request screens first, offers Start/Skip before any interview-based LESA call, and requests combined CDL context at most once for an attached or pasted AOI.
   - Depends on: G23
+
+- **[G31]** `src/fpac_soil_mcp` is organized into layered subpackages (`core/`, `models/`, `spatial/`, `clients/`, `domain/`, `mcp/`) with zero circular-import workarounds, unified LESA/corridor scoring in `domain/lesa.py`, and all existing tests (`make check`, `make test-eval`) passing.
+  - Why now: Eliminates circular-import workarounds (`map_contract.py`, `lesa_tools.py`), unifies duplicated LESA/SA logic, and creates the clean `mcp/context.py` + `mcp/tools/` seam needed for canonical MCP `_meta` / `ToolResult` adoption (`G32`) and tool interface normalization (`G33`).
+  - Exit criteria: `make check` and `make test-eval` pass with 0 failures; zero lazy/mid-file circular-import workarounds in `src/fpac_soil_mcp`.
+  - First action: Create `src/fpac_soil_mcp/core/` and `src/fpac_soil_mcp/models/` and move the zero-I/O base modules first.
+- **[G32]** Map-enabled tools (`analyze_farmland_by_polygon`, `analyze_corridor_fppa`, `get_soil_polygons_by_geometry`) read `include_map` from MCP request `_meta` via `Context` and return `ToolResult(structured_content=..., meta={"map": ...})`, removing `include_map` from LLM-facing tool schemas and updating `apps/agent-fpac-soil-openai-sdk` to use `_meta`.
+  - Depends on: G31
+- **[G33]** All 11 MCP tools use consistent `geometry` parameter naming, typed Pydantic/`ToolResult` returns, and uniform `ToolResult(is_error=True, ...)` error handling, with `manifest.yaml`, `server.json`, and `eval/contract/` updated to match.
+  - Depends on: G31
+- **[G34]** Large or deferred map layers are exposed via an MCP resource template (`fppa://map/{geometry_hash}/layers`) with `ResourceLink` references when `ToolResult.meta["map"]` truncates layers.
+  - Depends on: G32
 
 ## Independent Backlog
 
