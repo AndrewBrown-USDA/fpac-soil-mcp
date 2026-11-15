@@ -35,3 +35,6 @@ Enable a full local chat-UI and real-model Site Assessment trial against the loc
 - Target local model is referred to only as llama.cpp on port 8090; do not assume a particular model or capability before probing it.
 - Live USDA SDA testing is requested, but must remain clearly network-dependent and opt-in. No push, deployment, or other remote repository action is authorized.
 - The bypass is explicit and local-only; it must not cause fallback to deployed MCP/model services or alter normal deployed behavior.
+
+## Discovered Tasks
+- [ ] Route slash-containing local model IDs through the Agents SDK's explicit OpenAI provider prefix; add a regression test and verify with the llama.cpp model ID returned by `/v1/models`. The first real agent request failed with `Unknown prefix` because the SDK parsed the filesystem path in the model ID as a provider name. This is required before the planned local live trial can proceed.
