@@ -89,6 +89,12 @@ to upstream for every file this repo has not changed.
 
 ### Local changes
 
+* `client/src/components/map/MapPanel.tsx`: compact accessible icon controls,
+  crosshair drawing/measurement cursor, and miles as the initial distance unit.
+* `client/map-toolbar-fixture.html`, `client/src/components/map/map-toolbar-fixture.tsx`,
+  `playwright.map-toolbar.config.ts`, `tests/map-toolbar/toolbar.spec.ts`, and
+  `package.json`: isolated production-panel toolbar browser coverage and test script.
+
 Modified upstream files:
 
 * `packages/db/migrations/0001_add_trace_id.sql` and

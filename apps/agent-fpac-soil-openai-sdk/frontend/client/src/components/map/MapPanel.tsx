@@ -12,9 +12,10 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, Copy, Download, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2, Ruler } from 'lucide-react';
+import { Check, Copy, Download, Eye, Map as MapIcon, Maximize, MousePointer2, Pentagon, RotateCcw, Square, Trash2, Undo2, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
 import ncssAcronymWhite from '@/assets/ncss-acronym-white.png';
 import { GeoJsonInput } from './GeoJsonInput';
@@ -115,7 +116,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [resultsVisible, setResultsVisible] = useState(true);
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
-  const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('kilometers');
+  const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('miles');
   const [activeTab, setActiveTab] = useState<'map' | 'results'>('map');
   // Short hint when a click has nothing to identify (no layer on, or none in range).
   const [identifyHint, setIdentifyHint] = useState<string | null>(null);
@@ -597,25 +598,23 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     URL.revokeObjectURL(url);
   };
 
+  const actionButton = (label: string, Icon: LucideIcon, onClick: () => void, disabled = false, pressed?: boolean) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" size="sm" variant={pressed ? 'primary' : 'default'} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="w-7 px-0">
+          <Icon aria-hidden="true" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+
   // The pressed tool is filled and swaps its icon for a check, so the state is not
   // carried by colour alone.
   const toolButton = (label: string, target: DrawMode, Icon: LucideIcon) => {
     const pressed = mode === target;
     const StateIcon = pressed ? Check : Icon;
-    return (
-      <Button
-        type="button"
-        size="sm"
-        variant={pressed ? 'primary' : 'default'}
-        aria-pressed={pressed}
-        onClick={() => chooseMode(pressed ? 'static' : target)}
-        disabled={!mapReady}
-        className="gap-1.5 px-2"
-      >
-        <StateIcon aria-hidden="true" />
-        {label}
-      </Button>
-    );
+    return actionButton(label, StateIcon, () => chooseMode(pressed ? 'static' : target), !mapReady, pressed);
   };
 
   const groupLabel = 'font-medium text-muted-foreground text-xs uppercase tracking-wide';
@@ -695,6 +694,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         <StatusMessage variant="warning" className="font-medium text-xs">
           <p>Preliminary screening view. Not an official NRCS determination.</p>
         </StatusMessage>
+        <TooltipProvider>
         <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="AOI tools">
           <div role="group" aria-label="Draw area" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>
@@ -712,55 +712,34 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             </span>
             <div className="flex flex-wrap gap-1.5">
               {toolButton('Edit', 'select', MousePointer2)}
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                onClick={undo}
-                disabled={!previousAoi && !aoi}
-                className="gap-1.5 px-2"
-              >
-                <Undo2 aria-hidden="true" />
-                Undo
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                onClick={clear}
-                disabled={!aoi}
-                className="gap-1.5 px-2"
-              >
-                <Trash2 aria-hidden="true" />
-                Clear
-              </Button>
+              {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
+              {actionButton('Clear', Trash2, clear, !aoi)}
             </div>
           </div>
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
             <div className="flex flex-wrap gap-1.5">
-              <Button type="button" size="sm" onClick={zoomToAoi} disabled={!aoi}>Zoom to AOI</Button>
-              <Button type="button" size="sm" onClick={resetMapView}>Reset map</Button>
-              <Button type="button" size="sm" aria-pressed={aoiVisible} onClick={() => setAoiVisible((v) => !v)}>AOI outline</Button>
-              <Button type="button" size="sm" aria-pressed={resultsVisible} onClick={() => setResultsVisible((v) => !v)}>Result boundaries</Button>
+              {actionButton('Zoom to AOI', Maximize, zoomToAoi, !aoi)}
+              {actionButton('Reset map', RotateCcw, resetMapView)}
+              {actionButton('AOI outline', Eye, () => setAoiVisible((v) => !v), false, aoiVisible)}
+              {actionButton('Result boundaries', Eye, () => setResultsVisible((v) => !v), false, resultsVisible)}
             </div>
           </div>
           <div role="group" aria-label="Line measurement" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Measure distance</span>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Button type="button" size="sm" aria-pressed={measuring} onClick={() => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasuring(true); } }}>
-                <Ruler aria-hidden="true" /> {measuring ? 'Cancel measure' : 'Measure line'}
-              </Button>
+              {actionButton(measuring ? 'Cancel measure' : 'Measure line', Ruler, () => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasuring(true); } }, false, measuring)}
               <select aria-label="Distance unit" value={measureUnit} onChange={(event) => setMeasureUnit(event.target.value as DistanceUnit)} className="rounded border bg-background px-2 py-1 text-sm">
                 <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
               </select>
               {measuring && <span role="status">Measurement active: click map to add points.</span>}
               {measurePoints.length > 0 && <span role="status">{lineDistance(measurePoints, measureUnit).toFixed(2)} {measureUnit}</span>}
-              {measurePoints.length > 0 && <Button type="button" size="sm" onClick={() => setMeasurePoints([])}>Clear measurement</Button>}
+              {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => setMeasurePoints([]))}
             </div>
           </div>
         </div>
-        <div className="relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border">
+        </TooltipProvider>
+        <div className={`relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border ${measuring || mode === 'polygon' || mode === 'rectangle' ? '[&_.maplibregl-canvas]:!cursor-crosshair' : ''}`}>
           {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
           <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
           <OverlayControl
