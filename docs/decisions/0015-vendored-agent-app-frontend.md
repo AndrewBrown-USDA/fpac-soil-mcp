@@ -162,9 +162,12 @@ Modified upstream files:
 * `client/src/components/map/overlays.ts` and
   `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
   ImageServer raster context overlay, with attribution and vintage/context
-  labels (Plan 50.2.2); fixed USGS NAIP ImageServer `exportImage` raster
-  context overlay with mosaic-vintage caveat, source attribution, and default-off
-  control (Plan 53.3.1); accessible raster/context ordering controls with
+  labels (Plan 50.2.2); fixed USDA FPAC NAIP ImageServer `exportImage` raster
+  context overlay with variable-vintage caveat, source attribution, and default-off
+  control. Its metadata labels the service purpose `test:202407180638 naip service`,
+  so availability may change; this is not a production-readiness claim.
+  `client/src/components/map/overlays.test.ts` covers the fixed request and
+  catalog metadata; accessible raster/context ordering controls have
   browser-local persistence, keeping result vectors and AOI boundaries above
   rasters (Plan 53.3.2).
 * `client/src/components/map/Legend.tsx` and
