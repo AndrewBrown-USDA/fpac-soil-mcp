@@ -28,8 +28,8 @@ from agent import (
     load_system_prompt,
 )
 
-from fpac_soil_mcp.constants import REGULATORY_NOTICE
-from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
+from fpac_soil_mcp.core.constants import REGULATORY_NOTICE
+from fpac_soil_mcp.mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 
 @pytest.fixture(scope="module", autouse=True)

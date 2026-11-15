@@ -32,7 +32,7 @@ from common.matching import (
     tool_matches,
 )
 
-from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
+from fpac_soil_mcp.mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 FIXTURES_PATH = REPO_ROOT / "eval" / "eval_cases.v1.json"
 MAX_CAPTURE_BYTES = 64 * 1024
