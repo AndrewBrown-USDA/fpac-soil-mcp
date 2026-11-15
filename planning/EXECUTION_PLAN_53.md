@@ -161,11 +161,11 @@ At most two workers run concurrently. Use worktrees for parallel workers. Tasks 
 ### 53.3.2 — Persist raster order while pinning vectors above rasters
 
 - **Repo:** `/home/andrew/work/fpac-soil-mcp`
-- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/overlays.ts`, `OverlayControl.tsx` (schedule after 53.3.1 if same file ownership), and focused tests.
+- **Must edit:** `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/overlays.ts`, `OverlayControl.tsx` (schedule after 53.3.1 if same file ownership), focused tests, and `docs/decisions/0015-vendored-agent-app-frontend.md`.
 - **Can create:** focused ordering helper/test in map directory.
 - **Depends on:** 53.3.1.
 - **Specification:** Allow users to reorder optional raster/context layers (including CDL and NAIP), with accessible controls and browser-local persistence. Restore a valid default when storage is missing/corrupt or layer catalog changes. Reordering must update actual MapLibre layer order; keep returned vector layers and AOI boundaries above every raster, particularly CDL. Never permit a combined stack that violates the vector-over-raster invariant.
-- **Do not touch:** chat export, AOI labeling, server map contract, or result vector styling.
+- **Do not touch:** chat export, AOI labeling, server map contract, or result vector styling. Record every changed/added vendored frontend path in ADR 0015's `### Local changes` ledger in the same task change.
 - **Grep anchors:** `overlayBeforeId`, `addOverlay`, `removeOverlay` in `overlays.ts`; overlay controls and `OVERLAYS.map` in `OverlayControl.tsx`; `renderMapBlock` and AOI line insertion in `MapPanel.tsx` for integration review only.
 - **Reference implementations:** current raster insertion before first `result-*` layer/AOI; stable local-storage patterns elsewhere in frontend.
 - **Acceptance:** helper tests cover ordering/persistence/malformed storage/catalog changes; MapLibre-level or browser test proves raster reordering works while each result vector and AOI boundary remains above CDL/NAIP. Run focused overlay tests and frontend build.

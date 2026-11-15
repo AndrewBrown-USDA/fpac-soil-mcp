@@ -30,7 +30,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | done | `51369e1` | Focused AOI export and map identify tests pass |
 | 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | done | `f79ebc7` | No MapPanel fixture; testable seams cover controls |
 | 4 | 53.3.1 Fixed NAIP imagery overlay | done | `d4a8c8a` | Fixed ImageServer request shape; live export probe timed out |
-| 4 | 53.3.2 Persist raster order; vector-on-top invariant | pending | | Sequenced after 53.3.1 |
+| 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `2f0963c` | Focused ordering tests and build pass |
 | 4 | 53.3.3 Improved map legends and layer semantics | pending | | Disjoint files from overlay tasks |
 | 5 | 53.4.1 Map/Results tabs and post-screening switch | pending | | Depends on 53.2.2 and 53.3.3 |
 | 5 | 53.4.2 Identify wording and accessibility polish | pending | | Disjoint files |
@@ -80,6 +80,13 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - `overlays.test.ts` — 1 passed; `npm run test:map-identify` — 1 passed; `git diff --check` passed.
 - Service metadata advertises dynamic ImageServer and wildcard CORS, with no cached `tileInfo`; the fixed export probe timed out (HTTP 000), so actual imagery rendering remains unverified.
 - No user-provided URLs, dependency changes, or remote Git actions.
+
+### 53.3.2 — Persist raster order while pinning vectors above rasters
+- Status: done; implementation `2f0963c`.
+- Added catalog-normalized browser-local raster ordering, accessible up/down controls, MapLibre stack updates, vector/AOI boundary protection, tests, and ADR 0015 ledger.
+- `overlays.test.ts` — 3 passed; `npm run build` — passed (database migration skipped without DB configuration; existing deprecation/chunk warnings); `git diff --check` passed.
+- Raster order remains limited to context layers; result vectors and AOI remain above every raster.
+- No dependencies or remote actions.
 
 ## Final Acceptance
 
