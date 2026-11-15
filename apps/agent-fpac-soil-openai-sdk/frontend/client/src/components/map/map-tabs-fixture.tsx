@@ -10,7 +10,7 @@ function MapTabsFixture() {
       <button type="button" onClick={() => { setScreened(true); setTab('results'); }}>Complete screening</button>
       <button type="button" onClick={() => setToolResult(true)}>Show tool result</button>
       <div role="tablist" aria-label="Map and screening results">
-        {(['map', 'results'] as const).map((name) => <button key={name} role="tab" aria-selected={tab === name} aria-controls={`panel-${name}`} onClick={() => setTab(name)}>{name === 'map' ? 'Map' : 'Results'}</button>)}
+        {(['map', 'results'] as const).map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} aria-controls={`panel-${name}`} onClick={() => setTab(name)}>{name === 'map' ? 'Map' : 'Results'}</button>)}
       </div>
       <section id="panel-map" role="tabpanel" hidden={tab !== 'map'}>Map view</section>
       <section id="panel-results" role="tabpanel" hidden={tab !== 'results'}>
@@ -20,4 +20,5 @@ function MapTabsFixture() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(<MapTabsFixture />);
+const rootElement = document.getElementById('root');
+if (rootElement) createRoot(rootElement).render(<MapTabsFixture />);
