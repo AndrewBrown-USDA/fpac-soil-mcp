@@ -176,6 +176,14 @@ Added paths:
   text and available raw tool names, inputs and outputs (including geometry),
   exclude hidden/non-exportable content, and expose a sensitivity warning
   contract for explicit user-initiated exports (Plan 53.1.1).
+* `client/src/components/chat-export-actions.tsx` and
+  `client/src/components/chat.tsx`: explicit Markdown/JSON export controls with
+  a sensitivity warning and confirmation before download (Plan 53.1.2).
+* `client/src/components/chat-export-fixture.tsx`,
+  `client/chat-export-fixture.html`, `playwright.chat-export.config.ts`,
+  `tests/chat-export/export.spec.ts`, and `package.json`: isolated Playwright
+  coverage for warning cancellation, confirmed exports, geometry, and hidden
+  data exclusion (Plan 53.1.2; no new dependencies).
 * `client/src/components/map/**`: map panel (MapLibre and Terra Draw AOI
   drawing, GeoJSON paste and file input, `/api/geo/screen` client, farmland
   class mapping, legend, results table, regulatory notice, error states, the
