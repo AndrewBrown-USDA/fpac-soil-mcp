@@ -182,6 +182,8 @@ EXPECTED_CORPUS_IDS = {
     "ADV-UNRELATED-01",
     "ADV-URBAN-01",
     "CORR-01",
+    "CDL-01",
+    "CDL-02",
     "CORR-02",
     "DISC-01",
     "DISC-02",

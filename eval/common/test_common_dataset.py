@@ -69,8 +69,8 @@ def _write(tmp_path: Path, cases: list[dict[str, Any]], version: str = "2.0.0") 
 
 def test_checked_in_dataset_validates() -> None:
     cases = load_cases()
-    assert len(cases) == 40
-    assert len({case["id"] for case in cases}) == 40
+    assert len(cases) == 42
+    assert len({case["id"] for case in cases}) == 42
     assert dataset_version(DEFAULT_PATH).split(".")[0] in {"1", "2"}
     assert all(
         "silent_nccpi_fallback" not in case.get("prohibited_behaviors", []) for case in cases

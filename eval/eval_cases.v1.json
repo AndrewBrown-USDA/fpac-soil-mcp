@@ -1609,6 +1609,52 @@
           "noSitingRecommendation"
         ]
       }
+    },
+    {
+      "id": "CDL-01",
+      "category": "Phase 5 CDL histogram",
+      "target_type": "tool",
+      "target_name": "analyze_cdl_histogram",
+      "user_prompt": "Summarize the Cropland Data Layer land-cover histogram for this pasted GeoJSON area, using the CDL histogram tool only: {\"type\": \"Point\", \"coordinates\": [-93.6, 42.03]}",
+      "expected_tools": [
+        "analyze_cdl_histogram"
+      ],
+      "expected_keywords": [
+        "Cropland Data Layer",
+        "histogram"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "analyze_cdl_histogram"
+        }
+      ],
+      "expected_facts": [
+        "The CDL histogram tool reports land-cover class counts for the supplied area.",
+        "The result is contextual information and does not produce an FPPA determination or LESA score."
+      ]
+    },
+    {
+      "id": "CDL-02",
+      "category": "Phase 5 CDL combined context",
+      "target_type": "tool",
+      "target_name": "analyze_cdl_context",
+      "user_prompt": "Provide the combined Cropland Data Layer context for this pasted GeoJSON area in one call: {\"type\": \"Point\", \"coordinates\": [-93.6, 42.03]}",
+      "expected_tools": [
+        "analyze_cdl_context"
+      ],
+      "expected_keywords": [
+        "Cropland Data Layer",
+        "context"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "analyze_cdl_context"
+        }
+      ],
+      "expected_facts": [
+        "The combined CDL context tool returns land-cover context for the supplied area in one call.",
+        "The result is contextual information and does not produce an FPPA determination or LESA score."
+      ]
     }
   ]
 }
