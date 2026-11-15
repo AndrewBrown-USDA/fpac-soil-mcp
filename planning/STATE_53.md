@@ -31,7 +31,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 | 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | done | `f79ebc7` | No MapPanel fixture; testable seams cover controls |
 | 4 | 53.3.1 Fixed NAIP imagery overlay | done | `d4a8c8a` | Fixed ImageServer request shape; live export probe timed out |
 | 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `2f0963c` | Focused ordering tests and build pass |
-| 4 | 53.3.3 Improved map legends and layer semantics | pending | | Disjoint files from overlay tasks |
+| 4 | 53.3.3 Improved map legends and layer semantics | done | `fe28270` | Existing identify seam used; no dedicated legend fixture |
 | 5 | 53.4.1 Map/Results tabs and post-screening switch | pending | | Depends on 53.2.2 and 53.3.3 |
 | 5 | 53.4.2 Identify wording and accessibility polish | pending | | Disjoint files |
 | 6 | Integrated serial validation and handoff | pending | | |
@@ -73,6 +73,12 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - No isolated MapPanel Playwright fixture was available; bounds/reset, visibility/data separation, and measurement cancellation are covered by pure seams.
 - Serial wave gate: `make check` — 993 passed, 3 skipped, 45 deselected; `make app-check` — 266 passed; `make app-frontend-check` passed (11 lint warnings, 10 existing; one new exhaustive-dependency warning in MapPanel, no errors; npm audit 10 advisories).
 - No dependencies or remote actions.
+
+### 53.3.3 — Improve map legend information and layer semantics
+- Status: done; implementation `fe28270`.
+- Clarified context imagery versus screening evidence, added accessible text alternatives for legend symbols, compact scrolling, and ADR 0015 entries; server legend values and notices remain unchanged.
+- `identify.test.ts` — 1 passed; `npm run build` — passed (DB migration skipped without config; existing deprecation/chunk warnings); `git diff --check` passed.
+- No focused legend fixture exists; rendering assertions were unavailable. No dependencies or remote actions.
 
 ### 53.3.1 — Add the fixed NAIP imagery context layer
 - Status: done; implementation `d4a8c8a`.
