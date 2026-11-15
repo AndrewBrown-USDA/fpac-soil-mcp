@@ -11,11 +11,11 @@ from unittest.mock import MagicMock
 import pytest
 from starlette.requests import Request
 
-from fpac_soil_mcp.app import create_mcp_server
-from fpac_soil_mcp.constants import CITATIONS, REGULATORY_NOTICE
-from fpac_soil_mcp.routes import register_routes
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tools.soil_lookup_tools import get_farmland_classification_by_point
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.core.constants import CITATIONS, REGULATORY_NOTICE
+from fpac_soil_mcp.mcp.app import create_mcp_server
+from fpac_soil_mcp.mcp.routes import register_routes
+from fpac_soil_mcp.mcp.tools.soil_lookup_tools import get_farmland_classification_by_point
 
 
 class TestServerInitialization:

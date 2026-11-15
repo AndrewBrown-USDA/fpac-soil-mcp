@@ -24,18 +24,18 @@ import pytest
 from fastmcp import FastMCP
 from shapely.geometry import box
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer
-from fpac_soil_mcp.geometry import calculate_acreage
-from fpac_soil_mcp.integration_models import (
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.domain.corridor_analyzer import CorridorAnalyzer
+from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
+from fpac_soil_mcp.mcp.tools import register_tools
+from fpac_soil_mcp.models.integration import (
     CountyAgProfile,
     IntegrationStatus,
     UrbanExemptionRecord,
 )
-from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
-from fpac_soil_mcp.tools import register_tools
+from fpac_soil_mcp.spatial.geometry import calculate_acreage
 
 MARKER = "R6-MARKER"
 ADR_PATH = Path(__file__).resolve().parents[1] / "docs/decisions/0017-server-map-result-contract.md"
@@ -167,11 +167,11 @@ def synthetic_analyzers():
     """Make the tool layer build analyzers on synthetic clients."""
     with (
         patch(
-            "fpac_soil_mcp.tools.spatial_analysis_tools.PolygonAnalyzer",
+            "fpac_soil_mcp.mcp.tools.spatial_analysis_tools.PolygonAnalyzer",
             side_effect=lambda: PolygonAnalyzer(sda_client=_sda(), tigerweb_client=_tiger()),
         ),
         patch(
-            "fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer",
+            "fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer",
             side_effect=lambda: CorridorAnalyzer(
                 sda_client=_sda(), tigerweb_client=_tiger(), nass_client=_nass()
             ),

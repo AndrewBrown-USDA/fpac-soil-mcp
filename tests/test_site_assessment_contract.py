@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.site_assessment import (
+from fpac_soil_mcp.domain.site_assessment import (
     SITE_ASSESSMENT_REGISTRY,
     SiteAssessmentCriterionDefinition,
     SiteAssessmentRegistry,

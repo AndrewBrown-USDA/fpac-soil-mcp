@@ -4,8 +4,8 @@ import pytest
 from common.matching import load_policy_rules, policy_missing_requirements
 
 from eval.databricks.agent import load_system_prompt
-from fpac_soil_mcp.app import create_mcp_server
-from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
+from fpac_soil_mcp.mcp.app import create_mcp_server
+from fpac_soil_mcp.mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 APP_SYSTEM_PROMPT_PATH = (

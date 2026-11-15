@@ -15,14 +15,28 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.authority import (
+from fpac_soil_mcp.core.authority import (
     ActorCategory,
     Attestation,
     AuthorityValue,
     Provenance,
     ValueAuthority,
 )
-from fpac_soil_mcp.case_models import (
+from fpac_soil_mcp.core.config import Settings
+from fpac_soil_mcp.core.privacy import (
+    ProhibitedPersonalDataError,
+    assert_public_payload,
+    sanitize_public_payload,
+    validate_public_payload,
+)
+from fpac_soil_mcp.domain.official_sources import (
+    load_official_sources,
+    load_regional_scoring_configs,
+)
+from fpac_soil_mcp.domain.workflow import (
+    transition_case,
+)
+from fpac_soil_mcp.models.case import (
     AgencyProfile,
     CalculationRun,
     CalculationStatus,
@@ -37,25 +51,11 @@ from fpac_soil_mcp.case_models import (
     ImpactArea,
     ImpactType,
 )
-from fpac_soil_mcp.config import Settings
-from fpac_soil_mcp.integration_models import (
+from fpac_soil_mcp.models.integration import (
     CountyAgProfile,
     IntegrationStatus,
     SoilInterpretationRecord,
     UrbanExemptionRecord,
-)
-from fpac_soil_mcp.official_sources import (
-    load_official_sources,
-    load_regional_scoring_configs,
-)
-from fpac_soil_mcp.privacy import (
-    ProhibitedPersonalDataError,
-    assert_public_payload,
-    sanitize_public_payload,
-    validate_public_payload,
-)
-from fpac_soil_mcp.workflow import (
-    transition_case,
 )
 
 

@@ -1,13 +1,13 @@
 from datetime import UTC, datetime
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.cdl_models import (
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.mcp.tools import cdl_tools
+from fpac_soil_mcp.models.cdl import (
     CDLAnalysisStatus,
     CDLHistogramBin,
     CDLHistogramResponse,
     CDLServiceMetadata,
 )
-from fpac_soil_mcp.tools import cdl_tools
 
 
 class FakeCDLClient:

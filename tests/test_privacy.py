@@ -2,7 +2,7 @@
 
 import pytest
 
-from fpac_soil_mcp.privacy import (
+from fpac_soil_mcp.core.privacy import (
     ProhibitedPersonalDataError,
     SanitizationResult,
     assert_public_payload,

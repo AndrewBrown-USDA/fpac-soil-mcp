@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from fpac_soil_mcp.app import create_mcp_server
+from fpac_soil_mcp.mcp.app import create_mcp_server
 
 
 @pytest.mark.asyncio

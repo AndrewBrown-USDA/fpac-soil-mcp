@@ -1,11 +1,11 @@
-from fpac_soil_mcp.constants import (
+from fpac_soil_mcp.core.constants import (
     LESA_ACTION_AVOID_MINIMIZE_CONVERSION,
     LESA_ACTION_REDUCE_FOOTPRINT,
     REGULATORY_NOTICE,
     SITE_CRITERIA_NAMES,
     STATUTORY_DETERMINATIONS,
 )
-from fpac_soil_mcp.fppa import get_fppa_scope_explanation
+from fpac_soil_mcp.domain.fppa import get_fppa_scope_explanation
 
 
 def test_site_assessment_uses_registry_wording_and_part_vi() -> None:

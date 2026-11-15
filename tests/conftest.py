@@ -7,8 +7,8 @@ from typing import Any
 import httpx
 import pytest
 
-from fpac_soil_mcp.app import create_mcp_server
-from fpac_soil_mcp.sda_client import SDAClient
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.mcp.app import create_mcp_server
 
 # ---------------------------------------------------------------------------
 # SDA Mock Response Payloads (JSON+COLUMNNAME format)

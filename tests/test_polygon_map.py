@@ -9,12 +9,12 @@ from unittest.mock import MagicMock
 import pytest
 from shapely.geometry import box, shape
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.integration_models import IntegrationStatus, UrbanExemptionRecord
-from fpac_soil_mcp.map_contract import FARMLAND_CLASS_VALUES
-from fpac_soil_mcp.polygon_analysis import PolygonAnalyzer
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
+from fpac_soil_mcp.models.integration import IntegrationStatus, UrbanExemptionRecord
+from fpac_soil_mcp.spatial.map_builder import FARMLAND_CLASS_VALUES
 
 MARKER = "R6-MARKER"
 AOI = box(0.0, 0.0, 0.01, 0.01)
@@ -175,7 +175,7 @@ def test_inline_without_urban_areas_has_empty_urban_layer():
 
 
 def test_size_cap_drops_urban_layer_first(monkeypatch):
-    from fpac_soil_mcp import polygon_analysis
+    from fpac_soil_mcp.domain import polygon_analyzer as polygon_analysis
 
     plain, _, _ = _run(True)
     sizes = {

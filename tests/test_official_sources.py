@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.official_sources import (
+from fpac_soil_mcp.domain.official_sources import (
     OfficialSourceRecord,
     SourceLifecycleStatus,
     load_official_sources,

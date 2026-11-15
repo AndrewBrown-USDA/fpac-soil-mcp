@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.cdl_models import (
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.models.cdl import (
     CDLAnalysisStatus,
     CDLHistogramBin,
     CDLHistogramResponse,

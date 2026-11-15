@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from fpac_soil_mcp.cdl_client import CDLClient, parse_histogram_payload
-from fpac_soil_mcp.cdl_models import CDLAnalysisStatus
+from fpac_soil_mcp.clients.cdl import CDLClient, parse_histogram_payload
+from fpac_soil_mcp.models.cdl import CDLAnalysisStatus
 
 
 def test_cdl_client_discovers_and_caches_service_metadata():

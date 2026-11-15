@@ -9,17 +9,17 @@ from unittest.mock import MagicMock
 import pytest
 from shapely.geometry import box, shape
 
-from fpac_soil_mcp import corridor_analysis
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer
-from fpac_soil_mcp.geometry import buffer_centerline, calculate_acreage
-from fpac_soil_mcp.integration_models import (
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.domain import corridor_analyzer as corridor_analysis
+from fpac_soil_mcp.domain.corridor_analyzer import CorridorAnalyzer
+from fpac_soil_mcp.models.integration import (
     CountyAgProfile,
     IntegrationStatus,
     UrbanExemptionRecord,
 )
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
+from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
 
 MARKER = "R6-MARKER"
 CENTERLINE = "LINESTRING(0.0 0.005, 0.01 0.005)"

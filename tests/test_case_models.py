@@ -5,14 +5,14 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.authority import (
+from fpac_soil_mcp.core.authority import (
     ActorCategory,
     Attestation,
     AuthorityValue,
     Provenance,
     ValueAuthority,
 )
-from fpac_soil_mcp.case_models import (
+from fpac_soil_mcp.models.case import (
     AgencyProfile,
     CalculationRun,
     CalculationStatus,

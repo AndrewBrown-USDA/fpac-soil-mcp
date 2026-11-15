@@ -9,8 +9,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from fpac_soil_mcp.integration_models import IntegrationStatus
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.models.integration import IntegrationStatus
 
 pytestmark = pytest.mark.live_network
 

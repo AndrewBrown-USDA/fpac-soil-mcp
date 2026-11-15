@@ -8,37 +8,37 @@ from unittest.mock import MagicMock, patch
 import pytest
 from shapely.geometry import LineString
 
-from fpac_soil_mcp.constants import (
+from fpac_soil_mcp.clients.sda import SDAQueryError, SDAValidationError
+from fpac_soil_mcp.core.constants import (
     FARMLAND_CLASS_DEFINITIONS,
     REGULATORY_LIMITATIONS,
     REGULATORY_NOTICE,
 )
-from fpac_soil_mcp.geometry import GeometryValidationError
-from fpac_soil_mcp.lesa import calculate_criterion_7_score
+from fpac_soil_mcp.domain.lesa import calculate_criterion_7_score
+from fpac_soil_mcp.domain.site_assessment import SITE_ASSESSMENT_REGISTRY
+from fpac_soil_mcp.mcp.tools.exemption_tools import check_urban_area_exemption
+from fpac_soil_mcp.mcp.tools.fppa_tools import (
+    explain_fppa_screening_scope,
+    list_farmland_classes,
+)
+from fpac_soil_mcp.mcp.tools.lesa_tools import _score_registry_facts, calculate_preliminary_lesa
+from fpac_soil_mcp.mcp.tools.soil_lookup_tools import (
+    get_farmland_classification_by_mukey,
+    get_farmland_classification_by_point,
+    get_soil_interpretations,
+    get_soil_polygons_by_geometry,
+)
+from fpac_soil_mcp.mcp.tools.spatial_analysis_tools import (
+    analyze_corridor_fppa,
+    analyze_farmland_by_polygon,
+)
 from fpac_soil_mcp.models import (
     FarmlandClassificationResponse,
     FarmlandClassListResponse,
     FppaScopeResponse,
     SiteAssessmentInputs,
 )
-from fpac_soil_mcp.sda_client import SDAQueryError, SDAValidationError
-from fpac_soil_mcp.site_assessment import SITE_ASSESSMENT_REGISTRY
-from fpac_soil_mcp.tools.exemption_tools import check_urban_area_exemption
-from fpac_soil_mcp.tools.fppa_tools import (
-    explain_fppa_screening_scope,
-    list_farmland_classes,
-)
-from fpac_soil_mcp.tools.lesa_tools import _score_registry_facts, calculate_preliminary_lesa
-from fpac_soil_mcp.tools.soil_lookup_tools import (
-    get_farmland_classification_by_mukey,
-    get_farmland_classification_by_point,
-    get_soil_interpretations,
-    get_soil_polygons_by_geometry,
-)
-from fpac_soil_mcp.tools.spatial_analysis_tools import (
-    analyze_corridor_fppa,
-    analyze_farmland_by_polygon,
-)
+from fpac_soil_mcp.spatial.geometry import GeometryValidationError
 
 
 def _polygon_geometry() -> dict[str, Any]:
@@ -67,10 +67,19 @@ def _mock_lesa_polygon(mock_analyzer_cls: MagicMock, score: float, acreage: floa
     mock_analyzer_cls.return_value.analyze_polygon.return_value = response
 
 
+def _mock_lesa_corridor(mock_analyzer_cls: MagicMock, data: dict[str, Any]) -> MagicMock:
+    instance = MagicMock()
+    response = MagicMock()
+    response.model_dump.return_value = data
+    instance.analyze_corridor.return_value = response
+    mock_analyzer_cls.return_value = instance
+    return instance
+
+
 class TestSoilTools:
     """Tests for get_farmland_classification_by_point and get_farmland_classification_by_mukey."""
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_point_covered(
         self,
         mock_sda_client_cls: MagicMock,
@@ -102,7 +111,7 @@ class TestSoilTools:
         assert response.regulatory_notice == REGULATORY_NOTICE
         assert response.limitations == REGULATORY_LIMITATIONS
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_point_unmapped(
         self,
         mock_sda_client_cls: MagicMock,
@@ -119,7 +128,7 @@ class TestSoilTools:
         assert response.coverage_status == "unmapped"
         assert len(response.map_units) == 0
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_point_validation_error(
         self,
         mock_sda_client_cls: MagicMock,
@@ -139,7 +148,7 @@ class TestSoilTools:
         assert response.error.code == "validation_error"
         assert response.error.source == "USDA NRCS Soil Data Access (SDA)"
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_point_query_error(
         self,
         mock_sda_client_cls: MagicMock,
@@ -159,7 +168,7 @@ class TestSoilTools:
         assert response.error.code == "upstream_error"
         assert response.error.source == "USDA NRCS Soil Data Access (SDA)"
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_mukey_covered(
         self,
         mock_sda_client_cls: MagicMock,
@@ -185,7 +194,7 @@ class TestSoilTools:
         assert len(response.map_units) == 1
         assert response.map_units[0].mukey == "412915"
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_mukey_unmapped(
         self,
         mock_sda_client_cls: MagicMock,
@@ -201,7 +210,7 @@ class TestSoilTools:
         assert response.coverage_status == "unmapped"
         assert len(response.map_units) == 0
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_farmland_classification_by_mukey_error(
         self,
         mock_sda_client_cls: MagicMock,
@@ -228,7 +237,7 @@ class TestFPPATools:
         assert scored["evidence_status"] == "unavailable"
         assert "awarded_points" not in scored
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_keeps_scored_registry_fact_metadata(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -283,7 +292,7 @@ class TestFPPATools:
             },
         ],
     )
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_rejects_competing_criterion_7_inputs(
         self, mock_analyzer_cls: MagicMock, criterion_input: dict[str, Any]
     ) -> None:
@@ -301,7 +310,7 @@ class TestFPPATools:
                 site_assessment_inputs=site_assessment_inputs,
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_scores_registry_facts_deterministically(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -364,7 +373,7 @@ class TestFPPATools:
             ),
         ],
     )
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_rejects_invalid_facts_and_overrides(
         self, mock_analyzer_cls: MagicMock, inputs: dict[str, Any], message: str
     ) -> None:
@@ -376,21 +385,24 @@ class TestFPPATools:
                 site_assessment_inputs=inputs,
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.CorridorAnalyzer")
     def test_preliminary_lesa_preserves_fact_provenance_and_corridor_maxima(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 70.0,
-            "reconciliation_summary": {
-                "buffered_footprint_acres": 10.0,
-                "rated_productivity_acres": 8.0,
-                "unrated_productivity_acres": 2.0,
-                "productivity_coverage_percent": 80.0,
-                "productivity_coverage_status": "partial",
+        _mock_lesa_corridor(
+            mock_analyzer_cls,
+            {
+                "composite_relative_rating": 70.0,
+                "reconciliation_summary": {
+                    "buffered_footprint_acres": 10.0,
+                    "rated_productivity_acres": 8.0,
+                    "unrated_productivity_acres": 2.0,
+                    "productivity_coverage_percent": 80.0,
+                    "productivity_coverage_status": "partial",
+                },
+                "manifest": {},
             },
-            "manifest": {},
-        }
+        )
         response = calculate_preliminary_lesa(
             project_name="corridor-facts",
             geometry="LINESTRING (-93.5 42.0, -93.4 42.1)",
@@ -434,15 +446,18 @@ class TestFPPATools:
             assert criteria[number].input_authority == "statutory"
             assert criteria[number].is_automated is False
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.CorridorAnalyzer")
     def test_preliminary_lesa_rejects_points_for_statutorily_zeroed_corridor_criterion(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 70.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 10.0},
-            "manifest": {},
-        }
+        _mock_lesa_corridor(
+            mock_analyzer_cls,
+            {
+                "composite_relative_rating": 70.0,
+                "reconciliation_summary": {"buffered_footprint_acres": 10.0},
+                "manifest": {},
+            },
+        )
         with pytest.raises(ValueError, match="statutorily zeroed"):
             calculate_preliminary_lesa(
                 project_name="corridor-zeroed",
@@ -455,7 +470,7 @@ class TestFPPATools:
                 },
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_preserves_analyst_override_rationale_requirement(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -468,7 +483,7 @@ class TestFPPATools:
                 site_assessment_inputs={"criteria_inputs": {"1": {"awarded_points": 15}}},
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_preliminary_lesa_keeps_unknown_registry_fact_unavailable(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -517,19 +532,22 @@ class TestFPPATools:
     def test_calculate_preliminary_lesa_accepts_linestring_corridor(
         self,
     ) -> None:
-        with patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa") as mock_corridor:
-            mock_corridor.return_value = {
-                "composite_relative_rating": 55.0,
-                "reconciliation_summary": {"buffered_footprint_acres": 2.0},
-                "manifest": {
-                    "criterion_2_perimeter_evidence": {
-                        "normalized_ratio": 0.9,
-                        "evidence_status": "measured",
-                        "is_agricultural": True,
-                        "is_verified": True,
-                    }
+        with patch("fpac_soil_mcp.mcp.tools.lesa_tools.CorridorAnalyzer") as mock_analyzer_cls:
+            mock_analyzer = _mock_lesa_corridor(
+                mock_analyzer_cls,
+                {
+                    "composite_relative_rating": 55.0,
+                    "reconciliation_summary": {"buffered_footprint_acres": 2.0},
+                    "manifest": {
+                        "criterion_2_perimeter_evidence": {
+                            "normalized_ratio": 0.9,
+                            "evidence_status": "measured",
+                            "is_agricultural": True,
+                            "is_verified": True,
+                        }
+                    },
                 },
-            }
+            )
             geometry = LineString([(0, 0), (1, 1)])
             response = calculate_preliminary_lesa(
                 project_name="corridor",
@@ -541,15 +559,16 @@ class TestFPPATools:
                 item for item in response.site_assessment.criteria if item.criterion_number == 2
             )
             assert criterion.normalized_ratio == 0.9
-            mock_corridor.assert_called_once_with(
-                centerline=geometry,
+            mock_analyzer.analyze_corridor.assert_called_once_with(
+                centerline_input=geometry,
                 buffer_distance=100.0,
                 buffer_units="feet",
                 include_nccpi=True,
                 productivity_index="NCCPI",
+                max_county_rating_override=None,
             )
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_exposes_shared_criterion_2_evidence(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -585,7 +604,7 @@ class TestFPPATools:
         assert criterion["is_verified"] is True
         assert criterion["source_provenance"] == ["Agricultural land-use source"]
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_calculate_preliminary_lesa_accepts_wkt_polygon(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -622,7 +641,7 @@ class TestFPPATools:
             == "Polygon"
         )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_calculate_preliminary_lesa_keeps_unavailable_le_unavailable(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -654,14 +673,17 @@ class TestFPPATools:
         assert response.threshold_status == "not_evaluated"
         assert response.total_lesa_score is None
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.CorridorAnalyzer")
     def test_calculate_preliminary_lesa_routes_wkt_line_with_buffer_options(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 65.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 12.5},
-        }
+        mock_analyzer = _mock_lesa_corridor(
+            mock_analyzer_cls,
+            {
+                "composite_relative_rating": 65.0,
+                "reconciliation_summary": {"buffered_footprint_acres": 12.5},
+            },
+        )
 
         response = calculate_preliminary_lesa(
             project_name="wkt corridor",
@@ -672,12 +694,13 @@ class TestFPPATools:
         )
 
         assert response.project_name == "wkt corridor"
-        mock_corridor.assert_called_once_with(
-            centerline="LINESTRING (-93.5 42.0, -93.4 42.1)",
+        mock_analyzer.analyze_corridor.assert_called_once_with(
+            centerline_input="LINESTRING (-93.5 42.0, -93.4 42.1)",
             buffer_distance=250.0,
             buffer_units="meters",
             include_nccpi=True,
             productivity_index="NCCPI",
+            max_county_rating_override=None,
         )
 
     def test_calculate_preliminary_lesa_rejects_polygon_corridor(self) -> None:
@@ -727,16 +750,19 @@ class TestFPPATools:
                 productivity_index="unsupported",
             )
 
-    @patch("fpac_soil_mcp.tools.lesa_tools.analyze_corridor_fppa")
+    @patch("fpac_soil_mcp.mcp.tools.lesa_tools.CorridorAnalyzer")
     def test_calculate_preliminary_lesa_propagates_benchmark_and_generic_fields(
-        self, mock_corridor: MagicMock
+        self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_corridor.return_value = {
-            "composite_relative_rating": 74.0,
-            "reconciliation_summary": {"buffered_footprint_acres": 9.5},
-            "productivity_rating": 74.0,
-            "productivity_rating_class": "high",
-        }
+        _mock_lesa_corridor(
+            mock_analyzer_cls,
+            {
+                "composite_relative_rating": 74.0,
+                "reconciliation_summary": {"buffered_footprint_acres": 9.5},
+                "productivity_rating": 74.0,
+                "productivity_rating_class": "high",
+            },
+        )
 
         with pytest.raises(ValueError, match="Unsupported productivity index type"):
             calculate_preliminary_lesa(
@@ -751,7 +777,7 @@ class TestFPPATools:
 class TestPolygonTools:
     """Tests for analyze_farmland_by_polygon, check_urban_area_exemption, and get_soil_interpretations."""
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.PolygonAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.PolygonAnalyzer")
     def test_analyze_farmland_by_polygon(self, mock_analyzer_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_analyzer_cls.return_value = mock_instance
@@ -764,7 +790,7 @@ class TestPolygonTools:
         assert res["coverage_status"] == "covered"
         assert res["total_aoi_acres"] == 125.0
 
-    @patch("fpac_soil_mcp.tools.exemption_tools.TigerwebClient")
+    @patch("fpac_soil_mcp.mcp.tools.exemption_tools.TigerwebClient")
     def test_check_urban_area_exemption(self, mock_tiger_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_tiger_cls.return_value = mock_instance
@@ -777,7 +803,7 @@ class TestPolygonTools:
         assert res["status"] == "success"
         assert res["is_urban_intersected"] is False
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_soil_interpretations(self, mock_sda_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sda_cls.return_value = mock_instance
@@ -789,7 +815,7 @@ class TestPolygonTools:
         assert len(res) == 1
         assert res[0]["numeric_rating"] == 0.85
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_soil_interpretations_returns_source_aware_upstream_error(
         self, mock_sda_cls: MagicMock
     ) -> None:
@@ -822,7 +848,7 @@ class TestPolygonTools:
                 }
             )
 
-    @patch("fpac_soil_mcp.tools.soil_lookup_tools.SDAClient")
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
     def test_get_soil_polygons_by_geometry(self, mock_sda_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_sda_cls.return_value = mock_instance
@@ -862,7 +888,7 @@ class TestPolygonTools:
 class TestCorridorTools:
     """Tests for analyze_corridor_fppa FastMCP tool."""
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_basic(self, mock_analyzer_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_analyzer_cls.return_value = mock_instance
@@ -907,7 +933,7 @@ class TestCorridorTools:
             include_map=False,
         )
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_propagates_generic_options(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -956,7 +982,7 @@ class TestCorridorTools:
             include_map=False,
         )
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_forwards_non_nccpi_without_override(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -985,7 +1011,7 @@ class TestCorridorTools:
             include_map=False,
         )
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_with_site_assessment(self, mock_analyzer_cls: MagicMock) -> None:
         mock_instance = MagicMock()
         mock_analyzer_cls.return_value = mock_instance
@@ -1023,7 +1049,7 @@ class TestCorridorTools:
         assert lesa["site_assessment"]["total_sa_points"] >= 45.0  # 15 + 20 + 10 (from farm ratio)
         assert lesa["total_lesa_score"] >= 125.0
 
-    @patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+    @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_multi_county_weighted_farm_size(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
@@ -1070,7 +1096,7 @@ class TestCorridorTools:
 
 
 @pytest.mark.parametrize("include_map", [False, True])
-@patch("fpac_soil_mcp.tools.spatial_analysis_tools.PolygonAnalyzer")
+@patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.PolygonAnalyzer")
 def test_analyze_farmland_by_polygon_forwards_include_map(
     mock_analyzer_cls: MagicMock, include_map: bool
 ) -> None:
@@ -1080,7 +1106,7 @@ def test_analyze_farmland_by_polygon_forwards_include_map(
 
 
 @pytest.mark.parametrize("include_map", [False, True])
-@patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
+@patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
 def test_analyze_corridor_fppa_forwards_include_map(
     mock_analyzer_cls: MagicMock, include_map: bool
 ) -> None:

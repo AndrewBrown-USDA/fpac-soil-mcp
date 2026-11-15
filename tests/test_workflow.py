@@ -4,11 +4,15 @@ from datetime import UTC, datetime
 
 import pytest
 
-from fpac_soil_mcp.authority import (
+from fpac_soil_mcp.core.authority import (
     AuthorityValue,
     Provenance,
 )
-from fpac_soil_mcp.case_models import (
+from fpac_soil_mcp.domain.workflow import (
+    WorkflowTransitionError,
+    transition_case,
+)
+from fpac_soil_mcp.models.case import (
     AgencyProfile,
     CalculationRun,
     CalculationStatus,
@@ -21,10 +25,6 @@ from fpac_soil_mcp.case_models import (
     GeometryReference,
     ImpactArea,
     ImpactType,
-)
-from fpac_soil_mcp.workflow import (
-    WorkflowTransitionError,
-    transition_case,
 )
 
 

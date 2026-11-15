@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from fpac_soil_mcp.lesa import (
+from fpac_soil_mcp.domain.lesa import (
     calculate_area_weighted_le,
     calculate_composite_le,
     calculate_county_farmland_percentile,
@@ -25,7 +25,7 @@ from fpac_soil_mcp.lesa import (
     evaluate_site_assessment,
     get_criterion_evaluators,
 )
-from fpac_soil_mcp.models import (
+from fpac_soil_mcp.models.lesa import (
     LandEvaluationSummary,
     MapUnitProductivityRating,
     PreliminaryLESAResponse,
@@ -384,7 +384,7 @@ class TestSiteAssessmentRules:
         assert sum(e.max_points for e in corridor_evals.values()) == 160
 
     def test_criterion_2_verified_mapping_and_bounds(self) -> None:
-        from fpac_soil_mcp.lesa import calculate_criterion_2_score
+        from fpac_soil_mcp.domain.lesa import calculate_criterion_2_score
 
         assert calculate_criterion_2_score(0.0)[0] == 0.0
         assert calculate_criterion_2_score(0.2)[0] == 1.0
@@ -395,8 +395,11 @@ class TestSiteAssessmentRules:
             calculate_criterion_2_score(1.01)
 
     def test_criterion_2_evidence_fields_serialize(self) -> None:
-        from fpac_soil_mcp.constants import CRITERION_2_RULE_REFERENCE, CRITERION_2_RULE_VERSION
-        from fpac_soil_mcp.models import SiteAssessmentCriterion
+        from fpac_soil_mcp.core.constants import (
+            CRITERION_2_RULE_REFERENCE,
+            CRITERION_2_RULE_VERSION,
+        )
+        from fpac_soil_mcp.models.lesa import SiteAssessmentCriterion
 
         criterion = SiteAssessmentCriterion(
             criterion_number=2,
@@ -793,7 +796,7 @@ class TestBenchmarkSuiteValidation:
     def test_site_assessment_criterion_validation_bounds(self) -> None:
         from pydantic import ValidationError
 
-        from fpac_soil_mcp.models import SiteAssessmentCriterion
+        from fpac_soil_mcp.models.lesa import SiteAssessmentCriterion
 
         # Valid bounds
         c = SiteAssessmentCriterion(
@@ -834,7 +837,7 @@ class TestBenchmarkSuiteValidation:
 
 def test_normalize_productivity_index_accepts_csr2():
     """_normalize_productivity_index should accept 'csr2' and return CSR2 enum."""
-    from fpac_soil_mcp.lesa import _normalize_productivity_index
+    from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
 
     result = _normalize_productivity_index("csr2")
     assert result is ProductivityIndexType.CSR2
@@ -845,7 +848,7 @@ def test_normalize_productivity_index_accepts_csr2():
 
 def test_normalize_productivity_index_rejects_unknown():
     """_normalize_productivity_index should still reject unknown indexes."""
-    from fpac_soil_mcp.lesa import _normalize_productivity_index
+    from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
 
     with pytest.raises(ValueError, match="Unsupported productivity index type"):
         _normalize_productivity_index("unknown_index")
@@ -853,7 +856,7 @@ def test_normalize_productivity_index_rejects_unknown():
 
 def test_normalize_productivity_index_accepts_cpi():
     """_normalize_productivity_index should accept 'cpi' and return CPI enum."""
-    from fpac_soil_mcp.lesa import _normalize_productivity_index
+    from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
 
     result = _normalize_productivity_index("cpi")
     assert result is ProductivityIndexType.CPI
@@ -861,7 +864,7 @@ def test_normalize_productivity_index_accepts_cpi():
 
 def test_normalize_productivity_index_accepts_storie():
     """_normalize_productivity_index should accept 'storie' and return STORIE enum."""
-    from fpac_soil_mcp.lesa import _normalize_productivity_index
+    from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
 
     result = _normalize_productivity_index("storie")
     assert result is ProductivityIndexType.STORIE
