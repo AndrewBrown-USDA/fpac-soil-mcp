@@ -10,9 +10,9 @@ Enable a full local chat-UI and real-model Site Assessment trial against the loc
 - [x] Define the explicit environment-variable bypass behavior: `FPAC_LOCAL_DEV=1` selects an OpenAI-compatible local model endpoint and an explicit local `FPAC_MCP_URL`; default unset behavior remains Databricks-backed, and local mode must fail closed instead of using deployed defaults.
 
 ### 2. Implement local-only wiring
-- [ ] Implement the approved bypass in the smallest appropriate app configuration/startup seams; preserve default deployed behavior when the flag is unset.
-- [ ] Add tests proving bypass mode uses the configured local model and MCP endpoint without constructing Databricks workspace credentials, and unset mode preserves current behavior.
-- [ ] Document required environment variables and commands for starting the local MCP server, llama.cpp, and chat UI.
+- [x] Implement the approved bypass in the smallest appropriate app configuration/startup seams; preserve default deployed behavior when the flag is unset.
+- [x] Add tests proving bypass mode uses the configured local model and MCP endpoint without constructing Databricks workspace credentials, and unset mode preserves current behavior.
+- [x] Document required environment variables and commands for starting the local MCP server, llama.cpp, and chat UI.
 
 ### 3. Exercise the chat UI and genuine model
 - [ ] Run the local chat UI and use llama.cpp on port 8090 to exercise soil screening, interview Start/Skip, resource-backed questions, answer/comment records, Confirm/Edit, and LESA gating through real conversation turns.
