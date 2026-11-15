@@ -18,6 +18,8 @@ Answers are preliminary screening only. They are based on SSURGO soil inventory 
 | `FPAC_MCP_APP` | unset | Name of the fpac-soil-mcp server app. In `app.yaml` it comes from the `mcp_server` app resource (`valueFrom`), and the app looks up that app's URL once per process and adds `/mcp`, so production and dev agent apps differ only in their `mcp_server` resource. If set but not resolvable, the agent runs without tools rather than using another server. |
 | `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | Explicit MCP URL for local runs and tests; overrides `FPAC_MCP_APP`. Not set in the deploy files. |
 | `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
+| `FPAC_LOCAL_MLFLOW_TRACING` | unset | Set to `1` together with `FPAC_LOCAL_DEV=1` to enable local agent/OpenAI tracing. Off by default. |
+| `FPAC_LOCAL_MLFLOW_DIR` | `~/.local/share/fpac-soil/mlflow` | Optional local directory override for MLflow traces; default data is persisted outside the repository and `/tmp`. |
 
 GPT-5 models are called with `reasoning_effort="none"`, which they need for tool calling.
 
@@ -135,6 +137,17 @@ an explicit loopback HTTP MCP URL and explicit model ID, and refuses to fall
 back to the deployed server. With `FPAC_LOCAL_DEV` unset, the normal Databricks
 configuration remains unchanged. The local MCP server still queries USDA SDA,
 so network access is needed for live soil/LESA results.
+
+Local MLflow tracing is disabled by default. To opt in, also set
+`FPAC_LOCAL_MLFLOW_TRACING=1`; traces use the `fpac-soil-local` experiment in
+`~/.local/share/fpac-soil/mlflow` (override with `FPAC_LOCAL_MLFLOW_DIR`). Open
+MLflow locally with that tracking URI to inspect traces, for example
+`mlflow server --backend-store-uri file:$HOME/.local/share/fpac-soil/mlflow`.
+Traces can contain prompts, answers,
+tool arguments/results, and session identifiers. Geometry may appear in chat
+tool traces; do not use this with personal data or Section 1619 producer data
+unless the environment is approved for that information. The out-of-band map
+screening/map routes remain deliberately untraced.
 
 ### Dev trial apps
 

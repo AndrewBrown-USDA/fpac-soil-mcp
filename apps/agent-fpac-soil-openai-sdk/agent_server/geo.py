@@ -333,7 +333,7 @@ def map_block(result: dict[str, Any]) -> dict[str, Any] | None:
 
 
 async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
-    """Screen one AOI with one MCP call. Raises ``GeoRequestError(502)`` on MCP failure."""
+    """Screen one AOI without model invocation or MLflow trace capture."""
     geometry = request.geometry.model_dump()
     aoi_ref = request.aoi_ref or new_aoi_ref()
     try:
@@ -419,7 +419,7 @@ def parse_map_request(raw: bytes) -> tuple[str, dict[str, Any]]:
 
 
 async def map_for_tool(tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
-    """Call one map tool untraced and return its map block, notice and authority.
+    """Call one map tool without MLflow trace capture and return its display result.
 
     Raises ``GeoRequestError(502)`` on MCP failure or a tool error; nothing from the
     arguments or the result is logged or echoed.

@@ -40,6 +40,8 @@ def _clear_env(monkeypatch):
         "FPAC_MCP_TIMEOUT_SECONDS",
         "FPAC_LOCAL_DEV",
         "LOCAL_LLM_BASE_URL",
+        "FPAC_LOCAL_MLFLOW_TRACING",
+        "FPAC_LOCAL_MLFLOW_DIR",
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(config_module, "_RESOLVED_MCP_URLS", {})
@@ -132,6 +134,42 @@ def test_local_openai_client_uses_local_endpoint(monkeypatch):
     assert agent_module.configure_openai_client() is client
     constructor.assert_called_once_with(base_url="http://127.0.0.1:8090/v1", api_key="local-dev")
     set_default.assert_called_once_with(client)
+
+
+def test_local_mlflow_tracing_requires_opt_in(monkeypatch):
+    agent_module._local_mlflow_configured_uri = None
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    set_uri = MagicMock()
+    set_experiment = MagicMock()
+    autolog = MagicMock()
+    monkeypatch.setattr(agent_module.mlflow, "set_tracking_uri", set_uri)
+    monkeypatch.setattr(agent_module.mlflow, "set_experiment", set_experiment)
+    monkeypatch.setattr(agent_module.mlflow.openai, "autolog", autolog)
+
+    assert not agent_module.configure_local_mlflow_tracing()
+    set_uri.assert_not_called()
+    set_experiment.assert_not_called()
+    autolog.assert_not_called()
+
+
+def test_local_mlflow_tracing_configures_explicit_external_store(monkeypatch, tmp_path):
+    agent_module._local_mlflow_configured_uri = None
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    monkeypatch.setenv("FPAC_LOCAL_MLFLOW_TRACING", "1")
+    tracking_path = tmp_path / "mlruns"
+    tracking_uri = tracking_path.as_uri()
+    monkeypatch.setenv("FPAC_LOCAL_MLFLOW_DIR", str(tracking_path))
+    set_uri = MagicMock()
+    set_experiment = MagicMock()
+    autolog = MagicMock()
+    monkeypatch.setattr(agent_module.mlflow, "set_tracking_uri", set_uri)
+    monkeypatch.setattr(agent_module.mlflow, "set_experiment", set_experiment)
+    monkeypatch.setattr(agent_module.mlflow.openai, "autolog", autolog)
+
+    assert agent_module.configure_local_mlflow_tracing()
+    set_uri.assert_called_once_with(tracking_uri)
+    set_experiment.assert_called_once_with("fpac-soil-local")
+    autolog.assert_called_once_with()
 
 
 def test_init_fpac_mcp_server_resolves_mcp_app(monkeypatch):
