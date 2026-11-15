@@ -71,7 +71,9 @@ def get_farmland_classification_by_point(
             map_units=[],
             coverage_status="no_data",
             error=ToolError(
-                code="upstream_error",
+                code="validation_error"
+                if isinstance(exc, SDAValidationError)
+                else "upstream_error",
                 message=str(exc),
                 source="USDA NRCS Soil Data Access (SDA)",
             ),
@@ -174,7 +176,9 @@ def get_farmland_classification_by_mukey(
             map_units=[],
             coverage_status="no_data",
             error=ToolError(
-                code="upstream_error",
+                code="validation_error"
+                if isinstance(exc, SDAValidationError)
+                else "upstream_error",
                 message=str(exc),
                 source="USDA NRCS Soil Data Access (SDA)",
             ),
@@ -239,7 +243,7 @@ def get_soil_interpretations(
     """
     client = SDAClient()
     try:
-        ratings = client.get_soil_interpretations(mukeys=mukeys, rule_name=rule_name)
+        ratings = client.get_interpretations(mukeys=mukeys, rule_name=rule_name)
         return {
             "status": "success",
             "rule_name": rule_name,
