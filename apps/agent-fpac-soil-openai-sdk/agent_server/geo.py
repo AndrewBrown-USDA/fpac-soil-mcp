@@ -19,6 +19,7 @@ from databricks_openai.agents import McpServer
 from pydantic import BaseModel, Field, ValidationError
 
 from agent_server.agent import init_fpac_mcp_server
+from agent_server.config import local_dev_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +337,9 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
     geometry = request.geometry.model_dump()
     aoi_ref = request.aoi_ref or new_aoi_ref()
     try:
-        async with init_fpac_mcp_server(WorkspaceClient()) as server:
+        async with init_fpac_mcp_server(
+            None if local_dev_enabled() else WorkspaceClient()
+        ) as server:
             analysis_result = await _call_tool_untraced(
                 server,
                 ANALYSIS_TOOL,
@@ -422,7 +425,9 @@ async def map_for_tool(tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
     arguments or the result is logged or echoed.
     """
     try:
-        async with init_fpac_mcp_server(WorkspaceClient()) as server:
+        async with init_fpac_mcp_server(
+            None if local_dev_enabled() else WorkspaceClient()
+        ) as server:
             raw = await _call_tool_untraced(server, tool, arguments)
     except Exception as exc:  # noqa: BLE001 - every MCP failure becomes a bounded 502
         logger.warning("Map MCP call failed (%s).", type(exc).__name__)

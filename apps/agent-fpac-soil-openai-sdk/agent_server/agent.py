@@ -15,6 +15,7 @@ from agents import (
     set_default_openai_client,
 )
 from agents.exceptions import UserError
+from agents.mcp.server import MCPServerStreamableHttp
 from agents.tracing import set_trace_processors
 from databricks.sdk import WorkspaceClient
 from databricks_openai import AsyncDatabricksOpenAI
@@ -26,6 +27,7 @@ from mlflow.types.responses import (
     ResponsesAgentResponse,
     ResponsesAgentStreamEvent,
 )
+from openai import AsyncOpenAI
 from openai.types.shared import Reasoning
 
 from agent_server.aoi_context import (
@@ -40,6 +42,8 @@ from agent_server.config import (
     fpac_mcp_timeout_seconds,
     fpac_mcp_url,
     load_system_prompt,
+    local_dev_enabled,
+    local_llm_base_url,
     uses_reasoning_effort_none,
 )
 from agent_server.history import normalize_history_items
@@ -51,7 +55,10 @@ logger = logging.getLogger(__name__)
 
 set_default_openai_api("chat_completions")
 set_trace_processors([])  # only use mlflow for trace processing
-mlflow.openai.autolog()
+if local_dev_enabled():
+    mlflow.set_tracking_uri("file:/tmp/fpac-soil-local-mlruns")
+else:
+    mlflow.openai.autolog()
 logging.getLogger("mlflow.utils.autologging_utils").setLevel(logging.ERROR)
 
 
@@ -230,8 +237,12 @@ def _site_assessment_payload_from_context(context: str | None) -> dict | None:
 
 
 @lru_cache(maxsize=1)
-def configure_openai_client() -> AsyncDatabricksOpenAI:
+def configure_openai_client():
     """Configure the Databricks client once, when a real request needs it."""
+    if local_dev_enabled():
+        client = AsyncOpenAI(base_url=local_llm_base_url(), api_key="local-dev")
+        set_default_openai_client(client)
+        return client
     # This works for all Databricks models other than GPT-OSS, which uses a
     # slightly different API. AI Gateway routes UC model service names through
     # /ai-gateway/mlflow/v1.
@@ -240,11 +251,21 @@ def configure_openai_client() -> AsyncDatabricksOpenAI:
     return client
 
 
-def init_fpac_mcp_server(workspace_client: WorkspaceClient) -> McpServer:
+def init_fpac_mcp_server(workspace_client: WorkspaceClient | None = None):
     """Build the client for the deployed fpac-soil-mcp server."""
+    url = fpac_mcp_url(
+        (lambda name: workspace_client.apps.get(name=name).url)
+        if workspace_client is not None
+        else None
+    )
+    if local_dev_enabled():
+        return MCPServerStreamableHttp(
+            name=FPAC_MCP_SERVER_NAME,
+            params={"url": url, "timeout": fpac_mcp_timeout_seconds()},
+        )
     return McpServer(
         # FPAC_MCP_APP (the ``mcp_server`` resource) resolves through the Apps API.
-        url=fpac_mcp_url(lambda name: workspace_client.apps.get(name=name).url),
+        url=url,
         name=FPAC_MCP_SERVER_NAME,
         workspace_client=workspace_client,
         timeout=fpac_mcp_timeout_seconds(),
@@ -333,7 +354,7 @@ async def _connect_fpac_agent(
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
     # traceback), so the request still runs.
     try:
-        server = init_fpac_mcp_server(WorkspaceClient())
+        server = init_fpac_mcp_server(None if local_dev_enabled() else WorkspaceClient())
     except McpServerLookupError as exc:
         # Same outcome as an unreachable server: the turn runs without tools.
         logger.warning("MCP server lookup failed: %s", exc)

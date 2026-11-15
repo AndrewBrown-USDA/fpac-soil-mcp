@@ -6,7 +6,14 @@ import pytest
 from agent_server import config
 from common.matching import policy_missing_requirements
 
-ENV_NAMES = ("AGENT_MODEL", "FPAC_MCP_URL", "FPAC_MCP_APP", "FPAC_MCP_TIMEOUT_SECONDS")
+ENV_NAMES = (
+    "AGENT_MODEL",
+    "FPAC_MCP_URL",
+    "FPAC_MCP_APP",
+    "FPAC_MCP_TIMEOUT_SECONDS",
+    "FPAC_LOCAL_DEV",
+    "LOCAL_LLM_BASE_URL",
+)
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
 DEV_BASE = "https://mcp-fpac-soil-dev-0000.aws.databricksapps.com"
 
@@ -28,6 +35,35 @@ def _assert_defaults():
 
 def test_defaults_when_unset():
     _assert_defaults()
+
+
+def test_local_dev_requires_explicit_mcp_url(monkeypatch):
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    with pytest.raises(config.McpServerLookupError, match="requires an explicit FPAC_MCP_URL"):
+        config.fpac_mcp_url()
+
+
+def test_local_dev_rejects_non_loopback_mcp_url(monkeypatch):
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    monkeypatch.setenv("FPAC_MCP_URL", "https://example.com/mcp")
+    with pytest.raises(config.McpServerLookupError, match="loopback HTTP"):
+        config.fpac_mcp_url()
+
+
+def test_local_dev_endpoints(monkeypatch):
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    monkeypatch.setenv("FPAC_MCP_URL", "http://127.0.0.1:8001/mcp")
+    assert config.local_dev_enabled()
+    assert config.local_llm_base_url() == "http://127.0.0.1:8090/v1"
+    assert config.fpac_mcp_url() == "http://127.0.0.1:8001/mcp"
+
+
+def test_local_dev_requires_model_id(monkeypatch):
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    with pytest.raises(ValueError, match="requires AGENT_MODEL"):
+        config.agent_model()
+    monkeypatch.setenv("AGENT_MODEL", "llama-local")
+    assert config.agent_model() == "llama-local"
 
 
 def test_defaults_when_blank(monkeypatch):

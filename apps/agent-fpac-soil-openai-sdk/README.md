@@ -111,6 +111,31 @@ Databricks or model credentials, and is not part of `make check` or `make app-te
 Use `uv run python scripts/trial_local.py --mcp-url http://127.0.0.1:PORT/mcp` here to
 reuse a running server. See `planning/STATE_52.md` for what it cannot reproduce.
 
+### Local chat UI with llama.cpp (no Databricks auth)
+
+The chat UI can run against a local llama.cpp OpenAI-compatible API and a local
+FPAC Soil MCP server. Start the MCP server on a loopback port (for example,
+`make run-http MCP_PORT=8001` from the repository root), then start llama.cpp
+with its OpenAI-compatible API listening on port 8090. Query
+`http://127.0.0.1:8090/v1/models` and use the returned model ID below.
+
+In this app directory, set the following in `.env` (or export them in the
+environment):
+
+```dotenv
+FPAC_LOCAL_DEV=1
+AGENT_MODEL=<model-id-returned-by-llama.cpp>
+LOCAL_LLM_BASE_URL=http://127.0.0.1:8090/v1
+FPAC_MCP_URL=http://127.0.0.1:8001/mcp
+```
+
+Then run `uv run start-app` and open the printed local chat UI URL. Local mode
+uses no Databricks model client, workspace lookup, or OAuth for MCP; it requires
+an explicit loopback HTTP MCP URL and explicit model ID, and refuses to fall
+back to the deployed server. With `FPAC_LOCAL_DEV` unset, the normal Databricks
+configuration remains unchanged. The local MCP server still queries USDA SDA,
+so network access is needed for live soil/LESA results.
+
 ### Dev trial apps
 
 Branch trials use two dev apps deployed from git on the feature branch, so the
