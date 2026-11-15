@@ -814,8 +814,8 @@ class StandardCriterionEvaluator(CriterionEvaluator):
         is_automated = bool(input_data.get("is_automated", False)) if explicit_override else False
         input_authority = "analyst_proposed" if explicit_override else "unavailable"
 
-        if not justification and not is_automated and explicit_override:
-            justification = f"Points ({awarded}/{self.max_points}) entered without explicit justification rationale."
+        if not str(justification).strip() and not is_automated and explicit_override:
+            raise ValueError("Analyst-proposed criterion points require a rationale.")
 
         return CriterionEvaluation(
             criterion_number=self.criterion_number,

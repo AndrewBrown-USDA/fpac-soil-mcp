@@ -243,34 +243,18 @@ def get_soil_interpretations(
     """
     client = SDAClient()
     try:
-        ratings = client.get_interpretations(mukeys=mukeys, rule_name=rule_name)
-        return {
-            "status": "success",
-            "rule_name": rule_name,
-            "ratings": ratings,
-            "count": len(ratings),
-            "source": {
-                "service": "USDA NRCS Soil Data Access",
-                "endpoint": client.base_url,
-                "timestamp_utc": datetime.now(UTC).isoformat(),
-            },
-        }
-    except (SDAValidationError, ValueError) as exc:
-        return {
-            "status": "error",
-            "error": str(exc),
-            "error_details": ToolError(
-                code="validation_error",
-                message=str(exc),
-                source="mukeys parameter validation",
-            ).model_dump(),
-        }
+        return client.get_interpretations(mukeys=mukeys, rule_name=rule_name)
     except SDAClientError as exc:
         return {
             "status": "error",
-            "error": str(exc),
-            "error_details": ToolError(
-                code="upstream_error",
+            "source": {
+                "service": "USDA NRCS Soil Data Access (SDA)",
+                "endpoint": client.base_url,
+            },
+            "error": ToolError(
+                code="validation_error"
+                if isinstance(exc, SDAValidationError)
+                else "upstream_error",
                 message=str(exc),
                 source="USDA NRCS Soil Data Access (SDA)",
             ).model_dump(),
