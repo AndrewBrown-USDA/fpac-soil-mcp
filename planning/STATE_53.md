@@ -80,6 +80,12 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - `identify.test.ts` — 1 passed; `npm run build` — passed (DB migration skipped without config; existing deprecation/chunk warnings); `git diff --check` passed.
 - No focused legend fixture exists; rendering assertions were unavailable. No dependencies or remote actions.
 
+### Integrated gate — wave 4
+- `make check` — 993 passed, 3 skipped, 45 deselected; root Ruff check/format passed.
+- `make app-check` — 266 passed; app Ruff check/format passed.
+- `make app-frontend-check` — passed; 11 lint warnings (10 existing plus the MapPanel exhaustive-dependency warning), 10 npm advisories, DB migration skipped without config, and existing Vite/chunk warnings.
+- NAIP export endpoint remained unreachable from this environment (HTTP 000 timeout); actual browser imagery rendering remains unverified.
+
 ### 53.3.1 — Add the fixed NAIP imagery context layer
 - Status: done; implementation `d4a8c8a`.
 - Added fixed NAIP ImageServer `exportImage` overlay, default-off control, source/vintage/attribution metadata, tests, and ADR 0015 entries.
