@@ -44,6 +44,14 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 
 (Workers append <=15-line reports here after each committed task.)
 
+### 54.1.1 — Compact accessible map controls and cursor defaults
+
+- Status: implemented; code commit `cc7560c` (`feat(map): compact accessible toolbar controls`); awaiting orchestrator integration.
+- Changed `frontend/client/src/components/map/MapPanel.tsx`, toolbar fixture HTML/TSX, `frontend/playwright.map-toolbar.config.ts`, `frontend/tests/map-toolbar/toolbar.spec.ts`, `frontend/package.json`, and ADR 0015 local-change ledger (paths relative to app except ADR).
+- From `apps/agent-fpac-soil-openai-sdk/frontend`: `npm run test:map-toolbar` 3 passed; `npm run test:map-identify` 2 passed. `git diff --check` passed.
+- Deviations: none. A first rectangle completion test used dragging and failed; Terra Draw defaults to click–move–click, and the corrected test passed.
+- Gotchas: fixture mounts the production panel and aborts external HTTPS; cursor is a canvas CSS override in draw/measure modes. Orchestrator owns frontend lint/build and full suites.
+
 ## Final Acceptance
 
 - [ ] All task reports and implementation commits recorded.
