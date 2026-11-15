@@ -18,8 +18,8 @@ DEFAULT_FPAC_MCP_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapp
 DEFAULT_FPAC_MCP_TIMEOUT_SECONDS = 180.0
 DEFAULT_LOCAL_LLM_BASE_URL = "http://127.0.0.1:8090/v1"
 DEFAULT_LOCAL_MLFLOW_TRACKING_URI = (
-    Path.home() / ".local" / "share" / "fpac-soil" / "mlflow"
-).as_uri()
+    Path.home() / ".local" / "share" / "fpac-soil" / "mlflow" / "mlflow.db"
+)
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system_prompt.txt"
 
@@ -64,8 +64,8 @@ def local_mlflow_tracking_uri() -> str:
         path = Path(override).expanduser()
         if not path.is_absolute():
             raise ValueError("FPAC_LOCAL_MLFLOW_DIR must be an absolute local path.")
-        return path.resolve().as_uri()
-    return DEFAULT_LOCAL_MLFLOW_TRACKING_URI
+        return f"sqlite:///{path.resolve() / 'mlflow.db'}"
+    return f"sqlite:///{DEFAULT_LOCAL_MLFLOW_TRACKING_URI}"
 
 
 class McpServerLookupError(RuntimeError):

@@ -63,13 +63,17 @@ def test_local_dev_endpoints(monkeypatch):
 def test_local_mlflow_tracing_is_opt_in_and_uses_external_store(monkeypatch, tmp_path):
     monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
     assert not config.local_mlflow_tracing_enabled()
-    assert config.local_mlflow_tracking_uri() == config.DEFAULT_LOCAL_MLFLOW_TRACKING_URI
-    assert ".local/share/fpac-soil/mlflow" in config.local_mlflow_tracking_uri()
+    assert (
+        config.local_mlflow_tracking_uri()
+        == f"sqlite:///{config.DEFAULT_LOCAL_MLFLOW_TRACKING_URI}"
+    )
+    assert config.local_mlflow_tracking_uri().startswith("sqlite:///")
+    assert ".local/share/fpac-soil/mlflow/mlflow.db" in config.local_mlflow_tracking_uri()
 
     monkeypatch.setenv("FPAC_LOCAL_MLFLOW_TRACING", "1")
     assert config.local_mlflow_tracing_enabled()
     override_path = tmp_path / "mlruns"
-    override = override_path.as_uri()
+    override = f"sqlite:///{override_path / 'mlflow.db'}"
     monkeypatch.setenv("FPAC_LOCAL_MLFLOW_DIR", str(override_path))
     assert config.local_mlflow_tracking_uri() == override
 

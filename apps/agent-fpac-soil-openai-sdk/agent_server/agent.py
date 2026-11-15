@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from functools import lru_cache
 from itertools import pairwise
+from pathlib import Path
 
 import mlflow
 from agents import (
@@ -257,6 +258,9 @@ def configure_local_mlflow_tracing() -> bool:
     if not local_dev_enabled() or not local_mlflow_tracing_enabled():
         return False
     tracking_uri = local_mlflow_tracking_uri()
+    if tracking_uri.startswith("sqlite:///"):
+        db_path = Path(tracking_uri.removeprefix("sqlite:///"))
+        db_path.parent.mkdir(parents=True, exist_ok=True)
     if _local_mlflow_configured_uri == tracking_uri:
         return True
     mlflow.set_tracking_uri(tracking_uri)

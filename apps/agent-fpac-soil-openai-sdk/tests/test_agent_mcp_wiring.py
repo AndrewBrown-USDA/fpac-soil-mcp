@@ -157,7 +157,7 @@ def test_local_mlflow_tracing_configures_explicit_external_store(monkeypatch, tm
     monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
     monkeypatch.setenv("FPAC_LOCAL_MLFLOW_TRACING", "1")
     tracking_path = tmp_path / "mlruns"
-    tracking_uri = tracking_path.as_uri()
+    tracking_uri = f"sqlite:///{tracking_path / 'mlflow.db'}"
     monkeypatch.setenv("FPAC_LOCAL_MLFLOW_DIR", str(tracking_path))
     set_uri = MagicMock()
     set_experiment = MagicMock()
