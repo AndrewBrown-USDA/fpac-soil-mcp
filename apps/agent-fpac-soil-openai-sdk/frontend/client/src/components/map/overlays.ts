@@ -96,6 +96,38 @@ export const OVERLAYS: readonly Overlay[] = [
 
 const SOURCE_PREFIX = 'overlay-';
 const RESULT_PREFIX = 'result-';
+export const OVERLAY_ORDER_STORAGE_KEY = 'fpac-soil-map-overlay-order';
+export const OVERLAY_ORDER_EVENT = 'fpac-soil-map-overlay-order-change';
+
+export type OverlayOrder = OverlayId[];
+
+export function normalizeOverlayOrder(value: unknown): OverlayOrder {
+  const ids = new Set(OVERLAYS.map(({ id }) => id));
+  const supplied = Array.isArray(value) ? value : [];
+  const order = supplied.filter(
+    (id): id is OverlayId => typeof id === 'string' && ids.has(id as OverlayId),
+  );
+  return [...new Set(order), ...OVERLAYS.map(({ id }) => id).filter((id) => !order.includes(id))];
+}
+
+export function restoreOverlayOrder(serialized: string | null): OverlayOrder {
+  if (!serialized) return normalizeOverlayOrder(null);
+  try {
+    return normalizeOverlayOrder(JSON.parse(serialized));
+  } catch {
+    return normalizeOverlayOrder(null);
+  }
+}
+
+function storedOverlayOrder(): OverlayOrder {
+  try {
+    return restoreOverlayOrder(
+      typeof window === 'undefined' ? null : window.localStorage.getItem(OVERLAY_ORDER_STORAGE_KEY),
+    );
+  } catch {
+    return restoreOverlayOrder(null);
+  }
+}
 
 export function overlaySourceId(id: OverlayId): string {
   return `${SOURCE_PREFIX}${id}`;
@@ -107,6 +139,32 @@ export function overlayIdForSource(sourceId: string | undefined): OverlayId | nu
   return OVERLAYS.some((overlay) => overlay.id === id) ? (id as OverlayId) : null;
 }
 
+// Raster order changes never cross the vector/AOI boundary.
+export function reorderOverlays(map: MapLibreMap, order: readonly OverlayId[]): void {
+  const ids = normalizeOverlayOrder(order).map(overlaySourceId);
+  const layers = map.getStyle().layers ?? [];
+  const anchor = layers.find((layer) => layer.id.startsWith(RESULT_PREFIX))?.id ??
+    (map.getLayer('aoi-line') ? 'aoi-line' : undefined);
+  // The control lists top-to-bottom, while MapLibre draws layers bottom-to-top.
+  for (const id of ids.reverse()) {
+    if (map.getLayer(id)) map.moveLayer(id, anchor);
+  }
+}
+
+let activeMap: MapLibreMap | null = null;
+let orderListenerRegistered = false;
+
+function handleOverlayOrderChange(map: MapLibreMap): void {
+  if (typeof window === 'undefined') return;
+  activeMap = map;
+  if (orderListenerRegistered) return;
+  orderListenerRegistered = true;
+  window.addEventListener(OVERLAY_ORDER_EVENT, (event) => {
+    const order = (event as CustomEvent<unknown>).detail;
+    if (activeMap) reorderOverlays(activeMap, normalizeOverlayOrder(order));
+  });
+}
+
 // Overlays sit above the basemap and below server result layers and the AOI outline.
 function overlayBeforeId(map: MapLibreMap): string | undefined {
   const result = map.getStyle().layers.find((layer) => layer.id.startsWith(RESULT_PREFIX));
@@ -115,8 +173,12 @@ function overlayBeforeId(map: MapLibreMap): string | undefined {
 }
 
 export function addOverlay(map: MapLibreMap, overlay: Overlay): void {
+  handleOverlayOrderChange(map);
   const id = overlaySourceId(overlay.id);
-  if (map.getSource(id)) return;
+  if (map.getSource(id)) {
+    reorderOverlays(map, storedOverlayOrder());
+    return;
+  }
   map.addSource(id, {
     type: 'raster',
     tiles: [overlay.tiles],
@@ -135,6 +197,7 @@ export function addOverlay(map: MapLibreMap, overlay: Overlay): void {
     },
     overlayBeforeId(map),
   );
+  reorderOverlays(map, storedOverlayOrder());
 }
 
 export function removeOverlay(map: MapLibreMap, overlay: Overlay): void {

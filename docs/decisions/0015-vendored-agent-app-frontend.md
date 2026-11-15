@@ -146,7 +146,9 @@ Modified upstream files:
   ImageServer raster context overlay, with attribution and vintage/context
   labels (Plan 50.2.2); fixed USGS NAIP ImageServer `exportImage` raster
   context overlay with mosaic-vintage caveat, source attribution, and default-off
-  control (Plan 53.3.1).
+  control (Plan 53.3.1); accessible raster/context ordering controls with
+  browser-local persistence, keeping result vectors and AOI boundaries above
+  rasters (Plan 53.3.2).
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again

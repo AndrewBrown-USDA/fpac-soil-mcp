@@ -1,6 +1,14 @@
 import { Layers } from 'lucide-react';
-import { CONTEXT_LABEL, OVERLAYS } from './overlays';
-import type { Overlay, OverlayId } from './overlays';
+import { useState } from 'react';
+import {
+  CONTEXT_LABEL,
+  OVERLAYS,
+  OVERLAY_ORDER_EVENT,
+  OVERLAY_ORDER_STORAGE_KEY,
+  normalizeOverlayOrder,
+  restoreOverlayOrder,
+} from './overlays';
+import type { Overlay, OverlayId, OverlayOrder } from './overlays';
 
 export type OverlayFlags = Record<OverlayId, boolean>;
 
@@ -11,6 +19,16 @@ export const NO_OVERLAYS: OverlayFlags = {
   cdl: false,
   naip: false,
 };
+
+function savedOrder(): OverlayOrder {
+  try {
+    return restoreOverlayOrder(
+      typeof window === 'undefined' ? null : window.localStorage.getItem(OVERLAY_ORDER_STORAGE_KEY),
+    );
+  } catch {
+    return restoreOverlayOrder(null);
+  }
+}
 
 function statusText(
   overlay: Overlay,
@@ -44,7 +62,25 @@ export function OverlayControl({
   onOpenChange: (next: boolean) => void;
   onToggle: (id: OverlayId, next: boolean) => void;
 }) {
+  const [order, setOrder] = useState<OverlayOrder>(savedOrder);
   const count = OVERLAYS.filter((overlay) => on[overlay.id]).length;
+
+  function moveOverlay(id: OverlayId, direction: -1 | 1) {
+    const next = [...order];
+    const index = next.indexOf(id);
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    const normalized = normalizeOverlayOrder(next);
+    setOrder(normalized);
+    try {
+      window.localStorage.setItem(OVERLAY_ORDER_STORAGE_KEY, JSON.stringify(normalized));
+    } catch {
+      // Keep the current session's ordering even when browser storage is unavailable.
+    }
+    window.dispatchEvent(new CustomEvent(OVERLAY_ORDER_EVENT, { detail: normalized }));
+  }
+
   return (
     <details
       open={open}
@@ -57,7 +93,9 @@ export function OverlayControl({
       </summary>
       <fieldset className="grid gap-2 border-border border-t px-2 py-2">
         <legend className="sr-only">Context layers</legend>
-        {OVERLAYS.map((overlay) => {
+        {order.map((overlayId, index) => {
+          const overlay = OVERLAYS.find(({ id }) => id === overlayId);
+          if (!overlay) return null;
           const inputId = `overlay-toggle-${overlay.id}`;
           const status = on[overlay.id]
             ? statusText(overlay, zoom, errors[overlay.id], loading[overlay.id])
@@ -87,6 +125,24 @@ export function OverlayControl({
                   {CONTEXT_LABEL}. Source: {overlay.source} ({overlay.vintage}).
                 </span>
               </label>
+              <span className="ml-auto flex gap-1">
+                <button
+                  type="button"
+                  aria-label={`Move ${overlay.title} up`}
+                  disabled={index === 0}
+                  onClick={() => moveOverlay(overlay.id, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${overlay.title} down`}
+                  disabled={index === order.length - 1}
+                  onClick={() => moveOverlay(overlay.id, 1)}
+                >
+                  ↓
+                </button>
+              </span>
             </div>
           );
         })}
