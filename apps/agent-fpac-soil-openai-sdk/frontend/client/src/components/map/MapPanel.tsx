@@ -116,6 +116,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
   const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('kilometers');
+  const [activeTab, setActiveTab] = useState<'map' | 'results'>('map');
   // Short hint when a click has nothing to identify (no layer on, or none in range).
   const [identifyHint, setIdentifyHint] = useState<string | null>(null);
   // Identify popup (D6): MapLibre popup whose content is rendered through a portal.
@@ -134,6 +135,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const screenedRef = useRef<string | null>(null);
   const screening = useScreening();
   const { reset: resetScreening } = screening;
+  const previousScreeningStatus = useRef(screening.status);
+
+  useEffect(() => {
+    if (previousScreeningStatus.current !== 'done' && screening.status === 'done') {
+      setActiveTab('results');
+    }
+    previousScreeningStatus.current = screening.status;
+  }, [screening.status]);
 
   // One AOI at a time: a new AOI replaces the old and becomes undoable.
   const replaceAoi = useCallback(
@@ -324,6 +333,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const screeningNotice = screening.result?.display?.regulatory_notice ?? null;
   const showScreening = useCallback(() => {
     if (screeningMap) {
+      setActiveTab('results');
       show({ origin: 'screening', block: screeningMap, regulatory_notice: screeningNotice });
     }
   }, [screeningMap, screeningNotice, show]);
@@ -624,14 +634,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   }
 
   return (
-    <section
-      aria-label="Map screening"
-      className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3"
-    >
-      {/* The map and its controls fill the panel's visible height; results start
-          below and are reached with the panel's scrollbar, so screening never
-          shrinks the map. */}
-      <div className="flex min-h-full shrink-0 flex-col gap-3">
+    <section aria-label="Map screening" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-3">
         <header className="flex items-center justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
           <div className="flex items-center gap-2">
             <img
@@ -670,6 +673,25 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             </button>
           </div>
         </header>
+        <div role="tablist" aria-label="Map and screening results" className="flex gap-1 border-b">
+          {(['map', 'results'] as const).map((tab) => (
+            <button
+              key={tab}
+              id={`map-panel-tab-${tab}`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              aria-controls={`map-panel-panel-${tab}`}
+              tabIndex={activeTab === tab ? 0 : -1}
+              onClick={() => setActiveTab(tab)}
+              className="rounded-t px-3 py-2 text-sm font-medium aria-selected:border aria-selected:border-b-background aria-selected:bg-background"
+            >
+              {tab === 'map' ? 'Map' : 'Results'}
+            </button>
+          ))}
+        </div>
+        <div id="map-panel-panel-map" role="tabpanel" aria-labelledby="map-panel-tab-map" hidden={activeTab !== 'map'} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-full flex-col gap-3">
         <StatusMessage variant="warning" className="font-medium text-xs">
           <p>Preliminary screening view. Not an official NRCS determination.</p>
         </StatusMessage>
@@ -818,7 +840,9 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             )}
           </StatusMessage>
         )}
-      </div>
+        </div>
+        </div>
+        <div id="map-panel-panel-results" role="tabpanel" aria-labelledby="map-panel-tab-results" hidden={activeTab !== 'results'} className="min-h-0 flex-1 overflow-y-auto">
       {shown?.origin === 'tool' ? (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -828,7 +852,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             </h3>
             {screeningMap && (
               <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
-                Back to screening
+                Back to screening results
               </Button>
             )}
           </div>
@@ -861,6 +885,10 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           </div>
         )
       )}
+      {screening.status !== 'done' && shown?.origin !== 'tool' && (
+        <p className="text-muted-foreground text-sm">Run a screening from the Map tab to see results here.</p>
+      )}
+        </div>
     </section>
   );
 }

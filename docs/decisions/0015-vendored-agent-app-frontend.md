@@ -140,7 +140,9 @@ Modified upstream files:
   imports ensure the assets are included in the frontend build. It also shows
   CDL class summaries received from a tool card without a map route or
   re-query (Plan 50.2.2); provides a browser-only AOI label and explicit
-  GeoJSON copy/download actions (Plan 53.2.1).
+   GeoJSON copy/download actions (Plan 53.2.1); accessible Map/Results tabs,
+   automatic Results selection on completed screening, and retained screening
+   details while viewing tool results (Plan 53.4.1).
 * `client/src/components/map/overlays.ts` and
   `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
   ImageServer raster context overlay, with attribution and vintage/context
@@ -233,6 +235,11 @@ Added paths:
   `tests/site-assessment/cards.spec.ts`: isolated Playwright configuration and
   coverage for emitted answer/confirmation records and stale CDL refusal
   (Plan 51.2.2).
+* `client/map-tabs-fixture.html`, `client/src/components/map/map-tabs-fixture.tsx`,
+  `playwright.map-tabs.config.ts`, `tests/map-tabs/tabs.spec.ts`, and
+  `package.json`: focused isolated browser coverage for Map/Results tab selection,
+  empty state, and preserving screening details when switching to tool results
+  (Plan 53.4.1; no new dependencies).
 * `client/src/assets/ncss-acronym-color.png` and
   `client/src/assets/ncss-acronym-white.png`: official NCSS acronym-only logo
   variants prepared from the
