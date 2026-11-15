@@ -139,7 +139,8 @@ Modified upstream files:
   and dark themes (NCSS Visual Standards Guide, March 2018); Vite-managed
   imports ensure the assets are included in the frontend build. It also shows
   CDL class summaries received from a tool card without a map route or
-  re-query (Plan 50.2.2).
+  re-query (Plan 50.2.2); provides a browser-only AOI label and explicit
+  GeoJSON copy/download actions (Plan 53.2.1).
 * `client/src/components/map/overlays.ts` and
   `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
   ImageServer raster context overlay, with attribution and vintage/context
@@ -199,6 +200,9 @@ Added paths:
   Plan 50.2.2 adds `client/src/components/map/CDLContextSummary.tsx` to show the
   complete server-returned class distributions, source, vintage, status,
   coverage and limitations for the AOI and both exterior zones.
+* `client/src/components/map/aoiExport.ts` and
+  `client/src/components/map/aoiExport.test.ts`: serialize the current AOI as
+  labeled GeoJSON and sanitize download filenames (Plan 53.2.1).
 * `client/src/components/site-assessment-cards.tsx`: resource-driven question
   choices, evidence/comment/provenance, verification, source, and justification
   fields, explicit unknown/skipped records, and a distinct

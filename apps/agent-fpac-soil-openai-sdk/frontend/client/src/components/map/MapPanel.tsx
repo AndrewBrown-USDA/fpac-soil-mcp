@@ -12,7 +12,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
+import { Check, Copy, Download, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
@@ -48,6 +48,7 @@ import { NOTICE_CARD, RESULT_CARD, ScreeningResults } from './ScreeningResults';
 import { StatusMessage } from './StatusMessage';
 import type { StatusVariant } from './StatusMessage';
 import { useScreening } from './useScreening';
+import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
 // Metadata checked 2026-10-30: 256 px Web Mercator tiles, cached to zoom 16, CORS *.
@@ -94,6 +95,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [mode, setMode] = useState<DrawMode>('static');
   const [previousAoi, setPreviousAoi] = useState<PolygonGeometry | null>(null);
   const [aoiError, setAoiError] = useState<string | null>(null);
+  const [aoiLabel, setAoiLabel] = useState('');
+  const [aoiExportMessage, setAoiExportMessage] = useState<string | null>(null);
   const [tileError, setTileError] = useState(false);
   // Context overlays (D5): panel state only, off by default, never stored.
   const [overlayOn, setOverlayOn] = useState<OverlayFlags>(NO_OVERLAYS);
@@ -126,6 +129,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       setPreviousAoi(aoiRef.current);
       aoiRef.current = next;
       setGeometry(next);
+      setAoiLabel('');
+      setAoiExportMessage(null);
       setAoiError(null);
       resetScreening();
     },
@@ -248,6 +253,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (!mapReady || aoi === aoiRef.current) return;
     aoiRef.current = aoi;
     setPreviousAoi(null);
+    setAoiLabel('');
+    setAoiExportMessage(null);
     setAoiError(null);
     syncDraw(aoi);
     resetScreening();
@@ -500,6 +507,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     setPreviousAoi(null);
     aoiRef.current = restored;
     setGeometry(restored);
+    setAoiLabel('');
+    setAoiExportMessage(null);
     syncDraw(restored);
     resetScreening();
   };
@@ -508,6 +517,27 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     syncDraw(null);
     replaceAoi(null);
     chooseMode('static');
+  };
+
+  const copyAoi = async () => {
+    if (!aoi) return;
+    try {
+      await navigator.clipboard.writeText(serializeAoiGeoJson(aoi, aoiLabel));
+      setAoiExportMessage('AOI GeoJSON copied.');
+    } catch {
+      setAoiExportMessage('Could not copy AOI GeoJSON. Check clipboard permissions.');
+    }
+  };
+
+  const downloadAoi = () => {
+    if (!aoi) return;
+    const blob = new Blob([serializeAoiGeoJson(aoi, aoiLabel)], { type: 'application/geo+json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = aoiFilename(aoiLabel);
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // The pressed tool is filled and swaps its icon for a check, so the state is not
@@ -669,6 +699,26 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             popupNode,
           )}
         <GeoJsonInput onGeometry={onPasted} />
+        <div className="flex flex-wrap items-end gap-2" role="group" aria-label="AOI GeoJSON export">
+          <label className="flex min-w-48 flex-1 flex-col gap-1 font-medium text-xs">
+            AOI label (optional)
+            <input
+              type="text"
+              value={aoiLabel}
+              onChange={(event) => setAoiLabel(event.target.value)}
+              disabled={!aoi}
+              maxLength={120}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            />
+          </label>
+          <Button type="button" size="sm" variant="default" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
+            <Copy aria-hidden="true" /> Copy GeoJSON
+          </Button>
+          <Button type="button" size="sm" variant="default" onClick={downloadAoi} disabled={!aoi} className="gap-1.5">
+            <Download aria-hidden="true" /> Download GeoJSON
+          </Button>
+          {aoiExportMessage && <span role="status" className="text-xs">{aoiExportMessage}</span>}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
