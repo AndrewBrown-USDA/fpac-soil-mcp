@@ -19,4 +19,6 @@ const messages = [{
   ],
 }];
 
-createRoot(document.getElementById('root')!).render(<ChatExportActions messages={messages as never} />);
+const root = document.getElementById('root');
+if (!root) throw new Error('Chat export fixture root is missing');
+createRoot(root).render(<ChatExportActions messages={messages as never} />);

@@ -29,8 +29,8 @@ export function ChatExportActions({ messages }: { messages: readonly ChatExportM
       <details className="relative">
         <summary className="cursor-pointer rounded-md border px-3 py-1.5 text-sm">Export chat</summary>
         <div className="absolute right-0 z-10 mt-1 flex min-w-36 flex-col rounded-md border bg-background p-1 shadow">
-          <button className="p-2 text-left text-sm" onClick={() => setFormat('markdown')}>Markdown</button>
-          <button className="p-2 text-left text-sm" onClick={() => setFormat('json')}>JSON</button>
+          <button type="button" className="p-2 text-left text-sm" onClick={() => setFormat('markdown')}>Markdown</button>
+          <button type="button" className="p-2 text-left text-sm" onClick={() => setFormat('json')}>JSON</button>
         </div>
       </details>
       {format && (
@@ -39,8 +39,8 @@ export function ChatExportActions({ messages }: { messages: readonly ChatExportM
             <h2 id="chat-export-title" className="text-lg font-semibold">Export {format === 'json' ? 'JSON' : 'Markdown'}?</h2>
             <p className="my-4 text-sm">{CHAT_EXPORT_SENSITIVITY_WARNING}</p>
             <div className="flex justify-end gap-2">
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={() => setFormat(null)}>Cancel</button>
-              <button className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground" onClick={download}>Download export</button>
+              <button type="button" className="rounded-md border px-3 py-2 text-sm" onClick={() => setFormat(null)}>Cancel</button>
+              <button type="button" className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground" onClick={download}>Download export</button>
             </div>
           </section>
         </div>

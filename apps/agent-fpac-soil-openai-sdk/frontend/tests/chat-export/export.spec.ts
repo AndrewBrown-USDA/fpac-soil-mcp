@@ -21,7 +21,9 @@ for (const format of ['Markdown', 'JSON'] as const) {
     await page.getByRole('button', { name: 'Download export' }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe(format === 'JSON' ? 'conversation.json' : 'conversation.md');
-    const content = await readFile(await download.path()!, 'utf8');
+    const path = await download.path();
+    if (!path) throw new Error('Expected a downloadable export file');
+    const content = await readFile(path, 'utf8');
     expect(content).toContain('Screen this location.');
     expect(content).toContain('analyze_farmland_by_polygon');
     expect(content).toContain('-98');
