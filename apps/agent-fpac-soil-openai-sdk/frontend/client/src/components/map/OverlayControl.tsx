@@ -9,6 +9,7 @@ export const NO_OVERLAYS: OverlayFlags = {
   counties: false,
   urban: false,
   cdl: false,
+  naip: false,
 };
 
 function statusText(

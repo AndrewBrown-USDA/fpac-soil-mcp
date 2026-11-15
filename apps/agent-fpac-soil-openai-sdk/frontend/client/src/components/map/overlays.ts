@@ -7,7 +7,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 
 export const CONTEXT_LABEL = 'Context layer, not an analysis result';
 
-export type OverlayId = 'ssurgo' | 'counties' | 'urban' | 'cdl';
+export type OverlayId = 'ssurgo' | 'counties' | 'urban' | 'cdl' | 'naip';
 
 export type Overlay = {
   id: OverlayId;
@@ -37,6 +37,9 @@ const TIGERWEB_URBAN_TILES =
 
 const CDL_TILES =
   'https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&pixelType=U8&f=image';
+
+const NAIP_TILES =
+  'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&f=image';
 
 export const OVERLAYS: readonly Overlay[] = [
   {
@@ -78,6 +81,16 @@ export const OVERLAYS: readonly Overlay[] = [
     source: 'USDA NASS Cropland Data Layer ImageServer',
     vintage: 'Service mosaic; may differ from analysis vintage',
     attribution: 'USDA NASS Cropland Data Layer',
+  },
+  {
+    id: 'naip',
+    title: 'NAIP aerial imagery',
+    tiles: NAIP_TILES,
+    minzoom: 12,
+    opacity: 1,
+    source: 'USGS The National Map USGSNAIPImagery ImageServer',
+    vintage: 'Mosaic imagery; acquisition dates vary by location (service copyright January 2025)',
+    attribution: 'USGS, USDA, The National Map: Orthoimagery',
   },
 ] as const;
 
