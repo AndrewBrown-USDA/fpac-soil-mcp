@@ -157,7 +157,7 @@ export async function fetchOutline(
   if (!GEOID.test(geoid)) return null;
   const params = new URLSearchParams({
     where: `GEOID='${geoid}'`,
-    outFields: 'GEOID',
+    outFields: 'GEOID,NAME',
     returnGeometry: 'true',
     outSR: '4326',
     f: 'geojson',
