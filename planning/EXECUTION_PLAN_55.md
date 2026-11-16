@@ -40,28 +40,28 @@ upstream lint scripts that rewrite files.
 - **Files in scope:** `frontend/client/src/components/map/ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`, `frontend/client/src/components/chat.tsx`, `frontend/client/src/components/map/corridorSession.ts`, `corridorSession.test.ts`; focused adjacent tests may be created.
 - **Anchors:** provider `setGeometry`/`save`/`setChatId`; corridor `setCorridor`/`saveCorridor`/`setChatId`; chat `activeAoiRef`, `activeCorridorRef`, `prepareSendMessagesRequest`.
 - **Spec:** On draw/edit, attach the newest geometry context and detach the other. Requests serialize no more than one of `activeAoi` or `activeCorridor`; preserve per-chat persistence and existing payload compatibility.
-- **Acceptance:** focused Vitest for `corridorSession.test.ts` and added tests; `make app-frontend-check`.
+- **Acceptance:** focused Node tests via `node --import tsx --test` for `corridorSession.test.ts` and added tests; `make app-frontend-check`.
 
 ### 55.2.1 — Collapse tool output and promote Show on Map
 
 - **Files in scope:** `frontend/client/src/components/message.tsx`, `frontend/client/src/components/elements/tool.tsx`, `frontend/client/src/components/map/ShowOnMapButton.tsx`, the focused fixture/spec files, and `docs/decisions/0015-vendored-agent-app-frontend.md`.
 - **Anchors:** `ToolPartRenderer`, MCP `McpTool defaultOpen`, `McpToolContent`, `showOnMap` rendering.
 - **Spec:** MCP tool output/details are collapsed by default without changing approval/action behavior. Put Show on Map in the tool-call top bar with tool-call and AOI information where available.
-- **Acceptance:** targeted Vitest/Playwright coverage for collapsed output and top-bar map action; `make app-frontend-check`.
+- **Acceptance:** targeted Playwright coverage for collapsed output and top-bar map action; `make app-frontend-check`.
 
 ### 55.1.2 — Corridor labels and remove/clear synchronization
 
 - **Files in scope:** `frontend/client/src/components/map/corridorGeometry.ts`, `corridorGeometry.test.ts`, `corridorSession.ts`, `corridorSession.test.ts`, `MapPanel.tsx`, existing corridor-map Playwright spec, and `docs/decisions/0015-vendored-agent-app-frontend.md`. `geojson.ts` only if a shared helper is required.
 - **Anchors:** `createCorridorInput`, alternative label mapping, `combineStagingAreas`, `corridorDrawKind`, TerraDraw `onFinish`/`onChange`, `clearCorridor`, `removeCorridorFeature`.
 - **Spec:** Preserve a unified label/role for primary, alternatives, and staging through model serialization. Removing or clearing synchronizes TerraDraw, draft React state, and attached corridor state; labels do not alter MCP geometry schema.
-- **Acceptance:** focused Vitest for corridor geometry/session; `npm run test:corridor-map`; `make app-frontend-check`.
+- **Acceptance:** focused Node tests via `node --import tsx --test` for corridor geometry/session; `npm run test:corridor-map`; `make app-frontend-check`.
 
 ### 55.2.2 — Measurement preview
 
 - **Files in scope:** `frontend/client/src/components/map/MapPanel.tsx`, `distance.ts`, `distance.test.ts`, `frontend/tests/map-toolbar/toolbar.spec.ts`, and `docs/decisions/0015-vendored-agent-app-frontend.md`.
 - **Anchors:** measurement GeoJSON source/layer, map click and mouse-move handlers, `measurePoints`, `lineCollection`, `lineDistance`, line-measurement toolbar group.
 - **Spec:** Show a concise active-measurement indicator. After the first click, render a live rubber-band line to the pointer without adding a committed measurement point; preserve distance and finish/cancel behavior.
-- **Acceptance:** focused distance tests; `npm run test:map-toolbar`; `make app-frontend-check`.
+- **Acceptance:** focused distance tests using the repository's existing runner; `npm run test:map-toolbar`; `make app-frontend-check`.
 
 ### 55.3.1 — Toolbar, attachment chip, and unified geometry I/O
 
