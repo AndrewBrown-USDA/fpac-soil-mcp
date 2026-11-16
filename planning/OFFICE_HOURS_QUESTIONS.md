@@ -22,10 +22,10 @@ port 8000 with `DATABRICKS_APP_PORT` detection.
   `DATABRICKS_CLIENT_SECRET` at runtime for tools that call back into Databricks;
   default grants are sufficient for serving MCP traffic.
 
-### Why AI Playground is required
+### Why Databricks Playground is required
 
 We have no formally approved local coding agent that is allowed to use MCP
-(Claude Code, Cursor, VS Code, etc. are not options). AI Playground is the only
+(Claude Code, Cursor, VS Code, etc. are not options). Databricks Playground is the only
 approved interactive agent interface available to us, so it is the critical
 path for hackathon testing.
 
@@ -50,11 +50,11 @@ for us as of today. If the expected Monday enablement had happened, we would
 expect the built-in `system.ai` MCP services to be listed and callable. A 403
 rather than a 404 suggests the feature is deployed but not turned on or not
 granted. We could not inspect the account console Previews page or confirm
-whether the AI Playground **+ Add tool → MCP Servers** option is present.
+whether the Databricks Playground **+ Add tool → MCP Servers** option is present.
 
 ## Remaining Questions
 
-### 1. Unity Gateway MCP enablement for AI Playground
+### 1. Unity Gateway MCP enablement for Databricks Playground
 
 We were told features would be enabled by Monday 2026-10-19. Model services
 are live, but `system.ai` MCP services return 403 for us (see probe above).
@@ -64,7 +64,7 @@ are live, but `system.ai` MCP services return 403 for us (see probe above).
   MCPs return `Not authorized to invoke MCP service` for team members?
 - Does it require an explicit `EXECUTE` grant on `system.ai` MCP services, and
   who can grant it?
-- When will the AI Playground **Tools → MCP Servers** option be available?
+- When will the Databricks Playground **Tools → MCP Servers** option be available?
   Even scoped enablement for hackathon participants would unblock testing.
 
 ### 2. Notebook bearer token for Apps
@@ -84,7 +84,7 @@ method does it expect — bearer token, service principal, or OAuth?
 
 ### 4. `mcp-` prefix auto-discovery
 
-Does the `mcp-` app name prefix make the server auto-discoverable in AI
+Does the `mcp-` app name prefix make the server auto-discoverable in assistant
 Playground once Unity Gateway is enabled, or is a separate registration step
 needed? Specifically, will `mcp-fpac-soil` appear under **Tools → MCP Servers**
 for users who hold **CAN USE** on the app?

@@ -120,7 +120,7 @@ Wave 2 tasks have pairwise-disjoint files. Shared app checks and any live/browse
 
 **Depends on:** 40.1.1.
 
-**Specification:** Spike the end-to-end UI-to-handler handling of `custom_inputs` and handler-to-UI handling of `custom_outputs`, including whether the AI SDK adapter preserves a non-model `map_layers`/equivalent field. Determine where request data enters tracing/history, and implement or document only the minimum safe boundary needed to prove raw AOI geometry is excluded from ordinary model context, traces, and history. The accepted design must use explicit backend pre-dispatch, opaque identifiers/metadata where telemetry is needed, session-only AOIs, and no raw coordinates in prompts. Do not implement M3's authoritative map envelope.
+**Specification:** Spike the end-to-end UI-to-handler handling of `custom_inputs` and handler-to-UI handling of `custom_outputs`, including whether the chat SDK adapter preserves a non-model `map_layers`/equivalent field. Determine where request data enters tracing/history, and implement or document only the minimum safe boundary needed to prove raw AOI geometry is excluded from ordinary model context, traces, and history. The accepted design must use explicit backend pre-dispatch, opaque identifiers/metadata where telemetry is needed, session-only AOIs, and no raw coordinates in prompts. Do not implement M3's authoritative map envelope.
 
 **Grep anchors:** `invoke_handler`, `stream_handler`, `ResponsesAgentRequest`, `ResponsesAgentResponse`, `normalize_history_items`, MLflow autologging setup.
 

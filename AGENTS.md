@@ -87,6 +87,7 @@ uv run pytest -m live_network
 - `databricks\bootstrap-serverless.sh` - idempotent install of the same pins for serverless shells without a notebook environment (for example Genie Code).
 - `server.json` and `manifest.yaml` - MCP registry and capability metadata.
 - `README.md` and `QUICKSTART.md` - user-facing setup, client configuration, API behavior, and regulatory scope.
+- `docs\architecture.md` - server component responsibilities, request/data flow, upstream services, and deployment boundaries.
 
 ## Workflows
 
@@ -166,6 +167,7 @@ Run `make app-check` when changing anything under `apps\agent-fpac-soil-openai-s
 ## References
 
 - `README.md` - architecture, MCP interface, configuration, client setup, and FPPA legal context.
+- `docs\architecture.md` - detailed architecture diagram, layer responsibilities, data sources, and deployment boundaries.
 - `QUICKSTART.md` - shortest installation and client connection path.
 - `.env.example` - configuration reference.
 - `manifest.yaml` - published MCP tools and resources.

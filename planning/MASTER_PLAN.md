@@ -2,7 +2,7 @@
 
 ## Summary
 
-`fpac-soil-mcp` is a Model Context Protocol (MCP) server for Farmland Protection Policy Act (FPPA) screening. It connects AI assistants to USDA Natural Resources Conservation Service (NRCS) Soil Data Access (SDA) and other public-facing APIs.
+`fpac-soil-mcp` is a Model Context Protocol (MCP) server for Farmland Protection Policy Act (FPPA) screening. It connects assistants to USDA Natural Resources Conservation Service (NRCS) Soil Data Access (SDA) and other public-facing APIs.
 
 The system automates preliminary soil analysis, site assessments, project alternatives comparisons, draft form generation (AD-1006 and CPA-106), and annual CPA-2 reporting records.
 
@@ -14,7 +14,7 @@ The roadmap has two parts: server Phases 0-8 (section 3) and parallel delivery t
 
 ### Problem
 
-General AI tools cannot query or interpret official soil databases safely. Raw database rows lack regulatory context. Users risk mistaking raw soil attributes for binding agency rulings. 
+General-purpose tools cannot query or interpret official soil databases safely. Raw database rows lack regulatory context. Users risk mistaking raw soil attributes for binding agency rulings.
 
 Furthermore, existing desktop GIS automation tools (such as the Colorado NRCS ArcGIS Python Toolbox) require proprietary ArcGIS Pro desktop software, local `arcpy` geoprocessing licenses, manual periodic downloads of USDA NASS Census CSV tables, and local file geodatabase maintenance. Moreover, desktop toolboxes introduce a severe single-county simplification limitation on linear corridors (collapsing multi-county infrastructure alignments to the single largest county by area).
 
@@ -62,7 +62,7 @@ The server does not:
 
 ```mermaid
 flowchart LR
-    U["User / AI Agent"] --> H["MCP Client"]
+    U["User / assistant Agent"] --> H["MCP Client"]
     H --> M["FastMCP Server"]
 
     subgraph Core ["fpac-soil-mcp Core Engine"]
@@ -110,7 +110,7 @@ flowchart LR
 
 ### Delivery Surfaces
 
-Clients use only the server's public MCP surface. The current surfaces are: the MCP server, deployed as the `mcp-fpac-soil` Databricks App on Streamable HTTP `/mcp`; the Databricks agent app, a separate MCP client project ([ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md); its model goes through AI Gateway per the ADR's 2026-10-23 amendment); the MCP Workbench, a local client for developers and admins that is not an authorization boundary; and the evaluation tiers T0 (in-memory contract tests) and T1 (in-process MLflow evaluation), with T2 against deployed `/mcp` planned. Status and backlog for each are in [Delivery Tracks](#delivery-tracks).
+Clients use only the server's public MCP surface. The current surfaces are: the MCP server, deployed as the `mcp-fpac-soil` Databricks App on Streamable HTTP `/mcp`; the Databricks agent app, a separate MCP client project ([ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md); its model goes through model gateway per the ADR's 2026-10-23 amendment); the MCP Workbench, a local client for developers and admins that is not an authorization boundary; and the evaluation tiers T0 (in-memory contract tests) and T1 (in-process MLflow evaluation), with T2 against deployed `/mcp` planned. Status and backlog for each are in [Delivery Tracks](#delivery-tracks).
 
 ---
 
@@ -483,7 +483,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 - **Status:** T0 in-memory contract tests (`eval/contract/`) and T1 in-process MLflow evaluation (`eval/databricks/`) have shipped; the Pi harness remains a local smoke test. Orchestration 46 added cross-surface prompt-policy assertions, adversarial cases and deterministic safety/reliability scorers, and hardened MCP/map contracts. Its Wave 4 benchmark evidence is a reproducible manifest-only dry run; no service performance was measured.
 - **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases); Orchestration 46 (policy, adversarial evaluation, MCP/map safety, and Criterion 2 benchmark setup/evidence; see [execution plan](EXECUTION_PLAN_46.md), [state](STATE_46.md), and [46.4.2 evidence](evidence/46.4.2-performance.md)).
 - **Backlog:**
-  - Proposed: move the T1 model client to AI Gateway.
+  - Proposed: move the T1 model client to model gateway.
   - Deferred: run the T2 case corpus against deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent. The Plan 49 authenticated smoke client and notebook (a separate access check, not corpus evaluation) are built but their live acceptance is deferred to a post-hackathon USDA deployment with a provisioned service principal (D14; [state](STATE_49.md)).
   - Proposed: expand ground truth with domain-owner sign-off.
   - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
@@ -495,7 +495,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track A: Agent App
 
 - **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and keeps the preliminary-screening boundary ([ADR 0003](../docs/decisions/0003-preliminary-screening-authority-boundary.md)).
-- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through AI Gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat. Orchestration 46 added shared policy assertions and map uncertainty safeguards; deployed performance and model-assisted results were not established by its benchmark dry run.
+- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through model gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat. Orchestration 46 added shared policy assertions and map uncertainty safeguards; deployed performance and model-assisted results were not established by its benchmark dry run.
 - **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md), [42](EXECUTION_PLAN_42.md) and [44](EXECUTION_PLAN_44.md) (M3-M5, [ADR 0017](../docs/decisions/0017-server-map-result-contract.md)); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md).
 - **Backlog:**
   - Delivered: M0, vendor and pin the chat UI (ADR 0015).
@@ -546,7 +546,7 @@ From [Plan 37](EXECUTION_PLAN_37.md#decision-log):
 - D5: The workbench is the "MCP Workbench" for developers and admins, stays in `eval/fpac_soil_mcp_harness/`, and is not an authorization boundary.
 - D6: Track A commits structure only: M0, then M1 spikes, then M2-M7 scoped after M1; AOI integration is blocked until R6 passes.
 - D7: No new or superseded ADRs in Plan 37; ADRs on the vendored frontend and AOI handoff are M0 and M1 exit items.
-- D12: Track E backlog is T1 to AI Gateway and T2 against deployed `/mcp`; WKT/GeoJSON upload is an open Track W decision; SDA maintenance-page handling is recorded as delivered in Phase 7.
+- D12: Track E backlog is T1 to model gateway and T2 against deployed `/mcp`; WKT/GeoJSON upload is an open Track W decision; SDA maintenance-page handling is recorded as delivered in Phase 7.
 
 ### Planning Decision (2026-11-12)
 
@@ -597,7 +597,7 @@ The hackathon submission is complete when:
 - [Research: map widget for the agent chat app](RESEARCH_MAP_WIDGET_AGENT_APP.md)
 - [Plan 37: fold delivery-track research into the master plan](EXECUTION_PLAN_37.md)
 
-[^1]: GSA MCP Server and AI Agent Government Hackathon guidelines (2026).
+[^1]: GSA MCP Server and assistant Agent Government Hackathon guidelines (2026).
 [^2]: 7 CFR Part 658 - Farmland Protection Policy Act regulations.
 [^3]: USDA NRCS Soil Data Access API documentation.
 [^4]: Form AD-1006 (Farmland Conversion Impact Rating) and Form NRCS-CPA-106 (Corridors).

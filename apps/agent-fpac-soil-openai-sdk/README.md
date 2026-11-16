@@ -14,7 +14,7 @@ Answers are preliminary screening only. They are based on SSURGO soil inventory 
 
 | Name | Default | Purpose |
 | --- | --- | --- |
-| `AGENT_MODEL` | `models.ai.gpt-5-6-luna` | Unity Catalog model service, called through AI Gateway (`/ai-gateway/mlflow/v1`). In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
+| `AGENT_MODEL` | `models.ai.gpt-5-6-luna` | Unity Catalog model service, called through model gateway (`/ai-gateway/mlflow/v1`). In `app.yaml` it comes from the `llm-endpoint` resource (`valueFrom`). If unset or blank, the default is used. |
 | `FPAC_MCP_APP` | unset | Name of the fpac-soil-mcp server app. In `app.yaml` it comes from the `mcp_server` app resource (`valueFrom`), and the app looks up that app's URL once per process and adds `/mcp`, so production and dev agent apps differ only in their `mcp_server` resource. If set but not resolvable, the agent runs without tools rather than using another server. |
 | `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | Explicit MCP URL for local runs and tests; overrides `FPAC_MCP_APP`. Not set in the deploy files. |
 | `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
@@ -28,7 +28,7 @@ GPT-5 models are called with `reasoning_effort="none"`, which they need for tool
 The agent calls the MCP server as the app's service principal, not on behalf of the user. The app needs two resources:
 
 * An App resource `mcp_server` for `mcp-fpac-soil` with `CAN_USE`. This grants the service principal access to the MCP server. Apps-hosted MCP servers accept OAuth only, not PATs.
-* A **Model** resource `llm-endpoint` for the configured Unity Catalog model service (for example `models.ai.gpt-5-6-luna`) with `EXECUTE`. The Apps UI no longer offers a Serving endpoint resource, and the legacy `databricks-*` endpoint names are no longer served (AI Gateway returns 403 "no longer available"; `/serving-endpoints` returns 404 `ENDPOINT_NOT_FOUND` for UC names).
+* A **Model** resource `llm-endpoint` for the configured Unity Catalog model service (for example `models.ai.gpt-5-6-luna`) with `EXECUTE`. The Apps UI no longer offers a Serving endpoint resource, and the legacy `databricks-*` endpoint names are no longer served (model gateway returns 403 "no longer available"; `/serving-endpoints` returns 404 `ENDPOINT_NOT_FOUND` for UC names).
 
 Both are declared in `databricks.yml` (`llm-endpoint` as `uc_securable` with `securable_type: MODEL_SERVICE`) and `llm-endpoint` in `manifest.yaml` (`uc_securable_spec`). For the UI-created app, add them on the app's Apps page.
 

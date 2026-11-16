@@ -3,7 +3,7 @@
 </a>
 
 <p align="center">
-    A chat application template for interacting with Databricks Agent Serving endpoints, built with ExpressJS, React, Vercel AI SDK, Databricks authentication, and optional Lakebase (database) integration.
+    A chat application template for interacting with Databricks Agent Serving endpoints, built with ExpressJS, React, Vercel chat SDK, Databricks authentication, and optional Lakebase (database) integration.
 </p>
 
 <p align="center">
@@ -214,7 +214,7 @@ The application can also run without a database. In this mode:
 - Chat conversations work normally but are **not saved**
 - The sidebar shows "No chat history available"
 - A small "Ephemeral" indicator appears in the header
-- Users can still have conversations with the AI, but history is lost on page refresh
+- Users can still have conversations with the assistant, but history is lost on page refresh
 
 #### Selecting a Database Mode
 

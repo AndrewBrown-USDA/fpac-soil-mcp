@@ -22,7 +22,7 @@ How should `planning/MASTER_PLAN.md` change so it covers the work found after th
 | Section | Lines | Current content | Gap |
 | --- | --- | --- | --- |
 | Summary | L3-9 | MCP server for FPPA screening | No mention of the chat agent, evaluation, or workbench |
-| Architecture | L58-106 | `User / AI Agent -> MCP Client -> FastMCP Server`; core engine subgraph; key principles | Clients are one box. No Databricks Apps, auth model, or eval paths |
+| Architecture | L58-106 | `User / assistant Agent -> MCP Client -> FastMCP Server`; core engine subgraph; key principles | Clients are one box. No Databricks Apps, auth model, or eval paths |
 | Roadmap | L110-138 | `P0 -> ... -> P8 -> PROD`, "each phase translates directly into an individual /plan-wave" | Assumes all work is a server phase |
 | Phase 4 | L235-278 | LE/SA workbench, SDV routing, CSR2/CPI/Storie | No status marker. Phases 0-3 say "(Complete)" |
 | Phase 7 | L352-369 | 50+ gold-set cases, adversarial suite, benchmarks, docs, demo, offline corpus, `live_network` marker | Assumes one eval suite. Now there are Pi, T0, T1, and a deterministic workbench suite |
@@ -44,7 +44,7 @@ Sources: `planning/MASTER_PLAN.md`[^mp-arch][^mp-road].
 | Pi prompt/citation failure fixes (RES-01, PROMPT-01/02) | Plan 30 | Done | [^ep30] |
 | Shared dataset + matching | `eval/common/` (`dataset.py`, `matching.py`); `prompt_test_cases.json` v2 | Done (Plans 33, 34) | [^agents-find][^ep33] |
 | T0 in-memory contract tests | `eval/contract/test_contract.py` | Done (Plan 33) | [^res-dbx] |
-| T1 MLflow in-process agent eval | `eval/databricks/` (agent, scorers, runner, notebook, `system_prompt_v1/v2.txt`) | Done (Plans 33, 34); 5 ground-truth cases; model client currently uses Databricks Serving Endpoints, with AI Gateway migration pending | [^ep33][^ep34] |
+| T1 MLflow in-process agent eval | `eval/databricks/` (agent, scorers, runner, notebook, `system_prompt_v1/v2.txt`) | Done (Plans 33, 34); 5 ground-truth cases; model client currently uses Databricks Serving Endpoints, with model gateway migration pending | [^ep33][^ep34] |
 | T2 eval against the deployed MCP server on Streamable HTTP `/mcp` (SP M2M or Unity Gateway MCP service) | proposed | Not started | [^res-dbx] |
 | Deterministic executable cases | `eval/eval_cases.v1.json` + `lib/evalAssertions.js` | Done (Plan 36) | [^ep36] |
 | Phoenix LLM-as-judge | outside the repo | Handled separately, outside Plan 33 | project decision record |
@@ -56,7 +56,7 @@ Sources: `planning/MASTER_PLAN.md`[^mp-arch][^mp-road].
 | Separate uv project; MCP client only, tools only, SP auth | `apps/agent-fpac-soil-openai-sdk/` | Accepted (ADR 0012) | [^adr12] |
 | Config by env var (`AGENT_MODEL`, `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS` = 180 s); file-based chat prompt | `agent_server/config.py`, `agent_server/prompts/system_prompt.txt` | Done (Plan 35) | [^adr12][^st35] |
 | Lint/CI boundary (`extend-exclude = ["apps"]`, `make app-check`, CI job `agent-app`) | root `pyproject.toml`, `Makefile`, CI | Done | [^adr12] |
-| Model routed through AI Gateway (`models.ai.gpt-5-6-luna`) | ADR 0012 amendment 2026-10-23 | Done | [^adr12] |
+| Model routed through model gateway (`models.ai.gpt-5-6-luna`) | ADR 0012 amendment 2026-10-23 | Done | [^adr12] |
 | Live check DISC-01 / POINT-01 / LESA-01 with trace IDs | `planning/STATE_35.md` 35.5.1 | The table is still empty in this clone | [^st35] |
 | Chat UI source | `scripts/start_app.py` clones `databricks/app-templates` `e2e-chatbot-app-next` from unpinned `main` at each start; Databricks labels that UI Legacy | Open risk; vendor and pin (map M0) | [^map-ui] |
 | Map widget (MapLibre, Terra Draw, Turf; tiered file import; basemap/overlay catalog; explicit backend AOI pre-dispatch; layers via `custom_outputs.map_layers` or an equivalent non-model response path) | `planning/RESEARCH_MAP_WIDGET_AGENT_APP.md` | Research only; M0-M7 proposed; 5 open decisions (item 6 resolved by Plan 37); third-party claims marked "verify" | [^map-sum][^map-phase][^map-open] |
@@ -131,7 +131,7 @@ flowchart TD
 | # | Section | Edit |
 | --- | --- | --- |
 | 1 | Summary (L3-9) | Add one paragraph naming the four delivery surfaces: the deployed MCP app, the chat agent app, the evaluation tiers, and the workbench. Keep the non-official disclaimer. |
-| 2 | Section 2 Architecture | Keep the core-engine diagram. Add **2.1 Delivery Topology**: Databricks users -> agent app (SP OAuth, `CAN_USE`; model through AI Gateway) -> `mcp-fpac-soil` `/mcp`; workbench -> stdio / SSE / HTTP; T0 in-memory; T1 in-process + Databricks Serving Endpoints model via `WorkspaceClient().serving_endpoints.get_open_ai_client()`; T2 -> deployed `/mcp`; Pi -> stdio. Record T1 migration to AI Gateway as pending. |
+| 2 | Section 2 Architecture | Keep the core-engine diagram. Add **2.1 Delivery Topology**: Databricks users -> agent app (SP OAuth, `CAN_USE`; model through model gateway) -> `mcp-fpac-soil` `/mcp`; workbench -> stdio / SSE / HTTP; T0 in-memory; T1 in-process + Databricks Serving Endpoints model via `WorkspaceClient().serving_endpoints.get_open_ai_client()`; T2 -> deployed `/mcp`; Pi -> stdio. Record T1 migration to model gateway as pending. |
 | 3 | Key Principles (L98-106) | Add: "Clients use the public MCP surface only; the server package has no agent, MLflow, or Databricks SDK dependencies" (ADR 0012). Add: "Every uv project pins PyPI as default index" (ADR 0013). Add: "System prompts do not steer toward specific tools or resources" (D12, Plan 33). |
 | 4 | Roadmap (L110-138) | Replace the diagram with 3.1. Add a sentence that tracks run alongside phases and share the same plan-wave convention. |
 | 5 | Phase 4 heading | Mark "(Partially Complete)" and list what is done (Plans 17-27, 31, 32) and what is open (Criterion 2, after checking). |
@@ -157,13 +157,13 @@ flowchart TD
 
 * **Goal:** Measure MCP contract stability, agent tool routing, answer correctness, and regulatory compliance across complementary tiers with explicit fixture ownership.
 * **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33-34 (`eval/common`, the shared `prompt_test_cases.json` corpus used by Pi and T1, T0 in-memory contract tests, T1 MLflow runner, scorers, and v2 prompt); Plan 36 (the separate `eval_cases.v1.json` deterministic workbench cases).
-* **Backlog:** migrate the T1 model client from direct Databricks Serving Endpoints access to AI Gateway; add T2 against the deployed `mcp-fpac-soil` Streamable HTTP `/mcp` endpoint, reusing T1 ground-truth rows and scorers where transport-independent; expand ground truth past 5 cases with domain sign-off; judge model upgrade (deferred, D6 Plan 35); run Pi live before merge; scheduled T1 job (deferred in Plan 33). Agent-app `/invocations` evaluation is a separate client/application concern and must not be labeled T2.
+* **Backlog:** migrate the T1 model client from direct Databricks Serving Endpoints access to model gateway; add T2 against the deployed `mcp-fpac-soil` Streamable HTTP `/mcp` endpoint, reusing T1 ground-truth rows and scorers where transport-independent; expand ground truth past 5 cases with domain sign-off; judge model upgrade (deferred, D6 Plan 35); run Pi live before merge; scheduled T1 job (deferred in Plan 33). Agent-app `/invocations` evaluation is a separate client/application concern and must not be labeled T2.
 * **Exit:** T0 contract tests and the separate deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for the shared prompt corpus; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
 
 ### 4.3 Track A: Agent App
 
 * **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and always states the preliminary-screening limitation.
-* **Delivered:** Plan 35 (config, prompt, MCP wiring, deploy declarations, CI job); ADR 0012 and its 2026-10-23 amendment (AI Gateway model).
+* **Delivered:** Plan 35 (config, prompt, MCP wiring, deploy declarations, CI job); ADR 0012 and its 2026-10-23 amendment (model gateway model).
 * **Backlog:** record the 35.5.1 live-check trace IDs; define a separate agent-app evaluation against `/invocations` without calling it MCP T2; per-user attribution (SP auth does not identify the requesting user[^adr12]); map widget M0-M7 from the map note[^map-phase]:
   * M0 vendor and pin the chat UI (prerequisite for any UI change);
   * M1 spikes: `custom_inputs`/`custom_outputs` round trip, FastAPI routes past the chat proxy, CORS for SDM and TIGERweb, and blocking proof of pre-trace coordinate redaction/history exclusion;

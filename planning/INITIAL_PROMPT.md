@@ -19,7 +19,7 @@ The initial scope should focus on:
   - Farmland of local importance
   - Not prime farmland
   - Other values actually returned by SDA
-- Returning source metadata and caveats in a form useful to an AI agent.
+- Returning source metadata and caveats in a form useful to an assistant agent.
 - Clearly distinguishing SDA soil attributes from an official FPPA determination or completed FPPA site assessment.
 
 Do not fabricate an FPPA land-evaluation score, site-assessment score, or regulatory conclusion. If the authoritative sources show that the relative-value score or site-assessment criteria cannot be calculated from SDA alone, document that limitation explicitly.
