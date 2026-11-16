@@ -121,9 +121,7 @@ def test_agent_binding_coexists_with_aoi_and_substitutes_only_corridor(monkeypat
 
     server = Server()
     server.read_resource = AsyncMock(return_value=object())
-    corridor = context.parse_active_corridor(
-        _raw(alternatives=[LINE], indirect_geometry=AREA)
-    )
+    corridor = context.parse_active_corridor(_raw(alternatives=[LINE], indirect_geometry=AREA))
     aoi = aoi_context.parse_active_aoi(
         {
             "aoi_ref": "aoi-12345678",

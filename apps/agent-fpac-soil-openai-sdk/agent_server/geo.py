@@ -429,9 +429,7 @@ def select_display_corridor(result: dict[str, Any], corridor: Any) -> dict[str, 
                     "state_name": _short_text(segment.get("state_name"), 80),
                     "direct_acres": _corridor_number(segment.get("direct_acres")),
                     "indirect_acres": _corridor_number(segment.get("indirect_acres")),
-                    "total_segment_acres": _corridor_number(
-                        segment.get("total_segment_acres")
-                    ),
+                    "total_segment_acres": _corridor_number(segment.get("total_segment_acres")),
                     "coverage_status": _short_text(segment.get("coverage_status"), 40),
                 }
             )
@@ -444,9 +442,7 @@ def select_display_corridor(result: dict[str, Any], corridor: Any) -> dict[str, 
             display_alternatives.append(
                 {
                     "alternative_id": _short_text(alternative.get("alternative_id"), 100),
-                    "total_project_acres": _corridor_number(
-                        alternative.get("total_project_acres")
-                    ),
+                    "total_project_acres": _corridor_number(alternative.get("total_project_acres")),
                     "direct_acres": _corridor_number(alternative.get("direct_acres")),
                     "indirect_acres": _corridor_number(alternative.get("indirect_acres")),
                     "total_fppa_protected_acres": _corridor_number(
@@ -467,9 +463,7 @@ def select_display_corridor(result: dict[str, Any], corridor: Any) -> dict[str, 
             "indirect_acres": _corridor_number(impact.get("indirect_acres")),
             "total_project_acres": _corridor_number(impact.get("total_project_acres")),
         },
-        "composite_relative_rating": _corridor_number(
-            result.get("composite_relative_rating")
-        ),
+        "composite_relative_rating": _corridor_number(result.get("composite_relative_rating")),
         "county_segments": display_segments,
         "alternatives": display_alternatives,
         "regulatory_notice": _result_notice(result.get("regulatory_notice")),
