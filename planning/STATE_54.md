@@ -37,8 +37,8 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 5 | 54.5.2 Bind corridor context to agent tool calls | done | `54b461d` | G47; AOI compatibility preserved; app-check passes |
 | 6 | 54.6.1 Per-chat corridor context transport | done | `9cc29d3` | G47; targeted tests and frontend build pass |
 | 7 | 54.7.1 Corridor drawing and buffer controls | done | `52d2042` | G48; geometry tests pass; labels remain UI-only |
-| 8 | 54.8.1 Direct corridor submission and result display | blocked | | G48; browser fixture still fails during line completion |
-| 9 | Integrated validation and handoff | pending | | |
+| 8 | 54.8.1 Direct corridor submission and result display | done | `8c02288` | G48; dblclick line completion fix; browser + unit tests pass |
+| 9 | Integrated validation and handoff | done | | `make check`, `make app-check`, `make app-frontend-check` pass |
 
 ## Task Reports
 
@@ -46,13 +46,17 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 
 ### 54.8.1 — Submit corridor screening and display returned results
 
-- Status: blocked; implementation is uncommitted in worktree `/home/andrew/.local/share/opencode/worktree/371b41/plan54-wave8-corridor-results` on `plan54-wave8-corridor-results`.
-- Planning commits: `c7e67dc` (initial micro-plan), `00f472e` (task scope adds `MapResultContext.tsx`), `db97fe3` (amended micro-plan).
-- Changed paths in preserved worktree: `MapPanel.tsx`, `MapResultContext.tsx`, `frontend/package.json`, ADR 0015, and permitted corridor screening hook/component/test/fixture/config/spec files.
-- `node --import tsx --test client/src/components/map/corridorScreening.test.ts`: 2 passed.
-- Browser acceptance `npm run test:corridor-map` failed twice before escalation: map did not become ready. Mid-tier fix added a unique corridor Terra Draw `prefixId`; Polygon then enabled, but test still failed because two simulated clicks did not complete the primary line (`Primary: ready` timeout).
-- Per escalation limit, stopped without implementation commit. No final integrated acceptance gate run; task 54.8.1 and wave 9 remain incomplete.
-- Next step: inspect/fix the fixture's Terra Draw line completion gesture, rerun browser acceptance, then review and commit only after it passes.
+- Status: done; code commit `8c02288` (`feat(map): submit corridor screening and display results`), merged to `feature/local-dev-trial`.
+- Changed `MapPanel.tsx`, `MapResultContext.tsx`, `frontend/package.json`, ADR 0015, and corridor screening hook/component/test/fixture/config/spec files.
+- Fixed `corridor-map.spec.ts` line completion gesture from two single clicks to `dblclick` (Terra Draw `linestring` mode).
+- `npm run test:corridor-map`: 1 passed; `node --import tsx --test client/src/components/map/corridorScreening.test.ts`: 2 passed; `git diff --check`: passed.
+- Deviations: none.
+
+### Wave 9 integrated gate
+
+- `make check`: Ruff check/format passed; 993 passed, 3 skipped, 45 deselected.
+- `make app-check`: Ruff check/format passed; 297 passed (122 existing warnings).
+- `make app-frontend-check`: passed (11 existing lint warnings, 10 npm advisories, ephemeral DB migration skip, existing build warnings).
 
 ### 54.7.1 — Draw corridor centerlines, alternatives, and staging areas
 
