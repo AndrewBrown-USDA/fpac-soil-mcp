@@ -36,13 +36,21 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 5 | 54.5.1 Direct stateless corridor screening route | done | `1dd7313` | G46; 13 targeted tests; covered by app-check |
 | 5 | 54.5.2 Bind corridor context to agent tool calls | done | `54b461d` | G47; AOI compatibility preserved; app-check passes |
 | 6 | 54.6.1 Per-chat corridor context transport | done | `9cc29d3` | G47; targeted tests and frontend build pass |
-| 7 | 54.7.1 Corridor drawing and buffer controls | pending | | G48 |
+| 7 | 54.7.1 Corridor drawing and buffer controls | done | `52d2042` | G48; geometry tests pass; labels remain UI-only |
 | 8 | 54.8.1 Direct corridor submission and result display | pending | | G48 |
 | 9 | Integrated validation and handoff | pending | | |
 
 ## Task Reports
 
 (Workers append <=15-line reports here after each committed task.)
+
+### 54.7.1 — Draw corridor centerlines, alternatives, and staging areas
+
+- Status: done; code commit `52d2042` (`feat(map): add separate corridor drawing workflow`); planning commit `a11a921`.
+- Added separate Terra Draw corridor layers/controls, primary and alternative lines, staging polygons, required per-side buffer (feet default), attach/detach, remove/clear, and ADR 0015 entries.
+- `node --import tsx --test client/src/components/map/corridorGeometry.test.ts`: 4 passed; worker frontend build and targeted Biome checks passed; `git diff --check` passed.
+- Alternative labels are displayed in the map UI but not included in serialized `active_corridor`; context contract carries alternative geometries only.
+- Completion plan update commit: `951b6f4`. Deviations: none otherwise; no remote actions.
 
 ### 54.6.1 — Transport per-chat corridor context
 
