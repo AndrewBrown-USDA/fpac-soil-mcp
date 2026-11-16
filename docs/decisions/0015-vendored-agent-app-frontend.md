@@ -101,8 +101,11 @@ to upstream for every file this repo has not changed.
   `playwright.map-legend.config.ts`, `tests/map-legend/legend.spec.ts`, and
   `package.json`: isolated legend browser coverage and test script.
 
-* `client/src/components/map/MapPanel.tsx`: compact accessible icon controls,
-  crosshair drawing/measurement cursor, and miles as the initial distance unit.
+* `client/src/components/map/MapPanel.tsx`: compact accessible AOI and corridor
+  drawing/edit/screen/clear controls in the shared map toolbar; corridor
+  alternatives, buffer settings, status, and feature removal in a compact
+  options disclosure in place of the separate large-button corridor fieldset
+  (corrective follow-up to Plan 55).
 * `client/map-toolbar-fixture.html`, `client/src/components/map/map-toolbar-fixture.tsx`,
   `playwright.map-toolbar.config.ts`, `tests/map-toolbar/toolbar.spec.ts`, and
   `package.json`: isolated production-panel toolbar browser coverage and test script.

@@ -26,6 +26,7 @@ test('submits drawn corridor directly and displays returned summary, notice and 
       status: 'preliminary_screening',
     } });
   });
+  await page.getByText('Corridor options', { exact: true }).click();
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   const map = page.locator('.maplibregl-map');
   await map.click({ position: { x: 120, y: 130 } });
@@ -42,6 +43,7 @@ test('submits drawn corridor directly and displays returned summary, notice and 
 });
 
 test('retains alternative labels and synchronizes feature removal and clear', async ({ page }) => {
+  await page.getByText('Corridor options', { exact: true }).click();
   const map = page.locator('.maplibregl-map');
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   await map.click({ position: { x: 120, y: 130 } });
@@ -87,6 +89,7 @@ test('corridor auto-attach replaces AOI and the shared chat chip detaches it', a
   await expect(page.getByTestId('active-geometry-chip')).toContainText('Map AOI');
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-aoi:corridor-fixture'))).not.toBeNull();
 
+  await page.getByText('Corridor options', { exact: true }).click();
   await page.getByLabel('Required buffer distance').fill('50');
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   await map.click({ position: { x: 120, y: 130 } });

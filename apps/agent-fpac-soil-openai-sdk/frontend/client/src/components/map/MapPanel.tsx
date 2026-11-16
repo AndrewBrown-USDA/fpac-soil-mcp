@@ -13,7 +13,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, Copy, Download, Eye, Map as MapIcon, Maximize, MousePointer2, Pentagon, RotateCcw, Square, Trash2, Undo2, Ruler } from 'lucide-react';
+import { Check, Copy, Download, Eye, GitBranch, Map as MapIcon, Maximize, MousePointer2, Pentagon, RotateCcw, Route, Square, Trash2, Undo2, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -649,6 +649,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     corridorDrawKind.current = kind;
     corridorDrawRef.current?.setMode(kind === 'staging' ? 'polygon' : 'linestring');
   };
+  const runCorridorScreening = () => {
+    const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
+    if (!input) return;
+    corridorScreening.run({
+      ...input,
+      corridor_ref: corridorContext?.activeCorridor?.corridor_ref ?? corridorReference(),
+    });
+  };
 
   const zoomToAoi = () => {
     const bounds = aoiViewBounds(aoiRef.current);
@@ -853,6 +861,27 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               {actionButton('Clear', Trash2, clear, !aoi)}
             </div>
           </div>
+          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>Corridor</span>
+            <div className="flex flex-wrap gap-1.5">
+              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary'), !mapReady)}
+              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative'), !mapReady)}
+              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, !mapReady)}
+              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), !mapReady)}
+              {actionButton(
+                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
+                MapIcon,
+                runCorridorScreening,
+                !corridorInput || corridorScreening.status === 'running',
+              )}
+              {actionButton(
+                'Clear corridor',
+                Trash2,
+                clearCorridor,
+                !corridorCenterline && !corridorAlternatives.length && !corridorStaging.length,
+              )}
+            </div>
+          </div>
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
             <div className="flex flex-wrap gap-1.5">
@@ -876,30 +905,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           </div>
         </div>
         </TooltipProvider>
-        <fieldset className="flex flex-wrap items-end gap-2 rounded-md border p-2" aria-label="Corridor drawing">
-          <legend className="px-1 font-medium text-xs">Corridor (separate from AOI)</legend>
-          <Button type="button" size="sm" onClick={() => startCorridorDrawing('primary')} disabled={!mapReady}>Draw primary line</Button>
-          <Button type="button" size="sm" onClick={() => startCorridorDrawing('alternative')} disabled={!mapReady}>Draw alternative line</Button>
-          <Button type="button" size="sm" onClick={() => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }} disabled={!mapReady}>Edit corridor</Button>
-          <label className="flex flex-col gap-1 text-xs">Alternative label<input aria-label="Alternative label" value={alternativeLabel} onChange={(event) => setAlternativeLabel(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
-          <Button type="button" size="sm" onClick={() => startCorridorDrawing('staging')} disabled={!mapReady}>Draw staging area</Button>
-          <span className="text-xs">Primary: {corridorCenterline ? 'ready' : 'required'}; alternatives: {corridorAlternatives.length}; staging areas: {corridorStaging.length}</span>
-          <label className="flex flex-col gap-1 text-xs">Required buffer distance<input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
-          <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
-          <span className="text-xs">{BUFFER_SIDE_NOTICE}</span>
-          <Button type="button" size="sm" variant="primary" onClick={() => {
-            const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
-            if (!input) return;
-            const corridor = { ...input, corridor_ref: corridorContext?.activeCorridor?.corridor_ref ?? corridorReference() };
-            corridorScreening.run(corridor);
-          }} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || corridorScreening.status === 'running'}>
-            {corridorScreening.status === 'running' ? 'Screening corridor...' : 'Screen corridor'}
-          </Button>
-          <Button type="button" size="sm" variant="default" onClick={clearCorridor} disabled={!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length}>Clear corridor</Button>
-          {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`} className="text-xs">{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
-          {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="text-xs underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
-          {corridorCenterline && <button type="button" className="text-xs underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
-        </fieldset>
+        <details className="rounded-md border px-2 py-1" aria-label="Corridor options">
+          <summary className="cursor-pointer font-medium text-sm">Corridor options</summary>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs">Alternative label<input aria-label="Alternative label" value={alternativeLabel} onChange={(event) => setAlternativeLabel(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
+            <span className="text-xs">Primary: {corridorCenterline ? 'ready' : 'required'}; alternatives: {corridorAlternatives.length}; staging areas: {corridorStaging.length}</span>
+            <label className="flex flex-col gap-1 text-xs">Required buffer distance<input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
+            <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
+            <span className="text-xs">{BUFFER_SIDE_NOTICE}</span>
+            {corridorScreening.status === 'running' && <span role="status" className="text-xs">Screening corridor...</span>}
+            {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`} className="text-xs">{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
+            {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="text-xs underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
+            {corridorCenterline && <button type="button" className="text-xs underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
+          </div>
+        </details>
         <div className={`relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border ${measuring || mode === 'polygon' || mode === 'rectangle' ? '[&_.maplibregl-canvas]:!cursor-crosshair' : ''}`}>
           {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
           <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
