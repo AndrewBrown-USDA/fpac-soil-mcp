@@ -66,7 +66,7 @@ Plan: `planning/EXECUTION_PLAN_35.md` · Template: `planning/PROMPT_TEMPLATE_35.
 - Deviations: none. `manifest.yaml` untouched (J1).
 
 ## 35.1.4
-- Status: done (`6b48342`). README +37 lines: `## FPAC Soil configuration` before `## Build with AI Assistance` (purpose + limitation, env table, grants, sonnet-5-5 note, deploy path, 180 s timeout).
+- Status: done (`6b48342`). README +37 lines: `## FPAC Soil configuration` before `## Build with assistant Assistance` (purpose + limitation, env table, grants, sonnet-5-5 note, deploy path, 180 s timeout).
 - `grep -c "FPAC_MCP_URL\|AGENT_MODEL\|CAN_USE"` → 4.
 - Deviations: the last README sentence (tools-unavailable behavior) describes K2/K3 and becomes true after 35.3.1.
 

@@ -16,7 +16,7 @@ source_context: "EXECUTION_PLAN_1"
 
 The FPAC Soil MCP Server needed a Model Context Protocol (MCP) framework capable
 of exposing soil-query tools, regulatory resources, guided prompts, and HTTP
-health routes to AI assistants. The project was bootstrapped from a GSA MCP
+health routes to assistants. The project was bootstrapped from a GSA MCP
 hackathon template that already used FastMCP, but the long-term framework choice
 and package layout had to accommodate a multi-phase roadmap spanning point
 queries, polygon analysis, multi-county corridor partitioning, and LESA scoring.

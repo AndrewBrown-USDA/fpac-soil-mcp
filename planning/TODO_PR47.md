@@ -16,9 +16,9 @@ Apply the three open Copilot review corrections to PR #47's master-plan research
 - [x] Ensure the proposed Phase 7 master-plan edit records this work as delivered rather than backlog.
 
 ### 3. Correct T1 topology
-- [x] Describe the agent app model route as AI Gateway.
+- [x] Describe the agent app model route as model gateway.
 - [x] Describe current T1 evaluation as using `WorkspaceClient().serving_endpoints.get_open_ai_client()`.
-- [x] Record T1 migration to AI Gateway as pending instead of implying it is complete.
+- [x] Record T1 migration to model gateway as pending instead of implying it is complete.
 
 ### 4. Validate the documentation
 - [x] Check Markdown footnote references and definitions.

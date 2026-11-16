@@ -5,7 +5,7 @@
 [![FastMCP](https://img.shields.io/badge/FastMCP-2.0+-green.svg)](https://github.com/jlowin/fastmcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An [MCP](https://modelcontextprotocol.io/) server that lets compatible AI assistants query USDA Natural Resources Conservation Service (NRCS) soil data, USDA National Agricultural Statistics Service (NASS) land-cover and agricultural data, and U.S. Census boundaries for preliminary **Farmland Protection Policy Act (FPPA)** screening.
+An [MCP](https://modelcontextprotocol.io/) server that lets compatible assistants query USDA Natural Resources Conservation Service (NRCS) soil data, USDA National Agricultural Statistics Service (NASS) land-cover and agricultural data, and U.S. Census boundaries for preliminary **Farmland Protection Policy Act (FPPA)** screening.
 
 ---
 
@@ -29,7 +29,7 @@ An [MCP](https://modelcontextprotocol.io/) server that lets compatible AI assist
 
 ## Overview
 
-Federal projects and environmental reviews may need preliminary information about **Prime Farmland**, **Unique Farmland**, or **Farmland of Statewide or Local Importance**. This MCP server lets compatible AI assistants query official soil and related public datasets using a point, map-unit key, project area, or corridor.
+Federal projects and environmental reviews may need preliminary information about **Prime Farmland**, **Unique Farmland**, or **Farmland of Statewide or Local Importance**. This MCP server lets compatible clients query official soil and related public datasets using a point, map-unit key, project area, or corridor.
 
 The server reports source data and screening context to support review. It does not replace consultation with USDA NRCS or make an official FPPA determination.
 
@@ -37,14 +37,9 @@ The server reports source data and screening context to support review. It does 
 
 ## Architecture & Data Flow
 
-```mermaid
-flowchart LR
-    User["You or an AI assistant"] <--> MCP["FPAC Soil MCP server"]
-    MCP --> SDA["USDA NRCS Soil Data Access<br/>SSURGO soils and farmland classes"]
-    MCP --> CDL["USDA NASS Cropland Data Layer<br/>mapped land-cover evidence"]
-    MCP --> NASS["USDA NASS Quick Stats<br/>county agricultural statistics"]
-    MCP --> Census["U.S. Census TIGERweb<br/>urban-area and county boundaries"]
-```
+The server exposes MCP tools, resources, and guided prompts through FastMCP. Tool handlers validate MCP inputs, coordinate domain and spatial operations, and call dedicated clients for USDA and Census services. Responses retain source provenance, coverage, and screening limitations. HTTP deployments also expose `/health` and `/meta`; these routes are separate from the MCP tool surface.
+
+The implementation is organized into transport and registration (`mcp/`), domain workflows (`domain/`), shared geospatial operations (`spatial/`), upstream adapters (`clients/`), and typed contracts and policy (`models/`, `core/`). The detailed component diagram, data flows, and deployment boundaries are in the [Architecture Guide](docs/architecture.md).
 
 ---
 
@@ -241,7 +236,7 @@ The default transport is `stdio`, suitable for a local MCP client. For a network
 
 ## For Contributors
 
-See [`QUICKSTART.md`](QUICKSTART.md) for setup and client examples, [`AGENTS.md`](AGENTS.md) for development and validation commands, and [`eval/fpac_soil_mcp_harness/README.md`](eval/fpac_soil_mcp_harness/README.md) for the local browser workbench. Evaluation and artifact-handling guidance is in [`docs/evaluation.md`](docs/evaluation.md).
+See [`QUICKSTART.md`](QUICKSTART.md) for setup and client examples, [`docs/architecture.md`](docs/architecture.md) for component responsibilities and data flow, [`AGENTS.md`](AGENTS.md) for development and validation commands, and [`eval/fpac_soil_mcp_harness/README.md`](eval/fpac_soil_mcp_harness/README.md) for the local browser workbench. Evaluation and artifact-handling guidance is in [`docs/evaluation.md`](docs/evaluation.md).
 
 ---
 

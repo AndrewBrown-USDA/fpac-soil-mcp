@@ -260,7 +260,7 @@ No generated Playground agent is committed. If the team later deploys a Playgrou
 
 ## 11. Open questions
 
-* Q1: Does Pi's `gpt-5.6-luna` already route through Databricks foundation model endpoints or AI Gateway, or through another provider? This determines whether Pi and T1 results are model-comparable.
+* Q1: Does Pi's `gpt-5.6-luna` already route through Databricks foundation model endpoints or model gateway, or through another provider? This determines whether Pi and T1 results are model-comparable.
 * Q2: For T2, is a dedicated eval SP acceptable, or should eval wait for Unity Gateway MCP service registration?
 * Q3: Which experiment location (workspace path vs. UC trace storage) and which catalog/schema should hold eval traces?
 * Q4: Who signs off on ground-truth values for LESA cases given the observed run-to-run variance?

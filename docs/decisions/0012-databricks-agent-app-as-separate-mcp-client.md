@@ -62,7 +62,7 @@ Conventions this sets:
 * **Configuration by env var, read at call time** (`agent_server/config.py`):
   `AGENT_MODEL` (default `models.ai.gpt-5-6-luna`, a Unity Catalog model
   service sourced from the `llm-endpoint` app Model resource and called through
-  AI Gateway `/ai-gateway/mlflow/v1`), `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS`
+  model gateway `/ai-gateway/mlflow/v1`), `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS`
   (default 180 s; long LESA and corridor tools exceed the 20 s client default).
   GPT-5 models get `reasoning_effort="none"` for tool calling. (Amended
   2026-10-23: the Apps UI dropped the Serving endpoint resource and legacy

@@ -16,7 +16,7 @@ source_context: "EXECUTION_PLAN_1"
 
 The Farmland Protection Policy Act (FPPA) has formal determination procedures
 administered by NRCS field staff involving signed forms (AD-1006, CPA-106),
-official Land Evaluation scores, and legal exemption rulings. An AI-assisted
+official Land Evaluation scores, and legal exemption rulings. An automated
 screening tool must clearly distinguish its machine-generated preliminary
 estimates from binding agency actions to avoid users mistaking raw soil
 attributes for official regulatory conclusions.

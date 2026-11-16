@@ -7,7 +7,7 @@ Update `planning/MASTER_PLAN.md` with complete architectural and workflow parity
 
 ### In Scope
 1. **Master Plan Roadmap & Architecture Overhaul (`planning/MASTER_PLAN.md`)**:
-   - **System Architecture & Principles**: Formalize the conversational AI agent paradigm shift eliminating desktop GIS (`arcpy`), manual CSV downloading, and local geodatabase maintenance in favor of on-demand authoritative REST endpoints (USDA SDA, NASS QuickStats, Census TIGERweb).
+   - **System Architecture & Principles**: Formalize the conversational assistant agent paradigm shift eliminating desktop GIS (`arcpy`), manual CSV downloading, and local geodatabase maintenance in favor of on-demand authoritative REST endpoints (USDA SDA, NASS QuickStats, Census TIGERweb).
    - **Phase 3 Enhancement (Multi-County Corridor Analysis)**:
      - Detail automated centerline buffering (`buffer_distance` with explicit units: `feet`, `meters`, `miles`) and geodesic equal-area reprojection (EPSG:6933).
      - Detail **True Multi-County Segment Partitioning and Reconciliation** (intersecting corridor boundaries with county borders, processing county segments independently, fetching segment-specific SDA soils and NASS stats, and reconciling acreage sums to full project dimensions).

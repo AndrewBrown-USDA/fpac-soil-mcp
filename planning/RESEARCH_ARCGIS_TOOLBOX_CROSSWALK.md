@@ -1,7 +1,7 @@
 # Research Report: Crosswalk & Parity Analysis of Colorado NRCS ArcGIS Python Toolbox (v3 & v4-test) vs. FPAC Soil MCP Server
 
 **Document Identifier:** `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`  
-**Author / Orchestrator:** AI Research Orchestration Agent  
+**Author / Orchestrator:** Research Orchestration Agent
 **Date:** September 17, 2026  
 **Primary References:**  
 - Colorado NRCS ArcGIS Pro FPPA Python Toolbox v3 Production (`D:\FPPA-Toolbox-Troyer\v3\Toolbox\ArcGIS Pro FPPA Toolbox.pyt` by Michael Troyer, State GIS Specialist)
@@ -20,7 +20,7 @@ The Colorado Toolbox represents the current state-of-the-art for USDA NRCS deskt
 
 Furthermore, a critical architectural gap in both v3 and v4-test of the desktop toolbox is that **when a linear corridor traverses multiple counties, the tool arbitrarily collapses the analysis to the single largest intersected county by area**. This introduces severe distortion under 7 CFR Part 658 because soil productivity ratings, county maximum baselines ($R_{\text{county\_max}}$), and NASS agricultural metrics vary dramatically across county borders.
 
-By modernizing these workflows into an AI-orchestrated Model Context Protocol (MCP) server, we can achieve complete functional parity and significantly streamline the user experience:
+By modernizing these workflows into an MCP-based Model Context Protocol (MCP) server, we can achieve complete functional parity and significantly streamline the user experience:
 1. **Plain-Language & Zero-Setup Ingestion**: An end-user interacting with an LLM agent in plain language needs only to supply an Area of Interest (polygon or corridor centerline with buffer distance) and optional state/county Land Evaluation (LE) or Site Assessment (SA) weighting overrides.
 2. **True Multi-County Segment Partitioning**: Rather than simplifying to a single county, `fpac-soil-mcp` dynamically intersects, partitions, and reconciles corridor segments across multiple counties with sum reconciliation.
 3. **Live Authoritative REST Pipelines**: The MCP server handles all data retrieval, spatial clipping, Census urban screening, NASS agricultural baselines, LE/SA scoring, and draft artifact generation in real time via live authoritative federal REST endpoints (USDA SDA, USDA NASS QuickStats API, US Census TIGERweb).
@@ -38,7 +38,7 @@ flowchart TB
     end
 
     subgraph MCP_Modern ["Next-Generation Cloud-Native Workflow (fpac-soil-mcp)"]
-        User_Agent["User / AI Agent via Natural Language"] --> Agent_Intake["Input: AOI Polygon or Corridor Centerline + Buffer\n(Optional: State/County LE/SA Custom Weights)"]
+        User_Agent["User / assistant Agent via Natural Language"] --> Agent_Intake["Input: AOI Polygon or Corridor Centerline + Buffer\n(Optional: State/County LE/SA Custom Weights)"]
         Agent_Intake --> MCP_Server["FPAC Soil FastMCP Server"]
         
         MCP_Server --> SDA_API[("USDA NRCS Soil Data Access REST API\nLive WKT Spatial Clipping & NCCPI v3")]

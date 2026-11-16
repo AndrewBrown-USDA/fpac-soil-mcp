@@ -27,7 +27,7 @@ three clients would create maintenance burden and inconsistent error behavior.
 * Transient HTTP errors (timeouts, 500s, connection resets) are common on
   government endpoints.
 * Structured error handling needed for MCP tool responses (errors must be
-  meaningful to AI assistants, not raw HTTP failures).
+  meaningful to assistants, not raw HTTP failures).
 * DRY principle: retry/timeout logic should be written once.
 
 ## Considered Options

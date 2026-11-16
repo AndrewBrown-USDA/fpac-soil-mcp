@@ -35,7 +35,7 @@ How can the agent chat app get a map widget, built on open-source tools such as 
 | --- | --- | --- |
 | Process model | `uv run start-app` starts the Python backend (Agent Server, port 8000), plus a Node frontend on `CHAT_APP_PORT=3000`. `API_PROXY=http://localhost:8000/invocations`. | [^r-start][^r-appyaml] |
 | Frontend source | Not in `apps/agent-fpac-soil-openai-sdk/`. It is a runtime sparse clone of `databricks/app-templates` `e2e-chatbot-app-next`, unpinned `main`. Falls back to backend-only when the clone fails. | [^r-start] |
-| Frontend tech | NextJS, React, and AI SDK. Streams output, renders tool calls, uses Databricks auth, optional Lakebase chat history. | [^d-chatapp] |
+| Frontend tech | NextJS, React, and chat SDK. Streams output, renders tool calls, uses Databricks auth, optional Lakebase chat history. | [^d-chatapp] |
 | Frontend limitation | "No support for image or other multi-modal inputs." There is no file attachment path today. | [^d-chatapp] |
 | Backend | `AgentServer("ResponsesAgent", enable_chat_proxy=True)`; `app = agent_server.app` is FastAPI. | [^r-startserver][^d-agentserver] |
 | Agent | OpenAI Agents SDK `Agent(tools=[], mcp_servers=[fpac])`; history normalized in `history.py`; SP auth to `mcp-fpac-soil`. | [^r-agent] |
@@ -50,7 +50,7 @@ How can the agent chat app get a map widget, built on open-source tools such as 
 
 | Option | Description | Pros | Cons |
 | --- | --- | --- | --- |
-| **A. Fork the template UI (recommended)** | Vendor `e2e-chatbot-app-next` at a pinned commit into `apps/agent-fpac-soil-openai-sdk/frontend/`. Change `start_app.py` to use it instead of cloning. Add a split-pane `MapPanel` React component. | Keeps streaming, tool-call rendering, auth, and history. Map and chat share React state, so a drawn AOI is attached to the next message. | Owning a NextJS / AI SDK codebase. Upstream is Legacy, so fixes must be pulled by hand. Needs a `package-lock.json` for reproducible builds (same issue as harness H1). |
+| **A. Fork the template UI (recommended)** | Vendor `e2e-chatbot-app-next` at a pinned commit into `apps/agent-fpac-soil-openai-sdk/frontend/`. Change `start_app.py` to use it instead of cloning. Add a split-pane `MapPanel` React component. | Keeps streaming, tool-call rendering, auth, and history. Map and chat share React state, so a drawn AOI is attached to the next message. | Owning a NextJS / chat SDK codebase. Upstream is Legacy, so fixes must be pulled by hand. Needs a `package-lock.json` for reproducible builds (same issue as harness H1). |
 | B. Separate map page on the backend | Serve a static Vite/vanilla MapLibre page from FastAPI at `/map` and embed it beside or inside the chat with `postMessage`. | Small blast radius. The template can stay as is. | Two UIs, two state stores. Getting the AOI into the chat request still needs a UI change, or a server-side "active AOI" keyed by session. Iframe and CSP are uncertain inside Apps. |
 | C. Own SPA | Replace the template with a repo-owned Vite + React app (chat + map), calling `/invocations` with streaming. | Full control, smaller dependency tree, no NextJS. | Rebuilds streaming parsing, tool-call display, auth identity, and history. Most work up front. |
 
@@ -120,7 +120,7 @@ An MCP-side `aoi_id` input would require server state and conflicts with the sta
 
 Two layers, both recommended:
 
-1. **Server visualization contract.** Spatially enabled MCP tools must return the structured `map` envelope required by `SPATIAL_VISUALIZATION_STRATEGY.md` section 4, including bounded geometry, layer descriptors, legends, source, vintage, and authority metadata. The agent app passes that contract through in `custom_outputs.map_layers` or an equivalent non-model response path; it must not reconstruct authoritative layers from prose or tool-specific summary fields. **Verify** how the template's AI SDK stream adapter surfaces `custom_outputs`. If it drops them, the forked UI must add that path.
+1. **Server visualization contract.** Spatially enabled MCP tools must return the structured `map` envelope required by `SPATIAL_VISUALIZATION_STRATEGY.md` section 4, including bounded geometry, layer descriptors, legends, source, vintage, and authority metadata. The agent app passes that contract through in `custom_outputs.map_layers` or an equivalent non-model response path; it must not reconstruct authoritative layers from prose or tool-specific summary fields. **Verify** how the template's chat SDK stream adapter surfaces `custom_outputs`. If it drops them, the forked UI must add that path.
 2. **UI rendering path.** The template already renders tool calls[^d-chatapp]. In the fork, add a renderer for the server-provided `map` envelope and a "Show on map" action next to the tool-call card. A generic GeoJSON renderer may remain a development aid, but it is not a substitute for the required source, authority, legend, and data-vintage contract.
 
 Layer sources from current tools[^r-notebook]:
@@ -229,7 +229,7 @@ Rule: the proxy only forwards to hosts in the overlay/basemap catalog (no open p
 | # | Risk | Mitigation |
 | --- | --- | --- |
 | R1 | Vendored template is large and Legacy[^d-chatapp] | Pin commit, track upstream SHA in README, keep map code in separate components/folders to ease rebases; fallback option C. |
-| R2 | Unknown whether AI SDK adapter passes `custom_inputs` / `custom_outputs` | Spike first (Plan task 1): send `custom_inputs` from UI and read `custom_outputs` back end to end. |
+| R2 | Unknown whether chat SDK adapter passes `custom_inputs` / `custom_outputs` | Spike first (Plan task 1): send `custom_inputs` from UI and read `custom_outputs` back end to end. |
 | R3 | Chat proxy may shadow new FastAPI routes | Spike: register `/api/geo/health` and confirm it is reachable through the Apps URL. |
 | R4 | CORS / egress to NRCS and Census services | Browser test per service; proxy; record required domains for network policy. |
 | R5 | Token cost and coordinate corruption | Explicit backend pre-dispatch (section 4.2); never route raw coordinates through the LLM. |

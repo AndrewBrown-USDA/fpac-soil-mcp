@@ -67,7 +67,7 @@ Source State: `planning/STATE_52.md`; `planning/MASTER_PLAN.md`
 ## Independent Backlog
 
 - **[G35]** Offline demonstration mode runs both benchmark testbeds with explicit fixture-mode provenance.
-- **[G36]** The T1 model client uses AI Gateway and records non-null MLflow scores for every ground-truth case.
+- **[G36]** The T1 model client uses model gateway and records non-null MLflow scores for every ground-truth case.
 - **[G37]** The agent app has a separate, repeatable deployed evaluation for its `/invocations` interface and supported chat/map flows.
 - **[G38]** The agent map supports the selected next geometry workflows, including corridor alternatives and labelled AOIs.
 - **[G39]** Evaluation ground truth has domain-owner sign-off for its expected facts, behaviors, and scoring criteria.

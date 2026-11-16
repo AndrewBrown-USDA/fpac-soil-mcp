@@ -70,7 +70,7 @@ git `ff8ac91`). Scorer results from that run: `keywords_present` 23 pass /
 - Serial Databricks suites (scorers, agent, runner, dry run): 39 passed (baseline 35 + 4 new). Ruff check + format on the 4 touched Python files: clean.
 - Live smoke `run_mlflow_eval.run(["--cases", "ADV-PRIVACY-01,ADV-INJECTION-01,ADV-CORRIDOR-01,ADV-RELOCATE-01,ADV-FORMS-01,ADV-UNRELATED-01"])`: run `f46d8537e4c54d8e822565414f16fa15`, 6 records. Trace states read directly with `search_traces(locations=["517983779529169"])`: 6/6 `OK`, 6/6 non-None responses, 0 TOOL spans each. **PASS.**
 - Per-scorer pass/fail/null: agent_completed 6/0/0; required_tools_called 0/0/6; keywords_present 6/0/0; numeric_within_tolerance 0/0/6; tool_arguments_within_tolerance 0/0/6; prohibited_behaviors_absent 5/1/0; required_status_matches 0/0/6; required_behaviors_present 3/3/0; source_disclosed 0/2/4; privacy_non_echo 1/0/5; tool_call_budget 6/0/0; retry_budget 6/0/0; latency_budget 6/0/0; correctness 0/0/6; fppa_compliance 6/0/0; expectations_guidelines 0/0/6; tool_call_correctness 6/0/0; safety 6/0/0; tool_call_efficiency 6/0/0.
-- Live-run env also needs `pip install openai==3.35.1` (uv.lock pin; `databricks-sdk[openai]` in the eval-databricks group). Without it: `ImportError: Open AI is not installed`.
+- Live-run env also needs `pip install openai==3.35.1` (uv.lock pin; `databricks-sdk[openai]` in the eval-databricks group). Without it, importing the `openai` package fails.
 
 ## 47.2.1
 

@@ -167,7 +167,7 @@ Build a minimal, robust, and standards-compliant FastMCP server (`fpac_soil_mcp`
 - **Depends on**: `1.2.1`, `1.2.2`
 - **Spec Prose**: Complete MCP server infrastructure in `src/fpac_soil_mcp/`.
   1. Resources: Register `fppa://regulatory-notice` and `fppa://screening-guidance`.
-  2. Prompts: Register `fppa_screening_assistant` prompt guiding an AI agent on proper screening steps and caveats.
+  2. Prompts: Register `fppa_screening_assistant` prompt guiding an assistant agent on proper screening steps and caveats.
   3. Routes: Healthcheck route `GET /health` and metadata endpoint.
   4. App entry: `src/fpac_soil_mcp/app.py` creating the FastMCP instance, calling all registration functions, and providing transport runner (`main()`).
 - **Grep Anchors**: `register_resources`, `register_prompts`, `register_routes`, `mcp = FastMCP`.
