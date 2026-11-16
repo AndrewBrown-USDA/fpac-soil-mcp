@@ -159,6 +159,11 @@ def test_prompt_preserves_site_assessment_interview_and_confirmation_rules():
     assert "do not offer it for corridor projects" in interview_rules
     assert "use the validated criteria resource supplied in context as the sole source" in prompt
     assert "ask one criterion at a time" in prompt
+    assert (
+        "for every criterion, call the question tool with that criterion number before presenting"
+        in prompt
+    )
+    assert "do not compose or reuse questions and bands from memory" in prompt
     assert "preserve unknown, unavailable, and skipped values as such" in prompt
     assert "when an attached aoi or pasted wkt/geojson aoi is in scope" in prompt
     assert "request combined cdl context automatically exactly once" in prompt
