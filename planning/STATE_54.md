@@ -35,7 +35,7 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | done | `26bdc6b` | G45 |
 | 5 | 54.5.1 Direct stateless corridor screening route | done | `1dd7313` | G46; 13 targeted tests; covered by app-check |
 | 5 | 54.5.2 Bind corridor context to agent tool calls | done | `54b461d` | G47; AOI compatibility preserved; app-check passes |
-| 6 | 54.6.1 Per-chat corridor context transport | pending | | G47 |
+| 6 | 54.6.1 Per-chat corridor context transport | done | `9cc29d3` | G47; targeted tests and frontend build pass |
 | 7 | 54.7.1 Corridor drawing and buffer controls | pending | | G48 |
 | 8 | 54.8.1 Direct corridor submission and result display | pending | | G48 |
 | 9 | Integrated validation and handoff | pending | | |
@@ -43,6 +43,15 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 ## Task Reports
 
 (Workers append <=15-line reports here after each committed task.)
+
+### 54.6.1 — Transport per-chat corridor context
+
+- Status: done; code commit `9cc29d3` (`feat(agent-app): transport per-chat corridor context`); planning commit `5ec2919`.
+- Added separate chat-keyed corridor session storage/provider and schema/registry transport to `custom_inputs.active_corridor`; active AOI remains unchanged; ADR 0015 ledger updated.
+- `node --import tsx --test client/src/components/map/corridorSession.test.ts`: 4 passed; `npm run test:site-assessment`: 4 passed.
+- `make app-frontend-check`: passed; 11 existing lint warnings, 10 npm advisories, ephemeral DB migration skip, and existing build warnings.
+- Worker also passed targeted Biome and client/server builds; formatting differences in vendored files were not broadly rewritten.
+- Deviations: none. Completion plan update commit `738a3a9`; no remote actions.
 
 ### 54.5.1 — Direct stateless corridor screening route
 
