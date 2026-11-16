@@ -31,7 +31,7 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 1 | 54.1.1 Compact accessible map controls and cursor defaults | done | `cc7560c` | G42; integrated app checks pass |
 | 2 | 54.2.1 Map-pane server legend and authoritative CDL key | done | `d76c7cc` | G43; targeted + integrated checks pass |
 | 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | done | `d37e63e` | G49; fixed endpoint; test-purpose caveat |
-| 3 | 54.3.1 Returned SSURGO visibility on new results | pending | | G44 |
+| 3 | 54.3.1 Returned SSURGO visibility on new results | done | `073f3f1` | G44; focused checks pass |
 | 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | pending | | G45 |
 | 5 | 54.5.1 Direct stateless corridor screening route | pending | | G46 |
 | 5 | 54.5.2 Bind corridor context to agent tool calls | pending | | G47 |
@@ -70,6 +70,15 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 - Orchestrator rerun: `node --import tsx --test client/src/components/map/overlays.test.ts` 3 passed.
 - Deviations: none. Initial component-render assertion failed because the Node TSX loader expected a React global; replaced it with a test of the shared caveat text.
 - Gotchas: metadata labels purpose `test:202407180638 naip service`; availability may change. No live verification; orchestrator owns shared/full suites.
+
+### 54.3.1 — Returned result visibility
+
+- Status: done; code commit `073f3f1` (`fix(map): show new screening result layers`).
+- Changed `frontend/client/src/components/map/MapPanel.tsx`, added `resultVisibility.ts` and `resultVisibility.test.ts`, and updated ADR 0015 (frontend paths relative to app).
+- From `apps/agent-fpac-soil-openai-sdk/frontend`: `node --import tsx --test client/src/components/map/resultVisibility.test.ts` 1 passed; `npm run test:map-identify` 2 passed. Root `git diff --check` passed.
+- A successful screening transition resets result visibility; tab revisits, old result selection, and failed screening do not. Context SSURGO is independently controlled.
+- Deviation/limitation: focused test exercises the production-wired transition and renderer with a mock map, not the production React panel or browser navigation; the overlay independence assertion uses copied default flags. Orchestrator owns integration validation.
+- Dependency gotchas: result layers are applied by both the visibility and render effects; NAIP's test-purpose service caveat remains unchanged.
 
 ### Wave 2 integrated gate
 
