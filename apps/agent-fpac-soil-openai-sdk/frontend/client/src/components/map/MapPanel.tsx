@@ -187,16 +187,16 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
 
   // Keep Terra Draw holding at most the current AOI (Polygon only; MultiPolygon
   // AOIs are shown by the AOI layer and are not editable).
-  const syncDraw = useCallback((geometry: PolygonGeometry | null) => {
+  const syncDraw = useCallback((geometry: PolygonGeometry | null, visible = aoiVisible) => {
     const draw = drawRef.current;
     if (!draw) return;
     draw.clear();
-    if (geometry?.type === 'Polygon') {
+    if (visible && geometry?.type === 'Polygon') {
       draw.addFeatures([
         { type: 'Feature', geometry, properties: { mode: 'polygon' } },
       ]);
     }
-  }, []);
+  }, [aoiVisible]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -378,10 +378,16 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     node.setAttribute('aria-label', 'Measured distance');
     node.className = 'rounded bg-popover px-2 py-1 text-popover-foreground text-xs shadow-md';
     node.textContent = `${lineDistance(measuring && measurePreview ? [...measurePoints, measurePreview] : measurePoints, measureUnit).toFixed(2)} ${measureUnit}`;
-    measurePopupRef.current = new Popup({ closeButton: false, closeOnClick: false, offset: 12 })
+    const popup = new Popup({ closeButton: false, closeOnClick: false, offset: 12 })
       .setLngLat(anchor as [number, number])
       .setDOMContent(node)
       .addTo(map);
+    const popupElement = popup.getElement();
+    const content = popupElement.querySelector<HTMLElement>('.maplibregl-popup-content');
+    if (content) Object.assign(content.style, { background: 'transparent', padding: '0', boxShadow: 'none' });
+    const tip = popupElement.querySelector<HTMLElement>('.maplibregl-popup-tip');
+    if (tip) tip.style.display = 'none';
+    measurePopupRef.current = popup;
     return () => {
       measurePopupRef.current?.remove();
       measurePopupRef.current = null;
@@ -395,7 +401,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     setLayerVisibility(map.setLayoutProperty.bind(map), ['aoi-line'], aoiVisible);
     const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
     setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
-  }, [aoiVisible, resultsVisible, mapReady, shown]);
+  }, [aoiVisible, resultsVisible, mapReady]);
 
   // The latest valid screening becomes the AOI's chat summary. A result without its
   // regulatory notice is invalid (ADR 0003) and is not attached.
@@ -696,6 +702,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const bounds = aoiViewBounds(aoiRef.current);
     if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
   };
+  const toggleAoiVisibility = () => {
+    const next = !aoiVisible;
+    setAoiVisible(next);
+    syncDraw(aoiRef.current, next);
+  };
   const resetMapView = () => mapRef.current?.easeTo({ center: INITIAL_MAP_VIEW.center, zoom: INITIAL_MAP_VIEW.zoom });
   const onPasted = (geometry: PolygonGeometry) => {
     syncDraw(geometry);
@@ -773,9 +784,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const actionButton = (label: string, Icon: LucideIcon, onClick: () => void, disabled = false, pressed?: boolean) => (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button type="button" size="sm" variant={pressed ? 'primary' : 'default'} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="w-7 px-0">
-          <Icon aria-hidden="true" />
-        </Button>
+        <span tabIndex={disabled ? 0 : undefined} aria-label={disabled ? label : undefined} aria-disabled={disabled || undefined} className={disabled ? 'inline-flex cursor-not-allowed' : 'inline-flex'}>
+          <Button type="button" size="sm" variant={pressed ? 'primary' : 'default'} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="w-7 px-0">
+            <Icon aria-hidden="true" />
+          </Button>
+        </span>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -938,7 +951,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             <div className="flex flex-wrap gap-1.5">
               {actionButton('Zoom to AOI', Search, zoomToAoi, !aoi)}
               {actionButton('Reset map', RotateCcw, resetMapView)}
-              {actionButton('AOI outline', Focus, () => setAoiVisible((v) => !v), false, aoiVisible)}
+              {actionButton('AOI outline', Focus, toggleAoiVisibility, false, aoiVisible)}
               {actionButton('Result boundaries', Eye, () => setResultsVisible((v) => !v), false, resultsVisible)}
             </div>
           </div>
@@ -950,20 +963,31 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => { setMeasurePoints([]); setMeasurePreview(null); })}
           </div>
         </div>
-        </TooltipProvider>
-        {mapMode === 'corridor' && <details className="rounded-md border px-2 py-1" aria-label="Corridor options">
-          <summary className="cursor-pointer font-medium text-sm">Corridor options</summary>
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <span className="text-xs">Primary: {corridorCenterline ? 'ready' : 'required'}; alternatives: {corridorAlternatives.length}; staging areas: {corridorStaging.length}</span>
-            <label className="flex flex-col gap-1 text-xs">Required buffer distance<input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
-            <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
-            <span className="text-xs">{BUFFER_SIDE_NOTICE}</span>
-            {corridorScreening.status === 'running' && <span role="status" className="text-xs">Screening corridor...</span>}
-            {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`} className="text-xs">{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
-            {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="text-xs underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
-            {corridorCenterline && <button type="button" className="text-xs underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
+        {mapMode === 'corridor' && (
+          <div className="mt-1 flex justify-end">
+            <details className="max-w-full rounded-md border px-2 py-1" aria-label="Corridor options">
+              <summary className="cursor-pointer font-medium text-xs">Corridor options</summary>
+              <div className="mt-1 flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs">
+                <span>Primary {corridorCenterline ? 'ready' : 'required'} · {corridorAlternatives.length} alternatives · {corridorStaging.length} staging</span>
+                <label className="flex items-center gap-1">Buffer
+                  <input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="h-7 w-20 rounded border bg-background px-1.5" />
+                </label>
+                <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="h-7 rounded border bg-background px-1.5"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" aria-label={BUFFER_SIDE_NOTICE} className="rounded px-1 text-muted-foreground underline decoration-dotted">Each side</button>
+                  </TooltipTrigger>
+                  <TooltipContent>{BUFFER_SIDE_NOTICE}</TooltipContent>
+                </Tooltip>
+                {corridorScreening.status === 'running' && <span role="status">Screening…</span>}
+                {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`}>{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
+                {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
+                {corridorCenterline && <button type="button" className="underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
+              </div>
+            </details>
           </div>
-        </details>}
+        )}
+        </TooltipProvider>
         <div className={`relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border ${measuring || mode === 'polygon' || mode === 'rectangle' ? '[&_.maplibregl-canvas]:!cursor-crosshair' : ''}`}>
           {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
           <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
@@ -976,14 +1000,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             onOpenChange={setLayersOpen}
             onToggle={toggleOverlay}
           />
-          {(shown?.block || shown?.cdlSummary) && (
-            <details className="absolute bottom-2 right-2 z-10 max-w-[min(16rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
-              <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
-              <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
-                {shown.block && <MapLegend block={shown.block} compact />}
-                {shown.cdlSummary && <CDLLegend />}
-              </div>
-            </details>
+          {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && (
+            <details className="absolute top-2 left-2 z-10 max-w-[min(18rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+                <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
+                <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
+                  {shown.block && (
+                    <MapLegend
+                      block={shown.block}
+                      compact
+                      contextLegend={shown.block.layers.some((layer) => layer.id === 'farmland_classes') && (shown.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
+                    />
+                  )}
+                  {(!shown.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown.cdlSummary || overlayOn.cdl) && <CDLLegend />}
+                </div>
+              </details>
           )}
           <div aria-live="polite" className="absolute bottom-2 left-2 z-10 max-w-[18rem]">
             {identifyHint && (

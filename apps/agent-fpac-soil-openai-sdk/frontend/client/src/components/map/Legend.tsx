@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { FarmlandClass } from './farmlandClasses';
 import { AUTHORITY_LABELS, drawOrder } from './mapLayers';
 import type { MapBlock, MapLayer, MapLegendItem } from './mapLayers';
@@ -25,6 +25,7 @@ export function Swatch({ farmlandClass }: { farmlandClass: FarmlandClass }) {
 }
 
 const HATCH = 'rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 6px';
+const FARMLAND_LAYER_ID = 'farmland_classes';
 
 // CSS stand-in for each server legend pattern (strategy section 5).
 export function legendSwatchStyle(item: MapLegendItem): CSSProperties {
@@ -94,32 +95,31 @@ function layerNotes(layer: MapLayer): string[] {
 
 // Server legends, one block per layer, in the order drawn (top layer first); text
 // codes keep meaning off colour alone. Warnings from the server follow the layers.
-export function MapLegend({ block, compact = false }: { block: MapBlock; compact?: boolean }) {
-  const layers = drawOrder(block.layers).reverse();
+export function MapLegend({
+  block,
+  compact = false,
+  contextLegend,
+}: {
+  block: MapBlock;
+  compact?: boolean;
+  contextLegend?: ReactNode;
+}) {
+  const drawLayers = drawOrder(block.layers).reverse();
+  const farmlandLayer = drawLayers.find((layer) => layer.id === FARMLAND_LAYER_ID);
+  const layers = farmlandLayer
+    ? [farmlandLayer, ...drawLayers.filter((layer) => layer.id !== FARMLAND_LAYER_ID)]
+    : drawLayers;
   if (layers.length === 0) return null;
   return (
     <div className={compact ? 'text-xs' : undefined}>
       <h3 className="font-medium text-sm">Map layers</h3>
-      <p className="mt-1 text-muted-foreground text-xs">
-        Screening result layers are shown here. Context overlays such as imagery provide geographic
-        reference only; they are not screening evidence.
-      </p>
       <ul className="mt-1 grid gap-2 text-sm">
         {layers.map((layer) => {
           const notes = layerNotes(layer);
+          const isFarmlandLayer = layer.id === FARMLAND_LAYER_ID;
           return (
             <li key={layer.id} className="flex flex-col gap-1">
               <span className="font-medium">{layer.title}</span>
-              <span className="text-muted-foreground text-xs">
-                {AUTHORITY_LABELS[layer.authority] ?? layer.authority}. Source:{' '}
-                {layer.source}
-                {layer.data_vintage ? ` (${layer.data_vintage})` : ''}
-              </span>
-              {notes.map((note) => (
-                <span key={note} className="text-muted-foreground text-xs italic">
-                  {note}
-                </span>
-              ))}
               {(layer.legend ?? []).length > 0 && (
                 <ul className="grid gap-1">
                   {(layer.legend ?? []).map((item) => (
@@ -137,10 +137,26 @@ export function MapLegend({ block, compact = false }: { block: MapBlock; compact
                   ))}
                 </ul>
               )}
+              {isFarmlandLayer && contextLegend}
+              <span className="text-muted-foreground text-xs">
+                {AUTHORITY_LABELS[layer.authority] ?? layer.authority}. Source:{' '}
+                {layer.source}
+                {layer.data_vintage ? ` (${layer.data_vintage})` : ''}
+              </span>
+              {notes.map((note) => (
+                <span key={note} className="text-muted-foreground text-xs italic">
+                  {note}
+                </span>
+              ))}
             </li>
           );
         })}
       </ul>
+      {!farmlandLayer && contextLegend}
+      <p className="mt-2 text-muted-foreground text-xs">
+        Context overlays such as imagery provide geographic reference only; they are not screening
+        evidence.
+      </p>
       {(block.warnings ?? []).length > 0 && (
         <ul className="mt-2 grid gap-1 text-amber-700 text-xs dark:text-amber-400">
           {(block.warnings ?? []).map((warning) => (

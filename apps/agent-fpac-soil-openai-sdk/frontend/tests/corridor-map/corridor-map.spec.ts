@@ -28,12 +28,17 @@ test('submits drawn corridor directly and displays returned summary, notice and 
     } });
   });
   await page.getByText('Corridor options', { exact: true }).click();
+  const optionsSummary = page.getByText('Corridor options', { exact: true });
+  await expect(optionsSummary).toBeVisible();
+  await expect(optionsSummary.locator('..').locator('..')).toHaveClass(/justify-end/);
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   const map = page.locator('.maplibregl-map');
   await map.click({ position: { x: 120, y: 130 } });
   await map.dblclick({ position: { x: 200, y: 190 } });
-  await expect(page.getByText('Primary: ready')).toBeVisible();
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
   await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Buffer distance applies on each side of the centerline.' }).hover();
+  await expect(page.getByRole('tooltip')).toContainText('Buffer distance applies on each side of the centerline.');
   await page.getByRole('button', { name: 'Screen corridor' }).click();
   await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('region', { name: 'Corridor screening summary' })).toContainText('12.3 ac');
@@ -49,7 +54,7 @@ test('retains alternative labels and synchronizes feature removal and clear', as
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   await map.click({ position: { x: 120, y: 130 } });
   await map.dblclick({ position: { x: 200, y: 190 } });
-  await expect(page.getByText('Primary: ready')).toBeVisible();
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
   await page.waitForTimeout(50);
 
   await page.getByLabel('Alternative label').fill('North route');
@@ -58,7 +63,7 @@ test('retains alternative labels and synchronizes feature removal and clear', as
   await map.dblclick({ position: { x: 220, y: 160 } });
   await expect(page.getByRole('button', { name: 'Remove North route' })).toBeVisible();
   await page.getByRole('button', { name: 'Remove North route' }).click();
-  await expect(page.getByText(/alternatives: 0/)).toBeVisible();
+  await expect(page.getByText(/0 alternatives/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Draw staging area' }).click();
   await map.click({ position: { x: 280, y: 160 } });
@@ -67,15 +72,15 @@ test('retains alternative labels and synchronizes feature removal and clear', as
   await map.dblclick({ position: { x: 280, y: 160 } });
   await expect(page.getByRole('button', { name: 'Remove staging area 1' })).toBeVisible();
   await page.getByRole('button', { name: 'Remove staging area 1' }).click();
-  await expect(page.getByText(/staging areas: 0/)).toBeVisible();
+  await expect(page.getByText(/0 staging/)).toBeVisible();
   await page.getByRole('button', { name: 'Remove primary line' }).click();
-  await expect(page.getByText('Primary: required; alternatives: 0; staging areas: 0')).toBeVisible();
+  await expect(page.getByText('Primary required · 0 alternatives · 0 staging')).toBeVisible();
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   await map.click({ position: { x: 160, y: 110 } });
   await map.dblclick({ position: { x: 220, y: 170 } });
-  await expect(page.getByText(/Primary: ready/)).toBeVisible();
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
   await page.getByRole('button', { name: 'Clear corridor' }).click();
-  await expect(page.getByText('Primary: required; alternatives: 0; staging areas: 0')).toBeVisible();
+  await expect(page.getByText('Primary required · 0 alternatives · 0 staging')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Clear corridor' })).toBeDisabled();
 });
 

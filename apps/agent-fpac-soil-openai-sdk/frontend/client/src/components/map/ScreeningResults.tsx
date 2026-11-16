@@ -1,4 +1,3 @@
-import { MapLegend } from './Legend';
 import { ResultsTable } from './ResultsTable';
 import type { DisplayAnalysis, ScreeningResponse } from './useScreening';
 
@@ -72,11 +71,6 @@ export function ScreeningResults({ result }: { result: ScreeningResponse }) {
         <p role="alert" className="text-destructive text-sm">
           Regulatory notice missing - treat this result as invalid.
         </p>
-      )}
-      {block && (
-        <div className={`${RESULT_CARD} max-h-72 overflow-y-auto sm:max-h-96`}>
-          <MapLegend block={block} />
-        </div>
       )}
       {analysis && (
         <div className={RESULT_CARD}>

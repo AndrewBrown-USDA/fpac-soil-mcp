@@ -203,8 +203,20 @@ Modified upstream files:
 * `client/src/components/map/Legend.tsx` and
   `client/src/components/map/ScreeningResults.tsx`: clarify that fixed context
   overlays are geographic reference, add text alternatives for server legend
-  symbols, and constrain the legend card height on smaller viewports (Plan
-  53.3.3); server legend values and the regulatory notice remain unchanged.
+  symbols, constrain the legend card height on smaller viewports (Plan 53.3.3),
+  prioritize the server farmland-class legend and CDL key, and remove the
+  duplicate screening legend from Results; server legend values and the
+  regulatory notice remain unchanged.
+* `client/src/components/map/MapPanel.tsx`, `Legend.tsx`, `OverlayControl.tsx`,
+  and `ResultsTable.tsx`, plus `client/src/layouts/ChatLayout.tsx`: synchronize
+  AOI visibility across the outline and editable geometry, expose tooltips for
+  disabled toolbar actions, remove the measurement popup halo, widen the
+  desktop map pane and horizontally scroll long map-unit tables, move the CDL
+  key from Layers into the map legend, and compact/right-align corridor options.
+* `tests/map-toolbar/toolbar.spec.ts`, `tests/map-legend/legend.spec.ts`,
+  `tests/corridor-map/corridor-map.spec.ts`, and
+  `client/src/components/map/map-legend-fixture.tsx`: cover the control,
+  results, legend, and corridor layout behavior above.
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again

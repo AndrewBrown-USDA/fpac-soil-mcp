@@ -20,7 +20,8 @@ test('toolbar controls are compact, named, keyboard operable and labelled on hov
   const polygon = page.getByRole('button', { name: 'Polygon' });
   await expect(polygon).toHaveText('');
   await expect(polygon).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
+  const clear = page.getByRole('button', { name: 'Clear', exact: true });
+  await expect(clear).toBeDisabled();
   expect((await polygon.boundingBox())?.width).toBeLessThan(40);
   await polygon.hover();
   await expect(page.getByRole('tooltip')).toContainText('Polygon');
@@ -33,6 +34,11 @@ test('toolbar controls are compact, named, keyboard operable and labelled on hov
   await expect(polygon).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Enter');
   await expect(polygon).toHaveAttribute('aria-pressed', 'false');
+  const disabledClearTrigger = page.locator('span[aria-label="Clear"]');
+  await disabledClearTrigger.hover();
+  await expect(page.getByRole('tooltip')).toContainText('Clear');
+  await disabledClearTrigger.focus();
+  await expect(page.getByRole('tooltip')).toContainText('Clear');
 });
 
 test('Area and Corridor modes scope their drawing workflows while retaining measurement access', async ({ page }) => {
@@ -51,6 +57,14 @@ test('Area and Corridor modes scope their drawing workflows while retaining meas
   await map.click({ position: { x: 180, y: 100 } });
   await map.click({ position: { x: 180, y: 180 } });
   await map.dblclick({ position: { x: 100, y: 100 } });
+  const canvas = page.locator('.maplibregl-canvas');
+  await page.waitForTimeout(100);
+  const visibleAoi = await canvas.screenshot();
+  await page.getByRole('button', { name: 'AOI outline' }).click();
+  await page.waitForTimeout(100);
+  const hiddenAoi = await canvas.screenshot();
+  expect(hiddenAoi.equals(visibleAoi)).toBe(false);
+  await page.getByRole('button', { name: 'AOI outline' }).click();
   await page.getByLabel('Area label').fill('Test area');
   await page.getByRole('button', { name: 'Corridor', exact: true }).click();
   await page.getByLabel('Alternative label').fill('Test route');
@@ -100,6 +114,8 @@ test('double-click completes measurement and retains map tooltip until cleared',
   await page.mouse.dblclick(box.x + box.width * 0.7, box.y + box.height * 0.6);
   const distance = page.getByRole('tooltip', { name: 'Measured distance' });
   await expect(distance).toContainText(/meters$/);
+  await expect(page.locator('.maplibregl-popup-content')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('.maplibregl-popup-tip')).toBeHidden();
   await expect(page.getByText('Measuring', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Stop measuring' })).toHaveCount(0);
   await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.5);
