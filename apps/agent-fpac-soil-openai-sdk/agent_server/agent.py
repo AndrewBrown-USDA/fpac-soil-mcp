@@ -439,11 +439,17 @@ async def _connect_fpac_agent(
         history_items or [],
         _site_assessment_payload_from_context(site_assessment_context),
     )
-    if aoi is not None or corridor is not None:
+    if corridor is not None:
         return create_agent(
             mcp_servers=servers,
             aoi_note=instruction_note(aoi) if aoi is not None else None,
-            corridor_note=corridor_instruction_note(corridor) if corridor is not None else None,
+            corridor_note=corridor_instruction_note(corridor),
+            site_assessment_context=site_assessment_context,
+        )
+    if aoi is not None:
+        return create_agent(
+            mcp_servers=servers,
+            aoi_note=instruction_note(aoi),
             site_assessment_context=site_assessment_context,
         )
     return create_agent(
