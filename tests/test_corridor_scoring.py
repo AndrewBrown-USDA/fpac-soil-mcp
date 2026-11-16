@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.corridor_scoring import (
+from fpac_soil_mcp.domain.lesa import (
     CORRIDOR_CRITERIA_MAX_POINTS,
     CORRIDOR_CRITERIA_NAMES,
     CRITERION_EVALUATORS,
@@ -120,7 +120,7 @@ def test_criterion_7_farm_size_calculation():
 
 
 def test_calculate_composite_le_supports_iterable_and_scalar_forms():
-    from fpac_soil_mcp.corridor_scoring import calculate_composite_le
+    from fpac_soil_mcp.domain.lesa import calculate_composite_le
 
     assert calculate_composite_le([(80.0, 2.0), (100.0, 3.0)]) == 92.0
     assert calculate_composite_le(460.0, 5.0) == 92.0

@@ -6,7 +6,7 @@ import sqlite3
 
 import pytest
 
-from fpac_soil_mcp.sda_client import (
+from fpac_soil_mcp.clients.sda import (
     SDV_RATING_REGISTRY,
     SDAValidationError,
     build_sdv_county_max_query,

@@ -10,34 +10,34 @@ import httpx
 import pytest
 from fastmcp import FastMCP
 
-from fpac_soil_mcp.authority import Provenance
-from fpac_soil_mcp.config import settings
-from fpac_soil_mcp.corridor_analysis import CorridorAnalyzer
-from fpac_soil_mcp.corridor_scoring import (
+from fpac_soil_mcp.clients.nass import NassClient
+from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.core.authority import Provenance
+from fpac_soil_mcp.core.config import settings
+from fpac_soil_mcp.domain.corridor_analyzer import CorridorAnalyzer
+from fpac_soil_mcp.domain.lesa import (
     evaluate_corridor_lesa,
     evaluate_corridor_site_assessment,
+    evaluate_site_assessment,
 )
-from fpac_soil_mcp.geometry import (
+from fpac_soil_mcp.mcp.tools import register_tools
+from fpac_soil_mcp.mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
+from fpac_soil_mcp.models.integration import (
+    CountyAgProfile,
+    IntegrationStatus,
+    UrbanExemptionRecord,
+)
+from fpac_soil_mcp.models.spatial import (
+    CorridorCountySegment,
+    CorridorFarmlandAnalysisResponse,
+)
+from fpac_soil_mcp.spatial.geometry import (
     buffer_centerline,
     calculate_acreage,
     erase_geometries,
     parse_geojson_geometry,
 )
-from fpac_soil_mcp.integration_models import (
-    CountyAgProfile,
-    IntegrationStatus,
-    UrbanExemptionRecord,
-)
-from fpac_soil_mcp.lesa import evaluate_site_assessment
-from fpac_soil_mcp.models import (
-    CorridorCountySegment,
-    CorridorFarmlandAnalysisResponse,
-)
-from fpac_soil_mcp.nass_client import NassClient
-from fpac_soil_mcp.sda_client import SDAClient
-from fpac_soil_mcp.tigerweb_client import TigerwebClient
-from fpac_soil_mcp.tools import register_tools
-from fpac_soil_mcp.tools.spatial_analysis_tools import analyze_corridor_fppa
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "corridor" / "multi_county_corridors.json"
 
@@ -246,7 +246,7 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
 
     from shapely import wkt as shapely_wkt
 
-    from fpac_soil_mcp.geometry import (
+    from fpac_soil_mcp.spatial.geometry import (
         buffer_centerline,
         calculate_acreage,
         erase_geometries,
@@ -459,7 +459,7 @@ def test_criterion_2_contract_preserves_zero_unavailable_and_override() -> None:
 
 def test_criterion_2_contract_boundary_point_mapping() -> None:
     """Verify lower/upper ratio boundaries and threshold-adjacent values."""
-    from fpac_soil_mcp.lesa import calculate_criterion_2_score
+    from fpac_soil_mcp.domain.lesa import calculate_criterion_2_score
 
     assert calculate_criterion_2_score(0.0)[0] == 0.0
     assert calculate_criterion_2_score(0.2)[0] == 1.0
@@ -529,7 +529,7 @@ def test_fastmcp_analyze_corridor_fppa_tool_contract():
     mock_resp.composite_relative_rating = 82.5
     mock_resp.county_segments = []
 
-    with patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
+    with patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.analyze_corridor.return_value = mock_resp
         mock_cls.return_value = mock_instance
@@ -593,7 +593,7 @@ def test_contract_alternative_composite_le_scoring():
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]
 
-    from fpac_soil_mcp.geometry import buffer_centerline, calculate_acreage
+    from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
 
     alt_centerline = {
         "type": "LineString",
@@ -693,7 +693,7 @@ def test_contract_multi_county_criterion_7_weighting():
     mock_resp.composite_relative_rating = 85.0
     mock_resp.county_segments = [seg1, seg2]
 
-    with patch("fpac_soil_mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
+    with patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.analyze_corridor.return_value = mock_resp
         mock_cls.return_value = mock_instance
@@ -766,7 +766,7 @@ def test_contract_sum_reconciliation_warning_appended_to_limitations():
         {"state_fips": "19", "county_fips": "169", "county_name": "Story", "state_name": "IA"}
     ]
 
-    from fpac_soil_mcp.geometry import buffer_centerline, calculate_acreage
+    from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
 
     centerline = {
         "type": "LineString",

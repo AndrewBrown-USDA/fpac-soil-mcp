@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.authority import (
+from fpac_soil_mcp.core.authority import (
     ActorCategory,
     Attestation,
     AuthorityValue,

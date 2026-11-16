@@ -3,13 +3,13 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from fpac_soil_mcp.cdl_client import (
+from fpac_soil_mcp.clients.cdl import (
     CDLClient,
     CDLVintageAmbiguous,
     CDLVintageUnavailable,
     parse_histogram_payload,
 )
-from fpac_soil_mcp.cdl_models import CDLAnalysisStatus, CDLServiceMetadata
+from fpac_soil_mcp.models.cdl import CDLAnalysisStatus, CDLServiceMetadata
 
 
 def test_cdl_client_discovers_and_caches_service_metadata():

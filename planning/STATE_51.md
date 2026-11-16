@@ -1,135 +1,124 @@
-# STATE 51: Structured Site Assessment Interview and Confirmation
+# STATE 50: Guided AD-1006 Interview and CDL Map Context
 
-Resume point for orchestration 51. Plan: `planning/EXECUTION_PLAN_51.md`.
+Resume point for orchestration 50. Plan: `planning/EXECUTION_PLAN_51.md`.
 Worker prompt: `planning/PROMPT_TEMPLATE_51.md`.
 
-## Baseline (recorded before wave 1)
+## Baseline (record before wave 1)
 
-Baseline tests were recorded on branch `feature/sa-checklist2` at `7e8f71f`.
-The current branch advanced through docs-only commits `f709c21` and `151819c`;
-the test baseline remains applicable because those commits changed only
-documentation.
+Recorded 2026-11-12 on branch `feature/sa-checklist1` at `d8a78df`.
 
-- [x] Root pytest: 1,019 passed, 45 deselected. The final fixture-only update
-  after this run was app-scoped; root pytest excludes `apps/`.
-- [x] Root Ruff check and format check passed.
-- [x] Agent-app pytest: 196 passed.
-- [x] Agent-app Ruff check and format check passed.
-- [x] Frontend read-only Biome lint and client/server builds passed; 10
-  existing lint warnings, no errors.
-- [x] Frontend `npm ci` completed; npm audit reported 10 existing advisories
-  (4 low, 6 moderate). No automated dependency changes.
-- [ ] Databricks-authenticated integrated chat trial — not run; local auth is
-  not configured.
-- [ ] Dev-app trial — pending separate explicit push/redeployment approval.
-- [!] `make app-check` previously failed to start on this Windows host with an
-  Rtools path error; direct `uv`/Ruff commands are the fallback.
-
-## Decisions
-
-- Continue on current branch `feature/sa-checklist2` at `151819c`; preserve the
-  committed root `AGENTS.md`/`README.md` changes and all existing
-  `.worktrees\`.
-- Use at most two concurrent workers in new isolated `51.*` worktrees.
-- Keep project-wide G1 active and add PR-scoped goals G23-G30.
-- Preserve ADR 0016; geometry may appear in chat/tool traces.
-- Use summary-card Confirm as the sole user approval; agent-side gate requires
-  a matching confirmed-summary history record. No second MCP Approve step.
-- Use existing Playwright for frontend interactions; no new component-test
-  dependency and no TypeScript-check gate.
-- Use `get_site_assessment_question` and `record_site_assessment_answer` as
-  the existing UI contracts. Confirm emits
-  `type: site_assessment_confirmed_summary`, `confirmed: true`, and unchanged
-  answer records under `answers`. CDL staleness compares active `aoi_ref` and
-  geometry; an exact reattachment is equivalent, with no added generation
-  token. Plan contract recorded in `752cbf7`.
-- The user waived running Playwright; retain the fixture, but do not block
-  local integration on browser availability. Plan amendment D11 records this.
-- Parent review found that `project_farm_acres` and
-  `county_average_farm_acres` independently score Criterion 7. Plan amendment
-  D12 requires these inputs to match a confirmed Criterion 7 registry band
-  before forwarding; task 51.3.1 remains in progress pending the worker fix.
-- Parent review also confirmed the downstream evaluator rejects any combined
-  Criterion 7 fact and farm-acre pair; D13 requires the gate to reject this
-  combination even when the two representations agree.
-- Integrated app tests found six existing AOI-context assertions that the
-  server call boundary remains unwrapped without an AOI. D14 records that the
-  confirmation gate wraps every request-scoped server and adds the test to
-  task scope; the suite remains blocked pending this coupled fix.
-- Planning files are tracked; commit them separately with
-  `docs(planning):` after plan approval.
-- No remote actions are authorized by this plan.
+- [x] Root CDL/LESA subset:
+  `uv run --group dev pytest tests/test_cdl_models.py tests/test_cdl_client.py
+  tests/test_cdl_tools.py tests/test_lesa.py
+  tests/test_site_assessment_contract.py -q` — 109 passed.
+- [x] Site Assessment resource/prompt subset:
+  `uv run --group dev pytest tests/test_site_assessment_resource.py
+  tests/test_prompts.py -q` — 9 passed.
+- [x] Agent-app tests:
+  `uv run --frozen --python 3.11 pytest tests -q` from
+  `apps\agent-fpac-soil-openai-sdk` — 177 passed.
+- [x] Agent-app Ruff check and format check on owned files — all checks
+  passed; 16 files already formatted.
+- [x] Frontend `npm ci`, read-only Biome lint, and production build — passed.
+  Baseline output included 10 lint warnings and npm audit reported 10 existing
+  findings (4 low, 6 moderate); do not fix them in this plan.
+- [x] Root `make check` — 951 passed, 45 deselected; Ruff check and format
+  passed. The run emitted 183 existing warnings.
+- [ ] Live-network suite — not run before wave 1.
+- [ ] Local browser walkthrough — not run before wave 1.
+- [!] `make app-check` could not start because the installed Windows GNU Make
+  exits with an Rtools path error. Its equivalent direct app test and Ruff
+  commands passed; use direct commands if the local Make executable remains
+  unusable.
+- [!] `uv run python scripts\fetch_ecfr.py --check` reports title 7 Parts 657
+  and 658 XML differs from the manifest at baseline; task 51.1.1 refreshed the
+  references and verified the registry correction.
 
 ## Wave Board
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 51.1.1 Conservative missing-input scoring and ADR 0018 | done | `2899a61` / `062bc30`; follow-ups `aafb797` / `abc1f9f`, `38c544f` / `9f65159`; merges `1afeecb`, `f5cd0a7`, `ef99795` | Conservative assumptions, regression contracts, and formatting verified. |
-| 1 | 51.1.2 Structured Site Assessment tool/history contract | done | `f76e146` / `4fe9fea`; follow-up `e251d92` / `b4a1ce0`; merges `c7e3e5d`, `7412853` | Structured tools and scoped app Ruff checks verified. |
-| 1 gate | Foundation contract checks | done | | Root: 1,023 passed, 45 deselected; Ruff check/format passed. App: 206 passed; Ruff check/format passed on changed owned files. |
-| 2 | 51.2.1 Interview trigger/CDL sequence and eval cases | done | `b569a95` / `fc46ec6` / `4d30ac3`; merge `b0cb2bd` | Soil-first/site-only sequencing, combined CDL guidance, and ordered/prohibited-tool replay contracts verified. |
-| 2 | 51.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | done | `0e570ca` / `ad26df0` / `9a8276d`; merge `28dd305` | Cards and stale-AOI guard integrated; lint/build pass; Playwright execution waived by user. |
-| 2 gate | Interview flow and frontend checks | done | | Task 51.2.1 targeted tests pass; frontend Biome lint/build pass. Playwright waived by user. |
-| 3 | 51.3.1 Confirm-only matching-history gate | in_progress | | D12/D13 require farm-acre confirmation and preflight rejection of duplicate Criterion 7 representations; D14 expands scope for coupled AOI-context assertions. |
-| 3 gate | Serial integrated local acceptance | pending | | |
-| 4 | Conditional dev-app trial | blocked | | Requires separate user approval to push/redeploy. |
+| 1 | 51.1.1 Refresh eCFR references and align Criterion 7 registry bands | done | `62b36b5` / `2ce093b` | No additional registry/CFR mismatch; see report. |
+| 1 | 51.1.2 Add combined CDL context analysis | done | `2618442` | Keep existing histogram tool compatible. |
+| 1 | 51.1.3 Synchronize Wave 1 tool and Criterion 7 contracts | done | `fb939eb` | Runtime/public metadata and existing assertions synchronized. |
+| 1 gate | eCFR and CDL contract gate | done | | Serial `make check`: 980 passed, 45 deselected; Ruff check and format passed. |
+| 2 | 51.2.1 Add resource-backed conversational Site Assessment flow | done | `ea54cc2` / `a8d26cb` | Planning commits `cfba2bd` / `3ca4d3c`; focused acceptance and Ruff checks passed. |
+| 2 | 51.2.2 Add CDL map overlay and summary display | done | `987610d` / `8c672e0` | Planning commits `e781666` / `e41f5c1`; frontend lint/build and browser/CORS checks passed. |
+| 2 | 51.2.3 Synchronize AOI handler test mocks with criteria resource reads | done | `0ac9091` | Planning commits `d3d2256` / `02ba919`; focused and full app suites pass. |
+| 2 gate | Chat/map integration gate | done | | All Wave 2 tasks integrated; root and app suites pass, frontend build and map walkthrough pass. |
+| 3 gate | Serial validation and local browser walkthrough | pending | | Root, app, frontend, and live-network checks pass; map-specific browser walkthrough passed. Integrated chat walkthrough awaits app-local Databricks authentication. No deployed dev-app trial. |
 
 ## Worker Worktrees
 
-Preserve all pre-existing worktrees from orchestration 50. Add new `51.*`
-worktrees only when a wave starts; record their path, branch, and disposition
-here.
-
 | Task | Path | Branch | Created (local) | Status |
 |---|---|---|---|---|
-| 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist2-51.1.1-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
-| 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist2-51.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
-| 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist2-51.2.1-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
-| 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist2-51.2.2-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
-| 51.3.1 | `.worktrees\51.3.1` | `feature/sa-checklist2-51.3.1-worker` | 2026-11-13 18:56:53 -08:00 | follow-up required; retain |
+| 51.1.1 | `.worktrees\51.1.1` | `feature/sa-checklist1-51.1.1-worker` | 2026-11-12 23:34:26 -08:00 | complete; retained |
+| 51.1.2 | `.worktrees\51.1.2` | `feature/sa-checklist1-51.1.2-worker` | 2026-11-12 23:34:30 -08:00 | complete; retained |
+| 51.1.3 | `.worktrees\51.1.3` | `feature/sa-checklist1-51.1.3-worker` | 2026-11-12 23:54:15 -08:00 | complete; retained |
+| 51.2.1 | `.worktrees\51.2.1` | `feature/sa-checklist1-51.2.1-worker` | 2026-11-13 00:04:29 -08:00 | complete; retained |
+| 51.2.2 | `.worktrees\51.2.2` | `feature/sa-checklist1-51.2.2-worker` | 2026-11-13 00:04:28 -08:00 | complete; retained |
+| 51.2.3 | `.worktrees\51.2.3` | `feature/sa-checklist1-51.2.3-worker` | 2026-11-13 00:47:37 -08:00 | complete; retained |
 
 ## Task Reports
 
-<!-- Append one concise report per completed task; keep each to 15 lines max. -->
+### 51.1.1 — Refresh eCFR references and align Criterion 7 registry bands
+- Status: complete; integrated eCFR commit `62b36b5` (worker `0dc5b11`); registry/test commit `2ce093b` (worker `6b54542`); micro-plan commit `2ac6917`.
+- Refreshed Parts 657/658 to 2026-11-10; XML hashes unchanged. Criteria 1–6 and 8–12 match refreshed § 658.5(b); no additional mismatch was found.
+- Criterion 7 now uses 0 at or below 50%, 1 above 50% through 55%, successive five-point bands through 9 above 90% through 95%, and 10 above 95%.
+- `uv run python scripts\fetch_ecfr.py --check` — passed.
+- `uv run pytest tests\test_site_assessment_contract.py tests\test_site_assessment_resource.py -q` — 34 passed.
+- Deviations: none. Primary-worktree generated outputs were checked and committed; no scoring algorithm or other registry entry changed.
+- Gate note: the post-integration `make check` exposed 9 failures in public-tool counts/descriptions and legacy Criterion 7 text assertions; task 51.1.3 is planned to resolve them.
 
-### 51.1.1 — Score missing Site Assessment inputs conservatively
-- Status: complete; planning commits `2899a61`, `aafb797`, `38c544f`; code/style commits `062bc30`, `abc1f9f`, `9f65159`; integrated merges `1afeecb`, `f5cd0a7`, `ef99795`.
-- Added registry-maximum assumptions with separate provenance and upper bound; actual awards remain zero for missing inputs and incomplete results remain undetermined. Added and indexed ADR 0018.
-- Root targeted scoring/contracts — 96 passed; amended regression contracts and prompts — 171 passed; app prompt test — 33 passed with one existing config warning.
-- Final `uv run --group dev pytest -q` — 1,023 passed, 45 deselected, 220 warnings.
-- `uv run ruff check .` and `uv run ruff format --check .` — passed; 6,031 files already formatted.
-- Plan scope was amended in `6919b42` after the full suite exposed directly coupled stale assertions; all were fixed within the amended scope. No remote actions.
+### 51.1.2 — Add combined CDL context analysis
+- Status: complete; integrated implementation commit `2618442` (`feat(cdl): add combined CDL context analysis`; worker commit `011e4a9`); integrated micro-plan commit `8d1f868` (worker commit `4bab81e`).
+- Added EPSG:6933 AOI exterior bands, latest uniquely verified vintage selection, per-zone full class evidence, and MCP registration/public metadata.
+- Changed: geometry, CDL client/models/tool registration, README, manifest, server metadata, and four focused test files.
+- `uv run pytest tests\test_geometry.py tests\test_cdl_client.py tests\test_cdl_models.py tests\test_cdl_tools.py -q` — 62 passed.
+- `uv run ruff check .` — passed.
+- `uv run ruff format --check .` — passed.
+- Orchestrator rerun in the worker worktree: targeted tests 62 passed; Ruff check and format check passed.
+- Deviations: none; same vintage is supplied to existing client analysis for all zones; no extra mosaic-lock contract was added.
+- Dependent-task note: context is preliminary CDL class evidence only; no agricultural-class policy, farmland status, or Criterion 2 percentage is provided.
 
-### 51.1.2 — Add the structured Site Assessment tool contract
-- Status: complete; planning commits `f76e146`, `e251d92`; code/style commits `4fe9fea`, `b4a1ce0`; integrated merges `c7e3e5d`, `7412853`.
-- Added resource-backed question and answer function tools; agent construction enables them only with validated criteria context.
-- Added tests for resource-derived choices/citations/points, provenance, unknown/skipped records, supplied-point rejection, and history pass-through.
-- `uv run --frozen --python 3.11 pytest tests\test_site_assessment_tools.py tests\test_agent_construction.py tests\test_agent_mcp_wiring.py tests\test_history_normalization.py -q` — 51 passed, 1 existing `asyncio_mode` warning.
-- Final app `uv run --frozen --python 3.11 pytest tests -q` — 206 passed, 122 existing warnings. Ruff check and format passed on the seven changed owned Python files.
-- Whole-app Ruff also identified 19 findings in other app files and formatting issues in `scripts/app_diagnostics.py` and `scripts/start_app.py`; left untouched. Shared `history.py` was not changed. Answer records use `type: site_assessment_answer`; outputs are JSON strings in function-call history.
+### 51.1.3 — Synchronize Wave 1 tool and Criterion 7 contracts
+- Status: complete; integrated implementation commit `fb939eb` (worker `8d9f268`); micro-plan commit `2f078c7`.
+- Synchronized the action-oriented `analyze_cdl_context` description across runtime, README, manifest, and server metadata; updated exact tool sets and counts.
+- Updated Criterion 7 description assertions without changing score bands or thresholds.
+- Changed: tool registration, README, manifest, server metadata, four test files, and two evaluation contract tests.
+- `uv run pytest tests\test_phase2_contracts.py tests\test_server.py tests\test_lesa.py tests\test_corridor_scoring.py eval\contract\test_contract.py eval\databricks\test_databricks_agent.py -q` — 108 passed, 1 skipped, 3 deselected.
+- `uv run ruff check .` — passed; `uv run ruff format --check .` — passed.
+- Orchestrator rerun in the task worktree: same targeted results and lint/format checks passed.
+- Deviations: the initial test invocation ran in the primary worktree before integration and showed the expected failures; the scoped rerun in the task worktree passed. No primary eCFR XML files were staged or altered.
+- Wave 1 gate: final serial `make check` passed with 980 passed and 45 deselected.
 
-### 51.2.1 — Sequence the interview and CDL evaluation
-- Status: complete; planning commits `b569a95`, `fc46ec6`; code commit `4d30ac3`; integrated merge `b0cb2bd`.
-- Updated root/app prompts and tests for soil-first screening, site-only Start/Skip, completion/confirmation ordering, one combined CDL context call, and no histogram follow-up.
-- Added replay cases `SA-MA-05/06`; eval validation and scorers now check ordered tool subsequences and prohibited tools.
-- Root targeted prompt/dataset/scorer tests — 75 passed, 1 skipped; contract/eval tests — 61 passed, 1 skipped, 2 deselected; app prompt test — 33 passed.
-- No deviations or remote actions.
+### 51.2.1 — Add resource-backed conversational Site Assessment flow
+- Status: complete; planning commits `cfba2bd` / `3ca4d3c`; implementation commits `ea54cc2` / `a8d26cb`.
+- Validates and supplies the existing criteria resource as agent context; resource/transport failures disable the interview explicitly, while unexpected errors propagate.
+- Updated the guided interview prompts and added focused resource-context, unavailable-resource, confirmation-policy, and error-handling tests.
+- `uv run pytest tests\test_prompts.py tests\test_site_assessment_resource.py -q` — 9 passed.
+- App acceptance tests — 49 passed, 1 existing pytest config warning; Ruff check and format check passed.
+- Deviations: none. CDL remains separate preliminary context and never supplies Criterion 2; supported LESA facts require explicit confirmation.
 
-### 51.2.2 — Render interview cards and reject stale CDL results
-- Status: complete; planning commits `0e570ca`, `9a8276d`; code commit `ad26df0`; integrated merge `28dd305`.
-- Added resource-backed question and confirmation cards with structured answer/confirm records, explicit unknown/skipped answers, assumptions, and Edit/Confirm actions.
-- CDL map storage now rejects absent or mismatched active AOIs using the captured reference and geometry. Added an isolated Playwright fixture/test without production routes or new dependencies.
-- User waived Playwright execution. Read-only Biome lint passed with 10 existing warnings; frontend production build passed for client and server (database migration skipped because no database config is present).
-- No remote actions.
+### 51.2.2 — Add CDL map overlay and summary display
+- Status: complete; planning commits `e781666` / `e41f5c1`; implementation commits `987610d` / `8c672e0`.
+- Added fixed off-by-default ImageServer overlay and a result-only summary for AOI, one-mile ring, and 30 m band; added "Show CDL on map" without re-querying.
+- Changed: `CDLContextSummary.tsx` (1-182), `overlays.ts` (10, 73-82), `OverlayControl.tsx` (11), `ShowOnMapButton.tsx` (62-145), `MapResultContext.tsx` (4, 11), `MapPanel.tsx` (311, 695-720), `message.tsx` (47, 447-489), app `AGENTS.md` (40, 63), ADR 0015 (121-174).
+- `npm ci`; read-only Biome lint; `npm run build` — passed; lint reported 10 existing warnings.
+- Local browser walkthrough verified the summary, default-off toggle, and MapLibre tile requests; ImageServer returned HTTP 200 `image/png`, so no proxy was added.
+- Deviation: first `npm ci`/build ran in the primary worktree; only ignored frontend dependencies/build output were refreshed. Tracked primary changes remain the pre-existing eCFR XML edits; `.worktrees\` remains untracked.
 
-## Final Acceptance
+### 51.2.3 — Synchronize AOI handler test mocks with criteria resource reads
+- Status: complete; planning commits `d3d2256` / `02ba919`; implementation commit `0ac9091`.
+- Added a reusable valid criteria-resource fixture and async resource reads to the AOI handler mocks; updated healthy-context call expectations without changing production code.
+- `uv run --frozen --python 3.11 pytest tests\test_aoi_context.py tests\test_aoi_handoff.py -q` — 51 passed.
+- `uv run --frozen --python 3.11 pytest tests -q` — 183 passed.
+- App Ruff check and format check — passed.
+- Deviation: an initial focused test invocation ran in the primary worktree before integration and failed because the fixture was not yet present there; the isolated worktree rerun passed. No production files changed.
 
-- [x] Root tests and Ruff checks pass serially; 1,023 passed, 45 deselected; Ruff check/format passed.
-- [x] Agent-app tests and Ruff checks pass on changed owned files; 206 passed; scoped Ruff check/format passed.
-- [!] Playwright execution waived by explicit user instruction; keep the
-  fixture/test. Read-only Biome lint passed with 10 existing warnings and the
-  frontend production build passed.
-- [ ] Review final diff and ensure no user-owned edits or remote actions were
-  included.
-- [ ] Dev-app trial and review-thread replies remain blocked until separately
-  authorized.
+## Final Wave 3 Gate
+- `make check` — Ruff check/format passed; 980 passed, 45 deselected.
+- `uv run --group dev pytest -m live_network` — 43 passed, 982 deselected.
+- Agent-app Python suite — 183 passed; app Ruff check and format check passed.
+- Frontend `npm ci`, read-only Biome lint, and `npm run build` passed in the task worktree; Biome reported 10 existing warnings.
+- Task 51.2.2's map-specific browser walkthrough verified the CDL summary, default-off toggle, and ImageServer tile response (HTTP 200 `image/png`). The integrated chat walkthrough in the final acceptance gate remains pending because app-local Databricks authentication is not configured. No deployed dev-app trial was attempted.

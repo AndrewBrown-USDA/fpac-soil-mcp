@@ -14,8 +14,7 @@ from shapely.geometry import (
     Polygon,
 )
 
-from fpac_soil_mcp.integration_models import CountyPartitionGeometry, IntegrationStatus
-from fpac_soil_mcp.tigerweb_client import (
+from fpac_soil_mcp.clients.tigerweb import (
     TigerwebClient,
     _esri_rings_to_geometry,
     _lineal_parts,
@@ -23,6 +22,7 @@ from fpac_soil_mcp.tigerweb_client import (
     _polygon_to_esri_rings,
     _polygonal_parts,
 )
+from fpac_soil_mcp.models.integration import CountyPartitionGeometry, IntegrationStatus
 
 
 @pytest.fixture
@@ -411,7 +411,7 @@ def test_tigerweb_perimeter_evidence_request_exception_is_explicit_error(
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
-    monkeypatch.setattr("fpac_soil_mcp.http_client.sleep", lambda _: None)
+    monkeypatch.setattr("fpac_soil_mcp.clients.http.sleep", lambda _: None)
     client = TigerwebClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     evidence = client.get_perimeter_evidence(sample_geojson)

@@ -3,9 +3,9 @@
 import httpx
 import pytest
 
-from fpac_soil_mcp.config import settings
-from fpac_soil_mcp.integration_models import IntegrationStatus
-from fpac_soil_mcp.nass_client import NassClient
+from fpac_soil_mcp.clients.nass import NassClient
+from fpac_soil_mcp.core.config import settings
+from fpac_soil_mcp.models.integration import IntegrationStatus
 
 
 def test_nass_client_disabled_setting(monkeypatch: pytest.MonkeyPatch):
@@ -239,7 +239,7 @@ def test_nass_client_positional_arguments_compatibility(monkeypatch: pytest.Monk
 
 def test_nass_client_county_identifier_positional(monkeypatch: pytest.MonkeyPatch):
     """Verify passing CountyIdentifier as first positional parameter works."""
-    from fpac_soil_mcp.integration_models import CountyIdentifier
+    from fpac_soil_mcp.models.integration import CountyIdentifier
 
     monkeypatch.setattr(settings, "nass_enabled", True)
 

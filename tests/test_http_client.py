@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from fpac_soil_mcp.http_client import (
+from fpac_soil_mcp.clients.http import (
     HttpRequestError,
     HttpStatusError,
     execute_http_request_with_retry,
@@ -40,7 +40,7 @@ def test_retryable_status_eventual_success():
         return httpx.Response(200, json={"success": True})
 
     mock_client = httpx.Client(transport=httpx.MockTransport(handler))
-    with patch("fpac_soil_mcp.http_client.sleep") as mock_sleep:
+    with patch("fpac_soil_mcp.clients.http.sleep") as mock_sleep:
         resp = execute_http_request_with_retry(
             "POST",
             "https://example.com/retry",
@@ -67,7 +67,7 @@ def test_retryable_status_exhaustion_raises_http_status_error():
 
     mock_client = httpx.Client(transport=httpx.MockTransport(handler))
     with (
-        patch("fpac_soil_mcp.http_client.sleep"),
+        patch("fpac_soil_mcp.clients.http.sleep"),
         pytest.raises(HttpStatusError) as exc_info,
     ):
         execute_http_request_with_retry(
@@ -92,7 +92,7 @@ def test_non_retryable_status_fails_immediately():
 
     mock_client = httpx.Client(transport=httpx.MockTransport(handler))
     with (
-        patch("fpac_soil_mcp.http_client.sleep") as mock_sleep,
+        patch("fpac_soil_mcp.clients.http.sleep") as mock_sleep,
         pytest.raises(HttpStatusError) as exc_info,
     ):
         execute_http_request_with_retry(
@@ -117,7 +117,7 @@ def test_empty_retry_status_codes_disables_status_retries():
 
     mock_client = httpx.Client(transport=httpx.MockTransport(handler))
     with (
-        patch("fpac_soil_mcp.http_client.sleep") as mock_sleep,
+        patch("fpac_soil_mcp.clients.http.sleep") as mock_sleep,
         pytest.raises(HttpStatusError) as exc_info,
     ):
         execute_http_request_with_retry(
@@ -143,7 +143,7 @@ def test_request_error_retries_and_raises_http_request_error():
 
     mock_client = httpx.Client(transport=httpx.MockTransport(handler))
     with (
-        patch("fpac_soil_mcp.http_client.sleep") as mock_sleep,
+        patch("fpac_soil_mcp.clients.http.sleep") as mock_sleep,
         pytest.raises(HttpRequestError, match="Connection refused"),
     ):
         execute_http_request_with_retry(

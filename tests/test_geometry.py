@@ -7,7 +7,7 @@ import pytest
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.wkt import loads as load_wkt
 
-from fpac_soil_mcp.geometry import (
+from fpac_soil_mcp.spatial.geometry import (
     GeometryValidationError,
     buffer_centerline,
     buffer_polygon,

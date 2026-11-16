@@ -8,8 +8,15 @@ import pytest
 from pydantic import ValidationError
 from shapely.geometry import Point, Polygon, shape
 
-from fpac_soil_mcp.config import Settings
-from fpac_soil_mcp.map_contract import (
+from fpac_soil_mcp.core.config import Settings
+from fpac_soil_mcp.models import (
+    CorridorFarmlandAnalysisResponse,
+    CorridorImpactBreakdown,
+    FarmlandCategoryBreakdown,
+    PolygonFarmlandAnalysisResponse,
+    QuerySource,
+)
+from fpac_soil_mcp.spatial.map_builder import (
     FARMLAND_CLASS_VALUES,
     MAP_SCHEMA_VERSION,
     MapBlock,
@@ -18,19 +25,12 @@ from fpac_soil_mcp.map_contract import (
     bounds_of,
     build_layer,
     build_map_block,
+    categorize_farmland_class,
     enforce_size_cap,
     farmland_legend,
     features_from_sda_rows,
     simplify_for_display,
 )
-from fpac_soil_mcp.models import (
-    CorridorFarmlandAnalysisResponse,
-    CorridorImpactBreakdown,
-    FarmlandCategoryBreakdown,
-    PolygonFarmlandAnalysisResponse,
-    QuerySource,
-)
-from fpac_soil_mcp.polygon_analysis import categorize_farmland_class
 
 MARKER = "R6-MARKER"
 SQUARE = Polygon([(0, 0), (0.01, 0), (0.01, 0.01), (0, 0.01), (0, 0)])

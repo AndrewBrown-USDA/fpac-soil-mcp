@@ -3,7 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.models import SiteAssessmentInputs, SoilMapUnitAcreage
+from fpac_soil_mcp.models.lesa import SiteAssessmentInputs
+from fpac_soil_mcp.models.soil import SoilMapUnitAcreage
 
 
 def test_soil_map_unit_uses_generic_rating_fields_and_sda_provenance():

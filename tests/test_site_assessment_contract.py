@@ -9,13 +9,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.models import SiteAssessmentCriterion
-from fpac_soil_mcp.site_assessment import (
+from fpac_soil_mcp.domain.site_assessment import (
     SITE_ASSESSMENT_REGISTRY,
     SiteAssessmentCriterionDefinition,
     SiteAssessmentRegistry,
     load_site_assessment_registry,
 )
+from fpac_soil_mcp.models import SiteAssessmentCriterion
 
 
 def test_registry_loads_deterministically_and_covers_all_criteria() -> None:

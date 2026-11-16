@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from fpac_soil_mcp.config import Settings
+from fpac_soil_mcp.core.config import Settings
 
 
 def test_default_settings():

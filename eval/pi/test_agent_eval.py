@@ -32,7 +32,7 @@ from pi.run_evals import (
     should_retry_missing_tools,
 )
 
-from fpac_soil_mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
+from fpac_soil_mcp.mcp.prompts.fppa_prompts import FPPA_POLICY_BLOCK
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROMPT_FIXTURES_PATH = REPO_ROOT / "eval" / "eval_cases.v1.json"

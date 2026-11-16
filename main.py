@@ -19,8 +19,8 @@ def main() -> None:
     """Run the FastMCP server."""
     # Deferred import to allow config testing prior to full app creation
     try:
-        from fpac_soil_mcp.app import create_mcp_server
-        from fpac_soil_mcp.config import settings
+        from fpac_soil_mcp.core.config import settings
+        from fpac_soil_mcp.mcp.app import create_mcp_server
 
         server = create_mcp_server()
         if settings.mcp_transport.lower() == "sse":
