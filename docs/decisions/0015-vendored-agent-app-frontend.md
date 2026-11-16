@@ -110,6 +110,9 @@ to upstream for every file this repo has not changed.
   a shared mode-specific name input, map-anchored completed/live distance
   tooltip with double-click completion and explicit clearing, and an in-map
   collapsible legend overlay retaining the existing server legend components.
+* `client/src/components/map/MapPanel.tsx`: combine Area drawing/editing controls
+  into one “Area of interest” toolbar group; use Focus for the AOI outline
+  toggle and Search for zoom-to-AOI.
 * `tests/map-toolbar/toolbar.spec.ts`, `tests/corridor-map/corridor-map.spec.ts`,
   and `tests/map-legend/legend.spec.ts`: browser coverage for mode/name
   persistence, measurement completion/clear, corridor workflows, and legend

@@ -13,7 +13,7 @@ import {
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, Copy, Download, Eye, GitBranch, Map as MapIcon, Maximize, MousePointer2, Pentagon, RotateCcw, Route, Square, Trash2, Undo2, Ruler } from 'lucide-react';
+import { Check, Copy, Download, Eye, Focus, GitBranch, Map as MapIcon, MousePointer2, Pentagon, RotateCcw, Route, Search, Square, Trash2, Undo2, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -895,21 +895,13 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           </label>
           {mapMode === 'area' ? (
           <>
-          <div role="group" aria-label="Draw area" className="flex flex-col gap-1">
+          <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>
-              Draw area
+              Area of interest
             </span>
             <div className="flex flex-wrap gap-1.5">
               {toolButton('Polygon', 'polygon', Pentagon)}
               {toolButton('Rectangle', 'rectangle', Square)}
-            </div>
-          </div>
-          <div aria-hidden="true" className="hidden h-6 w-px self-end bg-border sm:block" />
-          <div role="group" aria-label="Edit area" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>
-              Edit area
-            </span>
-            <div className="flex flex-wrap gap-1.5">
               {toolButton('Edit', 'select', MousePointer2)}
               {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
               {actionButton('Clear', Trash2, clear, !aoi)}
@@ -944,9 +936,9 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
             <div className="flex flex-wrap gap-1.5">
-              {actionButton('Zoom to AOI', Maximize, zoomToAoi, !aoi)}
+              {actionButton('Zoom to AOI', Search, zoomToAoi, !aoi)}
               {actionButton('Reset map', RotateCcw, resetMapView)}
-              {actionButton('AOI outline', Eye, () => setAoiVisible((v) => !v), false, aoiVisible)}
+              {actionButton('AOI outline', Focus, () => setAoiVisible((v) => !v), false, aoiVisible)}
               {actionButton('Result boundaries', Eye, () => setResultsVisible((v) => !v), false, resultsVisible)}
             </div>
           </div>
