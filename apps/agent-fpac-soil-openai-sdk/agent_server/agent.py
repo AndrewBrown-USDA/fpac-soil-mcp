@@ -8,6 +8,7 @@ from contextlib import AsyncExitStack
 from functools import lru_cache
 from itertools import pairwise
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import mlflow
 from agents import (
@@ -55,6 +56,9 @@ from agent_server.history import normalize_history_items
 from agent_server.site_assessment_gate import bind_site_assessment_gate
 from agent_server.site_assessment_tools import create_site_assessment_tools
 from agent_server.utils import get_session_id, process_agent_stream_events
+
+if TYPE_CHECKING:
+    from agent_server.corridor_context import ActiveCorridor
 
 logger = logging.getLogger(__name__)
 
@@ -384,10 +388,8 @@ async def _connect_fpac_agent(
     history_items: list[dict] | None = None,
     corridor: ActiveCorridor | None = None,
 ) -> Agent:
-    from agent_server.corridor_context import (
-        bind_active_corridor,
-        instruction_note as corridor_instruction_note,
-    )
+    from agent_server.corridor_context import bind_active_corridor
+    from agent_server.corridor_context import instruction_note as corridor_instruction_note
 
     # WorkspaceClient() authenticates as the app's service principal, not the user.
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
