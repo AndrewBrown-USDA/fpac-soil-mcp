@@ -27,6 +27,7 @@ import { softNavigateToChatId } from '@/lib/navigation';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Greeting } from './greeting';
 import { useOptionalActiveAoi } from './map/ActiveAoiContext';
+import { ChatExportActions } from './chat-export-actions';
 
 export function Chat({
   id,
@@ -328,7 +329,12 @@ export function Chat({
   return (
     <>
       <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
-        <ChatHeader title={displayTitle} isLoadingTitle={titlePending && !displayTitle} />
+        <div className="relative">
+          <ChatHeader title={displayTitle} isLoadingTitle={titlePending && !displayTitle} />
+          <div className="absolute right-4 top-3 z-10">
+            <ChatExportActions messages={messages as never} />
+          </div>
+        </div>
 
         <Messages
           status={status}

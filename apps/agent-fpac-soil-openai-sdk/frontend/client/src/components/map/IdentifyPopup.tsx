@@ -112,7 +112,6 @@ export function IdentifyPopup({
             <Row label="Index" value={result.productivitySource} />
             <Row label="Alignment" value={result.alignment} />
           </dl>
-          <p className="text-muted-foreground">Preliminary machine estimate.</p>
         </section>
       )}
       {sections.map((section) => (

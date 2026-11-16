@@ -64,6 +64,13 @@ export function LegendSwatch({ item }: { item: MapLegendItem }) {
   );
 }
 
+function legendItemDescription(item: MapLegendItem): string {
+  const pattern = item.pattern?.replaceAll('_', ' ');
+  return [item.code ? `Code ${item.code}` : null, pattern ? `${pattern} symbol` : 'solid symbol']
+    .filter(Boolean)
+    .join(', ');
+}
+
 function layerNotes(layer: MapLayer): string[] {
   const notes: string[] = [];
   if (layer.delivery !== 'inline_geojson' || !layer.feature_collection) {
@@ -93,6 +100,10 @@ export function MapLegend({ block }: { block: MapBlock }) {
   return (
     <div>
       <h3 className="font-medium text-sm">Map layers</h3>
+      <p className="mt-1 text-muted-foreground text-xs">
+        Screening result layers are shown here. Context overlays such as imagery provide geographic
+        reference only; they are not screening evidence.
+      </p>
       <ul className="mt-1 grid gap-2 text-sm">
         {layers.map((layer) => {
           const notes = layerNotes(layer);
@@ -112,7 +123,11 @@ export function MapLegend({ block }: { block: MapBlock }) {
               {(layer.legend ?? []).length > 0 && (
                 <ul className="grid gap-1">
                   {(layer.legend ?? []).map((item) => (
-                    <li key={item.value} className="flex items-center gap-2">
+                    <li
+                      key={item.value}
+                      aria-label={`${item.label}${item.code ? `, code ${item.code}` : ''}; ${legendItemDescription(item)}`}
+                      className="flex items-center gap-2"
+                    >
                       <LegendSwatch item={item} />
                       {item.code && (
                         <span className="font-mono text-xs">[{item.code}]</span>

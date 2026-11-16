@@ -74,7 +74,7 @@ export function ScreeningResults({ result }: { result: ScreeningResponse }) {
         </p>
       )}
       {block && (
-        <div className={RESULT_CARD}>
+        <div className={`${RESULT_CARD} max-h-72 overflow-y-auto sm:max-h-96`}>
           <MapLegend block={block} />
         </div>
       )}

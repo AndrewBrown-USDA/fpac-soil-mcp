@@ -134,16 +134,31 @@ Modified upstream files:
 * `client/src/components/map/farmlandClasses.ts`: keeps unknown/unrecognized
   classification labels distinct from explicit not-prime farmland rather than
   defaulting unrecognized values to `not_prime`.
-* `client/src/components/map/MapPanel.tsx`: uses the NCSS acronym-only logo in
+ * `client/src/components/map/MapPanel.tsx`: uses the NCSS acronym-only logo in
   the map-panel header, with the official color and white variants for light
   and dark themes (NCSS Visual Standards Guide, March 2018); Vite-managed
   imports ensure the assets are included in the frontend build. It also shows
   CDL class summaries received from a tool card without a map route or
-  re-query (Plan 50.2.2).
+  re-query (Plan 50.2.2); provides a browser-only AOI label and explicit
+   GeoJSON copy/download actions (Plan 53.2.1); accessible Map/Results tabs,
+   automatic Results selection on completed screening, and retained screening
+    details while viewing tool results (Plan 53.4.1).
+ * `client/src/components/map/IdentifyPopup.tsx`: removes “Preliminary machine
+   estimate” from the map-unit identify popup only (Plan 53.4.2); screening
+   authority notices elsewhere remain unchanged.
 * `client/src/components/map/overlays.ts` and
   `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
   ImageServer raster context overlay, with attribution and vintage/context
-  labels (Plan 50.2.2).
+  labels (Plan 50.2.2); fixed USGS NAIP ImageServer `exportImage` raster
+  context overlay with mosaic-vintage caveat, source attribution, and default-off
+  control (Plan 53.3.1); accessible raster/context ordering controls with
+  browser-local persistence, keeping result vectors and AOI boundaries above
+  rasters (Plan 53.3.2).
+* `client/src/components/map/Legend.tsx` and
+  `client/src/components/map/ScreeningResults.tsx`: clarify that fixed context
+  overlays are geographic reference, add text alternatives for server legend
+  symbols, and constrain the legend card height on smaller viewports (Plan
+  53.3.3); server legend values and the regulatory notice remain unchanged.
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again
@@ -171,6 +186,19 @@ Modified upstream files:
 
 Added paths:
 
+* `client/src/lib/chatExport.ts` and `client/src/lib/chatExport.test.ts`:
+  deterministic current-chat Markdown and JSON serializers that retain visible
+  text and available raw tool names, inputs and outputs (including geometry),
+  exclude hidden/non-exportable content, and expose a sensitivity warning
+  contract for explicit user-initiated exports (Plan 53.1.1).
+* `client/src/components/chat-export-actions.tsx` and
+  `client/src/components/chat.tsx`: explicit Markdown/JSON export controls with
+  a sensitivity warning and confirmation before download (Plan 53.1.2).
+* `client/src/components/chat-export-fixture.tsx`,
+  `client/chat-export-fixture.html`, `playwright.chat-export.config.ts`,
+  `tests/chat-export/export.spec.ts`, and `package.json`: isolated Playwright
+  coverage for warning cancellation, confirmed exports, geometry, and hidden
+  data exclusion (Plan 53.1.2; no new dependencies).
 * `client/src/components/map/**`: map panel (MapLibre and Terra Draw AOI
   drawing, GeoJSON paste and file input, `/api/geo/screen` client, farmland
   class mapping, legend, results table, regulatory notice, error states, the
@@ -186,6 +214,21 @@ Added paths:
   Plan 50.2.2 adds `client/src/components/map/CDLContextSummary.tsx` to show the
   complete server-returned class distributions, source, vintage, status,
   coverage and limitations for the AOI and both exterior zones.
+* `client/src/components/map/aoiExport.ts` and
+  `client/src/components/map/aoiExport.test.ts`: serialize the current AOI as
+  labeled GeoJSON and sanitize download filenames (Plan 53.2.1).
+ * `client/src/components/map/MapPanel.tsx`: map navigation/reset, independent
+  AOI and returned-result visibility controls, and line measurement UI (Plan
+   53.2.2).
+ * `client/src/components/map/identify.test.ts`: verifies the identify popup
+   omits the estimate phrase while screening retains its authority notice (Plan
+   53.4.2).
+* `client/src/components/map/distance.ts` and
+  `client/src/components/map/distance.test.ts`: geodesic line-distance
+  calculation and unit conversions (Plan 53.2.2).
+* `client/src/components/map/mapControls.ts` and
+  `client/src/components/map/mapControls.test.ts`: testable bounds, initial
+  view, visibility, and measurement-cancellation seams (Plan 53.2.2).
 * `client/src/components/site-assessment-cards.tsx`: resource-driven question
   choices, evidence/comment/provenance, verification, source, and justification
   fields, explicit unknown/skipped records, and a distinct
@@ -198,6 +241,11 @@ Added paths:
   `tests/site-assessment/cards.spec.ts`: isolated Playwright configuration and
   coverage for emitted answer/confirmation records and stale CDL refusal
   (Plan 51.2.2).
+* `client/map-tabs-fixture.html`, `client/src/components/map/map-tabs-fixture.tsx`,
+  `playwright.map-tabs.config.ts`, `tests/map-tabs/tabs.spec.ts`, and
+  `package.json`: focused isolated browser coverage for Map/Results tab selection,
+  empty state, and preserving screening details when switching to tool results
+  (Plan 53.4.1; no new dependencies).
 * `client/src/assets/ncss-acronym-color.png` and
   `client/src/assets/ncss-acronym-white.png`: official NCSS acronym-only logo
   variants prepared from the
