@@ -1238,11 +1238,13 @@ def test_prompt_dataset_schema_and_completeness(prompt_dataset: list[dict[str, A
         "get_soil_interpretations",
         "analyze_corridor_fppa",
         "calculate_preliminary_lesa",
+        "analyze_cdl_histogram",
+        "analyze_cdl_context",
     }
     manifest_text = (REPO_ROOT / "manifest.yaml").read_text(encoding="utf-8")
     tools_block = manifest_text.split("\ntools:\n", 1)[1].split("\nresources:\n", 1)[0]
     manifest_tools = set(re.findall(r"^  - name: (\S+)", tools_block, flags=re.MULTILINE))
-    assert len(manifest_tools) == 10
+    assert len(manifest_tools) == 12
     assert expected_tools == manifest_tools
     expected_resources = {
         "fppa://regulatory-notice",

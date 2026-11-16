@@ -20,6 +20,9 @@ export type SiteAssessmentAnswer = {
   evidence: string;
   comment: string;
   provenance: 'user' | 'agent' | 'tool';
+  is_verified?: boolean;
+  source_provenance?: string[];
+  justification?: string;
 };
 
 export type SiteAssessmentQuestion = {
@@ -119,6 +122,9 @@ export function SiteAssessmentQuestionCard({
   const [evidence, setEvidence] = useState('');
   const [comment, setComment] = useState('');
   const [provenance, setProvenance] = useState<SiteAssessmentAnswer['provenance']>('user');
+  const [isVerified, setIsVerified] = useState(false);
+  const [sourceProvenance, setSourceProvenance] = useState('');
+  const [justification, setJustification] = useState('');
   const unknownBand = question.choices.find((choice) => choice.id === 'unknown') ?? null;
 
   const record = (
@@ -135,6 +141,9 @@ export function SiteAssessmentQuestionCard({
       evidence,
       comment,
       provenance,
+      is_verified: isVerified,
+      source_provenance: sourceProvenance.split('\n').map((source) => source.trim()).filter(Boolean),
+      justification,
     });
   };
 
@@ -211,6 +220,33 @@ export function SiteAssessmentQuestionCard({
           <option value="agent">Agent-provided</option>
           <option value="tool">Tool-provided</option>
         </select>
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isVerified}
+          onChange={(event) => setIsVerified(event.target.checked)}
+          data-testid="site-assessment-verified"
+        />
+        Verified against the cited source
+      </label>
+      <label className="grid gap-1 text-xs">
+        Source provenance (one source per line)
+        <textarea
+          className="min-h-16 rounded-md border border-input bg-background p-2 text-sm"
+          value={sourceProvenance}
+          onChange={(event) => setSourceProvenance(event.target.value)}
+          data-testid="site-assessment-source-provenance"
+        />
+      </label>
+      <label className="grid gap-1 text-xs">
+        Justification
+        <textarea
+          className="min-h-16 rounded-md border border-input bg-background p-2 text-sm"
+          value={justification}
+          onChange={(event) => setJustification(event.target.value)}
+          data-testid="site-assessment-justification"
+        />
       </label>
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         <Button type="button" variant="outline" onClick={() => record('unknown', unknownBand)}>

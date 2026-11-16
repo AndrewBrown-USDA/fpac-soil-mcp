@@ -33,6 +33,9 @@ export function releaseActiveAoi(key: string): void {
 
 // Use centralized authentication - only on server side
 async function getProviderToken(): Promise<string> {
+  if (process.env.FPAC_LOCAL_DEV === '1') {
+    return 'local-dev';
+  }
   // First, check if we have a PAT token
   if (process.env.DATABRICKS_TOKEN) {
     console.log('Using PAT token from DATABRICKS_TOKEN env var');
@@ -48,6 +51,9 @@ let cachedWorkspaceHostname: string | null = null;
 
 // Get workspace hostname with one-time resolution and caching
 export async function getWorkspaceHostname(): Promise<string> {
+  if (process.env.FPAC_LOCAL_DEV === '1') {
+    return 'http://127.0.0.1';
+  }
   if (cachedWorkspaceHostname) {
     return cachedWorkspaceHostname;
   }

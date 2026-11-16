@@ -4,10 +4,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/site-assessment-fixture.html');
 });
 
-test('selecting a resource band emits its exact answer, evidence, comment, and provenance', async ({ page }) => {
+test('selecting a resource band emits answer, evidence, verification, source, justification, and provenance', async ({ page }) => {
   await page.getByTestId('site-assessment-evidence').fill('Observed field evidence');
   await page.getByTestId('site-assessment-comment').fill('Verified during review');
   await page.getByTestId('site-assessment-provenance').selectOption('tool');
+  await page.getByTestId('site-assessment-verified').check();
+  await page.getByTestId('site-assessment-source-provenance').fill('NRCS field record\nCounty land-use map');
+  await page.getByTestId('site-assessment-justification').fill('Both sources support the selected interval.');
   await page.getByTestId('site-assessment-band-range_20_90_1').click();
 
   await expect(page.getByTestId('emitted-record')).toHaveText(JSON.stringify({
@@ -26,6 +29,9 @@ test('selecting a resource band emits its exact answer, evidence, comment, and p
     evidence: 'Observed field evidence',
     comment: 'Verified during review',
     provenance: 'tool',
+    is_verified: true,
+    source_provenance: ['NRCS field record', 'County land-use map'],
+    justification: 'Both sources support the selected interval.',
   }));
 });
 
@@ -33,6 +39,7 @@ test('unknown and skipped answers are explicit without invented score bands', as
   await page.getByRole('button', { name: 'Unknown / unavailable' }).click();
   await expect(page.getByTestId('emitted-record')).toContainText('"answer_state":"unknown"');
   await expect(page.getByTestId('emitted-record')).toContainText('"points":null');
+  await expect(page.getByTestId('emitted-record')).toContainText('"is_verified":false');
 
   await page.getByRole('button', { name: 'Skip this criterion' }).click();
   await expect(page.getByTestId('emitted-record')).toContainText('"answer_state":"skipped"');
@@ -64,6 +71,9 @@ test('review summary shows assumptions and Confirm/Edit emit their distinct acti
       evidence: 'Sample evidence',
       comment: 'Sample comment',
       provenance: 'user',
+      is_verified: true,
+      source_provenance: ['Sample source'],
+      justification: 'Sample justification',
     }],
     assumptions: ['Criterion 2: assumed (no evidence)'],
   }));

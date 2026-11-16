@@ -18,6 +18,8 @@ Answers are preliminary screening only. They are based on SSURGO soil inventory 
 | `FPAC_MCP_APP` | unset | Name of the fpac-soil-mcp server app. In `app.yaml` it comes from the `mcp_server` app resource (`valueFrom`), and the app looks up that app's URL once per process and adds `/mcp`, so production and dev agent apps differ only in their `mcp_server` resource. If set but not resolvable, the agent runs without tools rather than using another server. |
 | `FPAC_MCP_URL` | `https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp` | Explicit MCP URL for local runs and tests; overrides `FPAC_MCP_APP`. Not set in the deploy files. |
 | `FPAC_MCP_TIMEOUT_SECONDS` | `180` | MCP client timeout in seconds. Must be a positive number. |
+| `FPAC_LOCAL_MLFLOW_TRACING` | unset | Set to `1` together with `FPAC_LOCAL_DEV=1` to enable local agent and MCP tool tracing. Off by default. |
+| `FPAC_LOCAL_MLFLOW_DIR` | `~/.local/share/fpac-soil/mlflow` | Optional local directory override for the SQLite trace database; default data is persisted outside the repository and `/tmp`. |
 
 GPT-5 models are called with `reasoning_effort="none"`, which they need for tool calling.
 
@@ -100,6 +102,53 @@ Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)
   control. County and urban results offer "Use as AOI", which loads the
   exact outline and refuses it above 2000 vertices instead of simplifying.
   SSURGO identify has no farmland class; run screening for that.
+
+### Local Site Assessment trial (headless)
+
+`make trial-local` (repo root) is an opt-in stand-in for the dev-app trial. It starts
+its own MCP server on a free port (Streamable HTTP, `/mcp`), then drives this app's
+real `McpServer` client, criteria-resource validation, interview tools, and
+confirmed-summary gate with a scripted model. It needs network access to USDA SDA, no
+Databricks or model credentials, and is not part of `make check` or `make app-test`.
+Use `uv run python scripts/trial_local.py --mcp-url http://127.0.0.1:PORT/mcp` here to
+reuse a running server. See `planning/STATE_52.md` for what it cannot reproduce.
+
+### Local chat UI with llama.cpp (no Databricks auth)
+
+The chat UI can run against a local llama.cpp OpenAI-compatible API and a local
+FPAC Soil MCP server. Start the MCP server on a loopback port (for example,
+`make run-http MCP_PORT=8001` from the repository root), then start llama.cpp
+with its OpenAI-compatible API listening on port 8090. Query
+`http://127.0.0.1:8090/v1/models` and use the returned model ID below.
+
+In this app directory, set the following in `.env` (or export them in the
+environment):
+
+```dotenv
+FPAC_LOCAL_DEV=1
+AGENT_MODEL=<model-id-returned-by-llama.cpp>
+LOCAL_LLM_BASE_URL=http://127.0.0.1:8090/v1
+FPAC_MCP_URL=http://127.0.0.1:8001/mcp
+```
+
+Then run `uv run start-app` and open the printed local chat UI URL. Local mode
+uses no Databricks model client, workspace lookup, or OAuth for MCP; it requires
+an explicit loopback HTTP MCP URL and explicit model ID, and refuses to fall
+back to the deployed server. With `FPAC_LOCAL_DEV` unset, the normal Databricks
+configuration remains unchanged. The local MCP server still queries USDA SDA,
+so network access is needed for live soil/LESA results.
+
+Local MLflow tracing is disabled by default. To opt in, also set
+`FPAC_LOCAL_MLFLOW_TRACING=1`; traces use the `fpac-soil-local` experiment in
+`~/.local/share/fpac-soil/mlflow/mlflow.db` (override with
+`FPAC_LOCAL_MLFLOW_DIR`, which names a directory). Open MLflow locally with that
+SQLite tracking URI to inspect traces, for example
+`mlflow server --backend-store-uri sqlite:///$HOME/.local/share/fpac-soil/mlflow/mlflow.db`.
+Traces can contain prompts, answers,
+tool arguments/results, and session identifiers. Geometry may appear in chat
+tool traces; do not use this with personal data or Section 1619 producer data
+unless the environment is approved for that information. The out-of-band map
+screening/map routes remain deliberately untraced.
 
 ### Dev trial apps
 

@@ -9,12 +9,17 @@ import functools
 import os
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlsplit
 
 # Unity Catalog model service name. The workspace no longer serves the legacy
 # ``databricks-*`` endpoint names, and the Apps "Model" resource injects this form.
 DEFAULT_AGENT_MODEL = "models.ai.gpt-5-6-luna"
 DEFAULT_FPAC_MCP_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
 DEFAULT_FPAC_MCP_TIMEOUT_SECONDS = 180.0
+DEFAULT_LOCAL_LLM_BASE_URL = "http://127.0.0.1:8090/v1"
+DEFAULT_LOCAL_MLFLOW_TRACKING_URI = (
+    Path.home() / ".local" / "share" / "fpac-soil" / "mlflow" / "mlflow.db"
+)
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system_prompt.txt"
 
@@ -26,8 +31,41 @@ def _env_or_default(name: str, default: str) -> str:
 
 
 def agent_model() -> str:
-    """Unity Catalog model service for the agent (env ``AGENT_MODEL``)."""
+    """Model identifier for the agent (env ``AGENT_MODEL``)."""
+    if local_dev_enabled():
+        model = os.environ.get("AGENT_MODEL", "").strip()
+        if not model:
+            raise ValueError("FPAC_LOCAL_DEV requires AGENT_MODEL to name the local model.")
+        # The Agents SDK interprets the first slash as a provider prefix. llama.cpp
+        # model IDs may be filesystem paths, so route them explicitly to OpenAI.
+        return model if "/" not in model else f"openai/{model}"
     return _env_or_default("AGENT_MODEL", DEFAULT_AGENT_MODEL)
+
+
+def local_dev_enabled() -> bool:
+    """Whether the explicit local-only runtime is enabled."""
+    return os.environ.get("FPAC_LOCAL_DEV", "").strip() == "1"
+
+
+def local_llm_base_url() -> str:
+    """OpenAI-compatible local model API base URL."""
+    return _env_or_default("LOCAL_LLM_BASE_URL", DEFAULT_LOCAL_LLM_BASE_URL)
+
+
+def local_mlflow_tracing_enabled() -> bool:
+    """Whether local MLflow tracing was explicitly enabled."""
+    return local_dev_enabled() and os.environ.get("FPAC_LOCAL_MLFLOW_TRACING", "").strip() == "1"
+
+
+def local_mlflow_tracking_uri() -> str:
+    """Persistent, external local trace store; overridable for isolated runs."""
+    override = os.environ.get("FPAC_LOCAL_MLFLOW_DIR", "").strip()
+    if override:
+        path = Path(override).expanduser()
+        if not path.is_absolute():
+            raise ValueError("FPAC_LOCAL_MLFLOW_DIR must be an absolute local path.")
+        return f"sqlite:///{path.resolve() / 'mlflow.db'}"
+    return f"sqlite:///{DEFAULT_LOCAL_MLFLOW_TRACKING_URI}"
 
 
 class McpServerLookupError(RuntimeError):
@@ -58,7 +96,13 @@ def fpac_mcp_url(app_url_lookup: Callable[[str], str | None] | None = None) -> s
     """
     explicit = os.environ.get("FPAC_MCP_URL", "").strip()
     if explicit:
+        if local_dev_enabled():
+            parsed = urlsplit(explicit)
+            if parsed.scheme != "http" or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+                raise McpServerLookupError("FPAC_LOCAL_DEV requires a loopback HTTP FPAC_MCP_URL.")
         return explicit
+    if local_dev_enabled():
+        raise McpServerLookupError("FPAC_LOCAL_DEV requires an explicit FPAC_MCP_URL.")
     app = fpac_mcp_app()
     if app is None:
         return DEFAULT_FPAC_MCP_URL

@@ -39,6 +39,9 @@ const answer: SiteAssessmentAnswer = {
   evidence: 'Sample evidence',
   comment: 'Sample comment',
   provenance: 'user',
+  is_verified: true,
+  source_provenance: ['Sample source'],
+  justification: 'Sample justification',
 };
 
 const summary: SiteAssessmentConfirmedSummary = {

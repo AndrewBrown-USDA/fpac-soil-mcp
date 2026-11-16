@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from functools import lru_cache
 from itertools import pairwise
+from pathlib import Path
 
 import mlflow
 from agents import (
@@ -15,6 +16,7 @@ from agents import (
     set_default_openai_client,
 )
 from agents.exceptions import UserError
+from agents.mcp.server import MCPServerStreamableHttp
 from agents.tracing import set_trace_processors
 from databricks.sdk import WorkspaceClient
 from databricks_openai import AsyncDatabricksOpenAI
@@ -26,6 +28,7 @@ from mlflow.types.responses import (
     ResponsesAgentResponse,
     ResponsesAgentStreamEvent,
 )
+from openai import AsyncOpenAI
 from openai.types.shared import Reasoning
 
 from agent_server.aoi_context import (
@@ -40,6 +43,10 @@ from agent_server.config import (
     fpac_mcp_timeout_seconds,
     fpac_mcp_url,
     load_system_prompt,
+    local_dev_enabled,
+    local_llm_base_url,
+    local_mlflow_tracing_enabled,
+    local_mlflow_tracking_uri,
     uses_reasoning_effort_none,
 )
 from agent_server.history import normalize_history_items
@@ -50,8 +57,9 @@ from agent_server.utils import get_session_id, process_agent_stream_events
 logger = logging.getLogger(__name__)
 
 set_default_openai_api("chat_completions")
-set_trace_processors([])  # only use mlflow for trace processing
-mlflow.openai.autolog()
+set_trace_processors([])  # MLflow's OpenAI Agents processor is installed only by explicit opt-in.
+if not local_dev_enabled():
+    mlflow.openai.autolog()
 logging.getLogger("mlflow.utils.autologging_utils").setLevel(logging.ERROR)
 
 
@@ -230,8 +238,12 @@ def _site_assessment_payload_from_context(context: str | None) -> dict | None:
 
 
 @lru_cache(maxsize=1)
-def configure_openai_client() -> AsyncDatabricksOpenAI:
+def configure_openai_client():
     """Configure the Databricks client once, when a real request needs it."""
+    if local_dev_enabled():
+        client = AsyncOpenAI(base_url=local_llm_base_url(), api_key="local-dev")
+        set_default_openai_client(client)
+        return client
     # This works for all Databricks models other than GPT-OSS, which uses a
     # slightly different API. AI Gateway routes UC model service names through
     # /ai-gateway/mlflow/v1.
@@ -240,11 +252,47 @@ def configure_openai_client() -> AsyncDatabricksOpenAI:
     return client
 
 
-def init_fpac_mcp_server(workspace_client: WorkspaceClient) -> McpServer:
+def configure_local_mlflow_tracing() -> bool:
+    """Enable a local file-backed MLflow experiment only when explicitly requested."""
+    global _local_mlflow_configured_uri
+    if not local_dev_enabled() or not local_mlflow_tracing_enabled():
+        return False
+    tracking_uri = local_mlflow_tracking_uri()
+    if tracking_uri.startswith("sqlite:///"):
+        db_path = Path(tracking_uri.removeprefix("sqlite:///"))
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+    if _local_mlflow_configured_uri == tracking_uri:
+        return True
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment("fpac-soil-local")
+    mlflow.openai.autolog()
+    _local_mlflow_configured_uri = tracking_uri
+    return True
+
+
+_local_mlflow_configured_uri: str | None = None
+
+
+def _update_trace_session(session_id: str | None) -> None:
+    if session_id and (not local_dev_enabled() or local_mlflow_tracing_enabled()):
+        mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
+
+
+def init_fpac_mcp_server(workspace_client: WorkspaceClient | None = None):
     """Build the client for the deployed fpac-soil-mcp server."""
+    url = fpac_mcp_url(
+        (lambda name: workspace_client.apps.get(name=name).url)
+        if workspace_client is not None
+        else None
+    )
+    if local_dev_enabled():
+        return MCPServerStreamableHttp(
+            name=FPAC_MCP_SERVER_NAME,
+            params={"url": url, "timeout": fpac_mcp_timeout_seconds()},
+        )
     return McpServer(
         # FPAC_MCP_APP (the ``mcp_server`` resource) resolves through the Apps API.
-        url=fpac_mcp_url(lambda name: workspace_client.apps.get(name=name).url),
+        url=url,
         name=FPAC_MCP_SERVER_NAME,
         workspace_client=workspace_client,
         timeout=fpac_mcp_timeout_seconds(),
@@ -293,6 +341,7 @@ def create_agent(
     map AOI attached to the conversation (ADR 0016); ``site_assessment_context`` is the
     validated criteria resource read from the MCP server for this turn.
     """
+    configure_local_mlflow_tracing()
     model = agent_model()
     instructions = load_system_prompt()
     if tools_unavailable:
@@ -333,7 +382,7 @@ async def _connect_fpac_agent(
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
     # traceback), so the request still runs.
     try:
-        server = init_fpac_mcp_server(WorkspaceClient())
+        server = init_fpac_mcp_server(None if local_dev_enabled() else WorkspaceClient())
     except McpServerLookupError as exc:
         # Same outcome as an unreachable server: the turn runs without tools.
         logger.warning("MCP server lookup failed: %s", exc)
@@ -390,8 +439,7 @@ async def _connect_fpac_agent(
 
 @invoke()
 async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentResponse:
-    if session_id := get_session_id(request):
-        mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
+    _update_trace_session(get_session_id(request))
     configure_openai_client()
     messages = normalize_history_items([i.model_dump() for i in request.input])
     # The AsyncExitStack keeps the MCP server open for the whole request.
@@ -405,8 +453,7 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
 async def stream_handler(
     request: ResponsesAgentRequest,
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
-    if session_id := get_session_id(request):
-        mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
+    _update_trace_session(get_session_id(request))
     configure_openai_client()
     messages = normalize_history_items([i.model_dump() for i in request.input])
     # The AsyncExitStack keeps the MCP server open for the whole request.

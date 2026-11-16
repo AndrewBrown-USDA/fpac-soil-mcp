@@ -15,6 +15,7 @@
     "build:client": "npm run build --workspace=@databricks/chatbot-client",
     "build:server": "npm run build --workspace=@databricks/chatbot-server",
     "test:site-assessment": "playwright test --config playwright.site-assessment.config.ts",
+    "test:local-auth": "node --import tsx --test server/src/middleware/auth.test.ts",
     "test:map-identify": "node --import tsx --test client/src/components/map/identify.test.ts",
     "start": "npm run start --workspace=@databricks/chatbot-server",
     "lint": "biome lint --write --unsafe",

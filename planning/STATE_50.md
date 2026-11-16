@@ -1,4 +1,4 @@
-# State 50: Layered Module Refactor (`G17`)
+# State 50: Layered Module Refactor (`G31`)
 
 ## Baseline (2026-11-14)
 - `make check`: **952 passed, 3 skipped, 45 deselected** (`ruff check .` and `ruff format --check .` clean).

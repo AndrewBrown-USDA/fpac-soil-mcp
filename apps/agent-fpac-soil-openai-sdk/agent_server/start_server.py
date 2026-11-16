@@ -17,6 +17,7 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env", override=True)
 # Need to import the agent to register the functions with the server
 import agent_server.agent  # noqa: E402
 from agent_server import geo  # noqa: E402
+from agent_server.config import local_dev_enabled  # noqa: E402
 
 agent_server = AgentServer("ResponsesAgent", enable_chat_proxy=True)
 # Define the app as a module level variable to enable multiple workers
@@ -66,7 +67,8 @@ async def geo_map(request: Request) -> JSONResponse:
         return _error_response(exc)
 
 
-setup_mlflow_git_based_version_tracking()
+if not local_dev_enabled():
+    setup_mlflow_git_based_version_tracking()
 
 
 def main():

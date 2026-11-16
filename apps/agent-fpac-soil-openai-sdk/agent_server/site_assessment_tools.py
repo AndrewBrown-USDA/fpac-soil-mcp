@@ -51,10 +51,14 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
         criterion_number: int,
         answer_state: Literal["answered", "unknown", "skipped"],
         answer: str | float | None,
-        evidence: str,
-        comment: str,
-        provenance: Literal["user", "agent", "tool"],
+        evidence: str = "",
+        comment: str = "",
+        provenance: Literal["user", "agent", "tool"] = "user",
+        is_verified: bool = False,
+        source_provenance: list[str] | None = None,
+        justification: str = "",
     ) -> str:
+        """Record one choice and its evidence/provenance; points are registry-derived."""
         criterion = criteria.get(criterion_number)
         if criterion is None:
             raise ValueError("criterion_number must identify a Site Assessment criterion.")
@@ -78,12 +82,15 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
             "type": "site_assessment_answer",
             "criterion_number": criterion_number,
             "answer_state": answer_state,
-            "answer": answer,
+            "answer": selected_band["id"] if selected_band is not None else None,
             "selected_band": selected_band,
             "points": selected_band["points"] if selected_band is not None else None,
             "evidence": evidence,
             "comment": comment,
             "provenance": provenance,
+            "is_verified": is_verified,
+            "source_provenance": source_provenance or [],
+            "justification": justification,
         }
         return json.dumps(record, ensure_ascii=False)
 
@@ -98,6 +105,9 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
                 "evidence",
                 "comment",
                 "provenance",
+                "is_verified",
+                "source_provenance",
+                "justification",
             },
         ),
     ]
@@ -117,16 +127,17 @@ def _reject_unknown_parameters(tool: FunctionTool, allowed_parameters: set[str])
 
 
 def _find_band(criterion: dict[str, Any], answer: str | float) -> dict[str, Any] | None:
-    if criterion["answer_type"] == "qualitative":
-        normalized = str(answer).strip().casefold()
-        return next(
-            (
-                band
-                for band in criterion["bands"]
-                if normalized in {band["id"].casefold(), band["label"].strip().casefold()}
-            ),
-            None,
-        )
+    normalized = str(answer).strip().casefold()
+    named_band = next(
+        (
+            band
+            for band in criterion["bands"]
+            if normalized in {band["id"].casefold(), band["label"].strip().casefold()}
+        ),
+        None,
+    )
+    if named_band is not None or criterion["answer_type"] == "qualitative":
+        return named_band
 
     try:
         value = float(answer)

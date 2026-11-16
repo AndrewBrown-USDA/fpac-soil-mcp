@@ -70,8 +70,8 @@ documentation.
 | 2 | 52.2.1 Interview trigger/CDL sequence and eval cases | done | `b569a95` / `fc46ec6` / `4d30ac3`; merge `b0cb2bd` | Soil-first/site-only sequencing, combined CDL guidance, and ordered/prohibited-tool replay contracts verified. |
 | 2 | 52.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | done | `0e570ca` / `ad26df0` / `9a8276d`; merge `28dd305` | Cards and stale-AOI guard integrated; lint/build pass; Playwright execution waived by user. |
 | 2 gate | Interview flow and frontend checks | done | | Task 52.2.1 targeted tests pass; frontend Biome lint/build pass. Playwright waived by user. |
-| 3 | 52.3.1 Confirm-only matching-history gate | in_progress | | D12/D13 require farm-acre confirmation and preflight rejection of duplicate Criterion 7 representations; D14 expands scope for coupled AOI-context assertions. |
-| 3 gate | Serial integrated local acceptance | pending | | |
+| 3 | 52.3.1 Confirm-only matching-history gate | done | `18fda4b` / `696fab2` / `31604bf` / `5ddc4a3` (on `feature/sa-checklist2`; reachable from `refactor/mcp2`); planning `db27d87`, `39f4eee` | D12/D13/D14 implemented and verified in this session; worker worktree was never created on this host. |
+| 3 gate | Serial integrated local acceptance | done | `15dab08` | Root: 994 passed, 3 skipped, 43 deselected; root Ruff check/format passed. App: 254 passed; Ruff check/format clean on owned files (6 pre-existing E402/format findings in `start_server.py`, `scripts/` untouched). Frontend: Biome 10 existing warnings, no errors; build passed after `npm ci`. |
 | 4 | Conditional dev-app trial | blocked | | Requires separate user approval to push/redeploy. |
 
 ## Worker Worktrees
@@ -86,7 +86,7 @@ here.
 | 52.1.2 | `.worktrees\52.1.2` | `feature/sa-checklist2-52.1.2-worker` | 2026-11-13 17:08:16 -08:00 | complete; retain |
 | 52.2.1 | `.worktrees\52.2.1` | `feature/sa-checklist2-52.2.1-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
 | 52.2.2 | `.worktrees\52.2.2` | `feature/sa-checklist2-52.2.2-worker` | 2026-11-13 17:33:03 -08:00 | complete; retain |
-| 52.3.1 | `.worktrees\52.3.1` | `feature/sa-checklist2-52.3.1-worker` | 2026-11-13 18:56:53 -08:00 | follow-up required; retain |
+| 52.3.1 | `.worktrees\52.3.1` (not present on Linux host) | `feature/sa-checklist2-52.3.1-worker` (not present; work on `feature/sa-checklist2`) | 2026-11-13 18:56:53 -08:00 | complete; worktree missing, nothing to retain |
 
 ## Task Reports
 
@@ -133,3 +133,69 @@ here.
   included.
 - [ ] Dev-app trial and review-thread replies remain blocked until separately
   authorized.
+
+### 52.3.1 — Enforce the matching confirmed-summary gate
+- Status: complete; planning commits `db27d87`, `39f4eee`; code commits `18fda4b`, `696fab2`, `31604bf`, `5ddc4a3` on `feature/sa-checklist2` (reachable from `refactor/mcp2`).
+- Added `agent_server/site_assessment_gate.py`; gate wraps every request-scoped MCP server for invoke and stream handlers, with or without AOI. Rejects missing/mismatched confirmation and dual Criterion 7 representations before forwarding.
+- Targeted (`test_site_assessment_gate.py`, `test_agent_mcp_wiring.py`, `test_aoi_context.py`) — 125 passed. Full app suite — 254 passed.
+- No worker worktree or worker micro-TODO exists for this task on the Linux host; verified by orchestrator from committed diff.
+- No remote actions.
+
+### Integrated gate (wave 3) — 2026-11-15
+- Root eval test `test_prompt_dataset_schema_and_completeness` failed on CDL tools added to `manifest.yaml`. Fixed in `15dab08`: CDL-01/CDL-02 prompt cases added to `eval/eval_cases.v1.json`; corpus size (42) and ID set updated in `eval/common/`; tool count 12 in `eval/pi/test_agent_eval.py`.
+- Root `pytest -m "not live_network"` — 994 passed, 3 skipped, 43 deselected. Root Ruff check/format passed.
+
+## Local stand-in for the dev-app trial (2026-11-15)
+
+Plan and log: `planning/TODO_LOCAL_DEV_TRIAL.md`. No push, deploy, or remote action.
+
+**Command:** `make trial-local` (opt-in; not in `make check`). It starts its own MCP
+server on a free port, runs the scenario, and stops the server. Use
+`cd apps/agent-fpac-soil-openai-sdk && uv run python scripts/trial_local.py --mcp-url http://127.0.0.1:PORT/mcp`
+for an already running server. Result: 19 checks passed.
+
+**What it proves against the real local `/mcp` (Streamable HTTP):**
+1. Question and choices come from the criteria tool, built from the served `fppa://site-assessment-criteria` resource.
+2. Answer records keep `type`, comment, evidence, provenance, and derived points.
+3. `calculate_preliminary_lesa` is refused (no MCP call made) with no confirmation, no summary, mismatched facts, a missing answer-set member, and a Criterion 7 fact plus farm acres.
+4. A matching confirmed summary reaches LESA. Skipped, unknown, and unasked criteria are conservative maximums labelled `assumed (no evidence)`.
+5. Result is undetermined: `total_lesa_score` null, `threshold_status` `not_evaluated`, separate `conservative_total_lesa_upper_bound`, preliminary notice present.
+6. The script makes no claim about AOI geometry in traces (ADR 0016).
+
+**Defect found and fixed (production code):** the served resource carried null `min`/`max`,
+default `min_inclusive`/`max_inclusive`, and null `point_range`/`representative_*` on
+every band, so the app validator rejected it and disabled the interview. App tests passed
+only because their fixture reads the raw registry file. `fppa_resources.py` now serves each
+band with `exclude_unset=True`; `tests/test_site_assessment_resource.py` covers it. This
+likely affects the dev apps until redeployed.
+
+**Not reproducible locally:**
+- A full model-generated 12-criterion interview through Confirm → LESA has not been demonstrated in the browser. Live UI proved soil screening and one resource-backed Criterion 1 answer turn; the answer tool now canonicalizes the band ID. `make trial-local` independently proves the LESA refusal and matching-confirmation paths against a local MCP server.
+- Model-generated free-form numeric answers were not demonstrated; the real UI answer came from selecting a resource-defined band. The app answer tool also supports numeric values and has offline tests.
+- Frontend Playwright now passes 3 Site Assessment card tests; the fourth AOI-map fixture test is skipped because its expected “Attach AOI” control is absent from that isolated fixture. This is unrelated to answer/confirmation behavior.
+- App checks: `make app-check` passed (262 tests); frontend `test:local-auth` passed; frontend build passed. Biome lint produced existing warnings and no errors.
+- Opt-in `make trial-local` completed 19/19 checks, including live USDA SDA polygon screening and LESA success. Result is preliminary and undetermined when evidence is absent; the conservative upper bound is separately labelled. Do not treat this as an official determination or form.
+
+**Local-vs-dev gaps that could change results:**
+- `FPAC_LOCAL_DEV=1` is an explicit loopback-only synthetic session and local provider route. Configure `AGENT_MODEL` with the exact model ID reported by `http://127.0.0.1:8090/v1/models`, `LOCAL_LLM_BASE_URL=http://127.0.0.1:8090/v1`, and `FPAC_MCP_URL=http://127.0.0.1:<port>/mcp`; local mode fails closed rather than resolving deployed defaults.
+- Live browser answer-card submits a registry band ID and now retains evidence, comment, provenance, verification status, source provenance, justification, and registry-derived points. The corresponding tool accepts either a numeric answer or a registry band identifier and emits canonical band IDs.
+- Dev deployment code and registry may differ from this checkout until the branch is pushed; no push/deploy was performed.
+
+## Optional local MLflow traces (2026-11-15)
+
+- Local tracing remains off unless both `FPAC_LOCAL_DEV=1` and
+  `FPAC_LOCAL_MLFLOW_TRACING=1` are set. The default SQLite database is
+  `~/.local/share/fpac-soil/mlflow/mlflow.db`; `FPAC_LOCAL_MLFLOW_DIR` can
+  select another absolute directory. The override produces a local SQLite URI,
+  not an arbitrary remote tracking endpoint.
+- `make app-check` passed: 266 tests; Ruff check/format passed. Frontend local
+  auth and Site Assessment suites passed (4/4), and its production build passed.
+- Opt-in smoke test created an MLflow span, flushed asynchronous logging, and
+  found the `local-tracing-smoke` trace by searching the `fpac-soil-local`
+  experiment in the SQLite store.
+- Traces may include prompts, answers, tool arguments/results, and session IDs;
+  geometry may be recorded in agent/MCP tool traces. Do not enable tracing for
+  personal or Section 1619 producer data unless the machine/environment is
+  approved. `/api/geo/screen` and `/api/geo/map` remain untraced.
+- Local tracing does not change deployed behavior when `FPAC_LOCAL_DEV` is
+  unset. No push or deployment.

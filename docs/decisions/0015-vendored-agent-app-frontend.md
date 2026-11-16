@@ -159,9 +159,15 @@ Modified upstream files:
   no dependencies or lockfile changes (Plan 51.2.2).
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
+* `server/src/middleware/auth.ts`: provides a synthetic local-only session when
+  `FPAC_LOCAL_DEV=1` and the request socket is loopback; normal requests retain
+  the Databricks session lookup. `server/src/middleware/auth.test.ts` covers
+  disabled, non-loopback, and enabled loopback cases.
 * `packages/ai-sdk-providers/src/providers-server.ts`: request-scoped AOI
   registry; `databricksFetch` adds the AOI to the agent request as
-  `custom_inputs.active_aoi` (ADR 0016).
+  `custom_inputs.active_aoi` (ADR 0016); local mode uses loopback placeholders
+  and a dummy bearer value because the request is routed to the local agent
+  proxy, without resolving Databricks host or credentials.
 
 Added paths:
 
@@ -181,11 +187,13 @@ Added paths:
   complete server-returned class distributions, source, vintage, status,
   coverage and limitations for the AOI and both exterior zones.
 * `client/src/components/site-assessment-cards.tsx`: resource-driven question
-  choices, evidence/comment/provenance fields, explicit unknown/skipped
-  records, and a distinct assumptions/Confirm/Edit review card (Plan 51.2.2).
+  choices, evidence/comment/provenance, verification, source, and justification
+  fields, explicit unknown/skipped records, and a distinct
+  assumptions/Confirm/Edit review card (Plan 51.2.2).
 * `client/site-assessment-fixture.html` and
   `client/src/components/site-assessment-fixture.tsx`: isolated browser
-  fixture for card and AOI interaction tests (Plan 51.2.2).
+  fixture for card and AOI interaction tests (Plan 51.2.2), including the
+  answer verification and provenance fields.
 * `playwright.site-assessment.config.ts` and
   `tests/site-assessment/cards.spec.ts`: isolated Playwright configuration and
   coverage for emitted answer/confirmation records and stale CDL refusal
