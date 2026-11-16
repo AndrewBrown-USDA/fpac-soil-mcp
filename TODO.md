@@ -28,24 +28,24 @@ Fix map visibility/tooltips, improve results and legend presentation, and make c
 ### Tasks
 
 #### 1. Fix map controls
-- [ ] Make AOI outline visibility toggle both the MapLibre outline and editable AOI geometry visible/invisible.
-- [ ] Allow disabled toolbar buttons to show their tooltips on hover and keyboard focus.
-- [ ] Remove the default white popup container/halo around the map-anchored measurement tooltip while retaining accessible tooltip text.
+- [x] Make AOI outline visibility toggle both the MapLibre outline and editable AOI geometry visible/invisible.
+- [x] Allow disabled toolbar buttons to show their tooltips on hover and keyboard focus.
+- [x] Remove the default white popup container/halo around the map-anchored measurement tooltip while retaining accessible tooltip text.
 
 #### 2. Improve results and legend
-- [ ] Widen the desktop map/results pane to 50% while keeping it within the viewport; make the map-unit table horizontally scroll rather than clip long text.
-- [ ] Remove the redundant screening map legend from the Results tab; retain the results table and map-tab legend.
-- [ ] Put the server-provided farmland-class legend first in the map legend, followed by the CDL color key, then other screening layer details/disclaimers.
-- [ ] Move the CDL color key out of the Layers control and into the map legend beneath farmland classes.
+- [x] Widen the desktop map/results pane to 50% while keeping it within the viewport; make the map-unit table horizontally scroll rather than clip long text.
+- [x] Remove the redundant screening map legend from the Results tab; retain the results table and map-tab legend.
+- [x] Put the server-provided farmland-class legend first in the map legend, followed by the CDL color key, then other screening layer details/disclaimers.
+- [x] Move the CDL color key out of the Layers control and into the map legend beneath farmland classes.
 
 #### 3. Compact corridor options
-- [ ] Place corridor options as a compact second toolbar row, right-aligned below the corridor controls and measure tool.
-- [ ] Reduce excess whitespace and condense the buffer-distance caveat without removing required caveat information or corridor settings/actions.
+- [x] Place corridor options as a compact second toolbar row, right-aligned below the corridor controls and measure tool.
+- [x] Reduce excess whitespace and condense the buffer-distance caveat without removing required caveat information or corridor settings/actions.
 
 #### 4. Verify and commit
-- [ ] Add/update behavior-focused tests for AOI outline visibility, disabled-button tooltips, results/table width, map legend ordering/CDL placement, and corridor options layout.
-- [ ] Update `docs/decisions/0015-vendored-agent-app-frontend.md` for all changed frontend paths.
-- [ ] Run relevant map-toolbar, map-legend, corridor-map tests, `make app-frontend-check`, and `git diff --check`.
+- [x] Add/update behavior-focused tests for AOI outline visibility, disabled-button tooltips, results/table width, map legend ordering/CDL placement, and corridor options layout.
+- [x] Update `docs/decisions/0015-vendored-agent-app-frontend.md` for all changed frontend paths.
+- [x] Run map-toolbar (6), map-legend (4), corridor-map (3), `make app-frontend-check`, `make app-check`, and `git diff --check`.
 - [ ] Commit implementation locally; commit planning-only updates separately with a `docs(planning):` message; do not push or perform remote actions.
 
 ### Notes
