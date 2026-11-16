@@ -9,6 +9,7 @@ MCP arguments or MCP results, and nothing is cached between requests.
 
 import json
 import logging
+import math
 import os
 import secrets
 from typing import Any, Literal
@@ -373,6 +374,140 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
         },
         "chat_summary": summary,
         "chat_summary_text": render_chat_summary_text(summary),
+    }
+
+
+def parse_corridor_request(raw: bytes) -> Any:
+    """Validate a direct corridor request using the shared corridor-context contract."""
+    from agent_server.corridor_context import InvalidCorridor, parse_active_corridor
+
+    if len(raw) > MAX_BODY_BYTES:
+        raise GeoRequestError(413, f"Request body exceeds {MAX_BODY_BYTES // 1024} KB.")
+    try:
+        payload = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        raise GeoRequestError(400, "Request body must be JSON.") from None
+    allowed = {
+        "corridor_ref",
+        "centerline",
+        "buffer_distance",
+        "buffer_units",
+        "alternatives",
+        "indirect_geometry",
+    }
+    if not isinstance(payload, dict) or set(payload) - allowed:
+        raise GeoRequestError(400, "Request does not match the corridor schema.")
+    try:
+        return parse_active_corridor(payload)
+    except InvalidCorridor:
+        raise GeoRequestError(400, "Request does not match the corridor schema.") from None
+
+
+def _corridor_number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    try:
+        number = float(value)
+    except OverflowError:
+        return None
+    return round(number, 1) if math.isfinite(number) else None
+
+
+def select_display_corridor(result: dict[str, Any], corridor: Any) -> dict[str, Any]:
+    """Return bounded, allowlisted corridor facts for the browser; geometry stays in map."""
+    impact = result.get("impact_breakdown")
+    impact = impact if isinstance(impact, dict) else {}
+    segments = result.get("county_segments")
+    display_segments = []
+    if isinstance(segments, list):
+        for segment in segments[:100]:
+            if not isinstance(segment, dict):
+                continue
+            display_segments.append(
+                {
+                    "county_name": _short_text(segment.get("county_name"), 100),
+                    "state_name": _short_text(segment.get("state_name"), 80),
+                    "direct_acres": _corridor_number(segment.get("direct_acres")),
+                    "indirect_acres": _corridor_number(segment.get("indirect_acres")),
+                    "total_segment_acres": _corridor_number(
+                        segment.get("total_segment_acres")
+                    ),
+                    "coverage_status": _short_text(segment.get("coverage_status"), 40),
+                }
+            )
+    alternatives = result.get("alternatives")
+    display_alternatives = []
+    if isinstance(alternatives, list):
+        for alternative in alternatives[:10]:
+            if not isinstance(alternative, dict):
+                continue
+            display_alternatives.append(
+                {
+                    "alternative_id": _short_text(alternative.get("alternative_id"), 100),
+                    "total_project_acres": _corridor_number(
+                        alternative.get("total_project_acres")
+                    ),
+                    "direct_acres": _corridor_number(alternative.get("direct_acres")),
+                    "indirect_acres": _corridor_number(alternative.get("indirect_acres")),
+                    "total_fppa_protected_acres": _corridor_number(
+                        alternative.get("total_fppa_protected_acres")
+                    ),
+                    "total_fppa_protected_pct": _corridor_number(
+                        alternative.get("total_fppa_protected_pct")
+                    ),
+                }
+            )
+    return {
+        "corridor_ref": corridor.corridor_ref,
+        "status": "preliminary_screening",
+        "buffer_distance": _corridor_number(result.get("buffer_distance")),
+        "buffer_units": _short_text(result.get("buffer_units"), 16),
+        "impact_breakdown": {
+            "direct_acres": _corridor_number(impact.get("direct_acres")),
+            "indirect_acres": _corridor_number(impact.get("indirect_acres")),
+            "total_project_acres": _corridor_number(impact.get("total_project_acres")),
+        },
+        "composite_relative_rating": _corridor_number(
+            result.get("composite_relative_rating")
+        ),
+        "county_segments": display_segments,
+        "alternatives": display_alternatives,
+        "regulatory_notice": _result_notice(result.get("regulatory_notice")),
+    }
+
+
+async def screen_corridor(corridor: Any) -> dict[str, Any]:
+    """Screen a validated corridor with one stateless, untraced MCP call."""
+    arguments: dict[str, Any] = {
+        "centerline": corridor.centerline,
+        "buffer_distance": corridor.buffer_distance,
+        "buffer_units": corridor.buffer_units,
+        "alternatives": [
+            {"alternative_id": f"Alternative {index}", "centerline": line}
+            for index, line in enumerate(corridor.alternatives, start=1)
+        ],
+        "include_map": True,
+    }
+    if corridor.indirect_geometry is not None:
+        arguments["indirect_geometry"] = corridor.indirect_geometry
+    try:
+        async with init_fpac_mcp_server(
+            None if local_dev_enabled() else WorkspaceClient()
+        ) as server:
+            raw = await _call_tool_untraced(server, CORRIDOR_TOOL, arguments)
+    except Exception as exc:  # noqa: BLE001 - exception text may contain geometry
+        logger.warning("Corridor screening MCP call failed (%s).", type(exc).__name__)
+        raise GeoRequestError(502, "corridor_screening_unavailable") from None
+    try:
+        result = parse_tool_result(raw)
+    except ToolFailure:
+        logger.warning("Corridor screening tool reported an error.")
+        raise GeoRequestError(502, "corridor_screening_unavailable") from None
+    return {
+        "display": select_display_corridor(result, corridor),
+        "map": map_block(result),
+        "regulatory_notice": _result_notice(result.get("regulatory_notice")),
+        "status": "preliminary_screening",
     }
 
 
