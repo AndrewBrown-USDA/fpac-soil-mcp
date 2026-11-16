@@ -2,6 +2,7 @@ import { Layers } from 'lucide-react';
 import { useState } from 'react';
 import {
   CONTEXT_LABEL,
+  NAIP_AVAILABILITY,
   OVERLAYS,
   OVERLAY_ORDER_EVENT,
   OVERLAY_ORDER_STORAGE_KEY,
@@ -123,6 +124,7 @@ export function OverlayControl({
                 </span>
                 <span className="text-muted-foreground text-xs">
                   {CONTEXT_LABEL}. Source: {overlay.source} ({overlay.vintage}).
+                  {overlay.id === 'naip' && ` ${NAIP_AVAILABILITY}`}
                 </span>
               </label>
               <span className="ml-auto flex gap-1">

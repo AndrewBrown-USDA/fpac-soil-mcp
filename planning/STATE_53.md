@@ -4,7 +4,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 
 ## Baseline (before wave 1)
 
-- [x] Branch `feature/local-dev-trial`, clean at `757af9a` before planning edits.
+- [x] Branch `feature/local-dev-trial`, clean at `be24b24` before planning edits.
 - [x] `make check`: 952 passed, 3 skipped, 45 deselected.
 - [x] `make app-check`: passed, 177 tests.
 - [x] `make app-frontend-check`: lint/build passed; 10 existing lint warnings; npm audit reported 10 advisories.
@@ -25,15 +25,15 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 53.1.1 Chat export serialization and privacy boundary | done | `66b8026`, `6545876` | ADR 0015 ledger scope amendment recorded; targeted tests pass |
-| 2 | 53.1.2 Explicit chat export actions and warning | done | `0818dc8`, `450f9e5` | Frontend wave gate passed after focused lint correction |
-| 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | done | `51369e1` | Focused AOI export and map identify tests pass |
-| 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | done | `f79ebc7` | No MapPanel fixture; testable seams cover controls |
-| 4 | 53.3.1 Fixed NAIP imagery overlay | done | `d4a8c8a` | Fixed ImageServer request shape; live export probe timed out |
-| 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `2f0963c` | Focused ordering tests and build pass |
-| 4 | 53.3.3 Improved map legends and layer semantics | done | `fe28270` | Existing identify seam used; no dedicated legend fixture |
-| 5 | 53.4.1 Map/Results tabs and post-screening switch | done | `6690470`, `9643b4b` | Isolated fixture; lint correction committed |
-| 5 | 53.4.2 Identify wording and accessibility polish | done | `7e30d4b` | Phrase absent; screening notice assertion retained |
+| 1 | 53.1.1 Chat export serialization and privacy boundary | done | `54d4c12`, `7432c53` | ADR 0015 ledger scope amendment recorded; targeted tests pass |
+| 2 | 53.1.2 Explicit chat export actions and warning | done | `8594bf0`, `31440f9` | Frontend wave gate passed after focused lint correction |
+| 3 | 53.2.1 Browser-only AOI label and GeoJSON exchange | done | `1e70917` | Focused AOI export and map identify tests pass |
+| 3 | 53.2.2 Map navigation, boundary visibility, and line measurement | done | `096e8fa` | No MapPanel fixture; testable seams cover controls |
+| 4 | 53.3.1 Fixed NAIP imagery overlay | done | `64bea1f` | Fixed ImageServer request shape; live export probe timed out |
+| 4 | 53.3.2 Persist raster order; vector-on-top invariant | done | `0d02ace` | Focused ordering tests and build pass |
+| 4 | 53.3.3 Improved map legends and layer semantics | done | `10b8c10` | Existing identify seam used; no dedicated legend fixture |
+| 5 | 53.4.1 Map/Results tabs and post-screening switch | done | `545415b`, `a803bfc` | Isolated fixture; lint correction committed |
+| 5 | 53.4.2 Identify wording and accessibility polish | done | `db00575` | Phrase absent; screening notice assertion retained |
 | 6 | Integrated serial validation and handoff | done | | All planned local gates pass; caveats recorded below |
 
 ## Worker Worktrees
@@ -46,14 +46,14 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 <!-- Append concise reports (15 lines max per task). -->
 
 ### 53.1.1 — Define chat export serialization and privacy boundary
-- Status: done; implementation `66b8026`, ADR ledger correction `6545876`.
+- Status: done; implementation `54d4c12`, ADR ledger correction `7432c53`.
 - Added deterministic JSON/Markdown serialization and tests in `client/src/lib/chatExport.ts` and `client/src/lib/chatExport.test.ts`.
 - ADR 0015 now lists both added paths; plan scope was amended after app guidance revealed its required local-change ledger.
 - `node --import tsx --test client/src/lib/chatExport.test.ts` — 4 passed, 0 failed (worker and orchestrator reruns).
 - No dependencies or manifests changed; no remote actions.
 
 ### 53.1.2 — Add explicit chat export actions and warning
-- Status: done; implementation `0818dc8`, lint correction `450f9e5`.
+- Status: done; implementation `8594bf0`, lint correction `31440f9`.
 - Added explicit Markdown/JSON export menu, sensitivity confirmation, download behavior, isolated Playwright fixture/spec, and ADR 0015 ledger entries; no dependencies added.
 - `npm run test:chat-export` — 3 passed, 0 failed; `git diff --check` passed.
 - Initial `make app-frontend-check` flagged new button-type/non-null-assertion errors; one focused retry fixed them. Rerun passed lint/build with 10 existing warnings and 10 npm advisories.
@@ -61,13 +61,13 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - Existing upstream warnings/deprecations and no-database migration skip remain; no remote actions.
 
 ### 53.2.1 — Add browser-only AOI label and GeoJSON exchange
-- Status: done; implementation `51369e1`.
+- Status: done; implementation `1e70917`.
 - Added local-only AOI label UI, GeoJSON copy/download, clipboard feedback, sanitized filenames, serializer tests, and ADR 0015 entries.
 - `node --import tsx --test client/src/components/map/aoiExport.test.ts` — 3 passed; `npm run test:map-identify` — 1 passed; diff check passed.
 - Label is component-local and excluded from `ActiveAoi` context and server/chat payloads; no dependencies or remote actions.
 
 ### 53.2.2 — Add map navigation, boundary visibility, and line measurement
-- Status: done; implementation `f79ebc7`.
+- Status: done; implementation `096e8fa`.
 - Added AOI zoom/reset, independent AOI/result visibility controls, geodesic line distance with units, and cancel/clear interaction; ADR 0015 ledger updated.
 - `distance.test.ts` + `mapControls.test.ts` — 5 passed; `npm run test:map-identify` — 1 passed; `git diff --check` passed.
 - No isolated MapPanel Playwright fixture was available; bounds/reset, visibility/data separation, and measurement cancellation are covered by pure seams.
@@ -75,7 +75,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - No dependencies or remote actions.
 
 ### 53.3.3 — Improve map legend information and layer semantics
-- Status: done; implementation `fe28270`.
+- Status: done; implementation `10b8c10`.
 - Clarified context imagery versus screening evidence, added accessible text alternatives for legend symbols, compact scrolling, and ADR 0015 entries; server legend values and notices remain unchanged.
 - `identify.test.ts` — 1 passed; `npm run build` — passed (DB migration skipped without config; existing deprecation/chunk warnings); `git diff --check` passed.
 - No focused legend fixture exists; rendering assertions were unavailable. No dependencies or remote actions.
@@ -87,7 +87,7 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - NAIP export endpoint remained unreachable from this environment (HTTP 000 timeout); actual browser imagery rendering remains unverified.
 
 ### 53.4.1 — Keep screening results visible in Map/Results tabs
-- Status: done; implementation `6690470`, fixture lint correction `9643b4b`.
+- Status: done; implementation `545415b`, fixture lint correction `a803bfc`.
 - Added Map/Results ARIA tabs, empty state, automatic Results selection after screening, return-to-Map, and preserved screening result navigation; ADR 0015 updated.
 - `npm run test:map-tabs` — 2 passed after implementation and after lint correction; `git diff --check` passed.
 - The isolated Playwright fixture mirrors the tab flow but does not mount production `MapPanel` or its map/screening providers; production integration remains unverified in browser.
@@ -95,20 +95,20 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - No dependencies or remote actions.
 
 ### 53.4.2 — Tighten identify wording and UI accessibility
-- Status: done; implementation `7e30d4b`.
+- Status: done; implementation `db00575`.
 - Removed the estimate phrase from the map-unit identify popup only; test asserts the screening regulatory notice remains; ADR 0015 updated.
 - `npm run test:map-identify` — 2 passed; `git diff --check` passed.
 - No unrelated copy or regulatory language changed; no remote actions.
 
 ### 53.3.1 — Add the fixed NAIP imagery context layer
-- Status: done; implementation `d4a8c8a`.
+- Status: done; implementation `64bea1f`.
 - Added fixed NAIP ImageServer `exportImage` overlay, default-off control, source/vintage/attribution metadata, tests, and ADR 0015 entries.
 - `overlays.test.ts` — 1 passed; `npm run test:map-identify` — 1 passed; `git diff --check` passed.
 - Service metadata advertises dynamic ImageServer and wildcard CORS, with no cached `tileInfo`; the fixed export probe timed out (HTTP 000), so actual imagery rendering remains unverified.
 - No user-provided URLs, dependency changes, or remote Git actions.
 
 ### 53.3.2 — Persist raster order while pinning vectors above rasters
-- Status: done; implementation `2f0963c`.
+- Status: done; implementation `0d02ace`.
 - Added catalog-normalized browser-local raster ordering, accessible up/down controls, MapLibre stack updates, vector/AOI boundary protection, tests, and ADR 0015 ledger.
 - `overlays.test.ts` — 3 passed; `npm run build` — passed (database migration skipped without DB configuration; existing deprecation/chunk warnings); `git diff --check` passed.
 - Raster order remains limited to context layers; result vectors and AOI remain above every raster.
@@ -130,4 +130,4 @@ Resume point for orchestration 53. Plan: `planning/EXECUTION_PLAN_53.md`. Worker
 - Focused Playwright: `test:site-assessment` 4 passed, `test:chat-export` 3 passed, `test:map-tabs` 2 passed. `test:map-identify` 2 passed.
 - Combined focused Node tests for chat export, AOI export, distance, map controls, overlays, and identify — 17 passed.
 - Existing Vite/React deprecation and chunk-size warnings, 10 npm audit advisories, and one new exhaustive-dependency warning in `MapPanel.tsx` remain documented. No remote operations.
-- The first integrated frontend lint run found two fixture errors in `map-tabs-fixture.tsx`; commit `9643b4b` fixed both, and the final `make app-frontend-check` rerun passed.
+- The first integrated frontend lint run found two fixture errors in `map-tabs-fixture.tsx`; commit `a803bfc` fixed both, and the final `make app-frontend-check` rerun passed.

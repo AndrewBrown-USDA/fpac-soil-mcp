@@ -28,7 +28,7 @@
 ### `50.6.1` — report
 - **Status**: done (re-scoped per EXECUTION_PLAN_50 D4).
 - **Changes**: removed 4 `try/except ImportError` fallbacks to flat modules in `clients/sda/client.py`, `clients/sda/sdv_registry.py`, `clients/tigerweb.py`, `domain/lesa.py`; deleted 25 flat modules plus `tools/`, `resources/`, `prompts/` under `src/fpac_soil_mcp/`.
-- **Code commits**: `736731f` refactor(clients): import layered modules directly without flat fallbacks; `60a449b` refactor: remove superseded flat modules.
+- **Code commits**: `07e3753` refactor(clients): import layered modules directly without flat fallbacks; `1771361` refactor: remove superseded flat modules.
 - **Verification**:
   - `uv run python -c "from fpac_soil_mcp.mcp.app import create_mcp_server; create_mcp_server()"` → ok.
   - Stale-path grep over `src tests eval main.py pyproject.toml` → 0 hits.

@@ -56,7 +56,7 @@ The user additionally specified that chat export includes raw tool data and geom
 
 | ID | Decision | Rationale / source |
 |---|---|---|
-| D1 | Continue on `feature/local-dev-trial`, clean at `757af9a`; plan number is 53 because 52 exists on this branch. | User selected this branch after correcting the apparent plan number. |
+| D1 | Continue on `feature/local-dev-trial`, clean at `be24b24`; plan number is 53 because 52 exists on this branch. | User selected this branch after correcting the apparent plan number. |
 | D2 | Prioritize chat export early, then AOI/map interactions, layer stack, and results layout/copy polish. | User chose chat export ahead of map refinements; dependency order below keeps tightly coupled map controls together. |
 | D3 | Export visible conversation messages plus available raw tool names/arguments/results, including geometry; do not include hidden reasoning or server traces. Show sensitivity warning and require explicit user action. | User selected raw tool data including geometry and warning. |
 | D4 | Use fixed NAIP ImageServer URL `https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer`. | User supplied the exact endpoint. |
@@ -70,7 +70,7 @@ The user additionally specified that chat export includes raw tool data and geom
 
 ## Reconnaissance and Hazards
 
-- Repository is `/home/andrew/work/fpac-soil-mcp`; branch `feature/local-dev-trial`, clean at `757af9a` before plan drafting. Plans 50, 51, and 52 exist; 53 is next.
+- Repository is `/home/andrew/work/fpac-soil-mcp`; branch `feature/local-dev-trial`, clean at `be24b24` before plan drafting. Plans 50, 51, and 52 exist; 53 is next.
 - Planning paths are tracked; `planning/tasks/` contains prior task TODOs. Plan/prompt/state files must be committed separately from implementation.
 - Frontend is the vendored app under `apps/agent-fpac-soil-openai-sdk/frontend`; read root and app `AGENTS.md`, plus ADRs 0015–0017 before work.
 - Central UI files: `MapPanel.tsx` (746 lines), `message.tsx` (564), `mapLayers.ts` (376), `overlays.ts` (131), `Legend.tsx` (138), `IdentifyPopup.tsx` (153), `ActiveAoiContext.tsx` (129), `OverlayControl.tsx` (95), `ScreeningResults.tsx` (88), and `ChatLayout.tsx` (94). Large files require grep-anchor navigation.

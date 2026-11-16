@@ -37,6 +37,10 @@ source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_42"
 > analyze tools and `get_soil_polygons_by_geometry`). See
 > [ADR 0017](0017-server-map-result-contract.md).
 
+> **Amended 2026-11-15 (Plan 54).** Corridor inputs are a separate conversation
+> context from polygon `active_aoi`. A corridor may be screened directly from
+> the map or attached to chat; it never replaces or widens the AOI contract.
+
 ## Context and Problem Statement
 
 The agent app needs a map panel where a user draws or pastes an area of
@@ -71,6 +75,8 @@ different soil query) need the tools to run on that AOI from the chat.
   (ADR 0003).
 * Local changes to the vendored frontend are allowed and listed (ADR 0015).
 * The backend may run several worker processes, so it keeps no AOI state.
+* Corridor workflows need linear centerlines, alternatives, staging geometry,
+  and a buffer without changing polygon AOI behavior.
 
 ## Considered Options
 
@@ -121,6 +127,33 @@ the server stays stateless.
   personal data or producer-supplied data covered by Section 1619 outside such
   environments. Repository files (tests, planning, evidence) keep synthetic
   coordinates only.
+
+### Corridor context
+
+`active_corridor` is a separate optional object in the chat request's
+`custom_inputs`. The browser scopes it to the current conversation, attaches it
+automatically when the corridor is complete, and can detach it independently of
+`active_aoi`. The agent server validates it on each request and retains no
+session state. Direct map screening is a separate stateless, untraced route; it
+uses only `analyze_corridor_fppa`, requests the server map block, and submits no
+Site Assessment inputs. Both pathways remain preliminary screening.
+
+The bounded object contains a `corridor_ref` (`corridor-` plus 8 lowercase hex
+characters), one primary `LineString`, up to 10 alternative `LineString`
+geometries, optional indirect `Polygon`/`MultiPolygon` geometry, a finite
+positive `buffer_distance`, and `buffer_units` of `feet`, `meters`, or `miles`.
+The buffer distance is measured on each side of the line. Lines require at least
+two finite numeric positions; polygon staging geometry uses the screening route's
+body-size and vertex limits. The browser leaves distance blank until supplied.
+
+The model receives the opaque reference and buffer description, never
+coordinates. Only an `analyze_corridor_fppa` call whose `centerline` argument
+exactly matches that reference receives the validated centerline, alternatives,
+staging geometry, and buffer settings. Other tools and arguments are unchanged.
+Corridor context can coexist with polygon AOI context; AOI substitution remains
+limited to its existing `geojson`/`geometry` arguments. Corridor geometry may
+appear in chat traces and logs under the same operational-data caveat above;
+repository examples use synthetic coordinates only.
 
 ### Map screening route
 
@@ -175,7 +208,7 @@ carried in `active_aoi`.
 
 ### Scope boundary
 
-Lines and corridors, points, other input formats, multiple or labelled AOIs
+Points, other input formats, multiple or labelled AOIs
 (needs a multi-shape drawing and labelling interface), AOI persistence beyond
 the browser tab session, overlays, the M3 `map` envelope and `custom_outputs`
 are out of scope. Opt-in chat history and stored sessions (the template's chat

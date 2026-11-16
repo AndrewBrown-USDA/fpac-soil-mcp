@@ -71,7 +71,7 @@ documentation.
 | 2 | 52.2.2 Question/summary cards, Playwright fixture, stale-CDL guard | done | `0e570ca` / `ad26df0` / `9a8276d`; merge `28dd305` | Cards and stale-AOI guard integrated; lint/build pass; Playwright execution waived by user. |
 | 2 gate | Interview flow and frontend checks | done | | Task 52.2.1 targeted tests pass; frontend Biome lint/build pass. Playwright waived by user. |
 | 3 | 52.3.1 Confirm-only matching-history gate | done | `18fda4b` / `696fab2` / `31604bf` / `5ddc4a3` (on `feature/sa-checklist2`; reachable from `refactor/mcp2`); planning `db27d87`, `39f4eee` | D12/D13/D14 implemented and verified in this session; worker worktree was never created on this host. |
-| 3 gate | Serial integrated local acceptance | done | `15dab08` | Root: 994 passed, 3 skipped, 43 deselected; root Ruff check/format passed. App: 254 passed; Ruff check/format clean on owned files (6 pre-existing E402/format findings in `start_server.py`, `scripts/` untouched). Frontend: Biome 10 existing warnings, no errors; build passed after `npm ci`. |
+| 3 gate | Serial integrated local acceptance | done | `4fcbd18` | Root: 994 passed, 3 skipped, 43 deselected; root Ruff check/format passed. App: 254 passed; Ruff check/format clean on owned files (6 pre-existing E402/format findings in `start_server.py`, `scripts/` untouched). Frontend: Biome 10 existing warnings, no errors; build passed after `npm ci`. |
 | 4 | Conditional dev-app trial | blocked | | Requires separate user approval to push/redeploy. |
 
 ## Worker Worktrees
@@ -142,7 +142,7 @@ here.
 - No remote actions.
 
 ### Integrated gate (wave 3) — 2026-11-15
-- Root eval test `test_prompt_dataset_schema_and_completeness` failed on CDL tools added to `manifest.yaml`. Fixed in `15dab08`: CDL-01/CDL-02 prompt cases added to `eval/eval_cases.v1.json`; corpus size (42) and ID set updated in `eval/common/`; tool count 12 in `eval/pi/test_agent_eval.py`.
+- Root eval test `test_prompt_dataset_schema_and_completeness` failed on CDL tools added to `manifest.yaml`. Fixed in `4fcbd18`: CDL-01/CDL-02 prompt cases added to `eval/eval_cases.v1.json`; corpus size (42) and ID set updated in `eval/common/`; tool count 12 in `eval/pi/test_agent_eval.py`.
 - Root `pytest -m "not live_network"` — 994 passed, 3 skipped, 43 deselected. Root Ruff check/format passed.
 
 ## Local stand-in for the dev-app trial (2026-11-15)

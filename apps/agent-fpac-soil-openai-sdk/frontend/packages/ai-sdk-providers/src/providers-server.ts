@@ -19,7 +19,9 @@ export const CONTEXT_HEADER_USER_ID = 'x-databricks-user-id';
 // Map AOI (ADR 0016): up to 256 KB, too large for a header, so the chat route
 // registers it for the life of one request and passes only this random key.
 export const CONTEXT_HEADER_ACTIVE_AOI_KEY = 'x-databricks-active-aoi-key';
+export const CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY = 'x-databricks-active-corridor-key';
 const activeAoiByKey = new Map<string, unknown>();
+const activeCorridorByKey = new Map<string, unknown>();
 
 export function registerActiveAoi(activeAoi: unknown): string {
   const key = crypto.randomUUID();
@@ -29,6 +31,16 @@ export function registerActiveAoi(activeAoi: unknown): string {
 
 export function releaseActiveAoi(key: string): void {
   activeAoiByKey.delete(key);
+}
+
+export function registerActiveCorridor(corridor: unknown): string {
+  const key = crypto.randomUUID();
+  activeCorridorByKey.set(key, corridor);
+  return key;
+}
+
+export function releaseActiveCorridor(key: string): void {
+  activeCorridorByKey.delete(key);
 }
 
 // Use centralized authentication - only on server side
@@ -128,10 +140,13 @@ export const databricksFetch: typeof fetch = async (input, init) => {
   const userId = headers.get(CONTEXT_HEADER_USER_ID);
   const activeAoiKey = headers.get(CONTEXT_HEADER_ACTIVE_AOI_KEY);
   const activeAoi = activeAoiKey ? activeAoiByKey.get(activeAoiKey) : undefined;
+  const activeCorridorKey = headers.get(CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY);
+  const activeCorridor = activeCorridorKey ? activeCorridorByKey.get(activeCorridorKey) : undefined;
   // Remove context headers so they don't get sent to the API
   headers.delete(CONTEXT_HEADER_CONVERSATION_ID);
   headers.delete(CONTEXT_HEADER_USER_ID);
   headers.delete(CONTEXT_HEADER_ACTIVE_AOI_KEY);
+  headers.delete(CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY);
   requestInit = { ...requestInit, headers };
 
   // Inject context into request body if appropriate
@@ -151,9 +166,13 @@ export const databricksFetch: typeof fetch = async (input, init) => {
             conversation_id: conversationId,
             user_id: userId,
           },
-          ...(activeAoi
-            ? { custom_inputs: { ...body.custom_inputs, active_aoi: activeAoi } }
-            : {}),
+          ...((activeAoi || activeCorridor) ? {
+            custom_inputs: {
+              ...body.custom_inputs,
+              ...(activeAoi ? { active_aoi: activeAoi } : {}),
+              ...(activeCorridor ? { active_corridor: activeCorridor } : {}),
+            },
+          } : {}),
         };
         requestInit = { ...requestInit, body: JSON.stringify(enhancedBody) };
       } catch {
