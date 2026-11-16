@@ -151,6 +151,7 @@ export function ShowOnMapButton({
         variant="default"
         onClick={run}
         disabled={status === 'loading'}
+        aria-label={`${tool}: ${refs.join(', ') || 'active AOI'}`}
         className="gap-1.5 px-2"
       >
         <MapPin aria-hidden="true" className="text-primary" />

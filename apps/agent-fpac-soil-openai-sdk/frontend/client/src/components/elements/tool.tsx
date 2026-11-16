@@ -166,32 +166,36 @@ type ToolHeaderProps = {
   type: ToolUIPart['type'] | string;
   state: ToolState;
   className?: string;
+  children?: ReactNode;
 };
 
 export const ToolHeader = ({
   className,
   type,
   state,
+  children,
   ...props
 }: ToolHeaderProps) => {
   const { open } = useContext(ToolContext);
   return (
-    <CollapsibleTrigger
-      className={cn(
-        'flex w-full min-w-0 items-center justify-between gap-2 p-3 cursor-pointer',
-        className,
-      )}
-      {...props}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="truncate font-medium text-sm">{type}</span>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <ToolStatusBadge state={state} />
-        {open ? <ChevronUpIcon /> : <ChevronDownIcon />}
-        {/* <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" /> */}
-      </div>
-    </CollapsibleTrigger>
+    <div className="flex min-w-0 items-center gap-2 p-3">
+      <CollapsibleTrigger
+        className={cn(
+          'flex min-w-0 flex-1 items-center justify-between gap-2 cursor-pointer',
+          className,
+        )}
+        {...props}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium text-sm">{type}</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <ToolStatusBadge state={state} />
+          {open ? <ChevronUpIcon /> : <ChevronDownIcon />}
+        </div>
+      </CollapsibleTrigger>
+      {children}
+    </div>
   );
 }
