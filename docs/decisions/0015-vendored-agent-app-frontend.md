@@ -232,6 +232,13 @@ Modified upstream files:
 * `tests/map-legend/legend.spec.ts` and `tests/map-toolbar/toolbar.spec.ts`:
   cover the no-result and AOI-cleared core legend, farmland hatch direction,
   AOI boundary visibility, and inline/mode-dependent corridor actions.
+* `client/src/components/map/IdentifyPopup.tsx`, `MapPanel.tsx`,
+  `OverlayControl.tsx`, `overlays.ts`, `geojson.ts`, and `identify.test.ts`,
+  plus `tests/map-toolbar/toolbar.spec.ts`: validate returned county geometry
+  before popup area calculations; Exact/BBOX actions retry outline retrieval on
+  selection, sit beside name/GEOID, remove context disclaimers, report
+  exact-outline size limits after selection, and cover Hamilton County identify
+  with synthetic TIGERweb Polygon and AOI replacement.
 * `client/src/components/map/MapPanel.tsx`,
   `client/src/components/map/map-toolbar-fixture.tsx`, and
   `tests/map-toolbar/toolbar.spec.ts`: decouple result-layer visibility from
