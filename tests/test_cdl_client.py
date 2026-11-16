@@ -1,8 +1,15 @@
+from datetime import UTC, datetime
+
 import httpx
 import pytest
 
-from fpac_soil_mcp.cdl_client import CDLClient, parse_histogram_payload
-from fpac_soil_mcp.cdl_models import CDLAnalysisStatus
+from fpac_soil_mcp.cdl_client import (
+    CDLClient,
+    CDLVintageAmbiguous,
+    CDLVintageUnavailable,
+    parse_histogram_payload,
+)
+from fpac_soil_mcp.cdl_models import CDLAnalysisStatus, CDLServiceMetadata
 
 
 def test_cdl_client_discovers_and_caches_service_metadata():
@@ -116,6 +123,59 @@ def test_cdl_client_resolves_vintage_to_locked_catalog_raster():
         "lockRasterIds": [42],
     }
     assert requests[1].url.params["where"] == "Year = 2025"
+
+
+def test_cdl_client_resolves_uniquely_latest_catalog_vintage(monkeypatch):
+    client = CDLClient(base_url="https://example.test/ImageServer")
+    metadata = CDLServiceMetadata(
+        endpoint="https://example.test/ImageServer",
+        time_field="Year",
+        object_id_field="OBJECTID",
+        retrieved_at_utc=datetime.now(UTC),
+        response_hash="a" * 64,
+    )
+    captured = {}
+
+    def get_catalog(**kwargs):
+        captured.update(kwargs)
+        return {
+            "features": [
+                {"attributes": {"Year": 2025, "OBJECTID": 42}},
+                {"attributes": {"Year": 2024, "OBJECTID": 41}},
+            ]
+        }
+
+    monkeypatch.setattr(client, "get_catalog", get_catalog)
+
+    assert client.resolve_latest_product_vintage(metadata=metadata) == "2025"
+    assert captured == {"order_by": "Year DESC", "result_record_count": 2}
+
+
+def test_cdl_client_rejects_missing_or_ambiguous_latest_vintage(monkeypatch):
+    client = CDLClient(base_url="https://example.test/ImageServer")
+    metadata = CDLServiceMetadata(
+        endpoint="https://example.test/ImageServer",
+        time_field="Year",
+        object_id_field="OBJECTID",
+        retrieved_at_utc=datetime.now(UTC),
+        response_hash="a" * 64,
+    )
+    monkeypatch.setattr(client, "get_catalog", lambda **_: {"features": []})
+    with pytest.raises(CDLVintageUnavailable):
+        client.resolve_latest_product_vintage(metadata=metadata)
+
+    monkeypatch.setattr(
+        client,
+        "get_catalog",
+        lambda **_: {
+            "features": [
+                {"attributes": {"Year": 2025, "OBJECTID": 42}},
+                {"attributes": {"Year": 2025, "OBJECTID": 43}},
+            ]
+        },
+    )
+    with pytest.raises(CDLVintageAmbiguous):
+        client.resolve_latest_product_vintage(metadata=metadata)
 
 
 @pytest.mark.parametrize(

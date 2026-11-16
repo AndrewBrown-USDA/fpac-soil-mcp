@@ -26,6 +26,10 @@
       "description": "Compute preliminary USDA NASS Cropland Data Layer categorical histogram evidence for a Polygon or MultiPolygon AOI. Results describe recent mapped land cover only and do not establish active farming or constitute an official FPPA or LESA determination."
     },
     {
+      "name": "analyze_cdl_context",
+      "description": "Compute full USDA NASS Cropland Data Layer class distributions for a validated Polygon or MultiPolygon AOI, its one-mile exterior ring, and its 30 m exterior band. Each zone reports raw class codes/names, counts/shares, vintage, coverage, status, and provenance. Results are preliminary land-cover context only; they do not assign agricultural classes, farmland status, or Criterion 2 perimeter percentages."
+    },
+    {
       "name": "get_soil_polygons_by_geometry",
       "description": "Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as a GeoJSON FeatureCollection for a Polygon or MultiPolygon AOI, with support for server-side clipping and geodesic acreage."
     },

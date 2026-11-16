@@ -27,13 +27,19 @@ import {
 } from './geojson';
 import { IdentifyPopup, resultInfo } from './IdentifyPopup';
 import type { IdentifySection, ResultInfo, UseAsAoiResult } from './IdentifyPopup';
-import { fetchOutline, identifyArea, identifySoil } from './identify';
+import {
+  fetchOutline,
+  identifyOverlaysAtPoint,
+  isAreaOverlayId,
+  isIdentifiableOverlayId,
+} from './identify';
 import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
 import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
+import { CDLContextSummary } from './CDLContextSummary';
 import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
 import type { OverlayFlags } from './OverlayControl';
 import { OVERLAYS, addOverlay, overlayIdForSource, removeOverlay } from './overlays';
@@ -306,6 +312,13 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       clearMapBlock(map);
       return;
     }
+    clearMapBlock(map);
+    if (shown.cdlSummary) {
+      const bounds = aoiRef.current ? geometryBounds(aoiRef.current) : null;
+      if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+      return;
+    }
+    if (!shown.block) return;
     // Server layers draw below the panel's own AOI outline (`aoi-line`).
     renderMapBlock(map, shown.block, 'aoi-line');
     // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
@@ -343,14 +356,15 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const onClick = (event: MapMouseEvent) => {
       if (mode !== 'static') return;
       const on = OVERLAYS.filter((overlay) => overlayOn[overlay.id]);
-      const active = on.filter((overlay) => map.getZoom() >= overlay.minzoom);
+      const identifiable = on.filter((overlay) => isIdentifiableOverlayId(overlay.id));
+      const active = identifiable.filter((overlay) => map.getZoom() >= overlay.minzoom);
       const hit = map.getLayer(IDENTIFY_HIT_LAYER)
         ? map.queryRenderedFeatures(event.point, { layers: [IDENTIFY_HIT_LAYER] })[0]
         : undefined;
       const result = resultInfo(hit?.properties);
       if (active.length === 0 && !result) {
         setIdentifyHint(
-          on.length === 0
+          identifiable.length === 0
             ? 'Turn on a context layer to identify what is here.'
             : 'Zoom in to identify the layers that are on.',
         );
@@ -387,17 +401,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       setResultHit(result);
       setSections(active.map((overlay) => ({ overlay, state: 'loading' as const })));
       const { lng, lat } = event.lngLat;
-      for (const overlay of active) {
-        const query =
-          overlay.id === 'ssurgo'
-            ? identifySoil(lng, lat, controller.signal).then((soil) => ({ soil }))
-            : identifyArea(overlay.id, lng, lat, controller.signal).then((area) => ({ area }));
+      for (const { overlayId, query } of identifyOverlaysAtPoint(
+        active.map((overlay) => overlay.id),
+        lng,
+        lat,
+        controller.signal,
+      )) {
         query
           .then((found) => {
             if (controller.signal.aborted) return;
             setSections((prev) =>
               prev.map((s) =>
-                s.overlay.id === overlay.id ? { overlay, state: 'done' as const, ...found } : s,
+                s.overlay.id === overlayId
+                  ? { overlay: s.overlay, state: 'done' as const, ...found }
+                  : s,
               ),
             );
           })
@@ -405,7 +422,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             if (controller.signal.aborted) return;
             setSections((prev) =>
               prev.map((s) =>
-                s.overlay.id === overlay.id ? { overlay, state: 'error' as const } : s,
+                s.overlay.id === overlayId ? { ...s, state: 'error' as const } : s,
               ),
             );
           });
@@ -455,6 +472,9 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const applyAreaAsAoi = async (section: IdentifySection, area: AreaInfo): Promise<UseAsAoiResult> => {
     const overlayId = section.overlay.id;
     if (overlayId === 'ssurgo') return { ok: false, message: 'Soil map units cannot be an AOI.' };
+    if (!isAreaOverlayId(overlayId)) {
+      return { ok: false, message: 'This context layer cannot be used as an AOI.' };
+    }
     const controller = new AbortController();
     let geometry: PolygonGeometry | null = null;
     try {
@@ -683,14 +703,18 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className={originBadge}>Tool result</span>
-            <h3 className="font-medium text-sm">Map of {shown.tool} result</h3>
+            <h3 className="font-medium text-sm">
+              {shown.cdlSummary ? 'CDL context summary' : `Map of ${shown.tool} result`}
+            </h3>
             {screeningMap && (
               <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
                 Back to screening
               </Button>
             )}
           </div>
-          {shown.regulatory_notice ? (
+          {shown.cdlSummary ? (
+            <CDLContextSummary result={shown.cdlSummary} />
+          ) : shown.regulatory_notice ? (
             <div className={NOTICE_CARD}>
               <h3 className="font-semibold text-sm">Regulatory notice</h3>
               <p className="mt-1 whitespace-pre-line">{shown.regulatory_notice}</p>
@@ -700,9 +724,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               Regulatory notice missing - treat this result as invalid.
             </p>
           )}
-          <div className={RESULT_CARD}>
-            <MapLegend block={shown.block} />
-          </div>
+          {shown.block && (
+            <div className={RESULT_CARD}>
+              <MapLegend block={shown.block} />
+            </div>
+          )}
         </div>
       ) : (
         screening.status === 'done' &&

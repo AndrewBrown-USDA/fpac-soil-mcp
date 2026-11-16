@@ -6,6 +6,7 @@ driven with asyncio.run (the app has no pytest-asyncio).
 """
 
 import asyncio
+import json
 import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -13,13 +14,16 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from agent_server import agent as agent_module
 from agent_server import config as config_module
+from agents.exceptions import UserError
+from mcp.shared.exceptions import McpError
+from mcp.types import ErrorData
 from mlflow.types.responses import ResponsesAgentRequest
 
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
 
 
-def _request() -> ResponsesAgentRequest:
-    return ResponsesAgentRequest(input=[{"role": "user", "content": "hi"}])
+def _request(content: str = "hi") -> ResponsesAgentRequest:
+    return ResponsesAgentRequest(input=[{"role": "user", "content": content}])
 
 
 async def _empty_events():
@@ -35,9 +39,11 @@ def _clear_env(monkeypatch):
 
 
 @pytest.fixture
-def patched(monkeypatch):
+def patched(monkeypatch, valid_site_assessment_criteria_resource):
     """Patch everything the handlers call; returns the mocks."""
     server = MagicMock(name="server")
+    server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
+    server.call_tool = AsyncMock(return_value=SimpleNamespace(isError=False))
     mocks = SimpleNamespace(
         server=server,
         workspace_client=MagicMock(name="WorkspaceClient"),
@@ -58,13 +64,13 @@ def patched(monkeypatch):
     return mocks
 
 
-def _run_invoke():
-    return asyncio.run(agent_module.invoke_handler(_request()))
+def _run_invoke(request=None):
+    return asyncio.run(agent_module.invoke_handler(request or _request()))
 
 
-def _run_stream():
+def _run_stream(request=None):
     async def collect():
-        return [event async for event in agent_module.stream_handler(_request())]
+        return [event async for event in agent_module.stream_handler(request or _request())]
 
     return asyncio.run(collect())
 
@@ -137,8 +143,13 @@ def test_handler_healthy_path(patched, caplog, run_handler):
     servers_arg = patched.connect.await_args.args[1]
     assert servers_arg == [patched.server]
     patched.create_agent.assert_called_once_with(
-        mcp_servers=[patched.server], tools_unavailable=False
+        mcp_servers=[patched.server],
+        tools_unavailable=False,
+        site_assessment_context=agent_module._site_assessment_criteria_context(
+            patched.server.read_resource.return_value
+        ),
     )
+    patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
     assert not [r for r in caplog.records if r.name == agent_module.__name__]
 
 
@@ -167,3 +178,329 @@ def test_stream_runs_agent_from_mcp(patched):
 
 def test_template_server_removed():
     assert not hasattr(agent_module, "init_mcp_server")
+
+
+def test_invalid_site_assessment_resource_disables_interview_context(patched):
+    patched.server.read_resource.return_value = SimpleNamespace(
+        contents=[SimpleNamespace(text='{"schema_version":"1.0","criteria":[]}')]
+    )
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+    assert (
+        patched.create_agent.call_args.kwargs["site_assessment_context"]
+        == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+
+
+def _confirmed_site_summary(
+    resource,
+    state="answered",
+    band_id="range_20_90_1",
+    criterion_number=1,
+    confirmed=True,
+):
+    criteria = json.loads(resource.contents[0].text)
+    criterion = next(
+        criterion
+        for criterion in criteria["criteria"]
+        if criterion["criterion_number"] == criterion_number
+    )
+    band = next(band for band in criterion["bands"] if band["id"] == band_id)
+    return {
+        "type": "site_assessment_confirmed_summary",
+        "confirmed": confirmed,
+        "answers": [
+            {
+                "type": "site_assessment_answer",
+                "criterion_number": criterion_number,
+                "answer_state": state,
+                "answer": band_id if state == "answered" else None,
+                "selected_band": band if state != "skipped" else None,
+                "points": band["points"] if state == "answered" else None,
+                "evidence": "",
+                "comment": "",
+                "provenance": "user",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])
+@pytest.mark.parametrize(
+    ("case", "state", "fact", "band_id"),
+    [
+        ("missing-confirmation", "answered", 24, "range_20_90_1"),
+        ("malformed-confirmation", "answered", 24, "range_20_90_1"),
+        ("absent-inputs", "answered", None, "range_20_90_1"),
+        ("stale-answer", "answered", 24, "range_20_90_2"),
+        ("matching-answer", "answered", 24, "range_20_90_1"),
+        ("matching-unknown", "unknown", "unknown", "unknown"),
+        ("matching-skipped", "skipped", "skipped", "below_20"),
+    ],
+)
+def test_site_assessment_mcp_gate_is_consistent_for_invoke_and_stream(
+    patched, run_handler, case, state, fact, band_id
+):
+    summary = _confirmed_site_summary(patched.server.read_resource.return_value, state, band_id)
+    if case == "malformed-confirmation":
+        summary["answers"] = "invalid"
+    request_content = "hello" if case == "missing-confirmation" else json.dumps(summary)
+    tool_arguments = {"project_type": "site"}
+    if case != "absent-inputs":
+        tool_arguments["site_assessment_inputs"] = {"criteria_facts": {"1": {"percentage": fact}}}
+    forwarded_call = patched.server.call_tool
+    tool_results = []
+
+    async def run_agent(*args, **kwargs):
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        return SimpleNamespace(new_items=[])
+
+    async def stream_events():
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        if False:
+            yield None
+
+    patched.run.side_effect = run_agent
+    patched.run_streamed.side_effect = lambda *args, **kwargs: SimpleNamespace(
+        stream_events=stream_events
+    )
+    run_handler(_request(request_content))
+
+    should_forward = case in {
+        "matching-answer",
+        "matching-unknown",
+        "matching-skipped",
+    }
+    if should_forward:
+        forwarded_call.assert_awaited_once()
+        assert tool_results[0].isError is False
+    else:
+        forwarded_call.assert_not_awaited()
+        assert tool_results[0].isError is True
+        assert tool_results[0].content[0].text
+
+
+@pytest.mark.parametrize("run_handler", [_run_invoke, _run_stream], ids=["invoke", "stream"])
+@pytest.mark.parametrize(
+    ("case", "band_id", "confirmed", "project_acres", "county_average", "criterion7_fact"),
+    [
+        ("missing-confirmation", "below_average_8", True, 180, 200, None),
+        ("unconfirmed", "below_average_8", False, 180, 200, None),
+        ("incomplete-pair", "below_average_8", True, 180, None, None),
+        ("missing-criterion7-answer", "range_20_90_1", True, 180, 200, None),
+        ("mismatched-band", "below_average_9", True, 180, 200, None),
+        ("conflicting-dual-inputs", "below_average_8", True, 180, 200, 85),
+        ("matching-dual-inputs", "below_average_8", True, 180, 200, 90),
+        ("matching-band", "below_average_8", True, 180, 200, None),
+    ],
+)
+def test_farm_acre_criterion7_gate_is_consistent_for_invoke_and_stream(
+    patched,
+    run_handler,
+    case,
+    band_id,
+    confirmed,
+    project_acres,
+    county_average,
+    criterion7_fact,
+):
+    summary = _confirmed_site_summary(
+        patched.server.read_resource.return_value,
+        band_id=band_id,
+        criterion_number=1 if case == "missing-criterion7-answer" else 7,
+        confirmed=confirmed,
+    )
+    request_content = "hello" if case == "missing-confirmation" else json.dumps(summary)
+    site_inputs = {"project_farm_acres": project_acres}
+    if county_average is not None:
+        site_inputs["county_average_farm_acres"] = county_average
+    if criterion7_fact is not None:
+        site_inputs["criteria_facts"] = {"7": {"percentage": criterion7_fact}}
+    tool_arguments = {
+        "project_type": "site",
+        "site_assessment_inputs": site_inputs,
+    }
+    forwarded_call = patched.server.call_tool
+    tool_results = []
+
+    async def run_agent(*args, **kwargs):
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        return SimpleNamespace(new_items=[])
+
+    async def stream_events():
+        tool_results.append(
+            await patched.server.call_tool("calculate_preliminary_lesa", tool_arguments)
+        )
+        if False:
+            yield None
+
+    patched.run.side_effect = run_agent
+    patched.run_streamed.side_effect = lambda *args, **kwargs: SimpleNamespace(
+        stream_events=stream_events
+    )
+    run_handler(_request(request_content))
+
+    if case == "matching-band":
+        forwarded_call.assert_awaited_once()
+        assert tool_results[0].isError is False
+    else:
+        forwarded_call.assert_not_awaited()
+        assert tool_results[0].isError is True
+        assert tool_results[0].content[0].text
+
+
+@pytest.mark.parametrize(
+    ("target", "field", "value"),
+    [
+        ("band", "id", "  "),
+        ("band", "id", "range_20_90_1"),
+        ("band", "label", ""),
+        ("band", "points", "0"),
+        ("band", "points", 16),
+        ("band", "points", True),
+        ("criterion", "max_points", True),
+        ("band", "min", "0"),
+        ("band", "min", 1),
+        ("band", "max", 25),
+        ("band", "max_inclusive", True),
+        ("band", "min_inclusive", False),
+    ],
+    ids=[
+        "empty-id",
+        "duplicate-id",
+        "empty-label",
+        "non-numeric-points",
+        "points-over-maximum",
+        "boolean-points",
+        "invalid-maximum-points",
+        "non-numeric-minimum",
+        "percentage-ranges-must-start-at-zero",
+        "percentage-range-gap",
+        "overlapping-inclusive-boundary",
+        "zero-must-be-included",
+    ],
+)
+def test_invalid_site_assessment_band_fields_are_rejected(
+    target, field, value, valid_site_assessment_criteria_resource
+):
+    payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
+    if target == "criterion":
+        payload["criteria"][0][field] = value
+    else:
+        band_id = "above_90" if field == "points" and value == 16 else "below_20"
+        band = next(band for band in payload["criteria"][0]["bands"] if band["id"] == band_id)
+        band[field] = value
+    resource = SimpleNamespace(contents=[SimpleNamespace(text=json.dumps(payload))])
+
+    with pytest.raises((TypeError, ValueError)):
+        agent_module._site_assessment_criteria_context(resource)
+
+
+def test_malformed_site_assessment_band_disables_interview_context(
+    patched, valid_site_assessment_criteria_resource
+):
+    payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
+    payload["criteria"][0]["bands"][0]["label"] = " "
+    patched.server.read_resource.return_value = SimpleNamespace(
+        contents=[SimpleNamespace(text=json.dumps(payload))]
+    )
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+    assert (
+        patched.create_agent.call_args.kwargs["site_assessment_context"]
+        == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        McpError(ErrorData(code=-32603, message="Resource read failed.")),
+        UserError("Failed to read resource on MCP server 'fpac-soil-mcp': Request failed."),
+    ],
+    ids=["mcp-resource-error", "mcp-transport-error"],
+)
+def test_resource_read_failures_disable_interview_context(patched, error):
+    patched.server.read_resource.side_effect = error
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+    assert (
+        patched.create_agent.call_args.kwargs["site_assessment_context"]
+        == agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+
+
+def test_unexpected_resource_read_error_propagates(patched):
+    patched.server.read_resource.side_effect = RuntimeError("implementation bug")
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            return await agent_module._connect_fpac_agent(stack)
+
+    with pytest.raises(RuntimeError, match="implementation bug"):
+        asyncio.run(connect())
+
+
+def test_validated_resource_context_contains_all_criteria(valid_site_assessment_criteria_resource):
+    context = agent_module._site_assessment_criteria_context(
+        valid_site_assessment_criteria_resource
+    )
+    assert "fppa://site-assessment-criteria" in context
+    payload = json.loads(valid_site_assessment_criteria_resource.contents[0].text)
+    assert all(criterion["question"] in context for criterion in payload["criteria"])
+    assert "Unknown or unavailable" in context
+
+
+def test_valid_resource_wires_tools_into_agent(
+    monkeypatch, valid_site_assessment_criteria_resource
+):
+    server = MagicMock(name="server")
+    server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
+    monkeypatch.setattr(agent_module, "WorkspaceClient", MagicMock())
+    monkeypatch.setattr(agent_module, "init_fpac_mcp_server", MagicMock(return_value=server))
+    monkeypatch.setattr(
+        agent_module,
+        "connect_healthy_mcp_servers",
+        AsyncMock(return_value=([server], [])),
+    )
+    constructed = MagicMock(name="Agent")
+    monkeypatch.setattr(agent_module, "Agent", constructed)
+
+    async def connect():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            await agent_module._connect_fpac_agent(stack)
+
+    asyncio.run(connect())
+
+    assert [tool.name for tool in constructed.call_args.kwargs["tools"]] == [
+        "get_site_assessment_question",
+        "record_site_assessment_answer",
+    ]

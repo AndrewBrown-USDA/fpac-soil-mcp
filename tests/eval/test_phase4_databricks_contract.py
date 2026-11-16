@@ -92,8 +92,11 @@ def test_site_assessment_expectations_do_not_reward_fabrication_or_siting() -> N
         assert "sample_geometry" not in next(case for case in cases if case["id"] == case_id)
 
     lesa_facts = " ".join(cases[1]["expected_facts"]).casefold()
-    assert "rather than being treated as zero" in lesa_facts
-    assert "unevaluable total" in lesa_facts
+    assert "assumed (no evidence)" in lesa_facts
+    assert "registry maximum" in lesa_facts
+    assert "conservative bound is separate" in lesa_facts
+    assert "site assessment and total lesa result remain undetermined" in lesa_facts
+    assert "not presented as a threshold result" in lesa_facts
     property_facts = " ".join(cases[3]["expected_facts"]).casefold()
     assert "does not replace csr2" in property_facts
     assert "rather than inferred" in property_facts

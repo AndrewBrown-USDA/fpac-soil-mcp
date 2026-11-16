@@ -137,6 +137,66 @@ def test_required_tools_called(scorers: dict[str, Any]) -> None:
     assert score(trace=trace, expectations={"expected_tools": []}) is None
 
 
+def test_ordered_tool_subsequence(scorers: dict[str, Any]) -> None:
+    score = scorers["ordered_tool_subsequence"]
+    expected = ["analyze_farmland_by_polygon", "analyze_cdl_context"]
+    trace = make_trace(
+        [
+            ("fpac-soil:analyze_farmland_by_polygon", {}, {}),
+            ("analyze_cdl_context", {}, {}),
+            ("get_soil_interpretations", {}, {}),
+        ]
+    )
+    assert score(trace=trace, expectations={"expected_tool_subsequence": expected}).value is True
+
+    reversed_trace = make_trace(
+        [
+            ("analyze_cdl_context", {}, {}),
+            ("analyze_farmland_by_polygon", {}, {}),
+        ]
+    )
+    failure = score(
+        trace=reversed_trace,
+        expectations={"expected_tool_subsequence": expected},
+    )
+    assert failure.value is False
+    assert "ordered tool subsequence" in failure.rationale
+    assert score(trace=trace, expectations={}) is None
+
+
+def test_prohibited_tools_absent(scorers: dict[str, Any]) -> None:
+    score = scorers["prohibited_tools_absent"]
+    trace = make_trace(
+        [
+            ("analyze_farmland_by_polygon", {}, {}),
+            ("analyze_cdl_context", {}, {}),
+        ]
+    )
+    prohibited = ["calculate_preliminary_lesa", "analyze_cdl_histogram"]
+    assert score(trace=trace, expectations={"prohibited_tools": prohibited}).value is True
+
+    premature_lesa = make_trace(
+        [
+            ("analyze_farmland_by_polygon", {}, {}),
+            ("calculate_preliminary_lesa", {}, {}),
+        ]
+    )
+    failure = score(trace=premature_lesa, expectations={"prohibited_tools": prohibited})
+    assert failure.value is False
+    assert "calculate_preliminary_lesa" in failure.rationale
+
+    redundant_histogram = make_trace(
+        [
+            ("analyze_cdl_context", {}, {}),
+            ("fpac-soil_analyze_cdl_histogram", {}, {}),
+        ]
+    )
+    failure = score(trace=redundant_histogram, expectations={"prohibited_tools": prohibited})
+    assert failure.value is False
+    assert "analyze_cdl_histogram" in failure.rationale
+    assert score(trace=trace, expectations={}) is None
+
+
 def test_numeric_within_tolerance_reads_tool_output(scorers: dict[str, Any]) -> None:
     trace = make_trace([("get_soil_interpretations", INTERP_ARGS, INTERP_RESULT)])
     score = scorers["numeric_within_tolerance"]

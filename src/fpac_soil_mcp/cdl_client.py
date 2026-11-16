@@ -29,6 +29,10 @@ class CDLVintageUnavailable(ValueError):
     """Raised when a requested CDL vintage cannot be verified or selected."""
 
 
+class CDLVintageAmbiguous(ValueError):
+    """Raised when the latest CDL vintage does not identify one raster."""
+
+
 class CDLClient:
     """Client for validated NASS CDL ImageServer discovery and requests."""
 
@@ -69,18 +73,31 @@ class CDLClient:
         self._metadata_cache = (now, metadata)
         return metadata
 
-    def get_catalog(self, *, where: str = "1=1") -> dict[str, Any]:
+    def get_catalog(
+        self,
+        *,
+        where: str = "1=1",
+        order_by: str | None = None,
+        result_record_count: int | None = None,
+    ) -> dict[str, Any]:
         """Inspect the ImageServer catalog without treating it as pixel data."""
         if not where.strip():
             raise ValueError("where must be a non-empty expression.")
+        if result_record_count is not None and result_record_count <= 0:
+            raise ValueError("result_record_count must be positive.")
+        params = {
+            "where": where,
+            "outFields": "*",
+            "returnGeometry": "false",
+            "f": "json",
+        }
+        if order_by is not None:
+            params["orderByFields"] = order_by
+        if result_record_count is not None:
+            params["resultRecordCount"] = str(result_record_count)
         return self._get_json(
             f"{self.base_url}/query",
-            params={
-                "where": where,
-                "outFields": "*",
-                "returnGeometry": "false",
-                "f": "json",
-            },
+            params=params,
         )
 
     def get_raster_attribute_table(self, *, force_refresh: bool = False) -> dict[int, str]:
@@ -157,13 +174,52 @@ class CDLClient:
             "lockRasterIds": [object_id],
         }
 
+    def resolve_latest_product_vintage(self, *, metadata: CDLServiceMetadata | None = None) -> str:
+        """Return the uniquely verifiable latest catalog year."""
+        service_metadata = metadata or self.get_service_metadata()
+        time_field = service_metadata.time_field
+        object_id_field = service_metadata.object_id_field
+        if not time_field or not object_id_field:
+            raise CDLVintageUnavailable(
+                "ImageServer metadata does not expose a verifiable time and object ID field."
+            )
+        features = self.get_catalog(
+            order_by=f"{time_field} DESC",
+            result_record_count=2,
+        ).get("features")
+        if not isinstance(features, list) or not features:
+            raise CDLVintageUnavailable("ImageServer catalog contains no verifiable vintages.")
+
+        candidates: list[tuple[int, int]] = []
+        for feature in features:
+            attributes = feature.get("attributes") if isinstance(feature, dict) else None
+            year = attributes.get(time_field) if isinstance(attributes, dict) else None
+            object_id = attributes.get(object_id_field) if isinstance(attributes, dict) else None
+            if (
+                isinstance(year, int)
+                and not isinstance(year, bool)
+                and isinstance(object_id, int)
+                and not isinstance(object_id, bool)
+            ):
+                candidates.append((year, object_id))
+        if not candidates:
+            raise CDLVintageUnavailable("ImageServer catalog contains no verifiable vintages.")
+
+        latest_year = max(year for year, _ in candidates)
+        latest = [(year, object_id) for year, object_id in candidates if year == latest_year]
+        if len(latest) != 1:
+            raise CDLVintageAmbiguous(
+                f"ImageServer catalog does not identify one raster for latest vintage {latest_year}."
+            )
+        return str(latest_year)
+
     def analyze_polygon_histogram(
         self,
         *,
         geometry: dict[str, Any],
         geometry_hash: str,
         product_vintage: str,
-        qualifying_class_values: set[int],
+        qualifying_class_values: set[int] | None = None,
         nodata_class_values: set[int] | None = None,
         mosaic_rule: dict[str, Any] | None = None,
     ) -> CDLHistogramResponse:
@@ -190,15 +246,16 @@ class CDLClient:
                 class_names=class_names,
             )
             effective_nodata = nodata_class_values or {0}
-            bins = [
-                item.model_copy(
-                    update={
-                        "is_qualifying_agricultural": item.class_value
-                        in (qualifying_class_values - effective_nodata)
-                    }
-                )
-                for item in bins
-            ]
+            if qualifying_class_values is not None:
+                bins = [
+                    item.model_copy(
+                        update={
+                            "is_qualifying_agricultural": item.class_value
+                            in (qualifying_class_values - effective_nodata)
+                        }
+                    )
+                    for item in bins
+                ]
             total = sum(item.pixel_count for item in bins)
             nodata = sum(item.pixel_count for item in bins if item.class_value in effective_nodata)
             valid = total - nodata
@@ -211,11 +268,14 @@ class CDLClient:
                     provenance=provenance,
                     error_message="Histogram contains no valid CDL pixels.",
                 )
-            qualifying = sum(
-                item.pixel_count
-                for item in bins
-                if item.class_value in (qualifying_class_values - effective_nodata)
-            )
+            qualifying_pct = None
+            if qualifying_class_values is not None:
+                qualifying = sum(
+                    item.pixel_count
+                    for item in bins
+                    if item.class_value in (qualifying_class_values - effective_nodata)
+                )
+                qualifying_pct = (qualifying / valid) * 100
             return CDLHistogramResponse(
                 status=CDLAnalysisStatus.SUCCESS,
                 geometry_hash=geometry_hash,
@@ -226,7 +286,7 @@ class CDLClient:
                 product_vintage=product_vintage,
                 vintage_verified=True,
                 coverage_verified=True,
-                qualifying_agricultural_pixel_pct=(qualifying / valid) * 100,
+                qualifying_agricultural_pixel_pct=qualifying_pct,
                 service_metadata=metadata,
                 provenance=provenance,
             )

@@ -69,8 +69,8 @@ def _write(tmp_path: Path, cases: list[dict[str, Any]], version: str = "2.0.0") 
 
 def test_checked_in_dataset_validates() -> None:
     cases = load_cases()
-    assert len(cases) == 38
-    assert len({case["id"] for case in cases}) == 38
+    assert len(cases) == 40
+    assert len({case["id"] for case in cases}) == 40
     assert dataset_version(DEFAULT_PATH).split(".")[0] in {"1", "2"}
     assert all(
         "silent_nccpi_fallback" not in case.get("prohibited_behaviors", []) for case in cases
@@ -85,6 +85,16 @@ def test_checked_in_dataset_validates() -> None:
     assert "project_type site" in lesa_case["user_prompt"]
     assert lesa_case["expected_tool_calls"][0]["arguments"]["project_name"] == "Synthetic SA-MA-02"
     assert lesa_case["expected_tool_calls"][0]["arguments"]["project_type"] == "site"
+    ad1006_case = by_id["SA-MA-05"]
+    assert ad1006_case["expected_tool_subsequence"] == [
+        "analyze_farmland_by_polygon",
+        "analyze_cdl_context",
+    ]
+    assert ad1006_case["prohibited_tools"] == [
+        "calculate_preliminary_lesa",
+        "analyze_cdl_histogram",
+    ]
+    assert by_id["SA-MA-06"]["prohibited_tools"] == ad1006_case["prohibited_tools"]
     adversarial_ids = [case["id"] for case in cases if case["id"].startswith("ADV-")]
     assert adversarial_ids == [
         "ADV-UNRELATED-01",
@@ -149,6 +159,17 @@ def test_optional_adversarial_fields_validate_and_reach_expectations() -> None:
     assert zero_budget["max_tool_calls"] == 0
 
 
+def test_tool_sequence_contract_fields_validate_and_reach_expectations() -> None:
+    row = _row(
+        expected_tool_subsequence=["get_farmland_classification_by_point", "analyze_cdl_context"],
+        prohibited_tools=["analyze_cdl_histogram", "calculate_preliminary_lesa"],
+    )
+    validate_cases([row])
+    expectations = to_mlflow_records([row])[0]["expectations"]
+    assert expectations["expected_tool_subsequence"] == row["expected_tool_subsequence"]
+    assert expectations["prohibited_tools"] == row["prohibited_tools"]
+
+
 def test_behaviors_and_sources_become_judge_guidelines() -> None:
     row = _row(
         guidelines=["States that results are preliminary screening.", "Names the county."],
@@ -184,6 +205,9 @@ def test_behaviors_and_sources_become_judge_guidelines() -> None:
         ("expected_status", "refused", "expected covered, indeterminate, or error"),
         ("required_behaviors", "not a list", "expected a list of strings"),
         ("prohibited_behaviors", [False], "expected a list of strings"),
+        ("expected_tool_subsequence", [], "expected a non-empty list of strings"),
+        ("expected_tool_subsequence", ["ok", 1], "expected a list of strings"),
+        ("prohibited_tools", ["ok", 1], "expected a list of strings"),
         ("source_disclosure", [1], "expected a list of strings"),
         ("max_tool_calls", True, "expected an integer >= 0"),
         ("max_retries", -1, "expected an integer >= 0"),

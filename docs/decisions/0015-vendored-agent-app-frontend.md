@@ -117,7 +117,9 @@ Modified upstream files:
   (`planning/RESEARCH_AGENT_MAP_APP_VISUAL_DESIGN.md`).
 * `client/src/components/message.tsx`: "Show on map" button on completed
   `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and
-  `get_soil_polygons_by_geometry` tool cards (Plan 44, ADR 0017).
+  `get_soil_polygons_by_geometry` tool cards (Plan 44, ADR 0017), plus a
+  "Show CDL on map" action that passes a completed `analyze_cdl_context`
+  result directly to the existing map-result context (Plan 50.2.2).
 * `client/src/components/multimodal-input.tsx`: shows the attached map AOI
   chip above the textarea (ADR 0016).
 * `client/src/components/suggested-actions.tsx`: FPPA starter prompts
@@ -135,7 +137,26 @@ Modified upstream files:
 * `client/src/components/map/MapPanel.tsx`: uses the NCSS acronym-only logo in
   the map-panel header, with the official color and white variants for light
   and dark themes (NCSS Visual Standards Guide, March 2018); Vite-managed
-  imports ensure the assets are included in the frontend build.
+  imports ensure the assets are included in the frontend build. It also shows
+  CDL class summaries received from a tool card without a map route or
+  re-query (Plan 50.2.2).
+* `client/src/components/map/overlays.ts` and
+  `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
+  ImageServer raster context overlay, with attribution and vintage/context
+  labels (Plan 50.2.2).
+* `client/src/components/map/MapResultContext.tsx` and
+  `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
+  result through the existing map-result context without requesting it again
+  (Plan 50.2.2); reject CDL map context storage when the active AOI is absent
+  or its reference/geometry no longer matches the AOI captured for the result
+  (Plan 51.2.2).
+* `client/src/components/message.tsx`: render resource-backed
+  `get_site_assessment_question` output as a distinct interview card and
+  structured `site_assessment_confirmed_summary` text as a separate review
+  card. Card actions send the exact `site_assessment_answer` and confirmed
+  summary records as JSON chat messages (Plan 51.2.2).
+* `package.json`: add the test-only `test:site-assessment` Playwright script;
+  no dependencies or lockfile changes (Plan 51.2.2).
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
 * `packages/ai-sdk-providers/src/providers-server.ts`: request-scoped AOI
@@ -156,6 +177,19 @@ Added paths:
   refresh added the panel header, grouped draw/edit tools, the
   `StatusMessage.tsx` message bar and the screening summary strip. AOI import
   keeps file upload prominent and collapses pasted GeoJSON behind a disclosure.
+  Plan 50.2.2 adds `client/src/components/map/CDLContextSummary.tsx` to show the
+  complete server-returned class distributions, source, vintage, status,
+  coverage and limitations for the AOI and both exterior zones.
+* `client/src/components/site-assessment-cards.tsx`: resource-driven question
+  choices, evidence/comment/provenance fields, explicit unknown/skipped
+  records, and a distinct assumptions/Confirm/Edit review card (Plan 51.2.2).
+* `client/site-assessment-fixture.html` and
+  `client/src/components/site-assessment-fixture.tsx`: isolated browser
+  fixture for card and AOI interaction tests (Plan 51.2.2).
+* `playwright.site-assessment.config.ts` and
+  `tests/site-assessment/cards.spec.ts`: isolated Playwright configuration and
+  coverage for emitted answer/confirmation records and stale CDL refusal
+  (Plan 51.2.2).
 * `client/src/assets/ncss-acronym-color.png` and
   `client/src/assets/ncss-acronym-white.png`: official NCSS acronym-only logo
   variants prepared from the

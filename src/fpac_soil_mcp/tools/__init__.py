@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fpac_soil_mcp.tools.cdl_tools import analyze_cdl_histogram
+from fpac_soil_mcp.tools.cdl_tools import analyze_cdl_context, analyze_cdl_histogram
 from fpac_soil_mcp.tools.exemption_tools import check_urban_area_exemption
 from fpac_soil_mcp.tools.fppa_tools import (
     explain_fppa_screening_scope,
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 __all__ = [
+    "analyze_cdl_context",
     "analyze_cdl_histogram",
     "analyze_corridor_fppa",
     "analyze_farmland_by_polygon",
@@ -115,6 +116,15 @@ def register_tools(mcp: FastMCP) -> None:
             "or constitute an official FPPA or LESA determination."
         ),
     )(analyze_cdl_histogram)
+    mcp.tool(
+        name="analyze_cdl_context",
+        description=(
+            "Compute full USDA NASS Cropland Data Layer class distributions for a validated Polygon or MultiPolygon AOI, "
+            "its one-mile exterior ring, and its 30 m exterior band. Each zone reports raw class codes/names, "
+            "counts/shares, vintage, coverage, status, and provenance. Results are preliminary land-cover context "
+            "only; they do not assign agricultural classes, farmland status, or Criterion 2 perimeter percentages."
+        ),
+    )(analyze_cdl_context)
     mcp.tool(
         name="analyze_corridor_fppa",
         description=(

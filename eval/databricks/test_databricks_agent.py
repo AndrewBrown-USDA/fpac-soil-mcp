@@ -178,7 +178,7 @@ def test_agent_calls_tool_then_answers_with_c4_trace() -> None:
     assert first["messages"][1] == {"role": "user", "content": "Explain FPPA scope."}
     names = {spec["function"]["name"] for spec in first["tools"]}
     assert {READ_RESOURCE, GET_PROMPT, "get_farmland_classification_by_point"} <= names
-    assert len(names) == 13
+    assert len(names) == 14
 
     tool_message = llm.calls[1]["messages"][-1]
     assert tool_message["role"] == "tool"

@@ -6,6 +6,9 @@ from pydantic import ValidationError
 from fpac_soil_mcp.authority import Provenance
 from fpac_soil_mcp.cdl_models import (
     CDLAnalysisStatus,
+    CDLClassDistribution,
+    CDLContextResponse,
+    CDLContextZoneResult,
     CDLHistogramBin,
     CDLHistogramResponse,
     CDLServiceMetadata,
@@ -94,3 +97,34 @@ def test_success_status_requires_verified_vintage_and_coverage():
 def test_histogram_counts_cannot_be_negative():
     with pytest.raises(ValidationError, match="pixel_count must be non-negative"):
         CDLHistogramBin(class_value=1, pixel_count=-1)
+
+
+def test_context_distribution_preserves_raw_classes_without_qualifying_percentage():
+    response = CDLContextResponse(
+        status=CDLAnalysisStatus.PARTIAL,
+        geometry_hash="f" * 64,
+        product_vintage="2025",
+        vintage_verified=True,
+        aoi=CDLContextZoneResult(
+            zone="aoi",
+            status=CDLAnalysisStatus.PARTIAL,
+            geometry_hash="e" * 64,
+            classes=[
+                CDLClassDistribution(class_value=1, class_name="Corn", pixel_count=8, share_pct=80),
+                CDLClassDistribution(
+                    class_value=0, class_name="Background", pixel_count=2, share_pct=20
+                ),
+            ],
+            total_pixel_count=10,
+            coverage_pct=80,
+            coverage_verified=True,
+            product_vintage="2025",
+            vintage_verified=True,
+            source="USDA NASS Cropland Data Layer ImageServer",
+            provenance=_provenance(),
+        ),
+    )
+
+    dumped = response.model_dump()
+    assert [item.class_value for item in response.aoi.classes] == [1, 0]
+    assert "qualifying_agricultural_pixel_pct" not in dumped["aoi"]

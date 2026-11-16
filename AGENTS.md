@@ -46,6 +46,9 @@ uv run pytest -m live_network
 - `src\fpac_soil_mcp\privacy.py` - data governance, section 1619 compliance, and coordinate redaction / privacy guardrails.
 - `src\fpac_soil_mcp\workflow.py` - step-by-step workflow tracking and guidance for FPPA evaluation processes.
 - `src\fpac_soil_mcp\official_sources.py` - registry and lookups for official federal dataset provenance, layers, and service endpoints.
+- `src\fpac_soil_mcp\cdl_client.py` and `cdl_models.py` - USDA NASS Cropland Data Layer client and response models.
+- `src\fpac_soil_mcp\map_contract.py` - map-layer contract and validation.
+- `src\fpac_soil_mcp\site_assessment.py` - FPPA site-assessment calculation logic.
 - `src\fpac_soil_mcp\fppa.py` and `src\fpac_soil_mcp\lesa.py` - FPPA screening and preliminary LESA scoring domain logic.
 - `src\fpac_soil_mcp\http_client.py` - base resilient HTTP client with retry logic, timeouts, and structured error handling.
 - `src\fpac_soil_mcp\sda_client.py` - USDA SDA HTTP client, validation, fixed SQL templates, retries, and response parsing.
@@ -62,12 +65,16 @@ uv run pytest -m live_network
 - `src\fpac_soil_mcp\data\` - bundled official data registries and regional scoring references (`official_sources.v1.json`, `regional_scoring.v1.json`).
 - `eval\common\` - harness-neutral matching, dataset loader, and validation code shared by Pi and Databricks tiers.
 - `eval\contract\` - T0 offline contract tests over the in-memory FastMCP client.
+- `eval\fixtures\` - fixtures shared by evaluation runners.
 - `eval\pi\` - Pi agent evaluation runner and evaluation tests.
-- `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`. The T2 access smoke (`run_t2_smoke.py` and its notebook) is deferred: Databricks Apps reject the notebook-runtime token (401), so it cannot pass until an OAuth M2M service-principal path exists (`planning\MASTER_PLAN.md` D14).
+- `eval\databricks\` - T1 Databricks-native agent loop, scorers, runner, notebook, and system prompts; see `eval\databricks\README.md`.
+- `eval\criterion2_benchmark.py` - Criterion 2 MCP benchmark runner.
 - `eval\fpac_soil_mcp_harness\` - local Node.js browser client/workbench; see its nested `AGENTS.md`.
 - `apps\agent-fpac-soil-openai-sdk\` - Databricks chat agent app that calls the deployed MCP server; separate uv project; see its nested `AGENTS.md`.
 - `tests\` - pytest test suite (unit, mocked API, integration, and live tests); shared mocks in `tests\conftest.py`.
+- `.github\workflows\` - GitHub Actions workflows, including CI.
 - `docs\decisions\` - durable architecture decision records.
+- `docs\evaluation.md` - evaluation tiers and safe handling of opt-in evaluation artifacts.
 - `docs\cfr\` - eCFR reference copies of 7 CFR Part 657 (prime and unique farmlands) and Part 658 (FPPA, LESA and Site Assessment criteria): source XML, generated Markdown, and `manifest.json`; see `docs\cfr\README.md`.
 - `scripts\fetch_ecfr.py` - standard-library eCFR fetcher behind `make ecfr` (refresh `docs\cfr\`) and `make ecfr-check` (stale check).
 - `planning\` - delivery-planning artifacts; start with `planning\MASTER_PLAN.md` (product mission, target architecture, governance, server roadmap, and delivery tracks), then inspect the directory for execution-specific files.

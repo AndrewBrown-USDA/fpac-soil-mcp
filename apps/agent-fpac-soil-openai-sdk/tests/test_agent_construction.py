@@ -40,6 +40,30 @@ def test_mcp_servers_passthrough():
     assert agent.mcp_servers is servers
 
 
+def test_validated_site_assessment_context_adds_resource_backed_tools(
+    valid_site_assessment_criteria_resource,
+):
+    context = agent_module._site_assessment_criteria_context(
+        valid_site_assessment_criteria_resource
+    )
+    agent = agent_module.create_agent(site_assessment_context=context)
+
+    assert [tool.name for tool in agent.tools] == [
+        "get_site_assessment_question",
+        "record_site_assessment_answer",
+    ]
+    answer_schema = agent.tools[1].params_json_schema
+    assert "points" not in answer_schema["properties"]
+    assert answer_schema["additionalProperties"] is False
+
+
+def test_unavailable_site_assessment_context_adds_no_tools():
+    agent = agent_module.create_agent(
+        site_assessment_context=agent_module.SITE_ASSESSMENT_RESOURCE_UNAVAILABLE_NOTE
+    )
+    assert agent.tools == []
+
+
 def test_client_uses_ai_gateway(monkeypatch):
     # UC model service names only resolve on /ai-gateway; /serving-endpoints returns 404.
     client = MagicMock(spec=agent_module.AsyncDatabricksOpenAI)

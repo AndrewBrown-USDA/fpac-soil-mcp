@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from fpac_soil_mcp.models import SiteAssessmentCriterion
 from fpac_soil_mcp.site_assessment import (
     SITE_ASSESSMENT_REGISTRY,
     SiteAssessmentCriterionDefinition,
@@ -53,6 +54,39 @@ def test_fixture_anchors_every_criterion_and_expected_score_to_cfr() -> None:
             )
 
 
+@pytest.mark.parametrize(
+    ("value", "expected_points"),
+    [
+        (50, 0),
+        (50.0001, 1),
+        (55, 1),
+        (55.0001, 2),
+        (60, 2),
+        (60.0001, 3),
+        (65, 3),
+        (65.0001, 4),
+        (70, 4),
+        (70.0001, 5),
+        (75, 5),
+        (75.0001, 6),
+        (80, 6),
+        (80.0001, 7),
+        (85, 7),
+        (85.0001, 8),
+        (90, 8),
+        (90.0001, 9),
+        (95, 9),
+        (95.0001, 10),
+        (100, 10),
+    ],
+)
+def test_criterion_7_uses_exact_five_point_deduction_thresholds(
+    value: float, expected_points: int
+) -> None:
+    criterion = SITE_ASSESSMENT_REGISTRY.criterion(7)
+    assert criterion.score_for_value(value) == expected_points
+
+
 def test_numeric_out_of_band_is_distinct_from_unknown() -> None:
     criterion = SITE_ASSESSMENT_REGISTRY.criterion(1)
     assert criterion.band_for(None).band_id == "unknown"
@@ -70,6 +104,45 @@ def test_unknown_and_deferred_inputs_remain_unavailable() -> None:
     assert criterion.score_for_value(95) is None
     assert criterion.score_for_value(95, provenance="analyst interview notes") == 10
     assert criterion.score_for_value(None, provenance="analyst interview notes") is None
+
+
+def test_conservative_assumption_is_separate_from_evidence_and_awarded_points() -> None:
+    criterion = SiteAssessmentCriterion(
+        criterion_number=1,
+        name="Criterion 1",
+        max_points=20,
+        awarded_points=0,
+        assumed_points=20,
+        evidence_status="assumed (no evidence)",
+        input_authority="unavailable",
+        assumption_provenance="Registry maximum assumed under ADR 0018.",
+    )
+
+    assert criterion.awarded_points == 0
+    assert criterion.assumed_points == 20
+    assert criterion.source_provenance == []
+    assert criterion.is_verified is False
+    assert criterion.is_automated is False
+
+    with pytest.raises(ValidationError, match="separate assumed_points"):
+        SiteAssessmentCriterion(
+            criterion_number=1,
+            name="Criterion 1",
+            max_points=20,
+            evidence_status="assumed (no evidence)",
+        )
+
+    with pytest.raises(ValidationError, match="cannot be verified"):
+        SiteAssessmentCriterion(
+            criterion_number=1,
+            name="Criterion 1",
+            max_points=20,
+            assumed_points=20,
+            evidence_status="assumed (no evidence)",
+            input_authority="unavailable",
+            assumption_provenance="Registry maximum assumed under ADR 0018.",
+            is_verified=True,
+        )
 
 
 def test_cfr_ranges_define_representative_point_conventions() -> None:

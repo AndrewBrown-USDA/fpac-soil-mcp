@@ -642,6 +642,10 @@ class SiteAssessmentCriterion(BaseModel):
         default=0.0,
         description="Points awarded for this site under the criterion evaluation",
     )
+    assumed_points: float | None = Field(
+        default=None,
+        description="Registry-maximum points used only to calculate a conservative upper bound",
+    )
     justification: str = Field(
         default="",
         description="Explanation, facts, and statutory basis for awarded points",
@@ -673,6 +677,10 @@ class SiteAssessmentCriterion(BaseModel):
     source_provenance: list[str] = Field(
         default_factory=list,
         description="Sources supporting the criterion evidence",
+    )
+    assumption_provenance: str | None = Field(
+        default=None,
+        description="Policy basis for any conservative points assumed without evidence",
     )
     is_verified: bool = Field(
         default=False,
@@ -710,6 +718,13 @@ class SiteAssessmentCriterion(BaseModel):
             raise ValueError(f"awarded_points must be finite, got {v}")
         return v
 
+    @field_validator("assumed_points")
+    @classmethod
+    def validate_assumed_points(cls, v: float | None) -> float | None:
+        if v is not None and (v < 0.0 or not math.isfinite(v)):
+            raise ValueError(f"assumed_points must be finite and non-negative, got {v}")
+        return v
+
     @field_validator("normalized_ratio")
     @classmethod
     def validate_normalized_ratio(cls, v: float | None) -> float | None:
@@ -723,6 +738,23 @@ class SiteAssessmentCriterion(BaseModel):
             raise ValueError(
                 f"awarded_points ({self.awarded_points}) cannot exceed max_points ({self.max_points}) for criterion {self.criterion_number}"
             )
+        if self.assumed_points is not None and (
+            self.assumed_points < 0.0 or self.assumed_points > self.max_points
+        ):
+            raise ValueError(
+                f"assumed_points ({self.assumed_points}) must be between 0 and max_points "
+                f"({self.max_points}) for criterion {self.criterion_number}"
+            )
+        if self.evidence_status == "assumed (no evidence)":
+            if self.assumed_points is None or self.input_authority != "unavailable":
+                raise ValueError(
+                    "Assumed Site Assessment points require unavailable authority and "
+                    "a separate assumed_points value."
+                )
+            if not self.assumption_provenance:
+                raise ValueError("Assumed Site Assessment points require assumption provenance.")
+            if self.is_verified or self.is_automated:
+                raise ValueError("Assumed Site Assessment points cannot be verified or automated.")
         if self.is_statutorily_zeroed:
             if self.awarded_points != 0:
                 raise ValueError("Statutorily zeroed criteria cannot receive points.")
@@ -779,6 +811,13 @@ class PreliminaryLESAResponse(BaseModel):
         default=0.0,
         description="Total combined LESA score on standard 0-260 point scale (LE + SA), or None if LE unavailable",
     )
+    conservative_total_lesa_upper_bound: float | None = Field(
+        default=None,
+        description=(
+            "Conservative upper bound using registry-maximum assumptions for missing Site "
+            "Assessment inputs; not an evaluated LESA score or threshold result"
+        ),
+    )
     mandatory_alternatives_required: bool | None = Field(
         default=False,
         description=(
@@ -806,6 +845,13 @@ class PreliminaryLESAResponse(BaseModel):
             return None
         if v < 0.0 or v > 260.0:
             raise ValueError(f"total_lesa_score must be between 0.0 and 260.0, got {v}")
+        return v
+
+    @field_validator("conservative_total_lesa_upper_bound")
+    @classmethod
+    def validate_conservative_total_lesa_upper_bound(cls, v: float | None) -> float | None:
+        if v is not None and (not math.isfinite(v) or v < 0.0 or v > 260.0):
+            raise ValueError("conservative_total_lesa_upper_bound must be between 0.0 and 260.0")
         return v
 
     @model_validator(mode="after")

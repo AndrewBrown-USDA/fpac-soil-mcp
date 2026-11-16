@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
+import equal from 'fast-deep-equal';
 import { Button } from '@/components/ui/button';
 import { useOptionalActiveAoi } from './ActiveAoiContext';
 import { inlineLayers } from './mapLayers';
 import type { MapBlock } from './mapLayers';
 import { useOptionalMapResult } from './MapResultContext';
 import { StatusMessage } from './StatusMessage';
+import { parseCDLContextResult } from './CDLContextSummary';
 
 // The tools whose results carry an ADR 0017 map block (`geo.MAP_TOOLS`).
 export const MAP_TOOLS: ReadonlySet<string> = new Set([
@@ -42,20 +44,28 @@ export function ShowOnMapButton({
   tool,
   toolCallId,
   input,
+  output,
 }: {
   tool: string;
   toolCallId: string;
   input: unknown;
+  output?: unknown;
 }) {
   const aoiContext = useOptionalActiveAoi();
   const mapResult = useOptionalMapResult();
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const activeAoi = aoiContext?.activeAoi ?? null;
+  const refs = aoiRefs(input);
+  const cdlAoiAtResult = useRef(
+    tool === 'analyze_cdl_context' && activeAoi
+      ? { aoi_ref: activeAoi.aoi_ref, geometry: activeAoi.geometry }
+      : null,
+  ).current;
   if (!aoiContext || !mapResult) return null;
 
-  const activeAoi = aoiContext.activeAoi;
-  const refs = aoiRefs(input);
   const isObject = !!input && typeof input === 'object' && !Array.isArray(input);
+  const cdlSummary = tool === 'analyze_cdl_context' ? parseCDLContextResult(output) : null;
   const unavailable = !isObject
     ? 'Not available: this call has no arguments to map.'
     : refs.some((ref) => ref.trim() !== activeAoi?.aoi_ref)
@@ -63,6 +73,34 @@ export function ShowOnMapButton({
       : null;
 
   const run = async () => {
+    if (tool === 'analyze_cdl_context') {
+      if (!cdlSummary) {
+        setStatus('error');
+        setMessage('This CDL result does not contain a displayable summary.');
+        return;
+      }
+      const currentAoi = aoiContext.activeAoi;
+      if (
+        !cdlAoiAtResult ||
+        !currentAoi ||
+        currentAoi.aoi_ref !== cdlAoiAtResult.aoi_ref ||
+        !equal(currentAoi.geometry, cdlAoiAtResult.geometry) ||
+        (refs.length > 0 && !refs.some((ref) => ref.trim() === cdlAoiAtResult.aoi_ref))
+      ) {
+        setStatus('error');
+        setMessage('This CDL result is stale because its AOI is no longer active.');
+        return;
+      }
+      mapResult.show({
+        origin: 'tool',
+        tool,
+        toolCallId,
+        cdlSummary,
+        regulatory_notice: null,
+      });
+      setStatus('idle');
+      return;
+    }
     setStatus('loading');
     setMessage(null);
     try {
@@ -102,7 +140,7 @@ export function ShowOnMapButton({
     }
   };
 
-  if (unavailable) {
+  if (tool !== 'analyze_cdl_context' && unavailable) {
     return <p className="mt-2 text-muted-foreground text-xs">{unavailable}</p>;
   }
   return (
@@ -116,7 +154,11 @@ export function ShowOnMapButton({
         className="gap-1.5 px-2"
       >
         <MapPin aria-hidden="true" className="text-primary" />
-        {status === 'loading' ? 'Loading map...' : 'Show on map'}
+        {status === 'loading'
+          ? 'Loading map...'
+          : tool === 'analyze_cdl_context'
+            ? 'Show CDL on map'
+            : 'Show on map'}
       </Button>
       {status === 'error' && message && (
         <StatusMessage variant="error" className="text-xs">

@@ -29,6 +29,7 @@ and refined through `adr-distillation`.
 | [0015](0015-vendored-agent-app-frontend.md) | Vendor the Full Pinned Chat Template for the Agent App Frontend | Accepted (2026-10-31, EP42) | 2026-10-28 | - | - | EXECUTION_PLAN_40, 41, 42 |
 | [0016](0016-out-of-band-aoi-screening-handoff.md) | Map AOI as Chat Session Context | Accepted (2026-10-31, EP42) | 2026-10-30 | - | - | EXECUTION_PLAN_40, 42 |
 | [0017](0017-server-map-result-contract.md) | Server Map Result Contract for the Analyze Tools | Accepted (2026-11-09, EP44) | 2026-11-04 | - | - | EXECUTION_PLAN_44 |
+| [0018](0018-conservative-missing-site-assessment-inputs.md) | Conservative Bounds for Missing Site Assessment Inputs | Accepted | 2026-11-13 | - | - | EXECUTION_PLAN_51 |
 
 ## Architectural Eras
 
@@ -66,6 +67,11 @@ registry of validated records that follow the SDV aggregation method, and ran
 the four public productivity selectors through the same engine. ADR 0008 has a
 dated amendment for the resulting Storie method change, and ADR 0002 one for
 the move from named productivity constants to per-strategy builders.
+
+**Site Assessment Completeness (2026-11-13)**: ADR 0018 defines how missing
+Site Assessment criteria may contribute registry-maximum assumptions to a
+separate conservative bound without becoming evidence, awarded points, or an
+evaluated LESA score.
 
 ## Maintenance
 

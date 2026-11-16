@@ -314,7 +314,7 @@ def _gold_scenario(case_id: str) -> dict[str, Any]:
 
 
 def test_manifest_parser_reads_expected_counts(manifest: dict[str, set[str]]) -> None:
-    assert len(manifest["tools"]) == 11
+    assert len(manifest["tools"]) == 12
     assert len(manifest["resources"]) == 4
     assert len(manifest["prompts"]) == 4
 
@@ -350,6 +350,7 @@ async def test_every_tool_exposes_an_input_schema() -> None:
 async def test_public_tool_metadata_is_complete_and_action_oriented() -> None:
     expected = {
         "analyze_cdl_histogram",
+        "analyze_cdl_context",
         "get_farmland_classification_by_point",
         "get_farmland_classification_by_mukey",
         "analyze_farmland_by_polygon",

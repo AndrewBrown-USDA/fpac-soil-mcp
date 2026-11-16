@@ -1,7 +1,7 @@
 # Project Goals (`planning/GOALS.md`)
 
-Last Updated: 2026-11-12
-Source State: `planning/STATE_48.md`; `planning/MASTER_PLAN.md`
+Last Updated: 2026-11-13
+Source State: `planning/STATE_51.md`; `planning/MASTER_PLAN.md`
 
 ## Circled Goal (Active)
 
@@ -16,9 +16,45 @@ Source State: `planning/STATE_48.md`; `planning/MASTER_PLAN.md`
   - Depends on: G1
 - **[G3]** Criterion 2 performance and reliability claims are supported by repeatable measurements from the deployed service, including latency, retries, failures, and environment details.
   - Depends on: G2
-- **[G4]** The spatial response envelope meets the remaining Phase 8 contract for status, provenance, authority, and privacy metadata.
-- **[G5]** Automated map-to-table checks enforce the 0.1% acreage-tolerance exit criterion.
-  - Depends on: G4
+- **[G4]** Public MCP tools expose strict Pydantic input contracts and structured, source-aware failure envelopes without changing the preliminary-authority boundary.
+  - Depends on: G1
+- **[G5]** The live map app preserves unknown/unmapped/partial/not-prime distinctions and prevents map/chat flows from implying suitability, exemption, clearance, or a preferred site.
+  - Depends on: G1, G2
+- **[G6]** Criterion 2 performance and reliability evidence reports reproducible inputs, environment, commit SHA, p50/p95/p99 latency, retries, failure rate, memory, repeated-run stability, bounded concurrency, and deployed transport results.
+  - Depends on: G3, G4
+- **[G7]** Evaluation and planning documentation publishes the test setup, inputs, results, limitations, and verification gates required for submission judging.
+  - Depends on: G3, G5, G6
+- **[G8]** PR #79 CDL integration is merged and validated before agricultural-land adjacency evaluation is expanded.
+  - Depends on: existing PR #79 review/merge work
+- **[G16]** An authority-safe evidence contract defines how the agent chat/map workflow collects AD-1006 Site Assessment judgments and presents distinct machine-derived CDL context, analyst responses, rationale, provenance, and verification state.
+  - Depends on: G1
+- **[G17]** The agent chat interviews users conversationally across all 12 AD-1006 Site Assessment criteria, allows unknown/partial answers, captures rationale, and confirms the summary before submitting supported facts to the existing preliminary LESA calculator.
+  - Depends on: G16
+- **[G18]** The AOI map displays a full CDL class distribution using the latest verified vintage, with coverage, provenance, and preliminary-use limitations; it does not default to a binary agricultural percentage.
+  - Depends on: G16
+- **[G19]** The map displays a separate CDL class distribution for the one-mile buffer-minus-AOI ring as nearby land-cover context, not as a perimeter-contact ratio.
+  - Depends on: G18
+- **[G20]** The map displays a full CDL class distribution in a 30 m exterior band as a non-authoritative near-perimeter proxy, not literal boundary contact or verified Criterion 2 evidence.
+  - Depends on: G18
+- **[G21]** The spatial response envelope meets the remaining Phase 8 contract for status, provenance, authority, and privacy metadata.
+- **[G22]** Automated map-to-table checks enforce the 0.1% acreage-tolerance exit criterion.
+  - Depends on: G21
+- **[G23]** A validated-resource-backed Site Assessment tool records criterion questions, selected bands, evidence, comments, provenance, and unknown/skipped states as structured conversation items.
+  - Depends on: G16, G17
+- **[G24]** Site Assessment question and summary cards make registry-defined questions, choices, citations, and point schedules clear, and let users answer, edit, or confirm structured records.
+  - Depends on: G23
+- **[G25]** The preliminary LESA call is blocked unless its submitted Site Assessment answers match a confirmed summary in conversation history.
+  - Depends on: G24
+- **[G26]** Automated acceptance evidence verifies interview sequencing, answer-to-band scoring, conservative missing-input handling, and the confirmation gate.
+  - Depends on: G25, G28, G29, G30
+- **[G27]** The approved dev-app trial confirms the guided interview, confirmed-summary gate, and preliminary-only result behavior.
+  - Depends on: G26
+- **[G28]** Missing, unknown, unavailable, and skipped Site Assessment inputs receive labelled conservative maximum points while the result remains undetermined and exposes a separate conservative bound.
+  - Depends on: G17
+- **[G29]** A CDL result cannot be shown on the map after its AOI has been replaced or detached.
+  - Depends on: G18
+- **[G30]** A LESA request screens first, offers Start/Skip before any interview-based LESA call, and requests combined CDL context at most once for an attached or pasted AOI.
+  - Depends on: G23
 
 ## Independent Backlog
 

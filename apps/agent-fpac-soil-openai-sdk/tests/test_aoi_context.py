@@ -271,12 +271,14 @@ async def _empty_events():
 
 
 @pytest.fixture
-def patched(monkeypatch):
+def patched(monkeypatch, valid_site_assessment_criteria_resource):
     server = MagicMock(name="server")
     original_call_tool = server.call_tool
+    server.read_resource = AsyncMock(return_value=valid_site_assessment_criteria_resource)
     mocks = SimpleNamespace(
         server=server,
         original_call_tool=original_call_tool,
+        criteria_resource=valid_site_assessment_criteria_resource,
         connect=AsyncMock(return_value=([server], [])),
         create_agent=MagicMock(return_value=MagicMock(name="agent")),
         run=AsyncMock(return_value=SimpleNamespace(new_items=[])),
@@ -311,8 +313,13 @@ def test_handler_with_active_aoi_adds_note_and_binds_server(patched, run):
     run(_request({"active_aoi": _active()}))
     expected_note = instruction_note(parse_active_aoi(_active()))
     patched.create_agent.assert_called_once_with(
-        mcp_servers=[patched.server], aoi_note=expected_note
+        mcp_servers=[patched.server],
+        aoi_note=expected_note,
+        site_assessment_context=agent_module._site_assessment_criteria_context(
+            patched.criteria_resource
+        ),
     )
+    patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
     assert patched.server.call_tool is not patched.original_call_tool
     assert patched.connect.await_args.args[1] == [patched.server]
 
@@ -337,9 +344,14 @@ def test_handler_model_input_is_unchanged_by_the_aoi(patched, run):
 def test_handler_without_aoi_behaves_as_before(patched, run, custom_inputs):
     run(_request(custom_inputs))
     patched.create_agent.assert_called_once_with(
-        mcp_servers=[patched.server], tools_unavailable=False
+        mcp_servers=[patched.server],
+        tools_unavailable=False,
+        site_assessment_context=agent_module._site_assessment_criteria_context(
+            patched.criteria_resource
+        ),
     )
-    assert patched.server.call_tool is patched.original_call_tool
+    patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
+    assert patched.server.call_tool is not patched.original_call_tool
 
 
 @HANDLERS

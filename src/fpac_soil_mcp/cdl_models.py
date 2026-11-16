@@ -14,6 +14,7 @@ class CDLAnalysisStatus(str, Enum):
     """Outcome status for a CDL ImageServer analysis."""
 
     SUCCESS = "success"
+    PARTIAL = "partial"
     UNAVAILABLE = "unavailable"
     INVALID = "invalid"
     AMBIGUOUS = "ambiguous"
@@ -150,3 +151,57 @@ class CDLHistogramResponse(BaseModel):
         ):
             raise ValueError(f"error_message is required when status is '{self.status.value}'.")
         return self
+
+
+class CDLClassDistribution(BaseModel):
+    """Unclassified share of one raw CDL class in a zone."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    class_value: int = Field(ge=0)
+    class_name: str | None = None
+    pixel_count: int = Field(ge=0)
+    share_pct: float = Field(ge=0, le=100)
+
+
+class CDLContextZoneResult(BaseModel):
+    """CDL evidence and provenance for one AOI context zone."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    zone: str
+    status: CDLAnalysisStatus
+    geometry_hash: str
+    classes: list[CDLClassDistribution] = Field(default_factory=list)
+    total_pixel_count: int | None = Field(default=None, ge=0)
+    nodata_pixel_count: int | None = Field(default=None, ge=0)
+    coverage_pct: float | None = Field(default=None, ge=0, le=100)
+    coverage_verified: bool = False
+    product_vintage: str | None = None
+    vintage_verified: bool = False
+    source: str | None = None
+    provenance: Provenance | None = None
+    error_message: str | None = None
+
+
+class CDLContextResponse(BaseModel):
+    """Combined AOI, one-mile-ring, and 30 m-band CDL evidence."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: CDLAnalysisStatus
+    geometry_hash: str
+    product_vintage: str | None = None
+    vintage_verified: bool = False
+    aoi: CDLContextZoneResult | None = None
+    one_mile_ring: CDLContextZoneResult | None = None
+    thirty_meter_band: CDLContextZoneResult | None = None
+    error_message: str | None = None
+    limitations: list[str] = Field(
+        default_factory=lambda: [
+            "Recent mapped land-cover evidence from USDA NASS CDL only.",
+            "CDL does not establish active farming, ownership, legal agricultural status, or FPPA farmland status.",
+            "Class distributions are not official farmland or perimeter-contact scores.",
+            "This result does not constitute an official FPPA or LESA determination.",
+        ]
+    )

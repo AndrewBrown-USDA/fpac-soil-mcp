@@ -487,6 +487,32 @@ def erase_geometries(
     return Polygon()
 
 
+def buffer_polygon(
+    polygon: Polygon | MultiPolygon,
+    distance_meters: float,
+) -> Polygon | MultiPolygon:
+    """Buffer a WGS84 polygon in EPSG:6933 and return only the exterior band."""
+    if not isinstance(polygon, (Polygon, MultiPolygon)):
+        raise GeometryValidationError("polygon must be a Polygon or MultiPolygon.")
+    if polygon.is_empty or not polygon.is_valid:
+        raise GeometryValidationError("polygon must be non-empty and valid.")
+    if distance_meters <= 0:
+        raise GeometryValidationError("distance_meters must be positive.")
+
+    projected = shapely_ops.transform(_TO_EQUAL_AREA.transform, polygon)
+    buffered = projected.buffer(distance_meters)
+    band = erase_geometries(buffered, projected)
+    if band.is_empty:
+        raise GeometryValidationError("Buffered polygon produced an empty exterior band.")
+    result = shapely_ops.transform(_TO_WGS84.transform, band)
+    if not result.is_valid:
+        repaired = make_valid(result)
+        if not isinstance(repaired, (Polygon, MultiPolygon)) or repaired.is_empty:
+            raise GeometryValidationError("Buffered polygon band is invalid.")
+        result = repaired
+    return result
+
+
 def compute_geometry_hash(
     geojson_dict_or_geom: dict[str, Any]
     | Polygon

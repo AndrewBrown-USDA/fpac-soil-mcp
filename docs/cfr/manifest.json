@@ -1,14 +1,14 @@
 {
   "generated_by": "scripts/fetch_ecfr.py",
   "title": 7,
-  "as_of": "2026-11-06",
+  "as_of": "2026-11-10",
   "parts": [
     {
       "part": 657,
       "heading": "PART 657\u2014PRIME AND UNIQUE FARMLANDS",
       "latest_amendment_date": "2016-11-23",
-      "source_xml_url": "https://www.ecfr.gov/api/versioner/v1/full/2026-11-06/title-7.xml?part=657",
-      "web_url": "https://www.ecfr.gov/on/2026-11-06/title-7/part-657",
+      "source_xml_url": "https://www.ecfr.gov/api/versioner/v1/full/2026-11-10/title-7.xml?part=657",
+      "web_url": "https://www.ecfr.gov/on/2026-11-10/title-7/part-657",
       "sha256": "758395e0e1721659f3bd5e101fc3f23df2e55359c65e7818caf9b90ed1d649ae",
       "xml_file": "title-7-part-657.xml",
       "markdown_file": "title-7-part-657.md"
@@ -17,8 +17,8 @@
       "part": 658,
       "heading": "PART 658\u2014FARMLAND PROTECTION POLICY ACT",
       "latest_amendment_date": "2016-11-23",
-      "source_xml_url": "https://www.ecfr.gov/api/versioner/v1/full/2026-11-06/title-7.xml?part=658",
-      "web_url": "https://www.ecfr.gov/on/2026-11-06/title-7/part-658",
+      "source_xml_url": "https://www.ecfr.gov/api/versioner/v1/full/2026-11-10/title-7.xml?part=658",
+      "web_url": "https://www.ecfr.gov/on/2026-11-10/title-7/part-658",
       "sha256": "a38c04bfef7dfc0c2de4fe1051b685069205ecbfe9f4c600ca2a20546065de65",
       "xml_file": "title-7-part-658.xml",
       "markdown_file": "title-7-part-658.md"
