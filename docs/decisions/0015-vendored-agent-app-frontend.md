@@ -225,6 +225,14 @@ Modified upstream files:
 * `tests/map-legend/legend.spec.ts` and `tests/map-toolbar/toolbar.spec.ts`:
   cover the no-result and AOI-cleared core legend, farmland hatch direction,
   AOI boundary visibility, and inline/mode-dependent corridor actions.
+* `client/src/components/map/MapPanel.tsx`,
+  `client/src/components/map/map-toolbar-fixture.tsx`, and
+  `tests/map-toolbar/toolbar.spec.ts`: decouple result-layer visibility from
+  camera fitting, re-fit the AOI only when the Map tab is visible, and cover
+  map-center stability and AOI recentering after Results. The isolated fixture
+  exposes a camera probe for these browser assertions; its Firefox stress case
+  captures console/page errors and network status while cycling CDL and retrying
+  a failed/delayed screening request.
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again

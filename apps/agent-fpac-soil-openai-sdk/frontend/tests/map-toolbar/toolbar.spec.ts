@@ -6,6 +6,128 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
 });
 
+async function completeScreening(page: import('@playwright/test').Page) {
+  await page.route('**/api/geo/screen', (route) => route.fulfill({ json: {
+    aoi_ref: 'aoi-12345678',
+    chat_summary: {},
+    chat_summary_text: '',
+    display: {
+      analysis: { map_units: [] },
+      map: {
+        bounds: [-93, 42, -92.99, 42.01],
+        layers: [],
+      },
+      regulatory_notice: 'Preliminary screening only.',
+    },
+  } }));
+  await page.getByText('Import or export GeoJSON', { exact: true }).click();
+  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
+  await page.getByRole('button', { name: 'Use this AOI' }).click();
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
+  await page.waitForTimeout(400);
+  await page.getByRole('tab', { name: 'Map', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Map', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.waitForTimeout(1000);
+}
+
+test('toggling result boundaries does not move or zoom the map', async ({ page }) => {
+  await completeScreening(page);
+  await page.evaluate(async () => {
+    const camera = (window as typeof window & { __mapCamera?: { jumpTo: (center: [number, number], zoom: number) => void } }).__mapCamera;
+    if (!camera) throw new Error('Map camera probe is unavailable');
+    camera.jumpTo([-90, 45], 7);
+  });
+  await page.waitForTimeout(100);
+  const readCamera = () => page.evaluate(() => {
+    const camera = (window as typeof window & { __mapCamera?: { read: () => { center: [number, number]; zoom: number } } }).__mapCamera;
+    if (!camera) throw new Error('Map camera probe is unavailable');
+    return camera.read();
+  });
+  const before = await readCamera();
+  await page.getByRole('button', { name: 'Result boundaries' }).click();
+  await page.waitForTimeout(100);
+  const after = await readCamera();
+  expect(after.center[0]).toBeCloseTo(before.center[0], 6);
+  expect(after.center[1]).toBeCloseTo(before.center[1], 6);
+  expect(after.zoom).toBeCloseTo(before.zoom, 6);
+});
+
+test('returning from Results restores the AOI center', async ({ page }) => {
+  await completeScreening(page);
+  const camera = await page.evaluate(() => {
+    const probe = (window as typeof window & { __mapCamera?: { read: () => { center: [number, number]; zoom: number } } }).__mapCamera;
+    if (!probe) throw new Error('Map camera probe is unavailable');
+    return probe.read();
+  });
+  expect(camera.center[0]).toBeCloseTo(-92.995, 0);
+  expect(camera.center[1]).toBeCloseTo(42.005, 0);
+});
+
+test('CDL toggles and a screening retry keep the Firefox map interactive', async ({ page }, testInfo) => {
+  const browserErrors: string[] = [];
+  const network: { url: string; status: number }[] = [];
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') browserErrors.push(message.text());
+  });
+  page.on('response', (response) => {
+    if (response.url().includes('/api/geo/screen') || response.url().includes('pdi.scinet.usda.gov')) {
+      network.push({ url: response.url().split('?')[0], status: response.status() });
+    }
+  });
+  await page.route('https://pdi.scinet.usda.gov/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/2ioAAAAASUVORK5CYII=', 'base64'),
+  }));
+  let screeningRequests = 0;
+  await page.route('**/api/geo/screen', async (route) => {
+    screeningRequests += 1;
+    if (screeningRequests === 1) return route.fulfill({ status: 502, json: { detail: 'temporary test outage' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return route.fulfill({ json: {
+      aoi_ref: 'aoi-12345678',
+      chat_summary: {},
+      chat_summary_text: '',
+      display: { analysis: { map_units: [] }, map: { layers: [] }, regulatory_notice: 'Preliminary screening only.' },
+    } });
+  });
+  await page.getByText('Import or export GeoJSON', { exact: true }).click();
+  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
+  await page.getByRole('button', { name: 'Use this AOI' }).click();
+  await page.evaluate(() => {
+    const camera = (window as typeof window & { __mapCamera?: { jumpTo: (center: [number, number], zoom: number) => void } }).__mapCamera;
+    if (!camera) throw new Error('Map camera probe is unavailable');
+    camera.jumpTo([-93, 42], 6);
+  });
+  await page.waitForTimeout(150);
+  const layers = page.locator('details').filter({ has: page.getByText(/^Layers/) });
+  await layers.locator('summary').click();
+  const cdl = page.locator('#overlay-toggle-cdl');
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await cdl.check();
+    await expect(cdl).toBeChecked();
+    await cdl.uncheck();
+    await expect(cdl).not.toBeChecked();
+    await page.getByRole('button', { name: 'Reset map' }).click();
+  }
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(page.getByText(/Screening unavailable/)).toBeVisible();
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
+  await expect.poll(() => screeningRequests).toBe(2);
+  await page.getByRole('tab', { name: 'Map', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Reset map' })).toBeVisible();
+  await expect.poll(() => network.filter(({ url }) => url.includes('pdi.scinet.usda.gov')).length).toBeGreaterThan(0);
+  await testInfo.attach('firefox-stress-observations', {
+    body: JSON.stringify({ screeningRequests, network, browserErrors }, null, 2),
+    contentType: 'application/json',
+  });
+});
+
 test('geometry transfer panel groups upload, paste, copy, and download workflows', async ({ page }) => {
   const transfer = page.getByText('Import or export GeoJSON');
   await transfer.click();

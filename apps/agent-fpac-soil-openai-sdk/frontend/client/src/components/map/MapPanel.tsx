@@ -101,10 +101,13 @@ const lineCollection = (points: number[][]) => ({
 
 type MapPanelProps = {
   onCloseMap: () => void;
+  onMapReady?: (map: MapLibreMap) => void;
 };
 
-export function MapPanel({ onCloseMap }: MapPanelProps) {
+export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const onMapReadyRef = useRef(onMapReady);
+  onMapReadyRef.current = onMapReady;
   const mapRef = useRef<MapLibreMap | null>(null);
   const drawRef = useRef<TerraDraw | null>(null);
   const corridorDrawRef = useRef<TerraDraw | null>(null);
@@ -134,6 +137,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [layersOpen, setLayersOpen] = useState(false);
   const [aoiVisible, setAoiVisible] = useState(true);
   const [resultsVisible, setResultsVisible] = useState(true);
+  const resultsVisibleRef = useRef(resultsVisible);
+  resultsVisibleRef.current = resultsVisible;
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
   const [measurePreview, setMeasurePreview] = useState<number[] | null>(null);
@@ -229,6 +234,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     map.on('zoomend', () => setZoom(map.getZoom()));
 
     map.on('load', () => {
+      onMapReadyRef.current?.(map);
       map.addSource('aoi', { type: 'geojson', data: emptyCollection });
       map.addLayer({
         id: 'aoi-casing',
@@ -478,15 +484,28 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     }
     clearMapBlock(map);
     if (shown.cdlSummary) {
-      const bounds = aoiRef.current ? geometryBounds(aoiRef.current) : null;
-      if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
       return;
     }
     if (!shown.block) return;
     // Server layers draw below both strokes of the panel's AOI outline.
     renderMapBlock(map, shown.block, 'aoi-casing');
     const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
-    setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
+    setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisibleRef.current);
+  }, [shown, mapReady]);
+
+  // Fit only while the map tab is visible. Screening completion selects Results,
+  // where the map container is hidden and fitBounds can compute an offset center.
+  useEffect(() => {
+    if (!mapReady || activeTab !== 'map' || !shown) return;
+    const map = mapRef.current;
+    if (!map) return;
+    map.resize();
+    if (shown.cdlSummary) {
+      const bounds = aoiRef.current ? geometryBounds(aoiRef.current) : null;
+      if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+      return;
+    }
+    if (!shown.block) return;
     // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
     // its layers (a corridor has no AOI).
     const bounds =
@@ -494,7 +513,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         ? geometryBounds(aoiRef.current)
         : (shown.block.bounds ?? null);
     if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
-  }, [shown, mapReady, resultsVisible]);
+  }, [shown, mapReady, activeTab]);
 
   // Add or remove overlays to match the toggles; a removed overlay forgets its error.
   useEffect(() => {
