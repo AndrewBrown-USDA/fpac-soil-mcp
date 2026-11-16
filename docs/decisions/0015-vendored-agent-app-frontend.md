@@ -106,6 +106,14 @@ to upstream for every file this repo has not changed.
   alternatives, buffer settings, status, and feature removal in a compact
   options disclosure in place of the separate large-button corridor fieldset
   (corrective follow-up to Plan 55).
+* `client/src/components/map/MapPanel.tsx`: explicit Area/Corridor tool modes,
+  a shared mode-specific name input, map-anchored completed/live distance
+  tooltip with double-click completion and explicit clearing, and an in-map
+  collapsible legend overlay retaining the existing server legend components.
+* `tests/map-toolbar/toolbar.spec.ts`, `tests/corridor-map/corridor-map.spec.ts`,
+  and `tests/map-legend/legend.spec.ts`: browser coverage for mode/name
+  persistence, measurement completion/clear, corridor workflows, and legend
+  rendering from the existing result contract.
 * `client/map-toolbar-fixture.html`, `client/src/components/map/map-toolbar-fixture.tsx`,
   `playwright.map-toolbar.config.ts`, `tests/map-toolbar/toolbar.spec.ts`, and
   `package.json`: isolated production-panel toolbar browser coverage and test script.

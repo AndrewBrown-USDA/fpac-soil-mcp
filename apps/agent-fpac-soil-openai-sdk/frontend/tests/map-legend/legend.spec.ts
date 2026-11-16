@@ -58,6 +58,7 @@ test('screening and tool result legends follow the active result', async ({ page
       ],
     }] } },
   } }));
+  await page.getByText('Import or export GeoJSON', { exact: true }).click();
   await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();

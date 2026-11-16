@@ -4,6 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('https://**/*', (route) => route.abort());
   await page.goto('/corridor-map-fixture.html');
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
 });
 
 test('submits drawn corridor directly and displays returned summary, notice and server legend', async ({ page }) => {
@@ -80,6 +81,7 @@ test('retains alternative labels and synchronizes feature removal and clear', as
 
 test('corridor auto-attach replaces AOI and the shared chat chip detaches it', async ({ page }) => {
   // Attach an AOI through its public drawing workflow.
+  await page.getByRole('button', { name: 'Area', exact: true }).click();
   const map = page.locator('.maplibregl-map');
   await page.getByRole('button', { name: 'Polygon' }).click();
   await map.click({ position: { x: 100, y: 100 } });
@@ -89,6 +91,7 @@ test('corridor auto-attach replaces AOI and the shared chat chip detaches it', a
   await expect(page.getByTestId('active-geometry-chip')).toContainText('Map AOI');
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-aoi:corridor-fixture'))).not.toBeNull();
 
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
   await page.getByText('Corridor options', { exact: true }).click();
   await page.getByLabel('Required buffer distance').fill('50');
   await page.getByRole('button', { name: 'Draw primary line' }).click();

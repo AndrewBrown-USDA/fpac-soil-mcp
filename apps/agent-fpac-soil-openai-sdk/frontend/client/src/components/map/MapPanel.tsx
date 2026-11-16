@@ -54,7 +54,7 @@ import { useScreening } from './useScreening';
 import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
 import { lineDistance } from './distance';
 import type { DistanceUnit } from './distance';
-import { aoiViewBounds, INITIAL_MAP_VIEW, measurementModeAfterCancel, setLayerVisibility } from './mapControls';
+import { aoiViewBounds, INITIAL_MAP_VIEW, setLayerVisibility } from './mapControls';
 import { showNewScreeningResult } from './resultVisibility';
 import { BUFFER_SIDE_NOTICE, DEFAULT_CORRIDOR_UNIT, createCorridorInput, corridorReference, isCorridorPolygon, isLineGeometry } from './corridorGeometry';
 import type { CorridorUnit, LineGeometry } from './corridorGeometry';
@@ -113,6 +113,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [corridorCenterline, setCorridorCenterline] = useState<LineGeometry | null>(null);
   const [corridorAlternatives, setCorridorAlternatives] = useState<{ label: string; geometry: LineGeometry }[]>([]);
   const [corridorStaging, setCorridorStaging] = useState<PolygonGeometry[]>([]);
+  const [mapMode, setMapMode] = useState<'area' | 'corridor'>('area');
   const [alternativeLabel, setAlternativeLabel] = useState('Alternative 1');
   const alternativeLabelRef = useRef(alternativeLabel);
   alternativeLabelRef.current = alternativeLabel;
@@ -142,6 +143,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [identifyHint, setIdentifyHint] = useState<string | null>(null);
   // Identify popup (D6): MapLibre popup whose content is rendered through a portal.
   const popupRef = useRef<Popup | null>(null);
+  const measurePopupRef = useRef<Popup | null>(null);
   const identifyAbort = useRef<AbortController | null>(null);
   const [popupNode, setPopupNode] = useState<HTMLDivElement | null>(null);
   const [sections, setSections] = useState<IdentifySection[]>([]);
@@ -365,6 +367,26 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const source = mapRef.current?.getSource('measurement') as GeoJSONSource | undefined;
     source?.setData(lineCollection([...measurePoints, ...(measuring && measurePoints.length > 0 && measurePreview ? [measurePreview] : [])]) as never);
   }, [measurePoints, measurePreview, measuring, mapReady]);
+  useEffect(() => {
+    measurePopupRef.current?.remove();
+    measurePopupRef.current = null;
+    const anchor = measuring && measurePreview ? measurePreview : measurePoints.at(-1);
+    const map = mapRef.current;
+    if (!mapReady || !map || measurePoints.length === 0 || !anchor) return;
+    const node = document.createElement('div');
+    node.setAttribute('role', 'tooltip');
+    node.setAttribute('aria-label', 'Measured distance');
+    node.className = 'rounded bg-popover px-2 py-1 text-popover-foreground text-xs shadow-md';
+    node.textContent = `${lineDistance(measuring && measurePreview ? [...measurePoints, measurePreview] : measurePoints, measureUnit).toFixed(2)} ${measureUnit}`;
+    measurePopupRef.current = new Popup({ closeButton: false, closeOnClick: false, offset: 12 })
+      .setLngLat(anchor as [number, number])
+      .setDOMContent(node)
+      .addTo(map);
+    return () => {
+      measurePopupRef.current?.remove();
+      measurePopupRef.current = null;
+    };
+  }, [mapReady, measuring, measurePoints, measurePreview, measureUnit]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -568,11 +590,19 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const onMouseMove = (event: MapMouseEvent) => {
       if (measuring && measurePoints.length > 0) setMeasurePreview([event.lngLat.lng, event.lngLat.lat]);
     };
+    const onDoubleClick = (event: MapMouseEvent) => {
+      if (!measuring) return;
+      event.preventDefault();
+      setMeasuring(false);
+      setMeasurePreview(null);
+    };
     map.on('click', onClick);
     map.on('mousemove', onMouseMove);
+    map.on('dblclick', onDoubleClick);
     return () => {
       map.off('click', onClick);
       map.off('mousemove', onMouseMove);
+      map.off('dblclick', onDoubleClick);
     };
   }, [mapReady, mode, overlayOn, measuring, measurePoints.length]);
 
@@ -598,7 +628,10 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   }, [sections, popupNode]);
 
   const chooseMode = (next: DrawMode) => {
-    if (measuring) setMeasuring(false);
+    if (measuring) {
+      setMeasuring(false);
+      setMeasurePreview(null);
+    }
     corridorDrawRef.current?.setMode('static');
     drawRef.current?.setMode(next);
     setMode(next);
@@ -642,11 +675,12 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       if (kind === 'primary') corridorContext?.setCorridor(null);
     }
   };
-  const startCorridorDrawing = (kind: 'primary' | 'alternative' | 'staging') => {
+  const startCorridorDrawing = (kind: 'primary' | 'alternative' | 'staging', label = alternativeLabel) => {
     corridorDraftChatId.current = chatId;
     chooseMode('static');
     if (kind === 'primary') removeCorridorFeature('primary');
     corridorDrawKind.current = kind;
+    if (kind !== 'staging') alternativeLabelRef.current = label;
     corridorDrawRef.current?.setMode(kind === 'staging' ? 'polygon' : 'linestring');
   };
   const runCorridorScreening = () => {
@@ -663,13 +697,6 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
   };
   const resetMapView = () => mapRef.current?.easeTo({ center: INITIAL_MAP_VIEW.center, zoom: INITIAL_MAP_VIEW.zoom });
-  const cancelMeasurement = () => {
-    setMeasuring(false);
-    setMeasurePoints([]);
-    setMeasurePreview(null);
-    if (drawRef.current?.getMode() !== 'static') drawRef.current?.setMode(measurementModeAfterCancel());
-  };
-
   const onPasted = (geometry: PolygonGeometry) => {
     syncDraw(geometry);
     replaceAoi(geometry);
@@ -840,7 +867,34 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           <p>Preliminary screening view. Not an official NRCS determination.</p>
         </StatusMessage>
         <TooltipProvider>
-        <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="AOI tools">
+        <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="Map tools">
+          <div role="group" aria-label="Map mode" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>Mode</span>
+            <div className="flex gap-1">
+              <Button type="button" size="sm" variant={mapMode === 'area' ? 'primary' : 'default'} aria-pressed={mapMode === 'area'} onClick={() => { setMapMode('area'); chooseMode('static'); }}>Area</Button>
+              <Button type="button" size="sm" variant={mapMode === 'corridor' ? 'primary' : 'default'} aria-pressed={mapMode === 'corridor'} onClick={() => { setMapMode('corridor'); chooseMode('static'); }}>Corridor</Button>
+            </div>
+          </div>
+          <label className="flex flex-col gap-1 text-xs">
+            {mapMode === 'area' ? 'Area label (optional)' : 'Alternative label'}
+            <input
+              aria-label={mapMode === 'area' ? 'Area label' : 'Alternative label'}
+              type="text"
+              value={mapMode === 'area' ? aoiLabel : alternativeLabel}
+              onChange={(event) => {
+                if (mapMode === 'area') setAoiLabel(event.target.value);
+                else {
+                  setAlternativeLabel(event.target.value);
+                  alternativeLabelRef.current = event.target.value;
+                }
+              }}
+              disabled={mapMode === 'area' && !aoi}
+              maxLength={120}
+              className="h-8 w-36 rounded border bg-background px-2 text-sm"
+            />
+          </label>
+          {mapMode === 'area' ? (
+          <>
           <div role="group" aria-label="Draw area" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>
               Draw area
@@ -861,11 +915,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               {actionButton('Clear', Trash2, clear, !aoi)}
             </div>
           </div>
+          </>
+          ) : (
+          <>
           <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Corridor</span>
             <div className="flex flex-wrap gap-1.5">
-              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary'), !mapReady)}
-              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative'), !mapReady)}
+              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), !mapReady)}
+              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), !mapReady)}
               {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, !mapReady)}
               {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), !mapReady)}
               {actionButton(
@@ -882,6 +939,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               )}
             </div>
           </div>
+          </>
+          )}
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
             <div className="flex flex-wrap gap-1.5">
@@ -891,24 +950,18 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               {actionButton('Result boundaries', Eye, () => setResultsVisible((v) => !v), false, resultsVisible)}
             </div>
           </div>
-          <div role="group" aria-label="Line measurement" data-preview-active={measuring && measurePoints.length > 0 && measurePreview !== null} className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>Measure distance</span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {actionButton(measuring ? 'Cancel measure' : 'Measure line', Ruler, () => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasurePreview(null); setMeasuring(true); } }, false, measuring)}
-              <select aria-label="Distance unit" value={measureUnit} onChange={(event) => setMeasureUnit(event.target.value as DistanceUnit)} className="rounded border bg-background px-2 py-1 text-sm">
-                <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
-              </select>
-              {measuring && <span role="status">Measuring</span>}
-              {measurePoints.length > 0 && <span role="status">{lineDistance(measurePoints, measureUnit).toFixed(2)} {measureUnit}</span>}
-              {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => setMeasurePoints([]))}
-            </div>
+          <div role="group" aria-label="Line measurement" data-preview-active={measuring && measurePoints.length > 0 && measurePreview !== null} className="flex items-center gap-1.5 self-end">
+            {actionButton(measuring ? 'Stop measuring' : 'Measure distance', Ruler, () => { if (measuring) { setMeasuring(false); setMeasurePreview(null); } else { chooseMode('static'); setMeasurePoints([]); setMeasurePreview(null); setMeasuring(true); } }, false, measuring)}
+            <select aria-label="Distance unit" value={measureUnit} onChange={(event) => setMeasureUnit(event.target.value as DistanceUnit)} className="rounded border bg-background px-2 py-1 text-sm">
+              <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
+            </select>
+            {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => { setMeasurePoints([]); setMeasurePreview(null); })}
           </div>
         </div>
         </TooltipProvider>
-        <details className="rounded-md border px-2 py-1" aria-label="Corridor options">
+        {mapMode === 'corridor' && <details className="rounded-md border px-2 py-1" aria-label="Corridor options">
           <summary className="cursor-pointer font-medium text-sm">Corridor options</summary>
           <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs">Alternative label<input aria-label="Alternative label" value={alternativeLabel} onChange={(event) => setAlternativeLabel(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
             <span className="text-xs">Primary: {corridorCenterline ? 'ready' : 'required'}; alternatives: {corridorAlternatives.length}; staging areas: {corridorStaging.length}</span>
             <label className="flex flex-col gap-1 text-xs">Required buffer distance<input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
             <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
@@ -918,7 +971,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="text-xs underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
             {corridorCenterline && <button type="button" className="text-xs underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
           </div>
-        </details>
+        </details>}
         <div className={`relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border ${measuring || mode === 'polygon' || mode === 'rectangle' ? '[&_.maplibregl-canvas]:!cursor-crosshair' : ''}`}>
           {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
           <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
@@ -932,7 +985,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             onToggle={toggleOverlay}
           />
           {(shown?.block || shown?.cdlSummary) && (
-            <details className="absolute top-2 left-2 z-10 max-w-[min(16rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+            <details className="absolute bottom-2 right-2 z-10 max-w-[min(16rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
               <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
               <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
                 {shown.block && <MapLegend block={shown.block} compact />}
@@ -963,17 +1016,6 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         <div className="mt-2 flex flex-col gap-2">
         <GeoJsonInput onGeometry={onPasted} />
         <div className="flex flex-wrap items-end gap-2" role="group" aria-label="AOI GeoJSON export">
-          <label className="flex min-w-48 flex-1 flex-col gap-1 font-medium text-xs">
-            AOI label (optional)
-            <input
-              type="text"
-              value={aoiLabel}
-              onChange={(event) => setAoiLabel(event.target.value)}
-              disabled={!aoi}
-              maxLength={120}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            />
-          </label>
           <Button type="button" size="sm" variant="default" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
             <Copy aria-hidden="true" /> Copy GeoJSON
           </Button>
