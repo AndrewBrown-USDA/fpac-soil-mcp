@@ -206,6 +206,10 @@ Modified upstream files:
   `client/src/components/map/corridorSession.ts`, and
   `client/src/components/map/corridorSession.test.ts`: per-chat corridor session
   storage/provider and focused persistence validation (Plan 54.6.1).
+* `client/src/components/map/MapPanel.tsx`, `corridorGeometry.ts`, and
+  `corridorGeometry.test.ts`: separate corridor line/staging drawing controls,
+  buffer validation and per-chat attachment, without changing polygon AOI state
+  (Plan 54.7.1).
 * `server/src/middleware/auth.ts`: provides a synthetic local-only session when
   `FPAC_LOCAL_DEV=1` and the request socket is loopback; normal requests retain
   the Databricks session lookup. `server/src/middleware/auth.test.ts` covers
