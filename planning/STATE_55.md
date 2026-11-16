@@ -18,7 +18,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 | 2 | 55.1.2 Corridor labels and remove/clear synchronization | done | `78b4efc` | Labels remain browser/session metadata; focused Node tests 10/10, corridor-map Playwright 2/2, and frontend check passed. |
 | 3 | 55.2.2 Measurement preview | done | `b71ae66` | Focused distance tests 2/2, toolbar Playwright 4/4, and `make app-frontend-check` passed. |
 | 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | done | `4aeb8a8`, `998f6e0` | Corridor-to-AOI replacement and shared-chip detach covered; corridor-map 3/3, toolbar 5/5, frontend check passed after mid-tier recovery. |
-| 5 | 55.4.1 Integrated validation and handoff | pending | | |
+| 5 | 55.4.1 Integrated validation and handoff | done | — | Final root/app/frontend gates passed; all scoped browser and Node tests passed. |
 
 ## Task Reports
 
@@ -71,3 +71,13 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - The first toolbar run lacked installed dependencies; after `npm ci`, a concurrent frontend gate reinstalled dependencies and caused a transient Playwright module-resolution error. Sequential toolbar rerun passed.
 - ADR 0015 already listed all modified frontend paths; no inventory update was needed. No scope deviation or remote actions.
 - Implementation commit: `b71ae66`; planning-only status/TODO commit follows separately.
+
+### 55.4.1 — Integrated validation and handoff
+- Integrated root branch: `feature/local-dev-trial`; all five implementation tasks are complete and the working tree is clean.
+- `make check` — Ruff passed, 771 files formatted, 993 passed / 3 skipped / 45 deselected.
+- `make app-check` — Ruff passed, 20 files formatted, 297 passed.
+- `make app-frontend-check` — passed; client/server builds succeeded. Biome emitted 11 existing warnings; npm reports 10 dependency audit findings (4 low, 6 moderate).
+- Focused Node tests: corridor geometry/session 10 passed; distance 2 passed; corridor session 5 passed.
+- Focused Playwright: corridor-map 3 passed; map-toolbar 5 passed; tool-card 1 passed.
+- No network tests, deployment, push, or remote actions.
+- Plan 55 is complete; this report is the final handoff.
