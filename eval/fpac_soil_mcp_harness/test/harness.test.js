@@ -22,8 +22,8 @@ test("loader reads the unified corpus directly and constructs every case invocat
   assert.equal(loaded.source, corpusPath);
   assert.equal(loaded.executable_version, null);
   assert.equal(loaded.executable_source, null);
-  assert.equal(loaded.test_cases.length, 38);
-  assert.equal(new Set(loaded.test_cases.map((item) => item.id)).size, 38);
+  assert.equal(loaded.test_cases.length, source.test_cases.length);
+  assert.equal(new Set(loaded.test_cases.map((item) => item.id)).size, source.test_cases.length);
   assert.deepEqual(loaded.test_cases.map((item) => item.id), expectedIds);
 
   for (const [index, item] of loaded.test_cases.entries()) {
