@@ -54,6 +54,31 @@ test('drawing and measurement cursors restore and measurement defaults to select
   await expect(canvas).not.toHaveCSS('cursor', 'crosshair');
 });
 
+test('measurement shows a concise status and live preview without committing pointer movement', async ({ page }) => {
+  const canvas = page.locator('.maplibregl-canvas');
+  await page.getByRole('button', { name: 'Measure line' }).click();
+  await page.getByRole('combobox', { name: 'Distance unit' }).selectOption('meters');
+  await expect(page.getByText('Measuring', { exact: true })).toBeVisible();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Map canvas is not visible');
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.4);
+  await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.6);
+  const measurement = page.getByRole('group', { name: 'Line measurement' });
+  await expect(measurement).toHaveAttribute('data-preview-active', 'true');
+  const distance = page.getByText(/^\d+\.\d{2} meters$/);
+  await expect(distance).toHaveText('0.00 meters');
+  await page.mouse.click(box.x + box.width * 0.7, box.y + box.height * 0.6);
+  await expect(distance).toBeVisible();
+  const committedDistance = await distance.textContent();
+  if (!committedDistance) throw new Error('Committed measurement distance is missing');
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.5);
+  await expect(distance).toHaveText(committedDistance);
+  await expect(page.getByText('Measuring', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancel measure' })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel measure' }).click();
+  await expect(page.getByText('Measuring', { exact: true })).toHaveCount(0);
+});
+
 test('finishing a rectangle restores the normal map cursor', async ({ page }) => {
   const canvas = page.locator('.maplibregl-canvas');
   await page.getByRole('button', { name: 'Rectangle' }).click();

@@ -135,6 +135,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [resultsVisible, setResultsVisible] = useState(true);
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
+  const [measurePreview, setMeasurePreview] = useState<number[] | null>(null);
   const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('miles');
   const [activeTab, setActiveTab] = useState<'map' | 'results'>('map');
   // Short hint when a click has nothing to identify (no layer on, or none in range).
@@ -362,8 +363,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   useEffect(() => {
     if (!mapReady) return;
     const source = mapRef.current?.getSource('measurement') as GeoJSONSource | undefined;
-    source?.setData(lineCollection(measurePoints) as never);
-  }, [measurePoints, mapReady]);
+    source?.setData(lineCollection([...measurePoints, ...(measuring && measurePoints.length > 0 && measurePreview ? [measurePreview] : [])]) as never);
+  }, [measurePoints, measurePreview, measuring, mapReady]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -487,6 +488,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const onClick = (event: MapMouseEvent) => {
       if (measuring) {
         setMeasurePoints((points) => [...points, [event.lngLat.lng, event.lngLat.lat]]);
+        setMeasurePreview(null);
         return;
       }
       if (mode !== 'static') return;
@@ -563,11 +565,16 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           });
       }
     };
+    const onMouseMove = (event: MapMouseEvent) => {
+      if (measuring && measurePoints.length > 0) setMeasurePreview([event.lngLat.lng, event.lngLat.lat]);
+    };
     map.on('click', onClick);
+    map.on('mousemove', onMouseMove);
     return () => {
       map.off('click', onClick);
+      map.off('mousemove', onMouseMove);
     };
-  }, [mapReady, mode, overlayOn, measuring]);
+  }, [mapReady, mode, overlayOn, measuring, measurePoints.length]);
 
   // The hint clears itself after a few seconds.
   useEffect(() => {
@@ -661,6 +668,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const cancelMeasurement = () => {
     setMeasuring(false);
     setMeasurePoints([]);
+    setMeasurePreview(null);
     if (drawRef.current?.getMode() !== 'static') drawRef.current?.setMode(measurementModeAfterCancel());
   };
 
@@ -864,14 +872,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               {actionButton('Result boundaries', Eye, () => setResultsVisible((v) => !v), false, resultsVisible)}
             </div>
           </div>
-          <div role="group" aria-label="Line measurement" className="flex flex-col gap-1">
+          <div role="group" aria-label="Line measurement" data-preview-active={measuring && measurePoints.length > 0 && measurePreview !== null} className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Measure distance</span>
             <div className="flex flex-wrap items-center gap-1.5">
-              {actionButton(measuring ? 'Cancel measure' : 'Measure line', Ruler, () => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasuring(true); } }, false, measuring)}
+              {actionButton(measuring ? 'Cancel measure' : 'Measure line', Ruler, () => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasurePreview(null); setMeasuring(true); } }, false, measuring)}
               <select aria-label="Distance unit" value={measureUnit} onChange={(event) => setMeasureUnit(event.target.value as DistanceUnit)} className="rounded border bg-background px-2 py-1 text-sm">
                 <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
               </select>
-              {measuring && <span role="status">Measurement active: click map to add points.</span>}
+              {measuring && <span role="status">Measuring</span>}
               {measurePoints.length > 0 && <span role="status">{lineDistance(measurePoints, measureUnit).toFixed(2)} {measureUnit}</span>}
               {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => setMeasurePoints([]))}
             </div>
