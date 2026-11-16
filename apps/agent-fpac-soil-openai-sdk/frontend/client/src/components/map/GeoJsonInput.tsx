@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { ChevronDown, Clipboard, Upload } from 'lucide-react';
+import { Clipboard, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseAoiText } from './geojson';
 import type { PolygonGeometry } from './geojson';
@@ -45,10 +45,11 @@ export function GeoJsonInput({
   };
 
   return (
-    <div role="group" aria-label="AOI input methods" className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div role="group" aria-label="AOI input methods" className="contents">
+      <div className="contents">
         <Button
           type="button"
+          size="sm"
           variant="secondary"
           onClick={() => fileInputRef.current?.click()}
           className="gap-1.5"
@@ -58,18 +59,15 @@ export function GeoJsonInput({
         </Button>
         <Button
           type="button"
+          size="sm"
           variant="secondary"
-          aria-expanded={pasteOpen}
+          aria-pressed={pasteOpen}
           aria-controls={pastePanelId}
           onClick={() => setPasteOpen((open) => !open)}
           className="gap-1.5"
         >
           <Clipboard aria-hidden="true" />
-          Paste GeoJSON
-          <ChevronDown
-            aria-hidden="true"
-            className={`transition-transform ${pasteOpen ? 'rotate-180' : ''}`}
-          />
+          Paste
         </Button>
         <input
           ref={fileInputRef}

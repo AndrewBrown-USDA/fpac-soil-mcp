@@ -21,14 +21,12 @@ import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
 import ncssAcronymWhite from '@/assets/ncss-acronym-white.png';
 import { GeoJsonInput } from './GeoJsonInput';
 import {
-  MAX_AOI_VERTICES,
-  countVertices,
   featureCollection,
   geometryBounds,
   toPolygonGeometry,
 } from './geojson';
 import { IdentifyPopup, resultInfo } from './IdentifyPopup';
-import type { IdentifySection, ResultInfo, UseAsAoiResult } from './IdentifyPopup';
+import type { IdentifySection, ResultInfo } from './IdentifyPopup';
 import {
   fetchOutline,
   identifyOverlaysAtPoint,
@@ -598,12 +596,23 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
         controller.signal,
       )) {
         query
-          .then((found) => {
+          .then(async (found) => {
             if (controller.signal.aborted) return;
+            let sectionData = found;
+            if ('area' in found && found.area && isAreaOverlayId(overlayId)) {
+              try {
+                const areaGeometry = await fetchOutline(overlayId, found.area.geoid, controller.signal);
+                if (controller.signal.aborted) return;
+                sectionData = { ...found, areaGeometry };
+              } catch {
+                if (controller.signal.aborted) return;
+                sectionData = { ...found, areaGeometry: null };
+              }
+            }
             setSections((prev) =>
               prev.map((s) =>
                 s.overlay.id === overlayId
-                  ? { overlay: s.overlay, state: 'done' as const, ...found }
+                  ? { overlay: s.overlay, state: 'done' as const, ...sectionData }
                   : s,
               ),
             );
@@ -742,30 +751,14 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   };
 
   // Use as AOI: the exact outline, refused above the vertex cap (D6, never simplified).
-  const applyAreaAsAoi = async (section: IdentifySection, area: AreaInfo): Promise<UseAsAoiResult> => {
+  const applyAreaAsAoi = (section: IdentifySection, _area: AreaInfo, geometry: PolygonGeometry) => {
     const overlayId = section.overlay.id;
     if (overlayId === 'ssurgo') return { ok: false, message: 'Soil map units cannot be an AOI.' };
     if (!isAreaOverlayId(overlayId)) {
       return { ok: false, message: 'This context layer cannot be used as an AOI.' };
     }
-    const controller = new AbortController();
-    let geometry: PolygonGeometry | null = null;
-    try {
-      geometry = await fetchOutline(overlayId, area.geoid, controller.signal);
-    } catch {
-      return { ok: false, message: 'Could not load this outline. Try again later.' };
-    }
-    if (!geometry) return { ok: false, message: 'Could not load this outline. Try again later.' };
-    const vertices = countVertices(geometry);
-    if (vertices > MAX_AOI_VERTICES) {
-      return {
-        ok: false,
-        message: `This outline has ${vertices} vertices; the AOI limit is ${MAX_AOI_VERTICES}. Draw or paste a smaller AOI.`,
-      };
-    }
     popupRef.current?.remove();
     onPasted(geometry);
-    return { ok: true };
   };
 
   const undo = () => {
@@ -1052,24 +1045,23 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
         </div>
         {popupNode &&
           createPortal(
-            <IdentifyPopup result={resultHit} sections={sections} onUseAsAoi={applyAreaAsAoi} />,
+            <IdentifyPopup result={resultHit} sections={sections} onUseGeometry={applyAreaAsAoi} />,
             popupNode,
           )}
-        <details className="rounded-md border p-2" aria-label="Geometry GeoJSON transfer">
-        <summary className="cursor-pointer font-medium text-sm">Import or export GeoJSON</summary>
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="rounded-md border p-2">
+        <div className="flex flex-nowrap items-start gap-2" role="group" aria-label="AOI geometry transfer">
         <GeoJsonInput onGeometry={onPasted} />
-        <div className="flex flex-wrap items-end gap-2" role="group" aria-label="AOI GeoJSON export">
-          <Button type="button" size="sm" variant="default" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
-            <Copy aria-hidden="true" /> Copy GeoJSON
+        <div className="flex flex-nowrap items-center gap-2" role="group" aria-label="AOI geometry export">
+          <Button type="button" size="sm" variant="secondary" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
+            <Copy aria-hidden="true" /> Copy
           </Button>
-          <Button type="button" size="sm" variant="default" onClick={downloadAoi} disabled={!aoi} className="gap-1.5">
-            <Download aria-hidden="true" /> Download GeoJSON
+          <Button type="button" size="sm" variant="secondary" onClick={downloadAoi} disabled={!aoi} className="gap-1.5">
+            <Download aria-hidden="true" /> Download
           </Button>
           {aoiExportMessage && <span role="status" className="text-xs">{aoiExportMessage}</span>}
         </div>
         </div>
-        </details>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"

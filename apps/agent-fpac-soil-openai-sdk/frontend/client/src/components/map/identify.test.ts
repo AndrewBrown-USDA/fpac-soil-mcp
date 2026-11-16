@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { identifyOverlaysAtPoint, isIdentifiableOverlayId } from './identify';
+import { fetchOutline, identifyOverlaysAtPoint, isIdentifiableOverlayId } from './identify';
 
 test('identify popup omits the estimate phrase while screening retains its authority notice', async () => {
   const popup = await readFile(new URL('./IdentifyPopup.tsx', import.meta.url), 'utf8');
@@ -35,4 +35,43 @@ test('a click with only the CDL overlay active does not request TIGERweb', () =>
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('county outline response retains its authoritative GEOID and exact polygon', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    assert.match(url.searchParams.get('where') ?? '', /GEOID='01001'/);
+    return new Response(JSON.stringify({
+      features: [{
+        properties: { GEOID: '01001', NAME: 'Autauga County' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[-87, 32], [-86, 32], [-86, 33], [-87, 33], [-87, 32]]],
+        },
+      }],
+    }));
+  };
+  try {
+    const result = await fetchOutline('counties', '01001', new AbortController().signal);
+    assert.deepEqual(result, {
+      geoid: '01001',
+      name: 'Autauga County',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[-87, 32], [-86, 32], [-86, 33], [-87, 33], [-87, 32]]],
+      },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('popup exposes compact exact and bbox options with vertex-cap semantics', async () => {
+  const popup = await readFile(new URL('./IdentifyPopup.tsx', import.meta.url), 'utf8');
+  assert.match(popup, /Exact/);
+  assert.match(popup, /BBOX/);
+  assert.match(popup, /countVertices\(exact\) <= MAX_AOI_VERTICES/);
+  assert.match(popup, /Use the exact polygon as the AOI/);
+  assert.match(popup, /Use the bounding box as the AOI/);
 });

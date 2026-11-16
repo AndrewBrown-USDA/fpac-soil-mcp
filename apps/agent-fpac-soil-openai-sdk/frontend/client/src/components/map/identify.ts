@@ -153,7 +153,7 @@ export async function fetchOutline(
   overlay: AreaOverlayId,
   geoid: string,
   signal: AbortSignal,
-): Promise<PolygonGeometry | null> {
+): Promise<{ geometry: PolygonGeometry; geoid: string; name: string } | null> {
   if (!GEOID.test(geoid)) return null;
   const params = new URLSearchParams({
     where: `GEOID='${geoid}'`,
@@ -163,5 +163,18 @@ export async function fetchOutline(
     f: 'geojson',
   });
   const answer = await getJson(`${TIGERWEB_QUERY[overlay]}?${params}`, signal);
-  return toPolygonGeometry(answer.features?.[0]?.geometry);
+  const feature = answer.features?.[0];
+  const geometry = toPolygonGeometry(feature?.geometry);
+  const properties = feature?.properties;
+  const responseGeoid = properties?.GEOID;
+  const name = properties?.NAME;
+  if (
+    !geometry ||
+    typeof responseGeoid !== 'string' ||
+    responseGeoid !== geoid ||
+    typeof name !== 'string'
+  ) {
+    return null;
+  }
+  return { geometry, geoid: responseGeoid, name };
 }

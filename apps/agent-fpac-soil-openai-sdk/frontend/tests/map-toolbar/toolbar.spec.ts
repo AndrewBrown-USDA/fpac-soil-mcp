@@ -20,8 +20,7 @@ async function completeScreening(page: import('@playwright/test').Page) {
       regulatory_notice: 'Preliminary screening only.',
     },
   } }));
-  await page.getByText('Import or export GeoJSON', { exact: true }).click();
-  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByRole('button', { name: 'Paste' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();
   await page.getByRole('button', { name: 'Run screening' }).click();
@@ -94,8 +93,7 @@ test('CDL toggles and a screening retry keep the Firefox map interactive', async
       display: { analysis: { map_units: [] }, map: { layers: [] }, regulatory_notice: 'Preliminary screening only.' },
     } });
   });
-  await page.getByText('Import or export GeoJSON', { exact: true }).click();
-  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByRole('button', { name: 'Paste' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();
   await page.evaluate(() => {
@@ -128,14 +126,23 @@ test('CDL toggles and a screening retry keep the Firefox map interactive', async
   });
 });
 
-test('geometry transfer panel groups upload, paste, copy, and download workflows', async ({ page }) => {
-  const transfer = page.getByText('Import or export GeoJSON');
-  await transfer.click();
+test('geometry transfer actions are compact, horizontal, and always visible', async ({ page }) => {
   const panel = page.getByRole('group', { name: 'AOI input methods' });
-  await expect(panel.getByRole('button', { name: 'Upload file' })).toBeVisible();
-  await expect(panel.getByRole('button', { name: 'Paste GeoJSON' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'AOI GeoJSON export' }).getByRole('button', { name: 'Copy GeoJSON' })).toBeDisabled();
-  await expect(page.getByRole('group', { name: 'AOI GeoJSON export' }).getByRole('button', { name: 'Download GeoJSON' })).toBeDisabled();
+  const upload = panel.getByRole('button', { name: 'Upload file' });
+  const paste = panel.getByRole('button', { name: 'Paste' });
+  const copy = page.getByRole('button', { name: 'Copy' });
+  const download = page.getByRole('button', { name: 'Download' });
+  for (const button of [upload, paste, copy, download]) await expect(button).toBeVisible();
+  await expect(copy).toBeDisabled();
+  await expect(download).toBeDisabled();
+  const boxes = await Promise.all([upload, paste, copy, download].map((button) => button.boundingBox()));
+  const laidOut = boxes.filter((box): box is NonNullable<typeof box> => box !== null);
+  if (laidOut.length !== 4) throw new Error('Geometry transfer button is not laid out');
+  const first = laidOut[0];
+  expect(laidOut.every((box) => Math.abs(box.y - first.y) < 3)).toBe(true);
+  expect(laidOut.every((box) => box.width < 140)).toBe(true);
+  await paste.click();
+  await expect(page.getByLabel('GeoJSON Polygon or MultiPolygon')).toBeVisible();
 });
 
 test('toolbar controls are compact, named, keyboard operable and labelled on hover and focus', async ({ page }) => {

@@ -64,8 +64,7 @@ test('core farmland legend remains through AOI creation and clearing', async ({ 
   const legend = page.locator('details').filter({ has: page.getByText('Map legend', { exact: true }) });
   await page.getByText('Map legend', { exact: true }).click();
   await expect(legend.getByText('Prime farmland', { exact: true })).toBeVisible();
-  await page.getByText('Import or export GeoJSON', { exact: true }).click();
-  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByRole('button', { name: 'Paste' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();
   await expect(legend.getByText('Prime farmland', { exact: true })).toBeVisible();
@@ -82,8 +81,7 @@ test('farmland hatch swatches match server pattern direction and AOI outline sta
   await expect(statewide).toHaveCSS('background-image', /repeating-linear-gradient\(135deg/);
   const aoi = page.locator('.maplibregl-canvas');
   await expect(aoi).toBeVisible();
-  await page.getByText('Import or export GeoJSON', { exact: true }).click();
-  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByRole('button', { name: 'Paste' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();
   await page.waitForTimeout(100);
@@ -120,8 +118,7 @@ test('screening and tool result legends follow the active result', async ({ page
       { id: 'farmland_classes', title: 'Farmland classes', kind: 'polygon', delivery: 'omitted', authority: 'machine_estimate', source: 'Farmland source', legend: [{ value: 'farmland', label: 'Prime farmland', code: 'PF', color: '#123456', pattern: 'solid' }] },
     ] } },
   } }));
-  await page.getByText('Import or export GeoJSON', { exact: true }).click();
-  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByRole('button', { name: 'Paste' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();
   await page.getByRole('button', { name: 'Run screening' }).click();

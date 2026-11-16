@@ -127,6 +127,13 @@ to upstream for every file this repo has not changed.
   the one mutually exclusive attached AOI or corridor without exposing coordinates.
 * `tests/map-toolbar/toolbar.spec.ts`: covers the unified geometry panel and its
   accessible import/export actions.
+* `client/src/components/map/IdentifyPopup.tsx`, `identify.ts`, and `MapPanel.tsx`:
+  offer compact Exact/BBOX AOI actions for county and urban areas, with exact
+  geometry disabled above the AOI vertex cap and county GEOID retained separately.
+* `client/src/components/map/GeoJsonInput.tsx`, `MapPanel.tsx`,
+  `tests/map-toolbar/toolbar.spec.ts`, and `tests/map-legend/legend.spec.ts`:
+  replace the geometry-transfer disclosure with four compact horizontal actions;
+  Paste reveals its editor inline.
 * `client/src/components/map/corridor-map-fixture.tsx` and
   `tests/corridor-map/corridor-map.spec.ts`: mount both active-geometry providers
   and the shared chat chip; exercise real polygon/corridor attachment, AOI

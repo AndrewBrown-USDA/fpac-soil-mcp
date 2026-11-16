@@ -1,14 +1,25 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { countVertices, geometryBounds, MAX_AOI_VERTICES } from './geojson';
+import type { PolygonGeometry } from './geojson';
 import type { AreaInfo, SoilInfo } from './identify';
 import type { Overlay } from './overlays';
 
 export type IdentifySection =
   | { overlay: Overlay; state: 'loading' }
   | { overlay: Overlay; state: 'error' }
-  | { overlay: Overlay; state: 'done'; soil?: SoilInfo | null; area?: AreaInfo | null };
+  | {
+      overlay: Overlay;
+      state: 'done';
+      soil?: SoilInfo | null;
+      area?: AreaInfo | null;
+      areaGeometry?: PolygonGeometry | null;
+    };
 
-export type UseAsAoiResult = { ok: true } | { ok: false; message: string };
+export type UseAreaGeometry = (
+  section: IdentifySection,
+  area: AreaInfo,
+  geometry: PolygonGeometry,
+) => void;
 
 // A clicked result polygon: the server's feature properties (ADR 0017, Plan 44 A7),
 // shown as sent.
@@ -56,30 +67,64 @@ function Row({ label, value }: { label: string; value: string | null | undefined
 function AreaActions({
   section,
   area,
-  onUseAsAoi,
+  onUseGeometry,
 }: {
   section: IdentifySection;
   area: AreaInfo;
-  onUseAsAoi: (section: IdentifySection, area: AreaInfo) => Promise<UseAsAoiResult>;
+  onUseGeometry: UseAreaGeometry;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const run = async () => {
-    setBusy(true);
-    setMessage(null);
-    const result = await onUseAsAoi(section, area);
-    setBusy(false);
-    if (!result.ok) setMessage(result.message);
+  const exact = section.state === 'done' ? (section.areaGeometry ?? null) : null;
+  const exactAllowed = exact !== null && countVertices(exact) <= MAX_AOI_VERTICES;
+  const bounds = exact ? geometryBounds(exact) : null;
+  const bbox = bounds
+    ? ({
+        type: 'Polygon',
+        coordinates: [[
+          [bounds[0][0], bounds[0][1]],
+          [bounds[1][0], bounds[0][1]],
+          [bounds[1][0], bounds[1][1]],
+          [bounds[0][0], bounds[1][1]],
+          [bounds[0][0], bounds[0][1]],
+        ]],
+      } satisfies PolygonGeometry)
+    : null;
+  const useExact = () => {
+    if (exact) onUseGeometry(section, area, exact);
+  };
+  const useBbox = () => {
+    if (bbox) onUseGeometry(section, area, bbox);
   };
   return (
-    <div className="mt-1 flex flex-col gap-1">
-      <Button type="button" size="sm" variant="secondary" onClick={run} disabled={busy}>
-        {busy ? 'Loading outline...' : 'Use as AOI'}
+    <div className="mt-1 flex gap-1" role="group" aria-label={`Use ${area.name} as area of interest`}>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        onClick={useExact}
+        disabled={!exactAllowed}
+        title="Use the exact polygon as the AOI"
+        aria-label={`Use exact polygon for ${area.name} as AOI`}
+        aria-describedby={!exactAllowed ? `exact-disabled-${area.geoid}` : undefined}
+        className="h-7 px-2 text-xs"
+      >
+        Exact
       </Button>
-      {message && (
-        <p role="alert" className="text-destructive">
-          {message}
-        </p>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        onClick={useBbox}
+        disabled={!bbox}
+        title="Use the bounding box as the AOI"
+        aria-label={`Use bounding box for ${area.name} as AOI`}
+        className="h-7 px-2 text-xs"
+      >
+        BBOX
+      </Button>
+      {!exactAllowed && (
+        <span id={`exact-disabled-${area.geoid}`} className="sr-only">
+          Exact polygon unavailable because it exceeds the {MAX_AOI_VERTICES} vertex AOI limit or could not be loaded.
+        </span>
       )}
     </div>
   );
@@ -92,11 +137,11 @@ function AreaActions({
 export function IdentifyPopup({
   result,
   sections,
-  onUseAsAoi,
+  onUseGeometry,
 }: {
   result: ResultInfo | null;
   sections: IdentifySection[];
-  onUseAsAoi: (section: IdentifySection, area: AreaInfo) => Promise<UseAsAoiResult>;
+  onUseGeometry: UseAreaGeometry;
 }) {
   return (
     <div className="flex max-h-64 w-60 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pr-6 text-popover-foreground text-xs shadow-md">
@@ -136,7 +181,7 @@ export function IdentifyPopup({
                 <Row label="Name" value={section.area.name} />
                 <Row label="GEOID" value={section.area.geoid} />
               </dl>
-              <AreaActions section={section} area={section.area} onUseAsAoi={onUseAsAoi} />
+              <AreaActions section={section} area={section.area} onUseGeometry={onUseGeometry} />
             </>
           )}
           {section.state === 'done' && !section.soil && !section.area && (
