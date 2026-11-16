@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import math
@@ -331,6 +333,7 @@ def create_agent(
     *,
     tools_unavailable: bool = False,
     aoi_note: str | None = None,
+    corridor_note: str | None = None,
     site_assessment_context: str | None = None,
 ) -> Agent:
     """Build the FPAC Soil agent.
@@ -351,6 +354,8 @@ def create_agent(
             instructions = f"{instructions}\n\n{site_assessment_context}"
         if aoi_note:
             instructions = f"{instructions}\n\n{aoi_note}"
+        if corridor_note:
+            instructions = f"{instructions}\n\n{corridor_note}"
     if uses_reasoning_effort_none(model):
         model_settings = ModelSettings(reasoning=Reasoning(effort="none"))
     else:
@@ -377,7 +382,13 @@ async def _connect_fpac_agent(
     stack: AsyncExitStack,
     aoi: ActiveAoi | None = None,
     history_items: list[dict] | None = None,
+    corridor: ActiveCorridor | None = None,
 ) -> Agent:
+    from agent_server.corridor_context import (
+        bind_active_corridor,
+        instruction_note as corridor_instruction_note,
+    )
+
     # WorkspaceClient() authenticates as the app's service principal, not the user.
     # connect_healthy_mcp_servers drops a server that fails (and logs the warning with its
     # traceback), so the request still runs.
@@ -389,6 +400,8 @@ async def _connect_fpac_agent(
         return create_agent(mcp_servers=[], tools_unavailable=True)
     if aoi is not None:
         bind_active_aoi(server, aoi)
+    if corridor is not None:
+        bind_active_corridor(server, corridor)
     servers, unavailable = await connect_healthy_mcp_servers(stack, [server])
     if unavailable:
         logger.info("MCP servers unavailable for this request: %s", ", ".join(unavailable))
@@ -424,10 +437,11 @@ async def _connect_fpac_agent(
         history_items or [],
         _site_assessment_payload_from_context(site_assessment_context),
     )
-    if aoi is not None:
+    if aoi is not None or corridor is not None:
         return create_agent(
             mcp_servers=servers,
-            aoi_note=instruction_note(aoi),
+            aoi_note=instruction_note(aoi) if aoi is not None else None,
+            corridor_note=corridor_instruction_note(corridor) if corridor is not None else None,
             site_assessment_context=site_assessment_context,
         )
     return create_agent(
@@ -442,9 +456,16 @@ async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentRespon
     _update_trace_session(get_session_id(request))
     configure_openai_client()
     messages = normalize_history_items([i.model_dump() for i in request.input])
+    from agent_server.corridor_context import read_active_corridor
+
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = await _connect_fpac_agent(stack, read_active_aoi(request), messages)
+        agent = await _connect_fpac_agent(
+            stack,
+            read_active_aoi(request),
+            messages,
+            corridor=read_active_corridor(request),
+        )
         result = await Runner.run(agent, messages)
         return ResponsesAgentResponse(output=[item.to_input_item() for item in result.new_items])
 
@@ -456,9 +477,16 @@ async def stream_handler(
     _update_trace_session(get_session_id(request))
     configure_openai_client()
     messages = normalize_history_items([i.model_dump() for i in request.input])
+    from agent_server.corridor_context import read_active_corridor
+
     # The AsyncExitStack keeps the MCP server open for the whole request.
     async with AsyncExitStack() as stack:
-        agent = await _connect_fpac_agent(stack, read_active_aoi(request), messages)
+        agent = await _connect_fpac_agent(
+            stack,
+            read_active_aoi(request),
+            messages,
+            corridor=read_active_corridor(request),
+        )
         result = Runner.run_streamed(agent, input=messages)
 
         async for event in process_agent_stream_events(result.stream_events()):

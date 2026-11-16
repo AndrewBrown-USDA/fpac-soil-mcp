@@ -1,7 +1,9 @@
 import asyncio
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from agent_server import agent as agent_module
 from agent_server import corridor_context as context
 
 REF = "corridor-0a1b2c3d"
@@ -105,3 +107,68 @@ def test_bound_server_only_substitutes_corridor_call():
     assert server.calls[0][1]["centerline"] == LINE
     assert server.calls[0][2] == {"meta": {"x": 1}}
     assert server.calls[1][1] == {"centerline": REF}
+
+
+def test_agent_binding_coexists_with_aoi_and_substitutes_only_corridor(monkeypatch):
+    from agent_server import aoi_context
+
+    class Server:
+        def __init__(self):
+            self.calls = []
+
+        async def call_tool(self, name, arguments=None, **kwargs):
+            self.calls.append((name, arguments, kwargs))
+
+    server = Server()
+    server.read_resource = AsyncMock(return_value=object())
+    corridor = context.parse_active_corridor(
+        _raw(alternatives=[LINE], indirect_geometry=AREA)
+    )
+    aoi = aoi_context.parse_active_aoi(
+        {
+            "aoi_ref": "aoi-12345678",
+            "geometry": AREA,
+        }
+    )
+    monkeypatch.setattr(agent_module, "init_fpac_mcp_server", lambda *_: server)
+    monkeypatch.setattr(agent_module, "connect_healthy_mcp_servers", _connect_server)
+    monkeypatch.setattr(
+        agent_module,
+        "bind_site_assessment_gate",
+        lambda *_: None,
+    )
+    monkeypatch.setattr(
+        agent_module,
+        "_site_assessment_criteria_context",
+        lambda *_: None,
+    )
+    monkeypatch.setattr(agent_module, "local_dev_enabled", lambda: True)
+    create_agent = MagicMock()
+    monkeypatch.setattr(agent_module, "create_agent", create_agent)
+
+    async def run():
+        from contextlib import AsyncExitStack
+
+        async with AsyncExitStack() as stack:
+            await agent_module._connect_fpac_agent(stack, aoi, corridor=corridor)
+
+    asyncio.run(run())
+    asyncio.run(server.call_tool(context.CORRIDOR_TOOL, {"centerline": REF}))
+    asyncio.run(server.call_tool("other_tool", {"value": "unchanged"}))
+    assert server.calls[0][1] == {
+        "centerline": LINE,
+        "buffer_distance": 100,
+        "buffer_units": "feet",
+        "alternatives": [LINE],
+        "indirect_geometry": AREA,
+    }
+    assert server.calls[1][1] == {"value": "unchanged"}
+    create_agent.assert_called_once()
+    assert create_agent.call_args.kwargs["aoi_note"]
+    note = create_agent.call_args.kwargs["corridor_note"]
+    assert REF in note and "Do not write coordinates" in note
+    assert "-100" not in note
+
+
+async def _connect_server(stack, servers):
+    return servers, []
