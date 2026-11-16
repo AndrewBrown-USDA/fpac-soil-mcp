@@ -37,12 +37,22 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 5 | 54.5.2 Bind corridor context to agent tool calls | done | `54b461d` | G47; AOI compatibility preserved; app-check passes |
 | 6 | 54.6.1 Per-chat corridor context transport | done | `9cc29d3` | G47; targeted tests and frontend build pass |
 | 7 | 54.7.1 Corridor drawing and buffer controls | done | `52d2042` | G48; geometry tests pass; labels remain UI-only |
-| 8 | 54.8.1 Direct corridor submission and result display | pending | | G48 |
+| 8 | 54.8.1 Direct corridor submission and result display | blocked | | G48; browser fixture still fails during line completion |
 | 9 | Integrated validation and handoff | pending | | |
 
 ## Task Reports
 
 (Workers append <=15-line reports here after each committed task.)
+
+### 54.8.1 — Submit corridor screening and display returned results
+
+- Status: blocked; implementation is uncommitted in worktree `/home/andrew/.local/share/opencode/worktree/371b41/plan54-wave8-corridor-results` on `plan54-wave8-corridor-results`.
+- Planning commits: `c7e67dc` (initial micro-plan), `00f472e` (task scope adds `MapResultContext.tsx`), `db97fe3` (amended micro-plan).
+- Changed paths in preserved worktree: `MapPanel.tsx`, `MapResultContext.tsx`, `frontend/package.json`, ADR 0015, and permitted corridor screening hook/component/test/fixture/config/spec files.
+- `node --import tsx --test client/src/components/map/corridorScreening.test.ts`: 2 passed.
+- Browser acceptance `npm run test:corridor-map` failed twice before escalation: map did not become ready. Mid-tier fix added a unique corridor Terra Draw `prefixId`; Polygon then enabled, but test still failed because two simulated clicks did not complete the primary line (`Primary: ready` timeout).
+- Per escalation limit, stopped without implementation commit. No final integrated acceptance gate run; task 54.8.1 and wave 9 remain incomplete.
+- Next step: inspect/fix the fixture's Terra Draw line completion gesture, rerun browser acceptance, then review and commit only after it passes.
 
 ### 54.7.1 — Draw corridor centerlines, alternatives, and staging areas
 
