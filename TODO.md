@@ -6,20 +6,20 @@ Replace the large, separate corridor drawing fieldset with compact accessible co
 ## Tasks
 
 ### 1. Consolidate corridor controls
-- [ ] In `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`, replace the large separate `Corridor (separate from AOI)` fieldset with compact icon-only controls integrated into the existing map toolbar.
-- [ ] Give primary line, alternative line, staging area, edit, screen, and clear actions accessible names and hover/focus labels.
-- [ ] Keep alternative label, buffer distance/units, corridor status, feature removal, and screening options reachable in a compact disclosure associated with the toolbar.
-- [ ] Preserve AOI controls, corridor geometry state, automatic chat attachment, and existing MCP screening payloads and schemas.
+- [x] In `apps/agent-fpac-soil-openai-sdk/frontend/client/src/components/map/MapPanel.tsx`, replace the large separate `Corridor (separate from AOI)` fieldset with compact icon-only controls integrated into the existing map toolbar.
+- [x] Give primary line, alternative line, staging area, edit, screen, and clear actions accessible names and hover/focus labels.
+- [x] Keep alternative label, buffer distance/units, corridor status, feature removal, and screening options reachable in a compact disclosure associated with the toolbar.
+- [x] Preserve AOI controls, corridor geometry state, automatic chat attachment, and existing MCP screening payloads and schemas.
 
 ### 2. Verify meaningful behavior
-- [ ] Review existing `frontend/tests/corridor-map/corridor-map.spec.ts` and `frontend/tests/map-toolbar/toolbar.spec.ts`; modify or add coverage only if needed to exercise final user workflows through the consolidated controls (draw/edit, settings, screening, removal/clear).
-- [ ] Do not add tautological tests, tests that only assert the old fieldset is absent, or tests of removed/intermediate UI.
-- [ ] Update `docs/decisions/0015-vendored-agent-app-frontend.md` for every changed or added frontend path.
-- [ ] Run `npm run test:corridor-map` and `npm run test:map-toolbar` from `apps/agent-fpac-soil-openai-sdk/frontend/`, then run `make app-frontend-check` and `git diff --check`.
+- [x] Review existing `frontend/tests/corridor-map/corridor-map.spec.ts` and `frontend/tests/map-toolbar/toolbar.spec.ts`; modify or add coverage only if needed to exercise final user workflows through the consolidated controls (draw/edit, settings, screening, removal/clear).
+- [x] Do not add tautological tests, tests that only assert the old fieldset is absent, or tests of removed/intermediate UI.
+- [x] Update `docs/decisions/0015-vendored-agent-app-frontend.md` for every changed or added frontend path.
+- [x] Run `npm run test:corridor-map` and `npm run test:map-toolbar` from `apps/agent-fpac-soil-openai-sdk/frontend/`, then run `make app-frontend-check` and `git diff --check`.
 
 ### 3. Commit and record
-- [ ] Make a focused local implementation commit after verification; update this TODO and record test results in a separate planning-only commit.
-- [ ] Do not push, deploy, or perform other remote actions.
+- [x] Make a focused local implementation commit after verification; update this TODO and record test results in a separate planning-only commit.
+- [x] Do not push, deploy, or perform other remote actions.
 
 ## Notes
 - Repository: `/home/andrew/work/fpac-soil-mcp`, branch `feature/local-dev-trial`; do not switch branches.
@@ -31,3 +31,7 @@ Replace the large, separate corridor drawing fieldset with compact accessible co
 - `apps/agent-fpac-soil-openai-sdk/AGENTS.md` requires updating ADR 0015's local-change inventory alongside vendored frontend changes. Use `make app-frontend-check`; do not run rewrite-based upstream lint scripts.
 - Last integrated baseline (Plan 55): `make check` passed (993 passed, 3 skipped, 45 deselected); `make app-check` passed (297 passed); `make app-frontend-check` passed. Existing frontend warnings/audit findings are recorded in `planning/STATE_55.md`.
 - Planning artifacts are tracked separately. No push, deploy, or other remote action is authorized.
+- Implementation: corridor draw/edit/screen/clear now use compact accessible buttons in the shared AOI toolbar; buffer/alternative/removal settings are in the compact Corridor options disclosure.
+- Existing corridor-map workflows were updated to open settings and continue drawing, screening, alternative/staging removal, clear, and attachment flows. No tautological absence assertion or new test was added.
+- Validation: `npm run test:corridor-map` — 3 passed; `npm run test:map-toolbar` — 5 passed; `make app-frontend-check` — passed with existing warnings; `git diff --check` — passed.
+- Implementation commit: `6564433` (`fix(agent-app): integrate corridor controls into toolbar`); planning/status commit follows separately.
