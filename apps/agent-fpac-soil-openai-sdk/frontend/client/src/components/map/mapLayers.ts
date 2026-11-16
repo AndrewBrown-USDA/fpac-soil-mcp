@@ -77,6 +77,8 @@ const FALLBACK_COLOR = '#424242';
 const PATTERNS = ['diagonal_hatch', 'cross_hatch', 'dot_stipple'] as const;
 type FillPattern = (typeof PATTERNS)[number];
 const PATTERN_SIZE = 16;
+// CSS gradient axis that produces the same rising diagonal drawn by the canvas tile.
+export const DIAGONAL_HATCH_CSS_ANGLE = '135deg';
 
 function isFillPattern(pattern: LegendPattern | undefined): pattern is FillPattern {
   return (PATTERNS as readonly string[]).includes(pattern ?? '');

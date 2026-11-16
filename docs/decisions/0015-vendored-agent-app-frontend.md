@@ -217,6 +217,14 @@ Modified upstream files:
   `tests/corridor-map/corridor-map.spec.ts`, and
   `client/src/components/map/map-legend-fixture.tsx`: cover the control,
   results, legend, and corridor layout behavior above.
+* `client/src/components/map/MapPanel.tsx`, `Legend.tsx`, and
+  `farmlandClasses.ts`: keep the core farmland legend available without map
+  results, render a restrained two-stroke AOI boundary above result polygons,
+  and match the server's diagonal farmland hatch styles. Corridor actions stay
+  inline after measurement and are disabled outside Corridor mode.
+* `tests/map-legend/legend.spec.ts` and `tests/map-toolbar/toolbar.spec.ts`:
+  cover the no-result and AOI-cleared core legend, farmland hatch direction,
+  AOI boundary visibility, and inline/mode-dependent corridor actions.
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again

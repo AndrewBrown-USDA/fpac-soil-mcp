@@ -43,14 +43,23 @@ test('toolbar controls are compact, named, keyboard operable and labelled on hov
 
 test('Area and Corridor modes scope their drawing workflows while retaining measurement access', async ({ page }) => {
   const corridor = page.getByRole('button', { name: 'Corridor', exact: true });
+  const primaryLine = page.getByRole('button', { name: 'Draw primary line' });
+  await expect(primaryLine).toBeVisible();
+  await expect(primaryLine).toBeDisabled();
+  const measurementBox = await page.getByRole('button', { name: 'Measure distance' }).boundingBox();
+  const corridorBox = await primaryLine.boundingBox();
+  if (!measurementBox || !corridorBox) throw new Error('Toolbar buttons are not visible');
+  expect(corridorBox.x).toBeGreaterThan(measurementBox.x);
+  expect(Math.abs(corridorBox.y - measurementBox.y)).toBeLessThan(12);
   await corridor.click();
   await expect(corridor).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Draw primary line' })).toBeVisible();
+  await expect(primaryLine).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Polygon' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Measure distance' })).toBeVisible();
   await page.getByRole('button', { name: 'Area', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Draw primary line' })).toHaveCount(0);
+  await expect(primaryLine).toBeVisible();
+  await expect(primaryLine).toBeDisabled();
   await page.getByRole('button', { name: 'Polygon' }).click();
   const map = page.locator('.maplibregl-map');
   await map.click({ position: { x: 100, y: 100 } });

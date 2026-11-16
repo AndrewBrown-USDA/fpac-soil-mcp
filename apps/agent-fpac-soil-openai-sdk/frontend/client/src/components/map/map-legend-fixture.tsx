@@ -13,6 +13,9 @@ function Fixture() {
     ], warnings: ['Server warning'] } })}>Show tool fixture</button>
     <button type="button" onClick={clear}>Clear fixture</button>
     <button type="button" onClick={() => show({ origin: 'tool', regulatory_notice: null, cdlSummary: { status: 'ok', product_vintage: null, vintage_verified: false, aoi: null, one_mile_ring: null, thirty_meter_band: null, limitations: [], error_message: null } })}>Show CDL fixture</button>
+    <button type="button" onClick={() => show({ origin: 'tool', regulatory_notice: 'Fixture result', block: { layers: [
+      { id: 'farmland_classes', title: 'Farmland classes', kind: 'polygon', delivery: 'inline_geojson', authority: 'machine_estimate', source: 'Fixture source', feature_collection: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-93, 42], [-92.99, 42], [-92.99, 42.01], [-93, 42.01], [-93, 42]]] }, properties: { farmlndcl: 'Prime farmland' } }] }, legend: [{ value: 'prime', label: 'Prime farmland', code: 'P', color: '#2E7D32', pattern: 'solid' }] },
+    ] } })}>Show overlap fixture</button>
     <MapPanel onCloseMap={() => {}} />
   </div>;
 }

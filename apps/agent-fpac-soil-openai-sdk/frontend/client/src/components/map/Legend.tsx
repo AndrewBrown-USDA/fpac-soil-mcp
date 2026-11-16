@@ -1,17 +1,17 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { FARMLAND_CLASSES } from './farmlandClasses';
 import type { FarmlandClass } from './farmlandClasses';
-import { AUTHORITY_LABELS, drawOrder } from './mapLayers';
+import { AUTHORITY_LABELS, DIAGONAL_HATCH_CSS_ANGLE, drawOrder } from './mapLayers';
 import type { MapBlock, MapLayer, MapLegendItem } from './mapLayers';
 
 export function swatchStyle(farmlandClass: FarmlandClass): CSSProperties {
-  if (farmlandClass.pattern === 'hatched') {
-    return {
-      backgroundColor: farmlandClass.color,
-      backgroundImage:
-        'repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 6px)',
-    };
-  }
-  return { backgroundColor: farmlandClass.color };
+  return legendSwatchStyle({
+    value: farmlandClass.key,
+    label: farmlandClass.label,
+    color: farmlandClass.color,
+    pattern: farmlandClass.pattern,
+    code: farmlandClass.code,
+  });
 }
 
 export function Swatch({ farmlandClass }: { farmlandClass: FarmlandClass }) {
@@ -24,6 +24,23 @@ export function Swatch({ farmlandClass }: { farmlandClass: FarmlandClass }) {
   );
 }
 
+export function CoreFarmlandLegend() {
+  return (
+    <div className="text-xs">
+      <h3 className="font-medium text-sm">Farmland classes</h3>
+      <ul className="mt-1 grid gap-1">
+        {FARMLAND_CLASSES.map((farmlandClass) => (
+          <li key={farmlandClass.key} className="flex items-center gap-2">
+            <Swatch farmlandClass={farmlandClass} />
+            <span className="font-mono text-xs">[{farmlandClass.code}]</span>
+            <span>{farmlandClass.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const HATCH = 'rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 6px';
 const FARMLAND_LAYER_ID = 'farmland_classes';
 
@@ -33,12 +50,12 @@ export function legendSwatchStyle(item: MapLegendItem): CSSProperties {
     case 'diagonal_hatch':
       return {
         backgroundColor: item.color,
-        backgroundImage: `repeating-linear-gradient(45deg, ${HATCH})`,
+        backgroundImage: `repeating-linear-gradient(${DIAGONAL_HATCH_CSS_ANGLE}, ${HATCH})`,
       };
     case 'cross_hatch':
       return {
         backgroundColor: item.color,
-        backgroundImage: `repeating-linear-gradient(45deg, ${HATCH}), repeating-linear-gradient(-45deg, ${HATCH})`,
+        backgroundImage: `repeating-linear-gradient(${DIAGONAL_HATCH_CSS_ANGLE}, ${HATCH}), repeating-linear-gradient(45deg, ${HATCH})`,
       };
     case 'dot_stipple':
       return {

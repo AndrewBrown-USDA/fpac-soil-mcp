@@ -21,7 +21,7 @@ export type FarmlandClass = {
   label: string;
   code: string;
   color: string;
-  pattern: 'solid' | 'hatched';
+  pattern: 'solid' | 'diagonal_hatch' | 'cross_hatch' | 'dot_stipple' | 'outline';
   // Prefix of `<summaryKey>_acres` / `<summaryKey>_pct` in `farmland_summary`.
   summaryKey: string;
 };
@@ -40,7 +40,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Prime farmland if conditions are met',
     code: 'P*',
     color: '#81C784',
-    pattern: 'hatched',
+    pattern: 'diagonal_hatch',
     summaryKey: 'conditional_prime',
   },
   {
@@ -48,7 +48,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Farmland of statewide importance',
     code: 'S',
     color: '#F9A825',
-    pattern: 'solid',
+    pattern: 'diagonal_hatch',
     summaryKey: 'statewide_importance',
   },
   {
@@ -56,7 +56,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Farmland of local importance',
     code: 'L',
     color: '#0288D1',
-    pattern: 'solid',
+    pattern: 'dot_stipple',
     summaryKey: 'local_importance',
   },
   {
@@ -64,7 +64,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Unique farmland',
     code: 'U',
     color: '#6A1B9A',
-    pattern: 'solid',
+    pattern: 'cross_hatch',
     summaryKey: 'unique_farmland',
   },
   {
@@ -72,7 +72,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Not prime farmland',
     code: 'NP',
     color: '#9E9E9E',
-    pattern: 'solid',
+    pattern: 'outline',
     summaryKey: 'not_prime',
   },
   {
@@ -80,7 +80,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Unmapped',
     code: 'UM',
     color: '#FFFFFF',
-    pattern: 'hatched',
+    pattern: 'diagonal_hatch',
     summaryKey: 'unmapped',
   },
   {
@@ -88,7 +88,7 @@ export const FARMLAND_CLASSES: readonly FarmlandClass[] = [
     label: 'Unknown classification',
     code: '?',
     color: '#BDBDBD',
-    pattern: 'hatched',
+    pattern: 'dot_stipple',
     summaryKey: 'unknown',
   },
 ];

@@ -38,7 +38,7 @@ import {
 import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
-import { MapLegend } from './Legend';
+import { CoreFarmlandLegend, MapLegend } from './Legend';
 import { CDLLegend } from './CDLLegend';
 import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
@@ -231,10 +231,16 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     map.on('load', () => {
       map.addSource('aoi', { type: 'geojson', data: emptyCollection });
       map.addLayer({
+        id: 'aoi-casing',
+        type: 'line',
+        source: 'aoi',
+        paint: { 'line-color': '#ffffff', 'line-width': 3.5, 'line-opacity': 0.8 },
+      });
+      map.addLayer({
         id: 'aoi-line',
         type: 'line',
         source: 'aoi',
-        paint: { 'line-color': '#1f4e9c', 'line-width': 2.5 },
+        paint: { 'line-color': '#1f4e9c', 'line-width': 1.5, 'line-opacity': 0.95 },
       });
       map.addSource('measurement', { type: 'geojson', data: lineCollection([]) });
       map.addLayer({ id: 'measurement-line', type: 'line', source: 'measurement', paint: { 'line-color': '#d21f3c', 'line-width': 3, 'line-dasharray': [2, 1] } });
@@ -398,7 +404,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    setLayerVisibility(map.setLayoutProperty.bind(map), ['aoi-line'], aoiVisible);
+    setLayerVisibility(map.setLayoutProperty.bind(map), ['aoi-casing', 'aoi-line'], aoiVisible);
     const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
     setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
   }, [aoiVisible, resultsVisible, mapReady]);
@@ -477,8 +483,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       return;
     }
     if (!shown.block) return;
-    // Server layers draw below the panel's own AOI outline (`aoi-line`).
-    renderMapBlock(map, shown.block, 'aoi-line');
+    // Server layers draw below both strokes of the panel's AOI outline.
+    renderMapBlock(map, shown.block, 'aoi-casing');
     const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
     setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
     // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
@@ -906,45 +912,19 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               className="h-8 w-36 rounded border bg-background px-2 text-sm"
             />
           </label>
-          {mapMode === 'area' ? (
-          <>
-          <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>
-              Area of interest
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {toolButton('Polygon', 'polygon', Pentagon)}
-              {toolButton('Rectangle', 'rectangle', Square)}
-              {toolButton('Edit', 'select', MousePointer2)}
-              {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
-              {actionButton('Clear', Trash2, clear, !aoi)}
+          {mapMode === 'area' && (
+            <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
+              <span aria-hidden="true" className={groupLabel}>
+                Area of interest
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {toolButton('Polygon', 'polygon', Pentagon)}
+                {toolButton('Rectangle', 'rectangle', Square)}
+                {toolButton('Edit', 'select', MousePointer2)}
+                {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
+                {actionButton('Clear', Trash2, clear, !aoi)}
+              </div>
             </div>
-          </div>
-          </>
-          ) : (
-          <>
-          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>Corridor</span>
-            <div className="flex flex-wrap gap-1.5">
-              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), !mapReady)}
-              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), !mapReady)}
-              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, !mapReady)}
-              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), !mapReady)}
-              {actionButton(
-                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
-                MapIcon,
-                runCorridorScreening,
-                !corridorInput || corridorScreening.status === 'running',
-              )}
-              {actionButton(
-                'Clear corridor',
-                Trash2,
-                clearCorridor,
-                !corridorCenterline && !corridorAlternatives.length && !corridorStaging.length,
-              )}
-            </div>
-          </div>
-          </>
           )}
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
@@ -961,6 +941,27 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
             </select>
             {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => { setMeasurePoints([]); setMeasurePreview(null); })}
+          </div>
+          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>Corridor</span>
+            <div className="flex flex-wrap gap-1.5">
+              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), mapMode !== 'corridor' || !mapReady)}
+              {actionButton(
+                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
+                MapIcon,
+                runCorridorScreening,
+                mapMode !== 'corridor' || !corridorInput || corridorScreening.status === 'running',
+              )}
+              {actionButton(
+                'Clear corridor',
+                Trash2,
+                clearCorridor,
+                mapMode !== 'corridor' || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
+              )}
+            </div>
           </div>
         </div>
         {mapMode === 'corridor' && (
@@ -1000,18 +1001,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             onOpenChange={setLayersOpen}
             onToggle={toggleOverlay}
           />
-          {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && (
+          {(
             <details className="absolute top-2 left-2 z-10 max-w-[min(18rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                 <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
                 <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
-                  {shown.block && (
+                  <CoreFarmlandLegend />
+                  {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && <hr className="my-2" />}
+                  {shown?.block && (
                     <MapLegend
                       block={shown.block}
                       compact
                       contextLegend={shown.block.layers.some((layer) => layer.id === 'farmland_classes') && (shown.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
                     />
                   )}
-                  {(!shown.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown.cdlSummary || overlayOn.cdl) && <CDLLegend />}
+                  {(!shown?.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown?.cdlSummary || overlayOn.cdl) && <CDLLegend />}
                 </div>
               </details>
           )}
