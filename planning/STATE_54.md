@@ -33,8 +33,8 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | done | `d37e63e` | G49; fixed endpoint; test-purpose caveat |
 | 3 | 54.3.1 Returned SSURGO visibility on new results | done | `073f3f1` | G44; focused checks pass |
 | 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | done | `26bdc6b` | G45 |
-| 5 | 54.5.1 Direct stateless corridor screening route | pending | | G46 |
-| 5 | 54.5.2 Bind corridor context to agent tool calls | pending | | G47 |
+| 5 | 54.5.1 Direct stateless corridor screening route | done | `1dd7313` | G46; 13 targeted tests; covered by app-check |
+| 5 | 54.5.2 Bind corridor context to agent tool calls | done | `54b461d` | G47; AOI compatibility preserved; app-check passes |
 | 6 | 54.6.1 Per-chat corridor context transport | pending | | G47 |
 | 7 | 54.7.1 Corridor drawing and buffer controls | pending | | G48 |
 | 8 | 54.8.1 Direct corridor submission and result display | pending | | G48 |
@@ -43,6 +43,30 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 ## Task Reports
 
 (Workers append <=15-line reports here after each committed task.)
+
+### 54.5.1 — Direct stateless corridor screening route
+
+- Status: done; code commit `1dd7313` (`feat(agent-app): add direct corridor screening route`); planning commit `ccbb312`.
+- Added `/api/geo/corridor`, shared-context request validation, untraced `analyze_corridor_fppa` call with `include_map=True`, bounded allowlisted result/map/notice, and route tests.
+- `uv run pytest tests/test_geo_corridor.py -q`: 13 passed (one existing pytest config warning).
+- Earlier fixture attempts timed out entering a real MCP context; worker replaced it with a local fake context. Final targeted suite passed.
+- Formatting follow-up: planning `835b47a`, format-only commit `cb65d24`.
+- Deviations: none. No remote actions.
+
+### 54.5.2 — Bind corridor context to agent tool calls
+
+- Status: done; code commit `54b461d` (`feat(agent-app): bind active corridor context`); planning commit `c3182e6`.
+- Binds corridor validation and note independently of AOI; only matching corridor tool references are substituted. Initial imports are deferred to avoid circular imports.
+- `uv run pytest tests/test_corridor_context.py tests/test_agent_mcp_wiring.py -q`: 82 passed; after compatibility fix, `uv run pytest tests/test_aoi_context.py tests/test_corridor_context.py -q`: 65 passed.
+- Integration fixes: planning `b82f58a`, lint fix `d6a97aa`; planning `b95ffda`, AOI-call compatibility fix `c593d24`.
+- `make app-check`: Ruff check/format passed; 297 tests passed (122 existing deprecation/config warnings).
+- Deviations: integrated app check caught AOI-only `create_agent` kwargs regression; fixed so AOI-only calls retain prior contract. No other deviations.
+
+### Wave 5 integrated gate
+
+- `make app-check`: Ruff check passed; 20 files formatted; 297 passed.
+- `git diff --check`: passed; implementation and planning commits remain separate.
+- Direct route is stateless/untraced, uses the existing corridor tool with `include_map=True`, and has no Site Assessment inputs; AOI-only chat behavior remains unchanged.
 
 ### 54.4.1 — ADR 0016 corridor amendment and validated context model
 
