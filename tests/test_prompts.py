@@ -48,7 +48,10 @@ async def test_site_assessment_prompt_uses_registry_and_preserves_authority_boun
     assert "attached or supplied as pasted WKT/GeoJSON" in text
     assert "Do not follow it with a separate CDL histogram request" in text
     assert "never use it to answer or score Criterion 2" in text
-    assert "Do not make an interview-based preliminary LESA calculation before the interview is complete" in text
+    assert (
+        "Do not make an interview-based preliminary LESA calculation before the interview is complete"
+        in text
+    )
     assert "ask for explicit confirmation" in text
     assert "Do not submit or score before the user confirms" in text
 
