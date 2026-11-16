@@ -4,6 +4,7 @@ export type ActiveCorridor = {
   buffer_distance: number;
   buffer_units: 'feet' | 'meters' | 'miles';
   alternatives: { type: 'LineString'; coordinates: number[][] }[];
+  alternative_labels?: string[];
   indirect_geometry?: Record<string, unknown>;
 };
 
@@ -52,7 +53,11 @@ export function isActiveCorridor(value: unknown): value is ActiveCorridor {
       !['feet', 'meters', 'miles'].includes(corridor.buffer_units ?? '') ||
       !Array.isArray(corridor.alternatives) ||
       corridor.alternatives.length > 10 ||
-      !corridor.alternatives.every(line)
+      !corridor.alternatives.every(line) ||
+      (corridor.alternative_labels !== undefined &&
+        (!Array.isArray(corridor.alternative_labels) ||
+          corridor.alternative_labels.length !== corridor.alternatives.length ||
+          !corridor.alternative_labels.every((label) => typeof label === 'string' && !!label.trim())))
     )
       return false;
     if (corridor.indirect_geometry !== undefined) {

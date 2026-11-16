@@ -23,7 +23,7 @@ test('validates LineString and Polygon/MultiPolygon geometry', () => {
   assert.equal(isCorridorPolygon({ ...polygon, coordinates: [] }), false);
 });
 
-test('combines staging areas and serializes labeled alternatives as corridor lines', () => {
+test('combines staging areas and preserves alternative labels outside MCP geometry', () => {
   const combined = combineStagingAreas([polygon, polygon]);
   assert.equal(combined?.type, 'MultiPolygon');
   assert.deepEqual(
@@ -36,6 +36,7 @@ test('combines staging areas and serializes labeled alternatives as corridor lin
       indirect_geometry: polygon,
     },
   );
+  assert.deepEqual(createCorridorInput(line, [], [], '100', 'feet')?.alternatives, []);
 });
 
 test('rejects missing/non-positive buffers and incomplete corridor inputs', () => {

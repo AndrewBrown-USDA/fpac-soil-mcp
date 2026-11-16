@@ -40,3 +40,38 @@ test('submits drawn corridor directly and displays returned summary, notice and 
   await page.getByText('Map legend', { exact: true }).click();
   await expect(page.getByText('Server corridor class')).toBeVisible();
 });
+
+test('retains alternative labels and synchronizes feature removal and clear', async ({ page }) => {
+  const map = page.locator('.maplibregl-map');
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  await expect(page.getByText('Primary: ready')).toBeVisible();
+  await page.waitForTimeout(50);
+
+  await page.getByLabel('Alternative label').fill('North route');
+  await page.getByRole('button', { name: 'Draw alternative line' }).click();
+  await map.click({ position: { x: 150, y: 100 } });
+  await map.dblclick({ position: { x: 220, y: 160 } });
+  await expect(page.getByRole('button', { name: 'Remove North route' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove North route' }).click();
+  await expect(page.getByText(/alternatives: 0/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Draw staging area' }).click();
+  await map.click({ position: { x: 280, y: 160 } });
+  await map.click({ position: { x: 330, y: 160 } });
+  await map.click({ position: { x: 330, y: 210 } });
+  await map.dblclick({ position: { x: 280, y: 160 } });
+  await expect(page.getByRole('button', { name: 'Remove staging area 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove staging area 1' }).click();
+  await expect(page.getByText(/staging areas: 0/)).toBeVisible();
+  await page.getByRole('button', { name: 'Remove primary line' }).click();
+  await expect(page.getByText('Primary: required; alternatives: 0; staging areas: 0')).toBeVisible();
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  await map.click({ position: { x: 160, y: 110 } });
+  await map.dblclick({ position: { x: 220, y: 170 } });
+  await expect(page.getByText(/Primary: ready/)).toBeVisible();
+  await page.getByRole('button', { name: 'Clear corridor' }).click();
+  await expect(page.getByText('Primary: required; alternatives: 0; staging areas: 0')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Clear corridor' })).toBeDisabled();
+});

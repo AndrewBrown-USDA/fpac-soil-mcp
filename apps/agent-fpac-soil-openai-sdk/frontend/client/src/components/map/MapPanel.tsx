@@ -298,17 +298,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         const feature = corridorDraw.getSnapshot().find((item) => item.id === id);
         const geometry = feature?.geometry;
         if (corridorDrawKind.current === 'staging' && isCorridorPolygon(geometry)) {
-          corridorDraw.updateFeatureProperties(id, { corridorKind: 'staging' });
-          setCorridorStaging((items) => [...items, geometry]);
+          corridorDraw.updateFeatureProperties(id, { corridorKind: 'staging', corridorLabel: 'Staging' });
         } else if (corridorDrawKind.current !== 'staging' && isLineGeometry(geometry)) {
           if (corridorDrawKind.current === 'primary') {
-            corridorDraw.updateFeatureProperties(id, { corridorKind: 'primary' });
-            setCorridorCenterline(geometry);
+            corridorDraw.updateFeatureProperties(id, { corridorKind: 'primary', corridorLabel: 'Primary' });
           } else {
             const alternativeCount = corridorDraw.getSnapshot().filter((item) => item.properties.corridorKind === 'alternative').length;
             const label = alternativeLabelRef.current.trim() || `Alternative ${alternativeCount + 1}`;
             corridorDraw.updateFeatureProperties(id, { corridorKind: 'alternative', corridorLabel: label });
-            setCorridorAlternatives((items) => [...items, { label, geometry }]);
           }
         }
         window.setTimeout(() => corridorDraw.setMode('static'), 0);
@@ -604,7 +601,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (!corridorContext || !chatId || corridorDraftChatId.current !== chatId) return;
     const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
     if (!input) return;
-    corridorContext.setCorridor({ ...input, corridor_ref: corridorReference() });
+    corridorContext.setCorridor({
+      ...input,
+      corridor_ref: corridorReference(),
+      alternative_labels: corridorAlternatives.map(({ label }) => label.trim()),
+    });
   };
   const corridorInput = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
   useEffect(() => {
@@ -615,21 +616,34 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     const signature = JSON.stringify(corridorInput);
     if (signature === attachedCorridorSignature.current) return;
     attachedCorridorSignature.current = signature;
-    corridorContext.setCorridor({ ...corridorInput, corridor_ref: corridorReference() });
-  }, [chatId, corridorContext, corridorInput]);
+    corridorContext.setCorridor({
+      ...corridorInput,
+      corridor_ref: corridorReference(),
+      alternative_labels: corridorAlternatives.map(({ label }) => label.trim()),
+    });
+  }, [chatId, corridorContext, corridorInput, corridorAlternatives]);
   const clearCorridor = () => {
     corridorDrawRef.current?.clear();
+    corridorDrawKind.current = 'primary';
     setCorridorCenterline(null);
     setCorridorAlternatives([]);
     setCorridorStaging([]);
     setBufferText('');
     corridorDraftChatId.current = null;
+    attachedCorridorSignature.current = '';
     corridorContext?.setCorridor(null);
   };
-  const removeCorridorFeature = (kind: string, index = 0) => {
+  const removeCorridorFeature = (kind: 'primary' | 'alternative' | 'staging', index = 0) => {
     const features = corridorDrawRef.current?.getSnapshot().filter((feature) => feature.properties.corridorKind === kind) ?? [];
     const feature = features[index];
-    if (feature?.id !== undefined) corridorDrawRef.current?.removeFeatures([feature.id]);
+    if (feature?.id !== undefined) {
+      if (kind === 'primary') {
+        corridorDraftChatId.current = null;
+        attachedCorridorSignature.current = '';
+      }
+      corridorDrawRef.current?.removeFeatures([feature.id]);
+      if (kind === 'primary') corridorContext?.setCorridor(null);
+    }
   };
   const startCorridorDrawing = (kind: 'primary' | 'alternative' | 'staging') => {
     corridorDraftChatId.current = chatId;
