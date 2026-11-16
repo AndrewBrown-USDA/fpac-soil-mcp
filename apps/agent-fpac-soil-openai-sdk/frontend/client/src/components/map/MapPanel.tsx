@@ -59,6 +59,8 @@ import { showNewScreeningResult } from './resultVisibility';
 import { BUFFER_SIDE_NOTICE, DEFAULT_CORRIDOR_UNIT, createCorridorInput, corridorReference, isCorridorPolygon, isLineGeometry } from './corridorGeometry';
 import type { CorridorUnit, LineGeometry } from './corridorGeometry';
 import { useOptionalActiveCorridor } from './ActiveCorridorContext';
+import { useCorridorScreening } from './useCorridorScreening';
+import { CorridorScreeningResults } from './CorridorScreeningResults';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
 // Metadata checked 2026-10-30: 256 px Web Mercator tiles, cached to zoom 16, CORS *.
@@ -153,6 +155,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const aoiRef = useRef<PolygonGeometry | null>(null);
   const screenedRef = useRef<string | null>(null);
   const screening = useScreening();
+  const corridorScreening = useCorridorScreening();
   const { reset: resetScreening } = screening;
   const previousScreeningStatus = useRef(screening.status);
   const attachedCorridorSignature = useRef('');
@@ -282,7 +285,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
       });
       drawRef.current = draw;
       const corridorDraw = new TerraDraw({
-        adapter: new TerraDrawMapLibreGLAdapter({ map }),
+        // Each adapter owns its sources and layers on the shared map.
+        adapter: new TerraDrawMapLibreGLAdapter({ map, prefixId: 'corridor' }),
         modes: [
           new TerraDrawLineStringMode({ pointerEvents: LEFT_BUTTON_ONLY }),
           new TerraDrawPolygonMode({ pointerEvents: LEFT_BUTTON_ONLY }),
@@ -398,6 +402,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const screeningMap =
     screening.status === 'done' ? (screening.result?.display?.map ?? null) : null;
   const screeningNotice = screening.result?.display?.regulatory_notice ?? null;
+  const corridorMap = corridorScreening.status === 'done' ? corridorScreening.result?.map ?? null : null;
   const showScreening = useCallback(() => {
     if (screeningMap) {
       setActiveTab('results');
@@ -407,6 +412,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   useEffect(() => {
     showScreening();
   }, [showScreening]);
+  const showCorridorScreening = useCallback(() => {
+    if (corridorMap) {
+      setActiveTab('results');
+      show({ origin: 'corridor', block: corridorMap, regulatory_notice: corridorScreening.result?.regulatory_notice ?? null });
+    }
+  }, [corridorMap, corridorScreening.result?.regulatory_notice, show]);
+  const previousCorridorStatus = useRef(corridorScreening.status);
+  useEffect(() => {
+    if (previousCorridorStatus.current !== 'done' && corridorScreening.status === 'done') showCorridorScreening();
+    previousCorridorStatus.current = corridorScreening.status;
+  }, [corridorScreening.status, showCorridorScreening]);
+  useEffect(() => {
+    if (corridorScreening.status !== 'done' && shown?.origin === 'corridor') clearShown();
+  }, [corridorScreening.status, shown, clearShown]);
   useEffect(() => {
     if (screening.status !== 'done' && shown?.origin === 'screening') clearShown();
   }, [screening.status, shown, clearShown]);
@@ -857,6 +876,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
           <span className="text-xs">{BUFFER_SIDE_NOTICE}</span>
           <Button type="button" size="sm" onClick={attachCorridor} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || !chatId}>Attach to chat</Button>
+          <Button type="button" size="sm" variant="primary" onClick={() => {
+            const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
+            if (!input) return;
+            const corridor = { ...input, corridor_ref: corridorContext?.activeCorridor?.corridor_ref ?? corridorReference() };
+            corridorScreening.run(corridor);
+          }} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || corridorScreening.status === 'running'}>
+            {corridorScreening.status === 'running' ? 'Screening corridor...' : 'Screen corridor'}
+          </Button>
           {corridorContext?.activeCorridor && <><span role="status" className="text-xs">Corridor attached</span><Button type="button" size="sm" onClick={corridorContext.detach}>Detach corridor</Button></>}
           <Button type="button" size="sm" variant="default" onClick={clearCorridor} disabled={!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length}>Clear corridor</Button>
           {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`} className="text-xs">{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
@@ -940,10 +967,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             )}
           </div>
         </div>
-        {(aoiError || tileError || screening.status === 'error') && (
+        {(aoiError || tileError || screening.status === 'error' || corridorScreening.status === 'error') && (
           <StatusMessage variant="error">
             {aoiError && <p>{aoiError}</p>}
             {screening.status === 'error' && screening.error && <p>{screening.error}</p>}
+            {corridorScreening.status === 'error' && corridorScreening.error && <p>{corridorScreening.error}</p>}
             {tileError && (
               <p>
                 Basemap tiles failed to load. Drawing, screening and the results table
@@ -962,10 +990,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             <h3 className="font-medium text-sm">
               {shown.cdlSummary ? 'CDL context summary' : `Map of ${shown.tool} result`}
             </h3>
-            {screeningMap && (
-              <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
-                Back to screening results
-              </Button>
+            {(screeningMap || corridorMap) && (
+              <>
+                {screeningMap && <Button type="button" size="sm" variant="secondary" onClick={showScreening}>Back to AOI screening results</Button>}
+                {corridorMap && <Button type="button" size="sm" variant="secondary" onClick={showCorridorScreening}>Back to corridor screening results</Button>}
+              </>
             )}
           </div>
           {shown.cdlSummary ? (
@@ -985,6 +1014,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               <MapLegend block={shown.block} />
             </div>
           )}
+        </div>
+      ) : shown?.origin === 'corridor' && corridorScreening.status === 'done' && corridorScreening.result ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={originBadge}>Corridor screening</span>
+            {screeningMap && <Button type="button" size="sm" variant="secondary" onClick={showScreening}>Back to AOI screening</Button>}
+          </div>
+          <CorridorScreeningResults result={corridorScreening.result} />
         </div>
       ) : (
         screening.status === 'done' &&
