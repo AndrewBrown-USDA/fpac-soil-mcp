@@ -14,7 +14,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
 | 1 | 55.1.1 AOI/corridor chat attachment exclusivity | done | `4bf4fa3` | Verified targeted test and frontend check; cross-provider UI integration coverage remains a limitation. |
-| 1 | 55.2.1 Collapse tool output & promote Show on Map | pending | | |
+| 1 | 55.2.1 Collapse tool output & promote Show on Map | done | `e070950` | Focused test passed on worker retry and orchestrator rerun. |
 | 2 | 55.1.2 Corridor labels and remove/clear synchronization | pending | | |
 | 3 | 55.2.2 Measurement preview | pending | | |
 | 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | pending | | |
@@ -30,3 +30,12 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - Changed five scoped frontend files; no server schema changes or remote actions.
 - Limitation: no provider-level UI integration test for cross-provider replacement/persistence; recorded by worker.
 - Worker implementation commit `be6442b`; integrated commit `4bf4fa3`.
+
+### 55.2.1
+- Regular tool details start collapsed; MCP approval cards remain unchanged.
+- Map-capable regular tool action is in the top bar with accessible tool/AOI context; availability/staleness checks preserved.
+- Focused Playwright command passed on worker retry and orchestrator rerun: `npx playwright test --config playwright.site-assessment.config.ts tests/site-assessment/tool-card.spec.ts` — 1 passed.
+- `make app-frontend-check` passed in worker; existing Biome warnings only; client/server builds succeeded.
+- Changed `message.tsx`, `elements/tool.tsx`, `ShowOnMapButton.tsx`, fixture and focused spec; no scope deviation.
+- Initial orchestrator rerun failed to find the action; worker retry and second orchestrator rerun passed, indicating a transient/flaky first run.
+- Worker implementation commit `7e57d8f`; integrated commit `e070950`.
