@@ -3,7 +3,7 @@
 Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker prompt: `planning/PROMPT_TEMPLATE_55.md`.
 
 ## Baseline
-- [x] Root worktree branch `feature/local-dev-trial` at `c0ce702`; clean before Plan 55 planning.
+- [x] Root worktree branch `feature/local-dev-trial` at `c11293a`; clean before Plan 55 planning.
 - [x] Fresh baseline: `make check` — Ruff passed, 764 files formatted, 993 passed / 3 skipped / 45 deselected.
 - [x] Fresh baseline: `make app-check` — Ruff passed, 20 files formatted, 297 passed.
 - [x] Fresh frontend baseline: `make app-frontend-check` passed (Biome warnings only; client and server builds succeeded).
@@ -13,11 +13,11 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 55.1.1 AOI/corridor chat attachment exclusivity | done | `4bf4fa3` | Verified targeted test and frontend check; cross-provider UI integration coverage remains a limitation. |
-| 1 | 55.2.1 Collapse tool output & promote Show on Map | done | `e070950` | Focused test passed on worker retry and orchestrator rerun. |
+| 1 | 55.1.1 AOI/corridor chat attachment exclusivity | done | `172827b` | Verified targeted test and frontend check; cross-provider UI integration coverage remains a limitation. |
+| 1 | 55.2.1 Collapse tool output & promote Show on Map | done | `05c31d7` | Focused test passed on worker retry and orchestrator rerun. |
 | 2 | 55.1.2 Corridor labels and remove/clear synchronization | done | `78b4efc` | Labels remain browser/session metadata; focused Node tests 10/10, corridor-map Playwright 2/2, and frontend check passed. |
 | 3 | 55.2.2 Measurement preview | done | `b71ae66` | Focused distance tests 2/2, toolbar Playwright 4/4, and `make app-frontend-check` passed. |
-| 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | done | `4aeb8a8`, `998f6e0` | Corridor-to-AOI replacement and shared-chip detach covered; corridor-map 3/3, toolbar 5/5, frontend check passed after mid-tier recovery. |
+| 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | done | `21414c8`, `c8565de` | Corridor-to-AOI replacement and shared-chip detach covered; corridor-map 3/3, toolbar 5/5, frontend check passed after mid-tier recovery. |
 | 5 | 55.4.1 Integrated validation and handoff | done | — | Final root/app/frontend gates passed; all scoped browser and Node tests passed. |
 
 ## Task Reports
@@ -29,7 +29,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - `make app-frontend-check` — passed in worker; existing Biome warnings only; client/server builds succeeded.
 - Changed five scoped frontend files; no server schema changes or remote actions.
 - Limitation: no provider-level UI integration test for cross-provider replacement/persistence; recorded by worker.
-- Worker implementation commit `be6442b`; integrated commit `4bf4fa3`.
+- Worker implementation commit `be6442b`; integrated commit `172827b`.
 
 ### 55.2.1
 - Regular tool details start collapsed; MCP approval cards remain unchanged.
@@ -38,7 +38,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - `make app-frontend-check` passed in worker; existing Biome warnings only; client/server builds succeeded.
 - Changed `message.tsx`, `elements/tool.tsx`, `ShowOnMapButton.tsx`, fixture and focused spec; no scope deviation.
 - Initial orchestrator rerun failed to find the action; worker retry and second orchestrator rerun passed, indicating a transient/flaky first run.
-- Worker implementation commit `7e57d8f`; integrated commit `e070950`.
+- Worker implementation commit `7e57d8f`; integrated commit `05c31d7`.
 
 ### 55.1.2
 - TerraDraw `onFinish` assigns the unified role/label metadata; `onChange` is the single source of truth for React draft arrays, avoiding duplicate entries.
@@ -61,7 +61,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - `make app-frontend-check` and `git diff --check` — passed; 11 existing Biome warnings and 10 existing npm audit findings.
 - Initial corridor-chip coverage failed because the fixture lacked the production shared chip; a small-worker retry also failed before assertions due to this fixture gap. Mid-tier recovery mounted both providers and chip, supplied valid buffer inputs, and verified replacement/detach.
 - Modified paths are inventoried in ADR 0015; no geometry schema, dependency, or privacy changes. No remote actions.
-- Worker implementation commits `3b0c125`, `0bf9167`; integrated commits `4aeb8a8`, `998f6e0`.
+- Worker implementation commits `3b0c125`, `0bf9167`; integrated commits `21414c8`, `c8565de`.
 
 ### 55.2.2
 - Added transient pointer preview to the existing measurement GeoJSON source after the first committed point; pointer movement does not update committed points or distance. The active indicator is now the concise accessible status “Measuring.”

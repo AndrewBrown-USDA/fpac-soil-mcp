@@ -51,7 +51,7 @@ The user approved using this exact endpoint despite the service metadata's `Purp
 
 | ID | Decision | Rationale / source |
 |---|---|---|
-| D1 | Continue on `feature/local-dev-trial`, clean at `d4fefd7`; Plan 54 follows Plan 53. | Current repository state and completed orchestration. |
+| D1 | Continue on `feature/local-dev-trial`, clean at `0f04fb8`; Plan 54 follows Plan 53. | Current repository state and completed orchestration. |
 | D2 | Start with G42 compact controls/cursor/miles, then map legends, then returned SSURGO visibility, then corridor foundations and UI. | User asked to start with G42 and prioritize usability. |
 | D3 | SSURGO default means returned server farmland-result polygons; do not turn on the separate SSURGO context overlay automatically. | User selected returned result polygons. Existing `resultsVisible` starts true but is not reset for each new result, so reproduce and test the return path. |
 | D4 | Corridor inputs are a separate per-chat context from polygon `active_aoi`; support primary centerline, alternatives, and indirect/staging Polygon or MultiPolygon geometry. | User approved ADR 0016 amendment, separate workflow, and all three input types. Existing MCP tool already accepts these inputs. |
@@ -66,7 +66,7 @@ The user approved using this exact endpoint despite the service metadata's `Purp
 
 ## Reconnaissance and Hazards
 
-- Repo `/home/andrew/work/fpac-soil-mcp`; clean branch `feature/local-dev-trial` at `d4fefd7`. Plan 53 is the latest orchestration; Plan 54 is next. `planning/` is tracked and not ignored.
+- Repo `/home/andrew/work/fpac-soil-mcp`; clean branch `feature/local-dev-trial` at `0f04fb8`. Plan 53 is the latest orchestration; Plan 54 is next. `planning/` is tracked and not ignored.
 - Baseline at this exact commit is recorded in `STATE_53.md`: `make check` 993 passed/3 skipped/45 deselected; `make app-check` 266 passed; `make app-frontend-check` passed. Existing frontend warnings/advisories are listed in `STATE_53.md`; no baseline rerun needed before planning.
 - Follow root `AGENTS.md` and `apps/agent-fpac-soil-openai-sdk/AGENTS.md`. The vendored frontend is under `apps/agent-fpac-soil-openai-sdk/frontend`; every modified/added frontend path must be recorded in ADR 0015.
 - Hotspots: `MapPanel.tsx` 894 lines; `geo.py` 448; `aoi_context.py` 144; `OverlayControl.tsx` 152; `Legend.tsx` 153. Use grep anchors and sequence every task that edits `MapPanel.tsx`, `geo.py`, `agent.py`, `chat.tsx`, or ADR 0015.
