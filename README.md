@@ -61,7 +61,6 @@ The implementation is organized into transport and registration (`mcp/`), domain
 | :--- | :--- | :--- |
 | **7 CFR Part 657** | USDA criteria for Prime, Unique, and Statewide or Local Important Farmland. | Reports the SSURGO farmland classification associated with queried soil map units. |
 | **7 CFR Part 658** | FPPA review requirements, including formal evaluation and agency review. | Provides preliminary screening context only; it does not complete an official review or form. |
-| **USDA NASS Cropland Data Layer (CDL)** | Annual mapped land-cover classes derived from satellite imagery and other sources. | Provides class distributions for a project area and surrounding zones. It is not a farmland classification, proof of active agricultural use, or a Criterion 2 determination. |
 
 ### Regulatory Notice
 
