@@ -191,6 +191,12 @@ Modified upstream files:
   structured `site_assessment_confirmed_summary` text as a separate review
   card. Card actions send the exact `site_assessment_answer` and confirmed
   summary records as JSON chat messages (Plan 51.2.2).
+* `client/src/components/message.tsx`,
+  `client/src/components/elements/tool.tsx`, and
+  `client/src/components/map/ShowOnMapButton.tsx`: collapse regular tool
+  details by default while retaining MCP approval behavior, and put the
+  map-capable tool action in the tool-call header with accessible tool/AOI
+  context (Plan 55.2.1).
 * `package.json`: add the test-only `test:site-assessment` Playwright script;
   no dependencies or lockfile changes (Plan 51.2.2).
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
@@ -234,6 +240,11 @@ Modified upstream files:
 
 Added paths:
 
+* `client/src/components/tool-card-fixture.tsx`,
+  `client/tool-card-fixture.html`, and
+  `tests/site-assessment/tool-card.spec.ts`: isolated Playwright regression
+  coverage for collapsed tool details and the top-bar map action (Plan 55.2.1;
+  no new dependencies).
 * `client/src/lib/chatExport.ts` and `client/src/lib/chatExport.test.ts`:
   deterministic current-chat Markdown and JSON serializers that retain visible
   text and available raw tool names, inputs and outputs (including geometry),
