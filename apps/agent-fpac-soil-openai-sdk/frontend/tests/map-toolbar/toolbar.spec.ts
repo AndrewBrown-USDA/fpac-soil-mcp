@@ -6,6 +6,16 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
 });
 
+test('geometry transfer panel groups upload, paste, copy, and download workflows', async ({ page }) => {
+  const transfer = page.getByText('Import or export GeoJSON');
+  await transfer.click();
+  const panel = page.getByRole('group', { name: 'AOI input methods' });
+  await expect(panel.getByRole('button', { name: 'Upload file' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Paste GeoJSON' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'AOI GeoJSON export' }).getByRole('button', { name: 'Copy GeoJSON' })).toBeDisabled();
+  await expect(page.getByRole('group', { name: 'AOI GeoJSON export' }).getByRole('button', { name: 'Download GeoJSON' })).toBeDisabled();
+});
+
 test('toolbar controls are compact, named, keyboard operable and labelled on hover and focus', async ({ page }) => {
   const polygon = page.getByRole('button', { name: 'Polygon' });
   await expect(polygon).toHaveText('');

@@ -106,6 +106,13 @@ to upstream for every file this repo has not changed.
 * `client/map-toolbar-fixture.html`, `client/src/components/map/map-toolbar-fixture.tsx`,
   `playwright.map-toolbar.config.ts`, `tests/map-toolbar/toolbar.spec.ts`, and
   `package.json`: isolated production-panel toolbar browser coverage and test script.
+* `client/src/components/map/MapPanel.tsx`: one expandable geometry transfer panel
+  groups existing GeoJSON import/export actions; corridor attachment stays automatic
+  and is no longer controlled by duplicate map-panel attach/detach buttons.
+* `client/src/components/map/ActiveAoiChip.tsx`: shared chat chip reports and detaches
+  the one mutually exclusive attached AOI or corridor without exposing coordinates.
+* `tests/map-toolbar/toolbar.spec.ts`: covers the unified geometry panel and its
+  accessible import/export actions.
 
 Modified upstream files:
 

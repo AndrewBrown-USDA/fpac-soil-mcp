@@ -604,16 +604,6 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     setMode(next);
   };
 
-  const attachCorridor = () => {
-    if (!corridorContext || !chatId || corridorDraftChatId.current !== chatId) return;
-    const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
-    if (!input) return;
-    corridorContext.setCorridor({
-      ...input,
-      corridor_ref: corridorReference(),
-      alternative_labels: corridorAlternatives.map(({ label }) => label.trim()),
-    });
-  };
   const corridorInput = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
   useEffect(() => {
     if (!corridorContext || !chatId || corridorDraftChatId.current !== chatId || !corridorInput) {
@@ -897,7 +887,6 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           <label className="flex flex-col gap-1 text-xs">Required buffer distance<input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
           <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
           <span className="text-xs">{BUFFER_SIDE_NOTICE}</span>
-          <Button type="button" size="sm" onClick={attachCorridor} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || !chatId}>Attach to chat</Button>
           <Button type="button" size="sm" variant="primary" onClick={() => {
             const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
             if (!input) return;
@@ -906,7 +895,6 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           }} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || corridorScreening.status === 'running'}>
             {corridorScreening.status === 'running' ? 'Screening corridor...' : 'Screen corridor'}
           </Button>
-          {corridorContext?.activeCorridor && <><span role="status" className="text-xs">Corridor attached</span><Button type="button" size="sm" onClick={corridorContext.detach}>Detach corridor</Button></>}
           <Button type="button" size="sm" variant="default" onClick={clearCorridor} disabled={!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length}>Clear corridor</Button>
           {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`} className="text-xs">{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
           {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="text-xs underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
@@ -951,6 +939,9 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             <IdentifyPopup result={resultHit} sections={sections} onUseAsAoi={applyAreaAsAoi} />,
             popupNode,
           )}
+        <details className="rounded-md border p-2" aria-label="Geometry GeoJSON transfer">
+        <summary className="cursor-pointer font-medium text-sm">Import or export GeoJSON</summary>
+        <div className="mt-2 flex flex-col gap-2">
         <GeoJsonInput onGeometry={onPasted} />
         <div className="flex flex-wrap items-end gap-2" role="group" aria-label="AOI GeoJSON export">
           <label className="flex min-w-48 flex-1 flex-col gap-1 font-medium text-xs">
@@ -972,6 +963,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
           </Button>
           {aoiExportMessage && <span role="status" className="text-xs">{aoiExportMessage}</span>}
         </div>
+        </div>
+        </details>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
