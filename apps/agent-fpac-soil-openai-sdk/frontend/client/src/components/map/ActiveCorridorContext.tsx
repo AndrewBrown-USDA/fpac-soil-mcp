@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -12,6 +13,7 @@ import {
   saveCorridor,
 } from './corridorSession';
 import type { ActiveCorridor } from './corridorSession';
+import { GEOMETRY_ATTACH_EVENT } from './ActiveAoiContext';
 
 type Value = {
   chatId: string | null;
@@ -39,12 +41,29 @@ export function ActiveCorridorProvider({ children }: { children: ReactNode }) {
     );
   }, []);
   const setCorridor = useCallback((corridor: ActiveCorridor | null) => {
+    if (corridor && isActiveCorridor(corridor)) {
+      window.dispatchEvent(
+        new CustomEvent(GEOMETRY_ATTACH_EVENT, { detail: 'corridor' }),
+      );
+    }
     setState((prev) => {
       const validCorridor =
         corridor && isActiveCorridor(corridor) ? corridor : null;
       saveCorridor(prev.chatId, validCorridor);
       return { ...prev, corridor: validCorridor };
     });
+  }, []);
+  useEffect(() => {
+    const detach = (event: Event) => {
+      if ((event as CustomEvent).detail !== 'aoi') return;
+      setState((prev) => {
+        if (!prev.corridor) return prev;
+        saveCorridor(prev.chatId, null);
+        return { ...prev, corridor: null };
+      });
+    };
+    window.addEventListener(GEOMETRY_ATTACH_EVENT, detach);
+    return () => window.removeEventListener(GEOMETRY_ATTACH_EVENT, detach);
   }, []);
   const detach = useCallback(() => setCorridor(null), [setCorridor]);
   const value = useMemo(

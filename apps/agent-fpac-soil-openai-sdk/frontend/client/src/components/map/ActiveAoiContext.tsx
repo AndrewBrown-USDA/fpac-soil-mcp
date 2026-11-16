@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
@@ -14,6 +14,7 @@ export type ActiveAoi = {
 
 const STORAGE_PREFIX = 'fpac-map-aoi:';
 const AOI_REF = /^aoi-[0-9a-f]{8}$/;
+export const GEOMETRY_ATTACH_EVENT = 'fpac:geometry-attached';
 
 export function newAoiRef(): string {
   const bytes = new Uint8Array(4);
@@ -82,11 +83,25 @@ export function ActiveAoiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setGeometry = useCallback((geometry: PolygonGeometry | null) => {
+    if (geometry) window.dispatchEvent(new CustomEvent(GEOMETRY_ATTACH_EVENT, { detail: 'aoi' }));
     setState((prev) => {
       const aoi = geometry ? { aoi_ref: newAoiRef(), geometry, summary: null } : null;
       save(prev.chatId, aoi);
       return { ...prev, aoi };
     });
+  }, []);
+
+  useEffect(() => {
+    const detach = (event: Event) => {
+      if ((event as CustomEvent).detail !== 'corridor') return;
+      setState((prev) => {
+        if (!prev.aoi) return prev;
+        save(prev.chatId, null);
+        return { ...prev, aoi: null };
+      });
+    };
+    window.addEventListener(GEOMETRY_ATTACH_EVENT, detach);
+    return () => window.removeEventListener(GEOMETRY_ATTACH_EVENT, detach);
   }, []);
 
   const setSummary = useCallback((aoiRef: string, summary: Record<string, unknown>) => {

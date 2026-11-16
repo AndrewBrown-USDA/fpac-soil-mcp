@@ -7,6 +7,15 @@ export type ActiveCorridor = {
   indirect_geometry?: Record<string, unknown>;
 };
 
+export function exclusiveGeometryContext<T>(
+  activeAoi: T | null | undefined,
+  activeCorridor: T | null | undefined,
+): { activeAoi: T } | { activeCorridor: T } | {} {
+  if (activeCorridor) return { activeCorridor };
+  if (activeAoi) return { activeAoi };
+  return {};
+}
+
 const STORAGE_PREFIX = 'fpac-map-corridor:';
 const REF = /^corridor-[0-9a-f]{8}$/;
 const MAX_CHARS = 256 * 1024;

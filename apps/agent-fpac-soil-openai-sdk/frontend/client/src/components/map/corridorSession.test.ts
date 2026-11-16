@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   loadCorridor,
   saveCorridor,
+  exclusiveGeometryContext,
   type ActiveCorridor,
 } from './corridorSession';
 import { postRequestBodySchema } from '../../../../packages/core/src/schemas/chat';
@@ -39,6 +40,14 @@ test('saves/restores independently by chat and detaches only that chat', () => {
   saveCorridor('chat-a', null);
   assert.equal(loadCorridor('chat-a'), null);
   assert.equal(loadCorridor('chat-b')?.corridor_ref, 'corridor-ffffffff');
+});
+
+test('serializes at most one geometry context, preferring corridor if both exist', () => {
+  const aoi = { aoi_ref: 'aoi-0123abcd' };
+  assert.deepEqual(exclusiveGeometryContext(aoi, null), { activeAoi: aoi });
+  assert.deepEqual(exclusiveGeometryContext(null, corridor), { activeCorridor: corridor });
+  assert.deepEqual(exclusiveGeometryContext(aoi, corridor), { activeCorridor: corridor });
+  assert.deepEqual(exclusiveGeometryContext(null, null), {});
 });
 
 test('drops malformed stored corridor values', () => {

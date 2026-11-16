@@ -28,6 +28,7 @@ import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Greeting } from './greeting';
 import { useOptionalActiveAoi } from './map/ActiveAoiContext';
 import { useOptionalActiveCorridor } from './map/ActiveCorridorContext';
+import { exclusiveGeometryContext } from './map/corridorSession';
 import { ChatExportActions } from './chat-export-actions';
 
 export function Chat({
@@ -180,8 +181,7 @@ export function Chat({
                     : messages,
                 }
               : {}),
-            ...(activeAoiRef.current ? { activeAoi: activeAoiRef.current } : {}),
-            ...(activeCorridorRef.current ? { activeCorridor: activeCorridorRef.current } : {}),
+            ...exclusiveGeometryContext(activeAoiRef.current, activeCorridorRef.current),
             ...body,
           },
         };
