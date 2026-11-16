@@ -4,6 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('https://**/*', (route) => route.abort());
   await page.goto('/corridor-map-fixture.html');
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
 });
 
 test('submits drawn corridor directly and displays returned summary, notice and server legend', async ({ page }) => {
@@ -26,12 +27,18 @@ test('submits drawn corridor directly and displays returned summary, notice and 
       status: 'preliminary_screening',
     } });
   });
+  await page.getByText('Corridor options', { exact: true }).click();
+  const optionsSummary = page.getByText('Corridor options', { exact: true });
+  await expect(optionsSummary).toBeVisible();
+  await expect(optionsSummary.locator('..').locator('..')).toHaveClass(/justify-end/);
   await page.getByRole('button', { name: 'Draw primary line' }).click();
   const map = page.locator('.maplibregl-map');
   await map.click({ position: { x: 120, y: 130 } });
   await map.dblclick({ position: { x: 200, y: 190 } });
-  await expect(page.getByText('Primary: ready')).toBeVisible();
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
   await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Buffer distance applies on each side of the centerline.' }).hover();
+  await expect(page.getByRole('tooltip')).toContainText('Buffer distance applies on each side of the centerline.');
   await page.getByRole('button', { name: 'Screen corridor' }).click();
   await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('region', { name: 'Corridor screening summary' })).toContainText('12.3 ac');
@@ -39,4 +46,68 @@ test('submits drawn corridor directly and displays returned summary, notice and 
   await page.getByRole('tab', { name: 'Map', exact: true }).click();
   await page.getByText('Map legend', { exact: true }).click();
   await expect(page.getByText('Server corridor class')).toBeVisible();
+});
+
+test('retains alternative labels and synchronizes feature removal and clear', async ({ page }) => {
+  await page.getByText('Corridor options', { exact: true }).click();
+  const map = page.locator('.maplibregl-map');
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
+  await page.waitForTimeout(50);
+
+  await page.getByLabel('Alternative label').fill('North route');
+  await page.getByRole('button', { name: 'Draw alternative line' }).click();
+  await map.click({ position: { x: 150, y: 100 } });
+  await map.dblclick({ position: { x: 220, y: 160 } });
+  await expect(page.getByRole('button', { name: 'Remove North route' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove North route' }).click();
+  await expect(page.getByText(/0 alternatives/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Draw staging area' }).click();
+  await map.click({ position: { x: 280, y: 160 } });
+  await map.click({ position: { x: 330, y: 160 } });
+  await map.click({ position: { x: 330, y: 210 } });
+  await map.dblclick({ position: { x: 280, y: 160 } });
+  await expect(page.getByRole('button', { name: 'Remove staging area 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove staging area 1' }).click();
+  await expect(page.getByText(/0 staging/)).toBeVisible();
+  await page.getByRole('button', { name: 'Remove primary line' }).click();
+  await expect(page.getByText('Primary required · 0 alternatives · 0 staging')).toBeVisible();
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  await map.click({ position: { x: 160, y: 110 } });
+  await map.dblclick({ position: { x: 220, y: 170 } });
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
+  await page.getByRole('button', { name: 'Clear corridor' }).click();
+  await expect(page.getByText('Primary required · 0 alternatives · 0 staging')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Clear corridor' })).toBeDisabled();
+});
+
+test('corridor auto-attach replaces AOI and the shared chat chip detaches it', async ({ page }) => {
+  // Attach an AOI through its public drawing workflow.
+  await page.getByRole('button', { name: 'Area', exact: true }).click();
+  const map = page.locator('.maplibregl-map');
+  await page.getByRole('button', { name: 'Polygon' }).click();
+  await map.click({ position: { x: 100, y: 100 } });
+  await map.click({ position: { x: 180, y: 100 } });
+  await map.click({ position: { x: 180, y: 180 } });
+  await map.dblclick({ position: { x: 100, y: 100 } });
+  await expect(page.getByTestId('active-geometry-chip')).toContainText('Map AOI');
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-aoi:corridor-fixture'))).not.toBeNull();
+
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
+  await page.getByText('Corridor options', { exact: true }).click();
+  await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  const chip = page.getByTestId('active-geometry-chip');
+  await expect(chip).toContainText('Corridor');
+  await expect(chip).not.toContainText('Map AOI');
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-aoi:corridor-fixture'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-corridor:corridor-fixture'))).not.toBeNull();
+  await chip.getByRole('button', { name: /Detach corridor/ }).click();
+  await expect(chip).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-corridor:corridor-fixture'))).toBeNull();
 });

@@ -4,8 +4,18 @@ export type ActiveCorridor = {
   buffer_distance: number;
   buffer_units: 'feet' | 'meters' | 'miles';
   alternatives: { type: 'LineString'; coordinates: number[][] }[];
+  alternative_labels?: string[];
   indirect_geometry?: Record<string, unknown>;
 };
+
+export function exclusiveGeometryContext<T>(
+  activeAoi: T | null | undefined,
+  activeCorridor: T | null | undefined,
+): { activeAoi: T } | { activeCorridor: T } | {} {
+  if (activeCorridor) return { activeCorridor };
+  if (activeAoi) return { activeAoi };
+  return {};
+}
 
 const STORAGE_PREFIX = 'fpac-map-corridor:';
 const REF = /^corridor-[0-9a-f]{8}$/;
@@ -43,7 +53,11 @@ export function isActiveCorridor(value: unknown): value is ActiveCorridor {
       !['feet', 'meters', 'miles'].includes(corridor.buffer_units ?? '') ||
       !Array.isArray(corridor.alternatives) ||
       corridor.alternatives.length > 10 ||
-      !corridor.alternatives.every(line)
+      !corridor.alternatives.every(line) ||
+      (corridor.alternative_labels !== undefined &&
+        (!Array.isArray(corridor.alternative_labels) ||
+          corridor.alternative_labels.length !== corridor.alternatives.length ||
+          !corridor.alternative_labels.every((label) => typeof label === 'string' && !!label.trim())))
     )
       return false;
     if (corridor.indirect_geometry !== undefined) {

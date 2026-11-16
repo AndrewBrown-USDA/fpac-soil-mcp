@@ -512,8 +512,17 @@ const ToolPartRenderer = ({
   }
 
   return (
-    <Tool defaultOpen={true}>
-      <ToolHeader type={toolName} state={effectiveState} />
+    <Tool defaultOpen={false}>
+      <ToolHeader type={toolName} state={effectiveState}>
+        {showOnMap && (
+          <ShowOnMapButton
+            tool={toolName}
+            toolCallId={toolCallId}
+            input={input}
+            output={output}
+          />
+        )}
+      </ToolHeader>
       <ToolContent>
         <ToolInput input={input} />
         {state === 'output-available' && (
@@ -532,14 +541,6 @@ const ToolPartRenderer = ({
               )
             }
             errorText={undefined}
-          />
-        )}
-        {showOnMap && (
-          <ShowOnMapButton
-            tool={toolName}
-            toolCallId={toolCallId}
-            input={input}
-            output={output}
           />
         )}
       </ToolContent>

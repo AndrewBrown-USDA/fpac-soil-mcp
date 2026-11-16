@@ -98,7 +98,8 @@ export function ResultsTable({
       </table>
 
       {units.length > 0 && (
-        <table className="w-full border-collapse">
+        <div className="max-w-full overflow-x-auto">
+        <table className="w-full min-w-[40rem] border-collapse">
           <caption className="text-left font-medium">
             Map units ({units.length})
           </caption>
@@ -131,7 +132,7 @@ export function ResultsTable({
                   className="border-border border-b align-top"
                 >
                   <td className="py-1 font-mono text-xs">{unit.musym ?? 'n/a'}</td>
-                  <td>{unit.muname ?? 'n/a'}</td>
+                  <td className="whitespace-nowrap">{unit.muname ?? 'n/a'}</td>
                   <td>
                     <span className="flex items-center gap-2">
                       <ClassMark farmlandClass={farmlandClass} legend={legendByValue} />
@@ -144,6 +145,7 @@ export function ResultsTable({
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

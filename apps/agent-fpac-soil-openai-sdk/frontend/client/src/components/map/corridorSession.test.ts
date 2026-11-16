@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import {
   loadCorridor,
   saveCorridor,
+  exclusiveGeometryContext,
+  isActiveCorridor,
   type ActiveCorridor,
 } from './corridorSession';
 import { postRequestBodySchema } from '../../../../packages/core/src/schemas/chat';
@@ -28,7 +30,8 @@ const corridor: ActiveCorridor = {
   },
   buffer_distance: 50,
   buffer_units: 'feet',
-  alternatives: [],
+  alternatives: [{ type: 'LineString', coordinates: [[-101, 40], [-100, 41]] }],
+  alternative_labels: ['North route'],
 };
 
 test('saves/restores independently by chat and detaches only that chat', () => {
@@ -39,6 +42,20 @@ test('saves/restores independently by chat and detaches only that chat', () => {
   saveCorridor('chat-a', null);
   assert.equal(loadCorridor('chat-a'), null);
   assert.equal(loadCorridor('chat-b')?.corridor_ref, 'corridor-ffffffff');
+});
+
+test('validates and round-trips labeled alternatives in browser corridor state', () => {
+  saveCorridor('labeled', corridor);
+  assert.deepEqual(loadCorridor('labeled')?.alternatives, corridor.alternatives);
+  assert.equal(isActiveCorridor({ ...corridor, alternative_labels: [] }), false);
+});
+
+test('serializes at most one geometry context, preferring corridor if both exist', () => {
+  const aoi = { aoi_ref: 'aoi-0123abcd' };
+  assert.deepEqual(exclusiveGeometryContext(aoi, null), { activeAoi: aoi });
+  assert.deepEqual(exclusiveGeometryContext(null, corridor), { activeCorridor: corridor });
+  assert.deepEqual(exclusiveGeometryContext(aoi, corridor), { activeCorridor: corridor });
+  assert.deepEqual(exclusiveGeometryContext(null, null), {});
 });
 
 test('drops malformed stored corridor values', () => {
@@ -81,7 +98,8 @@ test('chat schema drops malformed corridor and retains valid AOI plus corridor',
     activeCorridor: corridor,
   });
   assert.deepEqual(both.activeAoi, base.activeAoi);
-  assert.deepEqual(both.activeCorridor, corridor);
+  assert.deepEqual(both.activeCorridor?.alternatives, corridor.alternatives);
+  assert.equal('alternative_labels' in (both.activeCorridor ?? {}), false);
   const malformed = postRequestBodySchema.parse({
     ...base,
     activeCorridor: { ...corridor, corridor_ref: 'bad' },

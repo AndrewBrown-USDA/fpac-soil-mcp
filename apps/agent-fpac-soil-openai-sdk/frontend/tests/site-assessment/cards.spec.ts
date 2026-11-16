@@ -81,16 +81,17 @@ test('review summary shows assumptions and Confirm/Edit emit their distinct acti
 
 test('a replaced or detached AOI prevents a CDL result from entering map context', async ({ page }) => {
   await page.getByRole('button', { name: 'Attach AOI' }).click();
-  await page.getByRole('button', { name: 'Show CDL on map' }).click();
+  const showCdl = page.getByRole('button', { name: /analyze_cdl_context:/ });
+  await showCdl.click();
   await expect(page.getByTestId('map-result')).toContainText('"origin":"tool"');
 
   await page.getByRole('button', { name: 'Replace AOI' }).click();
   await page.getByRole('button', { name: 'Clear map result' }).click();
-  await page.getByRole('button', { name: 'Show CDL on map' }).click();
+  await showCdl.click();
   await expect(page.getByTestId('map-result')).toHaveText('empty');
   await expect(page.getByText('This CDL result is stale because its AOI is no longer active.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Detach AOI' }).click();
-  await page.getByRole('button', { name: 'Show CDL on map' }).click();
+  await showCdl.click();
   await expect(page.getByTestId('map-result')).toHaveText('empty');
 });

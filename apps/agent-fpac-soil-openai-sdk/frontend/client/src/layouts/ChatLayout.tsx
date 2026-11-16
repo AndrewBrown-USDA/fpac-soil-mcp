@@ -62,7 +62,7 @@ export default function ChatLayout() {
         <AppSidebar user={session.user} preferredUsername={preferredUsername} />
         <aside
           aria-label="Map panel"
-          className={`relative h-svh shrink-0 bg-secondary ${mapOpen ? 'w-full md:w-[40%]' : 'w-10'}`}
+          className={`relative h-svh shrink-0 bg-secondary ${mapOpen ? 'w-full md:w-1/2' : 'w-10'}`}
         >
           {!mapOpen && (
             <button
