@@ -23,7 +23,7 @@ workers must use isolated worktrees for concurrent tasks in this repository.
 | 1 | 55.2.1 | Collapse tool output by default and promote Show on Map | — | `message.tsx`, map action component, chat UI tests |
 | 2 | 55.1.2 | Preserve corridor labels and synchronize remove/clear state | 55.1.1 | `corridorGeometry.ts`, `corridorGeometry.test.ts`, `corridorSession.ts`, `corridorSession.test.ts`, `MapPanel.tsx`, corridor-map tests, `geojson.ts` only if required |
 | 3 | 55.2.2 | Concise measurement indicator and live rubber-band preview | 55.1.2 | `MapPanel.tsx`, `distance.ts`, distance tests, toolbar tests |
-| 4 | 55.3.1 | Icon toolbar, unified attachment chip and geometry I/O panel | 55.1.1, 55.1.2, 55.2.2 | `MapPanel.tsx`, `GeoJsonInput.tsx`, `ActiveAoiChip.tsx`, corridor-map and toolbar specs |
+| 4 | 55.3.1 | Icon toolbar, unified attachment chip and geometry I/O panel | 55.1.1, 55.1.2, 55.2.2 | `MapPanel.tsx`, `GeoJsonInput.tsx`, `ActiveAoiChip.tsx`, corridor-map fixture/spec, toolbar spec |
 | 5 | 55.4.1 | Integrated validation and handoff | 55.2.1, 55.3.1 | `STATE_55.md` |
 
 ## Task Specifications
@@ -65,10 +65,10 @@ upstream lint scripts that rewrite files.
 
 ### 55.3.1 — Toolbar, attachment chip, and unified geometry I/O
 
-- **Files in scope:** `frontend/client/src/components/map/MapPanel.tsx`, `GeoJsonInput.tsx`, `ActiveAoiChip.tsx`, `frontend/tests/corridor-map/corridor-map.spec.ts`, `frontend/tests/map-toolbar/toolbar.spec.ts`, and `docs/decisions/0015-vendored-agent-app-frontend.md`.
+- **Files in scope:** `frontend/client/src/components/map/MapPanel.tsx`, `GeoJsonInput.tsx`, `ActiveAoiChip.tsx`, `frontend/client/src/components/map/corridor-map-fixture.tsx`, `frontend/tests/corridor-map/corridor-map.spec.ts`, `frontend/tests/map-toolbar/toolbar.spec.ts`, and `docs/decisions/0015-vendored-agent-app-frontend.md`.
 - **Anchors:** map toolbar controls, attachment status/chip, geometry input and export controls.
 - **Spec:** Keep Area and Corridor controls visible as compact icon-only buttons with accessible labels. Expose one attach/detach chip for the mutually exclusive active geometry. Unify upload, paste, copy, and download in one panel; retain existing validation and workflows.
-- **Acceptance:** `npm run test:corridor-map`; `npm run test:map-toolbar`; `make app-frontend-check`.
+- **Acceptance:** `npm run test:corridor-map` verifies AOI and corridor attachment/detachment plus feature controls; `npm run test:map-toolbar` verifies toolbar and unified I/O; `make app-frontend-check`.
 
 ### 55.4.1 — Integrated validation and handoff
 
