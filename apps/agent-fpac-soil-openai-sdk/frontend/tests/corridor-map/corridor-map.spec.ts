@@ -75,3 +75,28 @@ test('retains alternative labels and synchronizes feature removal and clear', as
   await expect(page.getByText('Primary: required; alternatives: 0; staging areas: 0')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Clear corridor' })).toBeDisabled();
 });
+
+test('corridor auto-attach replaces AOI and the shared chat chip detaches it', async ({ page }) => {
+  // Attach an AOI through its public drawing workflow.
+  const map = page.locator('.maplibregl-map');
+  await page.getByRole('button', { name: 'Polygon' }).click();
+  await map.click({ position: { x: 100, y: 100 } });
+  await map.click({ position: { x: 180, y: 100 } });
+  await map.click({ position: { x: 180, y: 180 } });
+  await map.dblclick({ position: { x: 100, y: 100 } });
+  await expect(page.getByTestId('active-geometry-chip')).toContainText('Map AOI');
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-aoi:corridor-fixture'))).not.toBeNull();
+
+  await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  const chip = page.getByTestId('active-geometry-chip');
+  await expect(chip).toContainText('Corridor');
+  await expect(chip).not.toContainText('Map AOI');
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-aoi:corridor-fixture'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-corridor:corridor-fixture'))).not.toBeNull();
+  await chip.getByRole('button', { name: /Detach corridor/ }).click();
+  await expect(chip).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-corridor:corridor-fixture'))).toBeNull();
+});

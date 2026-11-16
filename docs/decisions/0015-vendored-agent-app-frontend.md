@@ -113,6 +113,10 @@ to upstream for every file this repo has not changed.
   the one mutually exclusive attached AOI or corridor without exposing coordinates.
 * `tests/map-toolbar/toolbar.spec.ts`: covers the unified geometry panel and its
   accessible import/export actions.
+* `client/src/components/map/corridor-map-fixture.tsx` and
+  `tests/corridor-map/corridor-map.spec.ts`: mount both active-geometry providers
+  and the shared chat chip; exercise real polygon/corridor attachment, AOI
+  replacement, chip detachment, and session-storage cleanup (Plan 55.3.1).
 
 Modified upstream files:
 
