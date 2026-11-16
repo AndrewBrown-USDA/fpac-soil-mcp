@@ -32,7 +32,7 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 | 2 | 54.2.1 Map-pane server legend and authoritative CDL key | done | `d76c7cc` | G43; targeted + integrated checks pass |
 | 2 | 54.2.2 Replace NAIP with fixed USDA FPAC ImageServer | done | `d37e63e` | G49; fixed endpoint; test-purpose caveat |
 | 3 | 54.3.1 Returned SSURGO visibility on new results | done | `073f3f1` | G44; focused checks pass |
-| 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | pending | | G45 |
+| 4 | 54.4.1 ADR 0016 corridor amendment and validated context model | done | `26bdc6b` | G45 |
 | 5 | 54.5.1 Direct stateless corridor screening route | pending | | G46 |
 | 5 | 54.5.2 Bind corridor context to agent tool calls | pending | | G47 |
 | 6 | 54.6.1 Per-chat corridor context transport | pending | | G47 |
@@ -43,6 +43,15 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 ## Task Reports
 
 (Workers append <=15-line reports here after each committed task.)
+
+### 54.4.1 — ADR 0016 corridor amendment and validated context model
+
+- Status: done; code commit `26bdc6b` (`feat(agent-app): add validated corridor context`).
+- Changed `agent_server/corridor_context.py`, `tests/test_corridor_context.py`, and ADR 0016.
+- Corridor context remains separate from AOI; validates references, finite lines/buffers, supported units, alternative/staging limits, and substitutes only matching corridor calls.
+- `cd apps/agent-fpac-soil-openai-sdk && uv run pytest tests/test_corridor_context.py -q`: 17 passed (one existing pytest config warning).
+- App Ruff check/format passed; root `git diff --check` passed.
+- Deviations: none. Gotcha: integration into agent binding is the dependent task 54.5.2.
 
 ### 54.1.1 — Compact accessible map controls and cursor defaults
 
