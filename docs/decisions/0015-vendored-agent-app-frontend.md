@@ -89,6 +89,11 @@ to upstream for every file this repo has not changed.
 
 ### Local changes
 
+* `client/src/components/map/MapPanel.tsx` and `resultVisibility.ts`: show result
+  layers on each newly successful screening without changing context overlays or
+  overriding later visibility choices. `resultVisibility.test.ts` covers the
+  visibility transition and renderer with a mock map, not a browser panel.
+
 * `client/src/components/map/MapPanel.tsx`, `Legend.tsx`, `OverlayControl.tsx`,
   `CDLLegend.tsx`, and `cdlLegend.ts`: accessible map-pane server legend and
   USDA NASS CDL context key, without changing server symbology.

@@ -54,6 +54,7 @@ import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
 import { lineDistance } from './distance';
 import type { DistanceUnit } from './distance';
 import { aoiViewBounds, INITIAL_MAP_VIEW, measurementModeAfterCancel, setLayerVisibility } from './mapControls';
+import { showNewScreeningResult } from './resultVisibility';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
 // Metadata checked 2026-10-30: 256 px Web Mercator tiles, cached to zoom 16, CORS *.
@@ -140,6 +141,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const previousScreeningStatus = useRef(screening.status);
 
   useEffect(() => {
+    showNewScreeningResult(previousScreeningStatus.current, screening.status, setResultsVisible);
     if (previousScreeningStatus.current !== 'done' && screening.status === 'done') {
       setActiveTab('results');
     }
