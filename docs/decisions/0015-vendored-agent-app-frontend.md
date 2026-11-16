@@ -210,6 +210,18 @@ Modified upstream files:
   `corridorGeometry.test.ts`: separate corridor line/staging drawing controls,
   buffer validation and per-chat attachment, without changing polygon AOI state
   (Plan 54.7.1).
+* `client/src/components/map/MapPanel.tsx` and `MapResultContext.tsx`: direct
+  corridor screening from the map panel, server map/legend handoff, and active
+  result navigation while preserving polygon and tool results (Plan 54.8.1).
+* `client/src/components/map/useCorridorScreening.ts` and
+  `CorridorScreeningResults.tsx`: direct `/api/geo/corridor` request lifecycle,
+  allowlisted preliminary summary, and regulatory notice (Plan 54.8.1).
+* `client/src/components/map/corridorScreening.test.ts`,
+  `client/corridor-map-fixture.html`,
+  `client/src/components/map/corridor-map-fixture.tsx`,
+  `playwright.corridor-map.config.ts`, `tests/corridor-map/corridor-map.spec.ts`,
+  and `package.json`: focused direct corridor request and browser-panel coverage
+  (Plan 54.8.1; no new dependencies).
 * `server/src/middleware/auth.ts`: provides a synthetic local-only session when
   `FPAC_LOCAL_DEV=1` and the request socket is loopback; normal requests retain
   the Databricks session lookup. `server/src/middleware/auth.test.ts` covers
