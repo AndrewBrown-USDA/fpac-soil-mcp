@@ -62,6 +62,11 @@ import {
   registerActiveAoi,
   releaseActiveAoi,
 } from '@databricks/chatbot-core';
+import {
+  CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY,
+  registerActiveCorridor,
+  releaseActiveCorridor,
+} from '@databricks/chatbot-ai-sdk-providers';
 import { ChatSDKError } from '@databricks/chatbot-core/errors';
 import { storeMessageMeta } from '../lib/message-meta-store';
 import { drainStreamToWriter, fallbackToGenerateText } from '../lib/stream-fallback';
@@ -260,10 +265,17 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     if (activeAoiKey) {
       res.on('close', () => releaseActiveAoi(activeAoiKey));
     }
+    const activeCorridorKey = requestBody.activeCorridor
+      ? registerActiveCorridor(requestBody.activeCorridor)
+      : null;
+    if (activeCorridorKey) {
+      res.on('close', () => releaseActiveCorridor(activeCorridorKey));
+    }
     const requestHeaders = {
       [CONTEXT_HEADER_CONVERSATION_ID]: id,
       [CONTEXT_HEADER_USER_ID]: session.user.email ?? session.user.id,
       ...(activeAoiKey ? { [CONTEXT_HEADER_ACTIVE_AOI_KEY]: activeAoiKey } : {}),
+      ...(activeCorridorKey ? { [CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY]: activeCorridorKey } : {}),
       // Forward OBO user token to the backend/serving endpoint
       ...(req.headers['x-forwarded-access-token']
         ? { 'x-forwarded-access-token': req.headers['x-forwarded-access-token'] as string }
@@ -626,4 +638,3 @@ function truncatePreserveWords(input: string, maxLength: number): string {
 
   return slice.slice(0, lastSpaceIndex);
 }
-

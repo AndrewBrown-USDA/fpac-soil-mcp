@@ -195,6 +195,17 @@ Modified upstream files:
   no dependencies or lockfile changes (Plan 51.2.2).
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
+* `client/src/components/chat.tsx`, `client/src/layouts/ChatLayout.tsx`,
+  `packages/core/src/schemas/chat.ts`,
+  `packages/ai-sdk-providers/src/providers-server.ts`, and
+  `server/src/routes/chat.ts`: transport
+  bounded per-chat active-corridor context independently of AOI through a
+  request-scoped provider registry into `custom_inputs.active_corridor` (Plan
+  54.6.1).
+* `client/src/components/map/ActiveCorridorContext.tsx`,
+  `client/src/components/map/corridorSession.ts`, and
+  `client/src/components/map/corridorSession.test.ts`: per-chat corridor session
+  storage/provider and focused persistence validation (Plan 54.6.1).
 * `server/src/middleware/auth.ts`: provides a synthetic local-only session when
   `FPAC_LOCAL_DEV=1` and the request socket is loopback; normal requests retain
   the Databricks session lookup. `server/src/middleware/auth.test.ts` covers

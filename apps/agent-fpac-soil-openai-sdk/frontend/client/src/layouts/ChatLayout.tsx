@@ -9,6 +9,7 @@ import { DbIcon } from '@/components/ui/db-icon';
 import { UserKeyIconIcon } from '@/components/icons';
 import { MapPanel } from '@/components/map/MapPanel';
 import { ActiveAoiProvider } from '@/components/map/ActiveAoiContext';
+import { ActiveCorridorProvider } from '@/components/map/ActiveCorridorContext';
 import { MapResultProvider } from '@/components/map/MapResultContext';
 
 export default function ChatLayout() {
@@ -56,6 +57,7 @@ export default function ChatLayout() {
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
       <ActiveAoiProvider>
+      <ActiveCorridorProvider>
         <MapResultProvider onShow={openMap}>
         <AppSidebar user={session.user} preferredUsername={preferredUsername} />
         <aside
@@ -88,6 +90,7 @@ export default function ChatLayout() {
           </div>
         </SidebarInset>
         </MapResultProvider>
+      </ActiveCorridorProvider>
       </ActiveAoiProvider>
     </SidebarProvider>
   );
