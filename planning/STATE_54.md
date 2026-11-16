@@ -73,12 +73,19 @@ Resume point for orchestration 54. Plan: `planning/EXECUTION_PLAN_54.md`. Worker
 
 ### 54.3.1 — Returned result visibility
 
-- Status: done; code commit `073f3f1` (`fix(map): show new screening result layers`).
+- Status: done; code commit `073f3f1` (`fix(map): show new screening result layers`); planning report commit `ff4a74a`.
 - Changed `frontend/client/src/components/map/MapPanel.tsx`, added `resultVisibility.ts` and `resultVisibility.test.ts`, and updated ADR 0015 (frontend paths relative to app).
 - From `apps/agent-fpac-soil-openai-sdk/frontend`: `node --import tsx --test client/src/components/map/resultVisibility.test.ts` 1 passed; `npm run test:map-identify` 2 passed. Root `git diff --check` passed.
+- Orchestrator reruns: result visibility 1 passed; map-identify 2 passed.
 - A successful screening transition resets result visibility; tab revisits, old result selection, and failed screening do not. Context SSURGO is independently controlled.
 - Deviation/limitation: focused test exercises the production-wired transition and renderer with a mock map, not the production React panel or browser navigation; the overlay independence assertion uses copied default flags. Orchestrator owns integration validation.
 - Dependency gotchas: result layers are applied by both the visibility and render effects; NAIP's test-purpose service caveat remains unchanged.
+
+### Wave 3 integrated gate
+
+- `make app-check`: 266 passed; Ruff check/format passed.
+- `make app-frontend-check`: passed; 11 baseline lint warnings, 10 npm advisories, ephemeral DB migration skip, and existing build warnings.
+- `git diff --check`: passed; working tree clean after planning commit.
 
 ### Wave 2 integrated gate
 
