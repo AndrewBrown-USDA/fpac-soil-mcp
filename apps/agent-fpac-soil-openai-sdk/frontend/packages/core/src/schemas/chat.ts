@@ -40,6 +40,15 @@ const activeAoiSchema = z
     (aoi) => JSON.stringify(aoi.geometry).length <= MAX_ACTIVE_AOI_GEOMETRY_CHARS,
   );
 
+const activeCorridorSchema = z.object({
+  corridor_ref: z.string().regex(/^corridor-[0-9a-f]{8}$/),
+  centerline: z.object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number()).min(2)).min(2) }),
+  buffer_distance: z.number().finite().positive(),
+  buffer_units: z.enum(['feet', 'meters', 'miles']),
+  alternatives: z.array(z.object({ type: z.literal('LineString'), coordinates: z.array(z.array(z.number()).min(2)).min(2) })).max(10),
+  indirect_geometry: z.object({ type: z.enum(['Polygon', 'MultiPolygon']), coordinates: z.array(z.any()) }).optional(),
+}).refine((corridor) => JSON.stringify(corridor).length <= 256 * 1024);
+
 export const postRequestBodySchema = z.object({
   id: z.string().uuid(),
   // Optional for continuation/regeneration scenarios (no new user message)
@@ -55,6 +64,7 @@ export const postRequestBodySchema = z.object({
   // Optional field for ephemeral mode: frontend sends previous conversation history
   previousMessages: z.array(previousMessageSchema).optional(),
   activeAoi: activeAoiSchema.optional().catch(undefined),
+  activeCorridor: activeCorridorSchema.optional().catch(undefined),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

@@ -57,6 +57,16 @@ async def geo_screen(request: Request) -> JSONResponse:
         return _error_response(exc)
 
 
+@app.post("/api/geo/corridor")
+async def geo_corridor(request: Request) -> JSONResponse:
+    """Screen one corridor out of band; never logs the body, invokes the model, or traces."""
+    try:
+        corridor = geo.parse_corridor_request(await _read_body(request, 413))
+        return JSONResponse(await geo.screen_corridor(corridor))
+    except geo.GeoRequestError as exc:
+        return _error_response(exc)
+
+
 @app.post("/api/geo/map")
 async def geo_map(request: Request) -> JSONResponse:
     """Map layers for one analyze tool call (ADR 0017). Never logs the body; no model, no trace."""

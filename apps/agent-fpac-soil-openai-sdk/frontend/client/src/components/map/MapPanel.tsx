@@ -7,14 +7,16 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './maplibreWorker';
 import {
   TerraDraw,
+  TerraDrawLineStringMode,
   TerraDrawPolygonMode,
   TerraDrawRectangleMode,
   TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
-import { Check, Copy, Download, Map as MapIcon, MousePointer2, Pentagon, Square, Trash2, Undo2, Ruler } from 'lucide-react';
+import { Check, Copy, Download, Eye, Map as MapIcon, Maximize, MousePointer2, Pentagon, RotateCcw, Square, Trash2, Undo2, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
 import ncssAcronymWhite from '@/assets/ncss-acronym-white.png';
 import { GeoJsonInput } from './GeoJsonInput';
@@ -37,6 +39,7 @@ import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
 import { MapLegend } from './Legend';
+import { CDLLegend } from './CDLLegend';
 import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
 import { CDLContextSummary } from './CDLContextSummary';
@@ -52,6 +55,12 @@ import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
 import { lineDistance } from './distance';
 import type { DistanceUnit } from './distance';
 import { aoiViewBounds, INITIAL_MAP_VIEW, measurementModeAfterCancel, setLayerVisibility } from './mapControls';
+import { showNewScreeningResult } from './resultVisibility';
+import { BUFFER_SIDE_NOTICE, DEFAULT_CORRIDOR_UNIT, createCorridorInput, corridorReference, isCorridorPolygon, isLineGeometry } from './corridorGeometry';
+import type { CorridorUnit, LineGeometry } from './corridorGeometry';
+import { useOptionalActiveCorridor } from './ActiveCorridorContext';
+import { useCorridorScreening } from './useCorridorScreening';
+import { CorridorScreeningResults } from './CorridorScreeningResults';
 
 // USGS The National Map, USGSTopo cached tiles (ArcGIS order: z/row/col).
 // Metadata checked 2026-10-30: 256 px Web Mercator tiles, cached to zoom 16, CORS *.
@@ -98,6 +107,17 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const drawRef = useRef<TerraDraw | null>(null);
+  const corridorDrawRef = useRef<TerraDraw | null>(null);
+  const corridorDrawKind = useRef<'primary' | 'alternative' | 'staging'>('primary');
+  const corridorDraftChatId = useRef<string | null>(null);
+  const [corridorCenterline, setCorridorCenterline] = useState<LineGeometry | null>(null);
+  const [corridorAlternatives, setCorridorAlternatives] = useState<{ label: string; geometry: LineGeometry }[]>([]);
+  const [corridorStaging, setCorridorStaging] = useState<PolygonGeometry[]>([]);
+  const [alternativeLabel, setAlternativeLabel] = useState('Alternative 1');
+  const alternativeLabelRef = useRef(alternativeLabel);
+  alternativeLabelRef.current = alternativeLabel;
+  const [bufferText, setBufferText] = useState('');
+  const [bufferUnits, setBufferUnits] = useState<CorridorUnit>(DEFAULT_CORRIDOR_UNIT);
   const [mapReady, setMapReady] = useState(false);
   const [mode, setMode] = useState<DrawMode>('static');
   const [previousAoi, setPreviousAoi] = useState<PolygonGeometry | null>(null);
@@ -115,7 +135,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [resultsVisible, setResultsVisible] = useState(true);
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
-  const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('kilometers');
+  const [measureUnit, setMeasureUnit] = useState<DistanceUnit>('miles');
   const [activeTab, setActiveTab] = useState<'map' | 'results'>('map');
   // Short hint when a click has nothing to identify (no layer on, or none in range).
   const [identifyHint, setIdentifyHint] = useState<string | null>(null);
@@ -128,16 +148,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
   // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
   const { chatId, activeAoi, setGeometry, setSummary } = useActiveAoi();
+  const corridorContext = useOptionalActiveCorridor();
   // The result drawn on the map: this panel's screening or a tool card's "Show on map".
   const { shown, show, clear: clearShown } = useMapResult();
   const aoi = activeAoi?.geometry ?? null;
   const aoiRef = useRef<PolygonGeometry | null>(null);
   const screenedRef = useRef<string | null>(null);
   const screening = useScreening();
+  const corridorScreening = useCorridorScreening();
   const { reset: resetScreening } = screening;
   const previousScreeningStatus = useRef(screening.status);
+  const attachedCorridorSignature = useRef('');
 
   useEffect(() => {
+    showNewScreeningResult(previousScreeningStatus.current, screening.status, setResultsVisible);
     if (previousScreeningStatus.current !== 'done' && screening.status === 'done') {
       setActiveTab('results');
     }
@@ -260,12 +284,59 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         }
       });
       drawRef.current = draw;
+      const corridorDraw = new TerraDraw({
+        // Each adapter owns its sources and layers on the shared map.
+        adapter: new TerraDrawMapLibreGLAdapter({ map, prefixId: 'corridor' }),
+        modes: [
+          new TerraDrawLineStringMode({ pointerEvents: LEFT_BUTTON_ONLY }),
+          new TerraDrawPolygonMode({ pointerEvents: LEFT_BUTTON_ONLY }),
+          new TerraDrawSelectMode({}),
+        ],
+      });
+      corridorDraw.start();
+      corridorDraw.on('finish', (id) => {
+        const feature = corridorDraw.getSnapshot().find((item) => item.id === id);
+        const geometry = feature?.geometry;
+        if (corridorDrawKind.current === 'staging' && isCorridorPolygon(geometry)) {
+          corridorDraw.updateFeatureProperties(id, { corridorKind: 'staging' });
+          setCorridorStaging((items) => [...items, geometry]);
+        } else if (corridorDrawKind.current !== 'staging' && isLineGeometry(geometry)) {
+          if (corridorDrawKind.current === 'primary') {
+            corridorDraw.updateFeatureProperties(id, { corridorKind: 'primary' });
+            setCorridorCenterline(geometry);
+          } else {
+            const alternativeCount = corridorDraw.getSnapshot().filter((item) => item.properties.corridorKind === 'alternative').length;
+            const label = alternativeLabelRef.current.trim() || `Alternative ${alternativeCount + 1}`;
+            corridorDraw.updateFeatureProperties(id, { corridorKind: 'alternative', corridorLabel: label });
+            setCorridorAlternatives((items) => [...items, { label, geometry }]);
+          }
+        }
+        window.setTimeout(() => corridorDraw.setMode('static'), 0);
+      });
+      corridorDraw.on('change', () => {
+        const features = corridorDraw.getSnapshot();
+        const primary = features.find((feature) => feature.properties.corridorKind === 'primary');
+        setCorridorCenterline(isLineGeometry(primary?.geometry) ? primary.geometry : null);
+        setCorridorAlternatives(features.flatMap((feature) =>
+          feature.properties.corridorKind === 'alternative' && isLineGeometry(feature.geometry)
+            ? [{ label: String(feature.properties.corridorLabel ?? 'Alternative'), geometry: feature.geometry }]
+            : [],
+        ));
+        setCorridorStaging(features.flatMap((feature) =>
+          feature.properties.corridorKind === 'staging' && isCorridorPolygon(feature.geometry)
+            ? [feature.geometry]
+            : [],
+        ));
+      });
+      corridorDrawRef.current = corridorDraw;
       setMapReady(true);
     });
 
     return () => {
       drawRef.current?.stop();
       drawRef.current = null;
+      corridorDrawRef.current?.stop();
+      corridorDrawRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -331,6 +402,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const screeningMap =
     screening.status === 'done' ? (screening.result?.display?.map ?? null) : null;
   const screeningNotice = screening.result?.display?.regulatory_notice ?? null;
+  const corridorMap = corridorScreening.status === 'done' ? corridorScreening.result?.map ?? null : null;
   const showScreening = useCallback(() => {
     if (screeningMap) {
       setActiveTab('results');
@@ -340,6 +412,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   useEffect(() => {
     showScreening();
   }, [showScreening]);
+  const showCorridorScreening = useCallback(() => {
+    if (corridorMap) {
+      setActiveTab('results');
+      show({ origin: 'corridor', block: corridorMap, regulatory_notice: corridorScreening.result?.regulatory_notice ?? null });
+    }
+  }, [corridorMap, corridorScreening.result?.regulatory_notice, show]);
+  const previousCorridorStatus = useRef(corridorScreening.status);
+  useEffect(() => {
+    if (previousCorridorStatus.current !== 'done' && corridorScreening.status === 'done') showCorridorScreening();
+    previousCorridorStatus.current = corridorScreening.status;
+  }, [corridorScreening.status, showCorridorScreening]);
+  useEffect(() => {
+    if (corridorScreening.status !== 'done' && shown?.origin === 'corridor') clearShown();
+  }, [corridorScreening.status, shown, clearShown]);
   useEffect(() => {
     if (screening.status !== 'done' && shown?.origin === 'screening') clearShown();
   }, [screening.status, shown, clearShown]);
@@ -509,8 +595,48 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
 
   const chooseMode = (next: DrawMode) => {
     if (measuring) setMeasuring(false);
+    corridorDrawRef.current?.setMode('static');
     drawRef.current?.setMode(next);
     setMode(next);
+  };
+
+  const attachCorridor = () => {
+    if (!corridorContext || !chatId || corridorDraftChatId.current !== chatId) return;
+    const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
+    if (!input) return;
+    corridorContext.setCorridor({ ...input, corridor_ref: corridorReference() });
+  };
+  const corridorInput = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
+  useEffect(() => {
+    if (!corridorContext || !chatId || corridorDraftChatId.current !== chatId || !corridorInput) {
+      attachedCorridorSignature.current = '';
+      return;
+    }
+    const signature = JSON.stringify(corridorInput);
+    if (signature === attachedCorridorSignature.current) return;
+    attachedCorridorSignature.current = signature;
+    corridorContext.setCorridor({ ...corridorInput, corridor_ref: corridorReference() });
+  }, [chatId, corridorContext, corridorInput]);
+  const clearCorridor = () => {
+    corridorDrawRef.current?.clear();
+    setCorridorCenterline(null);
+    setCorridorAlternatives([]);
+    setCorridorStaging([]);
+    setBufferText('');
+    corridorDraftChatId.current = null;
+    corridorContext?.setCorridor(null);
+  };
+  const removeCorridorFeature = (kind: string, index = 0) => {
+    const features = corridorDrawRef.current?.getSnapshot().filter((feature) => feature.properties.corridorKind === kind) ?? [];
+    const feature = features[index];
+    if (feature?.id !== undefined) corridorDrawRef.current?.removeFeatures([feature.id]);
+  };
+  const startCorridorDrawing = (kind: 'primary' | 'alternative' | 'staging') => {
+    corridorDraftChatId.current = chatId;
+    chooseMode('static');
+    if (kind === 'primary') removeCorridorFeature('primary');
+    corridorDrawKind.current = kind;
+    corridorDrawRef.current?.setMode(kind === 'staging' ? 'polygon' : 'linestring');
   };
 
   const zoomToAoi = () => {
@@ -597,25 +723,23 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     URL.revokeObjectURL(url);
   };
 
+  const actionButton = (label: string, Icon: LucideIcon, onClick: () => void, disabled = false, pressed?: boolean) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" size="sm" variant={pressed ? 'primary' : 'default'} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className="w-7 px-0">
+          <Icon aria-hidden="true" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+
   // The pressed tool is filled and swaps its icon for a check, so the state is not
   // carried by colour alone.
   const toolButton = (label: string, target: DrawMode, Icon: LucideIcon) => {
     const pressed = mode === target;
     const StateIcon = pressed ? Check : Icon;
-    return (
-      <Button
-        type="button"
-        size="sm"
-        variant={pressed ? 'primary' : 'default'}
-        aria-pressed={pressed}
-        onClick={() => chooseMode(pressed ? 'static' : target)}
-        disabled={!mapReady}
-        className="gap-1.5 px-2"
-      >
-        <StateIcon aria-hidden="true" />
-        {label}
-      </Button>
-    );
+    return actionButton(label, StateIcon, () => chooseMode(pressed ? 'static' : target), !mapReady, pressed);
   };
 
   const groupLabel = 'font-medium text-muted-foreground text-xs uppercase tracking-wide';
@@ -695,6 +819,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         <StatusMessage variant="warning" className="font-medium text-xs">
           <p>Preliminary screening view. Not an official NRCS determination.</p>
         </StatusMessage>
+        <TooltipProvider>
         <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="AOI tools">
           <div role="group" aria-label="Draw area" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>
@@ -712,55 +837,60 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             </span>
             <div className="flex flex-wrap gap-1.5">
               {toolButton('Edit', 'select', MousePointer2)}
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                onClick={undo}
-                disabled={!previousAoi && !aoi}
-                className="gap-1.5 px-2"
-              >
-                <Undo2 aria-hidden="true" />
-                Undo
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                onClick={clear}
-                disabled={!aoi}
-                className="gap-1.5 px-2"
-              >
-                <Trash2 aria-hidden="true" />
-                Clear
-              </Button>
+              {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
+              {actionButton('Clear', Trash2, clear, !aoi)}
             </div>
           </div>
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
             <div className="flex flex-wrap gap-1.5">
-              <Button type="button" size="sm" onClick={zoomToAoi} disabled={!aoi}>Zoom to AOI</Button>
-              <Button type="button" size="sm" onClick={resetMapView}>Reset map</Button>
-              <Button type="button" size="sm" aria-pressed={aoiVisible} onClick={() => setAoiVisible((v) => !v)}>AOI outline</Button>
-              <Button type="button" size="sm" aria-pressed={resultsVisible} onClick={() => setResultsVisible((v) => !v)}>Result boundaries</Button>
+              {actionButton('Zoom to AOI', Maximize, zoomToAoi, !aoi)}
+              {actionButton('Reset map', RotateCcw, resetMapView)}
+              {actionButton('AOI outline', Eye, () => setAoiVisible((v) => !v), false, aoiVisible)}
+              {actionButton('Result boundaries', Eye, () => setResultsVisible((v) => !v), false, resultsVisible)}
             </div>
           </div>
           <div role="group" aria-label="Line measurement" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Measure distance</span>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Button type="button" size="sm" aria-pressed={measuring} onClick={() => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasuring(true); } }}>
-                <Ruler aria-hidden="true" /> {measuring ? 'Cancel measure' : 'Measure line'}
-              </Button>
+              {actionButton(measuring ? 'Cancel measure' : 'Measure line', Ruler, () => { if (measuring) cancelMeasurement(); else { chooseMode('static'); setMeasurePoints([]); setMeasuring(true); } }, false, measuring)}
               <select aria-label="Distance unit" value={measureUnit} onChange={(event) => setMeasureUnit(event.target.value as DistanceUnit)} className="rounded border bg-background px-2 py-1 text-sm">
                 <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
               </select>
               {measuring && <span role="status">Measurement active: click map to add points.</span>}
               {measurePoints.length > 0 && <span role="status">{lineDistance(measurePoints, measureUnit).toFixed(2)} {measureUnit}</span>}
-              {measurePoints.length > 0 && <Button type="button" size="sm" onClick={() => setMeasurePoints([])}>Clear measurement</Button>}
+              {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => setMeasurePoints([]))}
             </div>
           </div>
         </div>
-        <div className="relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border">
+        </TooltipProvider>
+        <fieldset className="flex flex-wrap items-end gap-2 rounded-md border p-2" aria-label="Corridor drawing">
+          <legend className="px-1 font-medium text-xs">Corridor (separate from AOI)</legend>
+          <Button type="button" size="sm" onClick={() => startCorridorDrawing('primary')} disabled={!mapReady}>Draw primary line</Button>
+          <Button type="button" size="sm" onClick={() => startCorridorDrawing('alternative')} disabled={!mapReady}>Draw alternative line</Button>
+          <Button type="button" size="sm" onClick={() => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }} disabled={!mapReady}>Edit corridor</Button>
+          <label className="flex flex-col gap-1 text-xs">Alternative label<input aria-label="Alternative label" value={alternativeLabel} onChange={(event) => setAlternativeLabel(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
+          <Button type="button" size="sm" onClick={() => startCorridorDrawing('staging')} disabled={!mapReady}>Draw staging area</Button>
+          <span className="text-xs">Primary: {corridorCenterline ? 'ready' : 'required'}; alternatives: {corridorAlternatives.length}; staging areas: {corridorStaging.length}</span>
+          <label className="flex flex-col gap-1 text-xs">Required buffer distance<input aria-label="Required buffer distance" type="number" min="0" step="any" value={bufferText} onChange={(event) => setBufferText(event.target.value)} className="rounded border bg-background px-2 py-1" /></label>
+          <select aria-label="Corridor buffer unit" value={bufferUnits} onChange={(event) => setBufferUnits(event.target.value as CorridorUnit)} className="rounded border bg-background px-2 py-1 text-sm"><option value="feet">Feet</option><option value="meters">Meters</option><option value="miles">Miles</option></select>
+          <span className="text-xs">{BUFFER_SIDE_NOTICE}</span>
+          <Button type="button" size="sm" onClick={attachCorridor} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || !chatId}>Attach to chat</Button>
+          <Button type="button" size="sm" variant="primary" onClick={() => {
+            const input = createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits);
+            if (!input) return;
+            const corridor = { ...input, corridor_ref: corridorContext?.activeCorridor?.corridor_ref ?? corridorReference() };
+            corridorScreening.run(corridor);
+          }} disabled={!createCorridorInput(corridorCenterline, corridorAlternatives, corridorStaging, bufferText, bufferUnits) || corridorScreening.status === 'running'}>
+            {corridorScreening.status === 'running' ? 'Screening corridor...' : 'Screen corridor'}
+          </Button>
+          {corridorContext?.activeCorridor && <><span role="status" className="text-xs">Corridor attached</span><Button type="button" size="sm" onClick={corridorContext.detach}>Detach corridor</Button></>}
+          <Button type="button" size="sm" variant="default" onClick={clearCorridor} disabled={!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length}>Clear corridor</Button>
+          {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`} className="text-xs">{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
+          {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="text-xs underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
+          {corridorCenterline && <button type="button" className="text-xs underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
+        </fieldset>
+        <div className={`relative min-h-[18rem] flex-1 overflow-hidden rounded-md border border-border ${measuring || mode === 'polygon' || mode === 'rectangle' ? '[&_.maplibregl-canvas]:!cursor-crosshair' : ''}`}>
           {/* Inline position: maplibre-gl.css sets `.maplibregl-map { position: relative }`. */}
           <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
           <OverlayControl
@@ -772,6 +902,15 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             onOpenChange={setLayersOpen}
             onToggle={toggleOverlay}
           />
+          {(shown?.block || shown?.cdlSummary) && (
+            <details className="absolute top-2 left-2 z-10 max-w-[min(16rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+              <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
+              <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
+                {shown.block && <MapLegend block={shown.block} compact />}
+                {shown.cdlSummary && <CDLLegend />}
+              </div>
+            </details>
+          )}
           <div aria-live="polite" className="absolute bottom-2 left-2 z-10 max-w-[18rem]">
             {identifyHint && (
               <p className="flex items-center gap-2 rounded-md border border-border bg-popover px-2 py-1 text-popover-foreground text-xs shadow-md">
@@ -828,10 +967,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             )}
           </div>
         </div>
-        {(aoiError || tileError || screening.status === 'error') && (
+        {(aoiError || tileError || screening.status === 'error' || corridorScreening.status === 'error') && (
           <StatusMessage variant="error">
             {aoiError && <p>{aoiError}</p>}
             {screening.status === 'error' && screening.error && <p>{screening.error}</p>}
+            {corridorScreening.status === 'error' && corridorScreening.error && <p>{corridorScreening.error}</p>}
             {tileError && (
               <p>
                 Basemap tiles failed to load. Drawing, screening and the results table
@@ -850,10 +990,11 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             <h3 className="font-medium text-sm">
               {shown.cdlSummary ? 'CDL context summary' : `Map of ${shown.tool} result`}
             </h3>
-            {screeningMap && (
-              <Button type="button" size="sm" variant="secondary" onClick={showScreening}>
-                Back to screening results
-              </Button>
+            {(screeningMap || corridorMap) && (
+              <>
+                {screeningMap && <Button type="button" size="sm" variant="secondary" onClick={showScreening}>Back to AOI screening results</Button>}
+                {corridorMap && <Button type="button" size="sm" variant="secondary" onClick={showCorridorScreening}>Back to corridor screening results</Button>}
+              </>
             )}
           </div>
           {shown.cdlSummary ? (
@@ -873,6 +1014,14 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               <MapLegend block={shown.block} />
             </div>
           )}
+        </div>
+      ) : shown?.origin === 'corridor' && corridorScreening.status === 'done' && corridorScreening.result ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={originBadge}>Corridor screening</span>
+            {screeningMap && <Button type="button" size="sm" variant="secondary" onClick={showScreening}>Back to AOI screening</Button>}
+          </div>
+          <CorridorScreeningResults result={corridorScreening.result} />
         </div>
       ) : (
         screening.status === 'done' &&

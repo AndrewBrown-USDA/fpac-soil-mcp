@@ -6,6 +6,8 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 // has no CORS header).
 
 export const CONTEXT_LABEL = 'Context layer, not an analysis result';
+export const NAIP_AVAILABILITY =
+  'Service metadata labels its purpose as test; availability may change.';
 
 export type OverlayId = 'ssurgo' | 'counties' | 'urban' | 'cdl' | 'naip';
 
@@ -39,7 +41,7 @@ const CDL_TILES =
   'https://pdi.scinet.usda.gov/image/rest/services/CDL_WM/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&pixelType=U8&f=image';
 
 const NAIP_TILES =
-  'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&f=image';
+  'https://apps.geo.fpac.usda.gov/geo-imagery/rest/services/naip/conus_naip/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&f=image';
 
 export const OVERLAYS: readonly Overlay[] = [
   {
@@ -88,9 +90,9 @@ export const OVERLAYS: readonly Overlay[] = [
     tiles: NAIP_TILES,
     minzoom: 12,
     opacity: 1,
-    source: 'USGS The National Map USGSNAIPImagery ImageServer',
-    vintage: 'Mosaic imagery; acquisition dates vary by location (service copyright January 2025)',
-    attribution: 'USGS, USDA, The National Map: Orthoimagery',
+    source: 'USDA FPAC NAIP ImageServer',
+    vintage: 'Latest NAIP mosaic; acquisition dates vary by location',
+    attribution: 'USDA FPAC NAIP',
   },
 ] as const;
 

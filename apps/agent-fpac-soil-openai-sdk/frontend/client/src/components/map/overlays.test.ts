@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { NO_OVERLAYS } from './OverlayControl';
 import {
+  NAIP_AVAILABILITY,
   normalizeOverlayOrder,
   OVERLAYS,
   overlayIdForSource,
@@ -15,11 +16,13 @@ test('NAIP uses the fixed ImageServer exportImage request and maps its source id
   assert.ok(naip);
   assert.equal(
     naip.tiles,
-    'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&f=image',
+    'https://apps.geo.fpac.usda.gov/geo-imagery/rest/services/naip/conus_naip/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&f=image',
   );
   assert.equal(naip.tiles.includes('/tile/'), false);
-  assert.equal(naip.attribution, 'USGS, USDA, The National Map: Orthoimagery');
+  assert.equal(naip.source, 'USDA FPAC NAIP ImageServer');
+  assert.equal(naip.attribution, 'USDA FPAC NAIP');
   assert.match(naip.vintage, /dates vary by location/);
+  assert.match(NAIP_AVAILABILITY, /purpose as test; availability may change/);
   assert.equal(NO_OVERLAYS.naip, false);
   assert.equal(overlaySourceId('naip'), 'overlay-naip');
   assert.equal(overlayIdForSource('overlay-naip'), 'naip');

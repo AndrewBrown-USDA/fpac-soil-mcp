@@ -27,6 +27,7 @@ import { softNavigateToChatId } from '@/lib/navigation';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Greeting } from './greeting';
 import { useOptionalActiveAoi } from './map/ActiveAoiContext';
+import { useOptionalActiveCorridor } from './map/ActiveCorridorContext';
 import { ChatExportActions } from './chat-export-actions';
 
 export function Chat({
@@ -68,6 +69,14 @@ export function Chat({
   const activeAoiRef = useRef(activeAoiContext?.activeAoi ?? null);
   activeAoiRef.current =
     activeAoiContext?.chatId === id ? activeAoiContext.activeAoi : null;
+  const activeCorridorContext = useOptionalActiveCorridor();
+  const setCorridorChatId = activeCorridorContext?.setChatId;
+  useEffect(() => {
+    setCorridorChatId?.(id);
+  }, [id, setCorridorChatId]);
+  const activeCorridorRef = useRef(activeCorridorContext?.activeCorridor ?? null);
+  activeCorridorRef.current =
+    activeCorridorContext?.chatId === id ? activeCorridorContext.activeCorridor : null;
 
   const [input, setInput] = useState<string>('');
   const [_usage, setUsage] = useState<LanguageModelUsage | undefined>(
@@ -172,6 +181,7 @@ export function Chat({
                 }
               : {}),
             ...(activeAoiRef.current ? { activeAoi: activeAoiRef.current } : {}),
+            ...(activeCorridorRef.current ? { activeCorridor: activeCorridorRef.current } : {}),
             ...body,
           },
         };

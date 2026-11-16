@@ -89,6 +89,24 @@ to upstream for every file this repo has not changed.
 
 ### Local changes
 
+* `client/src/components/map/MapPanel.tsx` and `resultVisibility.ts`: show result
+  layers on each newly successful screening without changing context overlays or
+  overriding later visibility choices. `resultVisibility.test.ts` covers the
+  visibility transition and renderer with a mock map, not a browser panel.
+
+* `client/src/components/map/MapPanel.tsx`, `Legend.tsx`, `OverlayControl.tsx`,
+  `CDLLegend.tsx`, and `cdlLegend.ts`: accessible map-pane server legend and
+  USDA NASS CDL context key, without changing server symbology.
+* `client/map-legend-fixture.html`, `client/src/components/map/map-legend-fixture.tsx`,
+  `playwright.map-legend.config.ts`, `tests/map-legend/legend.spec.ts`, and
+  `package.json`: isolated legend browser coverage and test script.
+
+* `client/src/components/map/MapPanel.tsx`: compact accessible icon controls,
+  crosshair drawing/measurement cursor, and miles as the initial distance unit.
+* `client/map-toolbar-fixture.html`, `client/src/components/map/map-toolbar-fixture.tsx`,
+  `playwright.map-toolbar.config.ts`, `tests/map-toolbar/toolbar.spec.ts`, and
+  `package.json`: isolated production-panel toolbar browser coverage and test script.
+
 Modified upstream files:
 
 * `packages/db/migrations/0001_add_trace_id.sql` and
@@ -149,9 +167,12 @@ Modified upstream files:
 * `client/src/components/map/overlays.ts` and
   `client/src/components/map/OverlayControl.tsx`: fixed, toggleable CDL
   ImageServer raster context overlay, with attribution and vintage/context
-  labels (Plan 50.2.2); fixed USGS NAIP ImageServer `exportImage` raster
-  context overlay with mosaic-vintage caveat, source attribution, and default-off
-  control (Plan 53.3.1); accessible raster/context ordering controls with
+  labels (Plan 50.2.2); fixed USDA FPAC NAIP ImageServer `exportImage` raster
+  context overlay with variable-vintage caveat, source attribution, and default-off
+  control. Its metadata labels the service purpose `test:202407180638 naip service`,
+  so availability may change; this is not a production-readiness claim.
+  `client/src/components/map/overlays.test.ts` covers the fixed request and
+  catalog metadata; accessible raster/context ordering controls have
   browser-local persistence, keeping result vectors and AOI boundaries above
   rasters (Plan 53.3.2).
 * `client/src/components/map/Legend.tsx` and
@@ -174,6 +195,33 @@ Modified upstream files:
   no dependencies or lockfile changes (Plan 51.2.2).
 * `server/src/routes/chat.ts`: registers the request's AOI and passes its key
   to the provider call (ADR 0016).
+* `client/src/components/chat.tsx`, `client/src/layouts/ChatLayout.tsx`,
+  `packages/core/src/schemas/chat.ts`,
+  `packages/ai-sdk-providers/src/providers-server.ts`, and
+  `server/src/routes/chat.ts`: transport
+  bounded per-chat active-corridor context independently of AOI through a
+  request-scoped provider registry into `custom_inputs.active_corridor` (Plan
+  54.6.1).
+* `client/src/components/map/ActiveCorridorContext.tsx`,
+  `client/src/components/map/corridorSession.ts`, and
+  `client/src/components/map/corridorSession.test.ts`: per-chat corridor session
+  storage/provider and focused persistence validation (Plan 54.6.1).
+* `client/src/components/map/MapPanel.tsx`, `corridorGeometry.ts`, and
+  `corridorGeometry.test.ts`: separate corridor line/staging drawing controls,
+  buffer validation and per-chat attachment, without changing polygon AOI state
+  (Plan 54.7.1).
+* `client/src/components/map/MapPanel.tsx` and `MapResultContext.tsx`: direct
+  corridor screening from the map panel, server map/legend handoff, and active
+  result navigation while preserving polygon and tool results (Plan 54.8.1).
+* `client/src/components/map/useCorridorScreening.ts` and
+  `CorridorScreeningResults.tsx`: direct `/api/geo/corridor` request lifecycle,
+  allowlisted preliminary summary, and regulatory notice (Plan 54.8.1).
+* `client/src/components/map/corridorScreening.test.ts`,
+  `client/corridor-map-fixture.html`,
+  `client/src/components/map/corridor-map-fixture.tsx`,
+  `playwright.corridor-map.config.ts`, `tests/corridor-map/corridor-map.spec.ts`,
+  and `package.json`: focused direct corridor request and browser-panel coverage
+  (Plan 54.8.1; no new dependencies).
 * `server/src/middleware/auth.ts`: provides a synthetic local-only session when
   `FPAC_LOCAL_DEV=1` and the request socket is loopback; normal requests retain
   the Databricks session lookup. `server/src/middleware/auth.test.ts` covers
