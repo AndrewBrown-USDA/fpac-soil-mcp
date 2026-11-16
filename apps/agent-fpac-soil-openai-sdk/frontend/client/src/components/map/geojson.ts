@@ -81,14 +81,19 @@ export function parseAoiText(text: string): ParseResult {
 export function geometryBounds(
   geometry: PolygonGeometry,
 ): [[number, number], [number, number]] | null {
+  const validGeometry = toPolygonGeometry(geometry);
+  if (!validGeometry) return null;
   const polygons =
-    geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+    validGeometry.type === 'Polygon' ? [validGeometry.coordinates] : validGeometry.coordinates;
+  if (!Array.isArray(polygons)) return null;
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
   for (const polygon of polygons) {
+    if (!Array.isArray(polygon)) continue;
     for (const ring of polygon) {
+      if (!Array.isArray(ring)) continue;
       for (const [x, y] of ring) {
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
@@ -116,7 +121,10 @@ export const featureCollection = (geometry: PolygonGeometry | null) => ({
 export const MAX_AOI_VERTICES = 2000;
 
 export function countVertices(geometry: PolygonGeometry): number {
-  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+  const validGeometry = toPolygonGeometry(geometry);
+  if (!validGeometry) return 0;
+  const polygons =
+    validGeometry.type === 'Polygon' ? [validGeometry.coordinates] : validGeometry.coordinates;
   return polygons.reduce(
     (total, polygon) => total + polygon.reduce((sum, ring) => sum + ring.length, 0),
     0,

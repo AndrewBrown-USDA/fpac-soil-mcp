@@ -5,7 +5,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 // the services directly with simple GETs (no custom headers: TIGERweb's preflight
 // has no CORS header).
 
-export const CONTEXT_LABEL = 'Context layer, not an analysis result';
+export const CONTEXT_LABEL = '';
 export const NAIP_AVAILABILITY =
   'Service metadata labels its purpose as test; availability may change.';
 

@@ -22,7 +22,9 @@ import ncssAcronymWhite from '@/assets/ncss-acronym-white.png';
 import { GeoJsonInput } from './GeoJsonInput';
 import {
   featureCollection,
+  countVertices,
   geometryBounds,
+  MAX_AOI_VERTICES,
   toPolygonGeometry,
 } from './geojson';
 import { IdentifyPopup, resultInfo } from './IdentifyPopup';
@@ -750,15 +752,23 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
   };
 
-  // Use as AOI: the exact outline, refused above the vertex cap (D6, never simplified).
+  // Exact outlines are never simplified; enforce the vertex cap only after selection.
   const applyAreaAsAoi = (section: IdentifySection, _area: AreaInfo, geometry: PolygonGeometry) => {
     const overlayId = section.overlay.id;
     if (overlayId === 'ssurgo') return { ok: false, message: 'Soil map units cannot be an AOI.' };
     if (!isAreaOverlayId(overlayId)) {
       return { ok: false, message: 'This context layer cannot be used as an AOI.' };
     }
+    const vertices = countVertices(geometry);
+    if (vertices > MAX_AOI_VERTICES) {
+      setAoiError(
+        `This outline has ${vertices} vertices; the AOI limit is ${MAX_AOI_VERTICES}. Draw or paste a smaller AOI.`,
+      );
+      return { ok: false, message: 'The exact outline exceeds the AOI vertex limit.' };
+    }
     popupRef.current?.remove();
     onPasted(geometry);
+    return { ok: true };
   };
 
   const undo = () => {

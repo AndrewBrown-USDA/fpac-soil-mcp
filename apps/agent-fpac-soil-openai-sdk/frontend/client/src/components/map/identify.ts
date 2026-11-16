@@ -93,7 +93,7 @@ export async function identifySoil(
 }
 
 type GeoJsonAnswer = {
-  features?: { properties?: Record<string, unknown>; geometry?: unknown }[];
+  features?: { type?: string; properties?: Record<string, unknown>; geometry?: unknown }[];
 };
 
 async function getJson(url: string, signal: AbortSignal): Promise<GeoJsonAnswer> {

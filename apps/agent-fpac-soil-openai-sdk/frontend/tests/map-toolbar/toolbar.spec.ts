@@ -126,6 +126,85 @@ test('CDL toggles and a screening retry keep the Firefox map interactive', async
   });
 });
 
+test('county identify keeps the popup usable when TIGERweb returns Hamilton County geometry', async ({ page }) => {
+  const browserErrors: string[] = [];
+  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') browserErrors.push(message.text());
+  });
+  const countyRequests: string[] = [];
+  const counties = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      properties: { GEOID: '20075', NAME: 'Hamilton County' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [-102.05, 38.25], [-101.9, 38.25], [-101.9, 38.4],
+          [-102.05, 38.4], [-102.05, 38.25],
+        ]],
+      },
+    }],
+  };
+  const identifyFeature = {
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', properties: { GEOID: '20075', NAME: 'Hamilton County' }, geometry: null }],
+  };
+  const outlineCalls: string[] = [];
+  await page.route('https://tigerweb.geo.census.gov/**', (route) => {
+    const url = new URL(route.request().url());
+    countyRequests.push(url.toString());
+    const identify = url.searchParams.has('geometry');
+    if (!identify) outlineCalls.push(url.toString());
+    const payload = identify ? identifyFeature : counties;
+    return route.fulfill({
+      contentType: 'application/geo+json',
+      json: payload,
+    });
+  });
+  await expect.poll(() => page.evaluate(() => Boolean((window as typeof window & { __mapCamera?: unknown }).__mapCamera))).toBe(true);
+  await page.evaluate(() => {
+    const camera = (window as typeof window & { __mapCamera?: { jumpTo: (center: [number, number], zoom: number) => void } }).__mapCamera;
+    if (!camera) throw new Error('Map camera probe is unavailable');
+    camera.jumpTo([-101.975, 38.325], 7);
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const camera = (window as typeof window & { __mapCamera?: { read: () => { zoom: number } } }).__mapCamera;
+    return camera?.read().zoom;
+  })).toBe(7);
+  const layers = page.locator('details').filter({ has: page.getByText(/^Layers/) });
+  await layers.locator('summary').click();
+  await expect(layers).toHaveAttribute('open', '');
+  await page.locator('#overlay-toggle-counties').check();
+  await expect(layers).toHaveAttribute('open', '');
+  await expect(page.locator('#overlay-toggle-counties')).toBeChecked();
+
+  const canvas = page.locator('.maplibregl-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Map canvas is not visible');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => countyRequests.some((request) => request.includes('where=GEOID'))).toBe(true);
+  const popup = page.locator('.maplibregl-popup-content');
+  await expect(popup).toContainText('Hamilton County', { timeout: 15000 });
+  const details = popup.locator('dl');
+  const exact = popup.getByRole('button', { name: /Use exact polygon/ });
+  const bbox = popup.getByRole('button', { name: /Use bounding box/ });
+  const detailsBox = await details.boundingBox();
+  const actionsBox = await popup.getByRole('group', { name: /Use Hamilton County/ }).boundingBox();
+  if (!detailsBox || !actionsBox) throw new Error('County name or actions are not laid out');
+  expect(actionsBox.x).toBeGreaterThan(detailsBox.x);
+  await expect(exact).toBeEnabled();
+  await expect(bbox).toBeEnabled();
+  await bbox.click();
+  await expect.poll(() => outlineCalls.length).toBeGreaterThan(0);
+  await expect(popup.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'AOI outline' })).toBeEnabled();
+  expect(browserErrors.filter((error) => /WebGL context was lost/i.test(error))).toEqual([]);
+  await expect(page.locator('.maplibregl-map')).toBeVisible();
+  await expect(layers).toHaveAttribute('open', '');
+});
+
 test('geometry transfer actions are compact, horizontal, and always visible', async ({ page }) => {
   const panel = page.getByRole('group', { name: 'AOI input methods' });
   const upload = panel.getByRole('button', { name: 'Upload file' });

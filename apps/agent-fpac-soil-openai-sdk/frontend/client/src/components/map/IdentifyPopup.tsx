@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { countVertices, geometryBounds, MAX_AOI_VERTICES } from './geojson';
+import { useState } from 'react';
+import { geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
-import type { AreaInfo, SoilInfo } from './identify';
+import { fetchOutline } from './identify';
+import type { AreaInfo, AreaOverlayId, SoilInfo } from './identify';
 import type { Overlay } from './overlays';
 
 export type IdentifySection =
@@ -19,7 +21,7 @@ export type UseAreaGeometry = (
   section: IdentifySection,
   area: AreaInfo,
   geometry: PolygonGeometry,
-) => void;
+) => { ok: boolean; message?: string } | undefined;
 
 // A clicked result polygon: the server's feature properties (ADR 0017, Plan 44 A7),
 // shown as sent.
@@ -74,25 +76,43 @@ function AreaActions({
   onUseGeometry: UseAreaGeometry;
 }) {
   const exact = section.state === 'done' ? (section.areaGeometry ?? null) : null;
-  const exactAllowed = exact !== null && countVertices(exact) <= MAX_AOI_VERTICES;
-  const bounds = exact ? geometryBounds(exact) : null;
-  const bbox = bounds
-    ? ({
-        type: 'Polygon',
-        coordinates: [[
-          [bounds[0][0], bounds[0][1]],
-          [bounds[1][0], bounds[0][1]],
-          [bounds[1][0], bounds[1][1]],
-          [bounds[0][0], bounds[1][1]],
-          [bounds[0][0], bounds[0][1]],
-        ]],
-      } satisfies PolygonGeometry)
-    : null;
-  const useExact = () => {
-    if (exact) onUseGeometry(section, area, exact);
-  };
-  const useBbox = () => {
-    if (bbox) onUseGeometry(section, area, bbox);
+  const validExact = exact ? toPolygonGeometry(exact) : null;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const chooseGeometry = async (kind: 'exact' | 'bbox') => {
+    if (busy) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      const outline = validExact
+        ? { geometry: validExact }
+        : await fetchOutline(section.overlay.id as AreaOverlayId, area.geoid, new AbortController().signal);
+      if (!outline) throw new Error('TIGERweb did not return a usable polygon outline.');
+      const geometry = outline.geometry;
+      const selected =
+        kind === 'exact'
+          ? geometry
+          : (() => {
+              const bounds = geometryBounds(geometry);
+              if (!bounds) throw new Error('Could not calculate a bounding box for this outline.');
+              return {
+                type: 'Polygon' as const,
+                coordinates: [[
+                  [bounds[0][0], bounds[0][1]],
+                  [bounds[1][0], bounds[0][1]],
+                  [bounds[1][0], bounds[1][1]],
+                  [bounds[0][0], bounds[1][1]],
+                  [bounds[0][0], bounds[0][1]],
+                ]],
+              };
+            })();
+      const result = onUseGeometry(section, area, selected);
+      if (result && !result.ok) setActionError(result.message ?? `Could not use this ${kind} geometry.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not load the outline.');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <div className="mt-1 flex gap-1" role="group" aria-label={`Use ${area.name} as area of interest`}>
@@ -100,11 +120,10 @@ function AreaActions({
         type="button"
         size="sm"
         variant="secondary"
-        onClick={useExact}
-        disabled={!exactAllowed}
+        onClick={() => void chooseGeometry('exact')}
+        disabled={busy}
         title="Use the exact polygon as the AOI"
         aria-label={`Use exact polygon for ${area.name} as AOI`}
-        aria-describedby={!exactAllowed ? `exact-disabled-${area.geoid}` : undefined}
         className="h-7 px-2 text-xs"
       >
         Exact
@@ -113,19 +132,15 @@ function AreaActions({
         type="button"
         size="sm"
         variant="secondary"
-        onClick={useBbox}
-        disabled={!bbox}
+        onClick={() => void chooseGeometry('bbox')}
+        disabled={busy}
         title="Use the bounding box as the AOI"
         aria-label={`Use bounding box for ${area.name} as AOI`}
         className="h-7 px-2 text-xs"
       >
         BBOX
       </Button>
-      {!exactAllowed && (
-        <span id={`exact-disabled-${area.geoid}`} className="sr-only">
-          Exact polygon unavailable because it exceeds the {MAX_AOI_VERTICES} vertex AOI limit or could not be loaded.
-        </span>
-      )}
+      {actionError && <p role="alert" className="text-destructive">{actionError}</p>}
     </div>
   );
 }
@@ -176,22 +191,19 @@ export function IdentifyPopup({
             </>
           )}
           {section.state === 'done' && section.area && (
-            <>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-2">
-                <Row label="Name" value={section.area.name} />
-                <Row label="GEOID" value={section.area.geoid} />
-              </dl>
-              <AreaActions section={section} area={section.area} onUseGeometry={onUseGeometry} />
-            </>
+              <div className="flex items-start gap-2">
+                <dl className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-x-2">
+                  <Row label="Name" value={section.area.name} />
+                  <Row label="GEOID" value={section.area.geoid} />
+                </dl>
+                <AreaActions section={section} area={section.area} onUseGeometry={onUseGeometry} />
+              </div>
           )}
           {section.state === 'done' && !section.soil && !section.area && (
             <p className="text-muted-foreground">Nothing here.</p>
           )}
         </section>
       ))}
-      {sections.length > 0 && (
-        <p className="text-muted-foreground">Context layers, not analysis results.</p>
-      )}
     </div>
   );
 }
