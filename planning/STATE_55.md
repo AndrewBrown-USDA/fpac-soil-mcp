@@ -17,7 +17,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 | 1 | 55.2.1 Collapse tool output & promote Show on Map | done | `e070950` | Focused test passed on worker retry and orchestrator rerun. |
 | 2 | 55.1.2 Corridor labels and remove/clear synchronization | done | `78b4efc` | Labels remain browser/session metadata; focused Node tests 10/10, corridor-map Playwright 2/2, and frontend check passed. |
 | 3 | 55.2.2 Measurement preview | done | `b71ae66` | Focused distance tests 2/2, toolbar Playwright 4/4, and `make app-frontend-check` passed. |
-| 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | pending | | |
+| 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | done | `4aeb8a8`, `998f6e0` | Corridor-to-AOI replacement and shared-chip detach covered; corridor-map 3/3, toolbar 5/5, frontend check passed after mid-tier recovery. |
 | 5 | 55.4.1 Integrated validation and handoff | pending | | |
 
 ## Task Reports
@@ -51,6 +51,17 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - The first Node test attempt failed because `tsx` was not installed in the isolated worktree; `make app-frontend-check` ran `npm ci`, after which the exact targeted Node command passed. Initial Playwright attempts exposed a non-completing alternative draw with the first coordinates and then duplicate UI rows from both `onFinish` and `onChange`; stable in-map coordinates and making `onChange` authoritative resolved it. No scope deviation.
 - ADR 0015 already listed every changed/modified frontend path; no ADR update was required.
 - Implementation commit: `78b4efc`; planning-only status/TODO commit follows separately. No remote actions.
+
+### 55.3.1
+- Existing Area/Corridor toolbar controls were already compact icon-only buttons with accessible labels; preserved them.
+- Removed separate corridor attach/detach controls; the shared chat chip now reports either AOI or Corridor (reference only) and detaches the active context.
+- Grouped GeoJSON upload, paste, copy, and download in an expandable panel; retained parsing and size validation.
+- `npm run test:corridor-map` — 3 passed, including AOI-to-corridor replacement, shared-chip detach, and persisted-state cleanup.
+- `npm run test:map-toolbar` — 5 passed, including unified transfer actions and measurement coverage.
+- `make app-frontend-check` and `git diff --check` — passed; 11 existing Biome warnings and 10 existing npm audit findings.
+- Initial corridor-chip coverage failed because the fixture lacked the production shared chip; a small-worker retry also failed before assertions due to this fixture gap. Mid-tier recovery mounted both providers and chip, supplied valid buffer inputs, and verified replacement/detach.
+- Modified paths are inventoried in ADR 0015; no geometry schema, dependency, or privacy changes. No remote actions.
+- Worker implementation commits `3b0c125`, `0bf9167`; integrated commits `4aeb8a8`, `998f6e0`.
 
 ### 55.2.2
 - Added transient pointer preview to the existing measurement GeoJSON source after the first committed point; pointer movement does not update committed points or distance. The active indicator is now the concise accessible status “Measuring.”
