@@ -16,7 +16,7 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 | 1 | 55.1.1 AOI/corridor chat attachment exclusivity | done | `4bf4fa3` | Verified targeted test and frontend check; cross-provider UI integration coverage remains a limitation. |
 | 1 | 55.2.1 Collapse tool output & promote Show on Map | done | `e070950` | Focused test passed on worker retry and orchestrator rerun. |
 | 2 | 55.1.2 Corridor labels and remove/clear synchronization | done | `78b4efc` | Labels remain browser/session metadata; focused Node tests 10/10, corridor-map Playwright 2/2, and frontend check passed. |
-| 3 | 55.2.2 Measurement preview | pending | | |
+| 3 | 55.2.2 Measurement preview | done | `b71ae66` | Focused distance tests 2/2, toolbar Playwright 4/4, and `make app-frontend-check` passed. |
 | 4 | 55.3.1 Toolbar, attachment chip, unified geometry I/O | pending | | |
 | 5 | 55.4.1 Integrated validation and handoff | pending | | |
 
@@ -51,3 +51,12 @@ Resume point for orchestration 55. Plan: `planning/EXECUTION_PLAN_55.md`. Worker
 - The first Node test attempt failed because `tsx` was not installed in the isolated worktree; `make app-frontend-check` ran `npm ci`, after which the exact targeted Node command passed. Initial Playwright attempts exposed a non-completing alternative draw with the first coordinates and then duplicate UI rows from both `onFinish` and `onChange`; stable in-map coordinates and making `onChange` authoritative resolved it. No scope deviation.
 - ADR 0015 already listed every changed/modified frontend path; no ADR update was required.
 - Implementation commit: `78b4efc`; planning-only status/TODO commit follows separately. No remote actions.
+
+### 55.2.2
+- Added transient pointer preview to the existing measurement GeoJSON source after the first committed point; pointer movement does not update committed points or distance. The active indicator is now the concise accessible status “Measuring.”
+- `node --import tsx --test client/src/components/map/distance.test.ts` — 2 passed.
+- `npm run test:map-toolbar` — 4 passed, including live-preview activation, unchanged committed distance during pointer movement, and cancel behavior.
+- `make app-frontend-check` — passed; existing Biome warnings only; client/server builds succeeded. npm reported 10 dependency audit findings.
+- The first toolbar run lacked installed dependencies; after `npm ci`, a concurrent frontend gate reinstalled dependencies and caused a transient Playwright module-resolution error. Sequential toolbar rerun passed.
+- ADR 0015 already listed all modified frontend paths; no inventory update was needed. No scope deviation or remote actions.
+- Implementation commit: `b71ae66`; planning-only status/TODO commit follows separately.
