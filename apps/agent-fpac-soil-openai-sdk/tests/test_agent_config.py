@@ -45,10 +45,18 @@ def test_local_dev_requires_explicit_mcp_url(monkeypatch):
         config.fpac_mcp_url()
 
 
-def test_local_dev_rejects_non_loopback_mcp_url(monkeypatch):
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/mcp",
+        "http://example.com/mcp",
+        "http://mcp.example.com/mcp",
+    ],
+)
+def test_local_dev_rejects_non_local_mcp_url(monkeypatch, url):
     monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
-    monkeypatch.setenv("FPAC_MCP_URL", "https://example.com/mcp")
-    with pytest.raises(config.McpServerLookupError, match="loopback HTTP"):
+    monkeypatch.setenv("FPAC_MCP_URL", url)
+    with pytest.raises(config.McpServerLookupError, match="local HTTP"):
         config.fpac_mcp_url()
 
 
@@ -58,6 +66,13 @@ def test_local_dev_endpoints(monkeypatch):
     assert config.local_dev_enabled()
     assert config.local_llm_base_url() == "http://127.0.0.1:8090/v1"
     assert config.fpac_mcp_url() == "http://127.0.0.1:8001/mcp"
+
+
+def test_local_dev_accepts_compose_mcp_service(monkeypatch):
+    monkeypatch.setenv("FPAC_LOCAL_DEV", "1")
+    monkeypatch.setenv("FPAC_MCP_URL", "http://mcp:8000/mcp")
+
+    assert config.fpac_mcp_url() == "http://mcp:8000/mcp"
 
 
 def test_local_mlflow_tracing_is_opt_in_and_uses_external_store(monkeypatch, tmp_path):

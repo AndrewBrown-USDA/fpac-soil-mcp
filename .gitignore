@@ -30,6 +30,7 @@ MANIFEST
 
 # Virtual environments
 .env
+.env.compose
 .venv
 env/
 venv/

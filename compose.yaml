@@ -1,0 +1,66 @@
+services:
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MCP_TRANSPORT: http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8000"
+    ports:
+      - "127.0.0.1:${MCP_PUBLISHED_PORT:-8000}:8000"
+    init: true
+
+  agent:
+    build:
+      context: apps/agent-fpac-soil-openai-sdk
+      dockerfile: Dockerfile
+    environment:
+      FPAC_LOCAL_DEV: "1"
+      AGENT_MODEL: ${AGENT_MODEL:-local-model}
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-http://host.docker.internal:8090/v1}
+      FPAC_MCP_URL: http://mcp:8000/mcp
+      CHAT_APP_PORT: "3000"
+      PORT: "8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${AGENT_UI_PUBLISHED_PORT:-3000}:3000"
+    depends_on:
+      mcp:
+        condition: service_healthy
+    init: true
+
+  harness:
+    build:
+      context: .
+      dockerfile: eval/fpac_soil_mcp_harness/Dockerfile
+    environment:
+      HARNESS_HOST: 0.0.0.0
+      HARNESS_PORT: "3030"
+      HARNESS_AUTOCONNECT: "true"
+      HARNESS_ALLOW_COMMAND_OVERRIDE: "false"
+      MCP_MODE: http
+      MCP_URL: http://mcp:8000/mcp
+      EVAL_CASES_PATH: /app/eval_cases.v1.json
+    ports:
+      - "127.0.0.1:${HARNESS_PUBLISHED_PORT:-3030}:3030"
+    depends_on:
+      mcp:
+        condition: service_healthy
+    init: true
+
+  llama:
+    image: ${LLAMA_CPP_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
+    profiles: ["llm"]
+    command:
+      - -m
+      - /models/${LLAMA_CPP_MODEL_FILE:-model.gguf}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+    volumes:
+      - ${LLAMA_CPP_MODELS_DIR:-./models}:/models:ro
+    expose:
+      - "8080"

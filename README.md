@@ -146,6 +146,28 @@ docker run -i --rm -e MCP_TRANSPORT=stdio fpac-soil-mcp
 docker run -d --rm -p 8000:8000 -e MCP_TRANSPORT=sse -e MCP_HOST=0.0.0.0 -e MCP_PORT=8000 --name fpac-soil-mcp fpac-soil-mcp
 ```
 
+### Docker Compose development stack
+
+The root `compose.yaml` runs the MCP server, Python agent/map app, and JavaScript harness together. The agent uses local-development mode and needs an OpenAI-compatible model API; by default, it expects that API on the host at `http://host.docker.internal:8090/v1`.
+
+```powershell
+Copy-Item .env.compose.example .env.compose
+# Edit .env.compose and set AGENT_MODEL to the model ID served by your model API.
+docker compose --env-file .env.compose up --build
+```
+
+Open the agent/map app at `http://127.0.0.1:3000` and the MCP harness at `http://127.0.0.1:3030`. The MCP server is also available on `http://127.0.0.1:8000/mcp`. Published ports bind to loopback by default; change the `*_PUBLISHED_PORT` values in `.env.compose` to avoid local port conflicts.
+
+The harness connects to the MCP service over Streamable HTTP and loads the shared evaluation corpus. The app and harness wait for the MCP health check before starting. The agent's explicit local MCP URL is restricted to the Compose `mcp` service hostname or loopback addresses.
+
+To run the optional llama.cpp service, place a GGUF model in the configured model directory, set `LLAMA_CPP_MODEL_FILE`, change `LOCAL_LLM_BASE_URL` to `http://llama:8080/v1`, then start with the profile:
+
+```powershell
+docker compose --env-file .env.compose --profile llm up --build
+```
+
+Model files are mounted read-only and are not downloaded by Compose. The default stack does not start a model service. Stop the stack with `docker compose --env-file .env.compose down`.
+
 ---
 
 ## Standard MCP Client Configuration
