@@ -1,0 +1,134 @@
+import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+// Offline AOI and corridor chat-state coverage (issue #89). Every geo request is
+// faked; no SDA, MCP or TIGERweb traffic leaves the browser.
+
+const SQUARE = '{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}';
+const NOTICE = 'Preliminary screening only.';
+
+type FakeOptions = { delayMs?: number; fail?: boolean; notice?: string | null };
+
+// Fakes the map panel's geo routes. `delayMs` holds each response so a spec can
+// change chat or AOI first; `fail` returns the server's screening_failed shape
+// (or a 502 for routes without one). Returns the requests seen, per route.
+async function fakeGeo(page: Page, options: FakeOptions = {}) {
+  const { delayMs = 0, fail = false } = options;
+  const notice = options.notice === undefined ? NOTICE : options.notice;
+  const seen = { screen: 0, corridor: 0, map: 0, outline: 0 };
+  const hold = () => (delayMs ? new Promise((resolve) => setTimeout(resolve, delayMs)) : Promise.resolve());
+  await page.route('**/api/geo/screen', async (route) => {
+    seen.screen += 1;
+    const body = route.request().postDataJSON() as { aoi_ref?: string };
+    const aoiRef = body.aoi_ref ?? 'aoi-00000000';
+    await hold();
+    await route.fulfill({ json: fail
+      ? {
+          aoi_ref: aoiRef,
+          display: { error: 'screening_failed', regulatory_notice: null },
+          chat_summary: { aoi_ref: aoiRef, status: 'screening_failed' },
+          chat_summary_text: 'Map screening result (preliminary)',
+        }
+      : {
+          aoi_ref: aoiRef,
+          display: {
+            analysis: { map_units: [] },
+            map: { bounds: [-93, 42, -92.99, 42.01], layers: [] },
+            regulatory_notice: notice,
+          },
+          chat_summary: { aoi_ref: aoiRef, total_aoi_acres: 1, regulatory_notice: notice },
+          chat_summary_text: 'Map screening result (preliminary)',
+        } });
+  });
+  await page.route('**/api/geo/corridor', async (route) => {
+    seen.corridor += 1;
+    const request = route.request().postDataJSON() as { corridor_ref?: string };
+    await hold();
+    if (fail) return route.fulfill({ status: 502, json: { error: 'screening_unavailable' } });
+    await route.fulfill({ json: {
+      display: {
+        corridor_ref: request.corridor_ref,
+        status: 'preliminary_screening',
+        impact_breakdown: { direct_acres: 1, indirect_acres: 0, total_project_acres: 1 },
+        composite_relative_rating: null,
+        county_segments: [],
+        alternatives: [],
+      },
+      map: { layers: [] },
+      regulatory_notice: notice,
+      status: 'preliminary_screening',
+    } });
+  });
+  await page.route('**/api/geo/map', async (route) => {
+    seen.map += 1;
+    await hold();
+    if (fail) return route.fulfill({ status: 502, json: { error: 'map_unavailable' } });
+    await route.fulfill({ json: {
+      map: { bounds: [-93, 42, -92.99, 42.01], layers: [{ id: 'fake', title: 'Fake layer', kind: 'polygon', delivery: 'inline', data: { type: 'FeatureCollection', features: [] } }] },
+      regulatory_notice: notice,
+    } });
+  });
+  // Registered after the catch-all abort in beforeEach, so this one wins.
+  await page.route('https://tigerweb.geo.census.gov/**', async (route) => {
+    seen.outline += 1;
+    await hold();
+    if (fail) return route.abort();
+    await route.fulfill({ json: { type: 'FeatureCollection', features: [] } });
+  });
+  return seen;
+}
+
+function probe(page: Page) {
+  return page.getByTestId('fixture-state');
+}
+
+async function pasteAoi(page: Page, geojson = SQUARE) {
+  await page.getByRole('button', { name: 'Paste' }).click();
+  await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill(geojson);
+  await page.getByRole('button', { name: 'Use this AOI' }).click();
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.route('https://**/*', (route) => route.abort());
+});
+
+test('fixture loads on chat A and a pasted AOI is attached to it', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await expect(probe(page)).toHaveAttribute('data-chat-id', 'fixture-chat-a');
+  await expect(probe(page)).toHaveAttribute('data-corridor-chat-id', 'fixture-chat-a');
+  await pasteAoi(page);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', /^aoi-[0-9a-f]{8}$/);
+  const geometry = JSON.parse((await probe(page).getAttribute('data-aoi-geometry')) ?? 'null');
+  expect(geometry.type).toBe('Polygon');
+});
+
+test('a faked screening attaches its summary to the screened AOI', async ({ page }) => {
+  const seen = await fakeGeo(page);
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  const ref = await probe(page).getAttribute('data-aoi-ref');
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', /total_aoi_acres/);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+  expect(seen.screen).toBe(1);
+});
+
+test('each fixture chat keeps its own AOI, and ?chat=none starts without a chat', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  const ref = await probe(page).getAttribute('data-aoi-ref');
+  await page.getByRole('button', { name: 'Fixture chat B' }).click();
+  await expect(probe(page)).toHaveAttribute('data-chat-id', 'fixture-chat-b');
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+
+  await page.goto('/aoi-state-fixture.html?chat=none');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeVisible();
+  await expect(probe(page)).toHaveAttribute('data-chat-id', '');
+  await expect(probe(page)).toHaveAttribute('data-corridor-chat-id', '');
+});

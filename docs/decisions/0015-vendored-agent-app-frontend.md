@@ -377,6 +377,14 @@ Added paths:
   variants prepared from the
   [NCSS Visual Standards Guide](https://www.nrcs.usda.gov/sites/default/files/2022-09/NCSS_logo_style_guide.pdf)
   for light and dark map-panel headers.
+* `client/aoi-state-fixture.html`,
+  `client/src/components/map/aoi-state-fixture.tsx`,
+  `playwright.aoi-state.config.ts`, `tests/aoi-state/aoi-state.spec.ts`, and
+  `package.json` (`test:aoi-state`): isolated browser fixture for AOI and
+  corridor chat state with a switchable fake chat id (`?chat=none` starts
+  without one), a hidden state probe, and faked `/api/geo/*` and TIGERweb
+  responses with controllable delay and failure, so the issue #89 hardening is
+  tested without SDA (no new dependencies).
 
 ### Update procedure
 

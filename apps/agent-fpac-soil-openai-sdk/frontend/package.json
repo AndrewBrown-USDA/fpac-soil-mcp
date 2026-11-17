@@ -20,6 +20,7 @@
     "test:map-toolbar": "playwright test --config playwright.map-toolbar.config.ts",
     "test:map-legend": "playwright test --config playwright.map-legend.config.ts",
     "test:corridor-map": "playwright test --config playwright.corridor-map.config.ts",
+    "test:aoi-state": "playwright test --config playwright.aoi-state.config.ts",
     "test:local-auth": "node --import tsx --test server/src/middleware/auth.test.ts",
     "test:map-identify": "node --import tsx --test client/src/components/map/identify.test.ts",
     "start": "npm run start --workspace=@databricks/chatbot-server",
