@@ -38,7 +38,9 @@ export async function requestCorridorScreening(
       };
     }
     const result = (await response.json()) as CorridorScreeningResponse;
-    if (!result.display || !result.regulatory_notice || result.status !== 'preliminary_screening') {
+    // A null notice is kept, not rejected: the results view then shows it as
+    // invalid (ADR 0003, ADR 0016 amendment 2026-11-17).
+    if (!result.display || result.status !== 'preliminary_screening') {
       return { result: null, error: 'Corridor screening returned an incomplete result.' };
     }
     return { result, error: null };

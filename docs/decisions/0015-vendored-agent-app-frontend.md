@@ -385,6 +385,14 @@ Added paths:
   without one), a hidden state probe, and faked `/api/geo/*` and TIGERweb
   responses with controllable delay and failure, so the issue #89 hardening is
   tested without SDA (no new dependencies).
+* `client/src/components/map/useScreening.ts`, `MapPanel.tsx`,
+  `useCorridorScreening.ts`, `useScreening.test.ts`,
+  `useCorridorScreening.test.ts`, and `tests/aoi-state/aoi-state.spec.ts`:
+  a failed AOI screening attaches its `screening_failed` chat summary to the
+  AOI it started from (`summaryToAttach`); a result without its MCP regulatory
+  notice is still never attached; a corridor result with a null notice is kept
+  and shown with the invalid-notice message instead of a generic error
+  (ADR 0016 amendment 2026-11-17).
 
 ### Update procedure
 

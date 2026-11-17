@@ -50,7 +50,7 @@ import type { OverlayId } from './overlays';
 import { NOTICE_CARD, RESULT_CARD, ScreeningResults } from './ScreeningResults';
 import { StatusMessage } from './StatusMessage';
 import type { StatusVariant } from './StatusMessage';
-import { useScreening } from './useScreening';
+import { summaryToAttach, useScreening } from './useScreening';
 import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
 import { lineDistance } from './distance';
 import type { DistanceUnit } from './distance';
@@ -415,19 +415,13 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
   }, [aoiVisible, resultsVisible, mapReady]);
 
-  // The latest valid screening becomes the AOI's chat summary. A result without its
-  // regulatory notice is invalid (ADR 0003) and is not attached.
+  // The latest screening state becomes the screened AOI's chat summary (ADR 0016):
+  // a valid result, or a failed screening's summary. A result without its
+  // regulatory notice is invalid (ADR 0003) and is not attached. setSummary
+  // ignores the call if that AOI is no longer attached.
   useEffect(() => {
-    const result = screening.result;
-    if (
-      screening.status === 'done' &&
-      result &&
-      !result.display?.error &&
-      result.display?.regulatory_notice &&
-      screenedRef.current
-    ) {
-      setSummary(screenedRef.current, result.chat_summary);
-    }
+    const summary = summaryToAttach(screening.status, screening.result);
+    if (summary && screenedRef.current) setSummary(screenedRef.current, summary);
   }, [screening.status, screening.result, setSummary]);
 
   const runScreening = () => {

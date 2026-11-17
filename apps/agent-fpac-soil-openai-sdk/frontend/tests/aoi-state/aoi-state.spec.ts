@@ -116,6 +116,51 @@ test('a faked screening attaches its summary to the screened AOI', async ({ page
   expect(seen.screen).toBe(1);
 });
 
+const INVALID = 'Regulatory notice missing - treat this result as invalid.';
+
+test('a screening without an MCP notice is shown as invalid and is not attached', async ({ page }) => {
+  await fakeGeo(page, { notice: null });
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText(INVALID).first()).toBeVisible();
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', '');
+});
+
+test('a failed screening attaches its screening_failed summary to the screened AOI', async ({ page }) => {
+  await fakeGeo(page, { fail: true });
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  const ref = await probe(page).getAttribute('data-aoi-ref');
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', /screening_failed/);
+  const summary = JSON.parse((await probe(page).getAttribute('data-aoi-summary')) ?? 'null');
+  expect(summary.aoi_ref).toBe(ref);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+});
+
+test('a corridor result without an MCP notice is shown as invalid, not as an error', async ({ page }) => {
+  await fakeGeo(page, { notice: null });
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
+  await page.getByText('Corridor options', { exact: true }).click();
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  const map = page.locator('.maplibregl-map');
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
+  await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Screen corridor' }).click();
+  await expect(page.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('region', { name: 'Corridor screening summary' })).toBeVisible();
+  await expect(page.getByText(INVALID).first()).toBeVisible();
+  await expect(page.getByText('Corridor screening returned an incomplete result.')).toHaveCount(0);
+});
+
 test('each fixture chat keeps its own AOI, and ?chat=none starts without a chat', async ({ page }) => {
   await page.goto('/aoi-state-fixture.html');
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
