@@ -236,7 +236,10 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     map.on('idle', () => setOverlayLoading(NO_OVERLAYS));
     map.on('zoomend', () => setZoom(map.getZoom()));
 
-    map.on('load', () => {
+    // Set up on style load, not `load`: `load` waits for every visible basemap
+    // tile, so one slow or hung USGS tile kept every drawing tool disabled.
+    // Sources, layers and Terra Draw only need the style.
+    map.once('style.load', () => {
       onMapReadyRef.current?.(map);
       map.addSource('aoi', { type: 'geojson', data: emptyCollection });
       map.addLayer({

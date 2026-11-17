@@ -417,6 +417,10 @@ Added paths:
   Use-as-AOI, Undo, Clear and corridor removal with a short status line, so
   nothing is written to the previous chat's storage (issue #89 B1). The map
   fixtures set a fixture chat id; the AOI-state fixture adds Close fixture chat.
+* `client/src/components/map/MapPanel.tsx`: the map sets up its AOI and
+  corridor layers and Terra Draw on `style.load` instead of `load`. `load`
+  waits for every visible USGS basemap tile, so one hung tile left all drawing
+  tools disabled (in the app, and in about 15% of Playwright fixture loads).
 
 ### Update procedure
 

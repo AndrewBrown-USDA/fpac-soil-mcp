@@ -220,6 +220,15 @@ async function drawCorridor(page: Page) {
   await expect(page.getByText(/Primary ready/)).toBeVisible();
 }
 
+test('a hung basemap tile does not keep the drawing tools disabled', async ({ page }) => {
+  // Registered after the catch-all abort, so it wins: tile requests never answer.
+  await page.route('https://basemap.nationalmap.gov/**', () => {});
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', /^aoi-/);
+});
+
 const NO_CHAT = 'Open or start a chat to draw, paste or attach an area or corridor.';
 
 test('without an open chat the map takes no AOI or corridor input', async ({ page }) => {
