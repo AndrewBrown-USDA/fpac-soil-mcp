@@ -26,7 +26,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 4 | 56.4.1 E: keep geometry context through stream retry | done | 430a200 | Reproduced, then fixed |
 | 5 | 56.5.1 A: Edit-mode changes update attached geometry | done | bc41661 | Corridor Edit inert (Discovered) |
 | 6 | 56.6.1 B1: chat-scoped AOI/corridor context | done | 72ccf93 | Cold-start warm-up proposed |
-| 7 | 56.7.1 B2: drop late results; abort outline | pending | | |
+| 7 | 56.7.1 B2: drop late results; abort outline | done | 9d4f37d | fakeGeo map shape fixed |
 | 8 | 56.8.1 C: Undo / Clear / Detach symmetry | pending | | |
 | 9 | 56.9.1 Integrated validation and ADR sweep | pending | | |
 | 10 | 56.10.1 Post-SDA manual and deployed checks | pending | | Non-blocking; trigger: SDA available |
@@ -117,3 +117,13 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 - 5eb12f1 `test(map): open a fixture chat in the site-assessment map fixture` (Wave 6 fixture gap).
 - Gate (4a223b1 + fixture fix): `make app-check` pytest 305; `make app-frontend-check` 0 errors, 10 warnings; Node 46/46; chat-geometry 3/3; local-auth 1/1; aoi-state 11/11 (plus 2 runs with the Vite cache cleared, 11/11 each); corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5 (x2); chat-export 3/3.
 - Not verified in the deployed app. Trade-off: tools can enable before the basemap shows; tile failures still show their own message.
+- Branch pushed by the user 2026-11-17: `origin/fix/map-aoi-hardening1` at bd9fb8d (verified with ls-remote); upstream now the same-named branch. `origin/main` has moved to 50e0e13 since the branch point (129a091).
+
+## 56.7.1
+- Status: done, 9d4f37d `fix(map): drop map results that arrive after the chat or AOI changed`.
+- Fix: `ShowOnMapButton.tsx` and `IdentifyPopup.tsx` (`AreaActions`) record chat id + `aoi_ref` at request start and drop the response if either changed (latest values from a ref); the outline uses a real `AbortController`, aborted on unmount (popup close); `MapPanel.tsx` resets corridor screening on chat change. AOI screening unchanged (already guarded).
+- Fixture: test-only Show on map button bound to the current AOI, `data-shown` probe, `__mapJumpTo` camera hook. Spec: `fakeGeo` map layer fixed to `inline_geojson` + `feature_collection` (the old `inline` + `data` was dropped by `inlineLayers`, the Wave 1 gotcha); `pasteAoi` opens the panel only when closed.
+- Tests: 8 new aoi-state cases. Negative check: the 5 late-result/abort cases fail on old code; control, null notice (moved from 56.3.2), AOI screening regression pass.
+
+## Wave 7 gate
+- Committed tree (9d4f37d): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 46/46; chat-geometry 3/3; local-auth 1/1; aoi-state 19/19; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3.
