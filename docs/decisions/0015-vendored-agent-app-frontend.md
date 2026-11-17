@@ -393,6 +393,13 @@ Added paths:
   notice is still never attached; a corridor result with a null notice is kept
   and shown with the invalid-notice message instead of a generic error
   (ADR 0016 amendment 2026-11-17).
+* `server/src/routes/chat.ts`, `server/src/routes/chat-geometry-release.test.ts`,
+  and `package.json` (`test:chat-geometry`): the request's AOI and corridor
+  registry keys (`bindRequestGeometry`) are released when the stream and any
+  `generateText` fallback finish (`execute` `finally`, and the route's error
+  path), not on response `close`, because the stream keeps running for resume
+  after the client disconnects and its fallback still needs the geometry. The
+  `execute` body keeps its upstream indentation inside the new `try`.
 
 ### Update procedure
 

@@ -73,6 +73,35 @@ import { drainStreamToWriter, fallbackToGenerateText } from '../lib/stream-fallb
 
 export const chatRouter: RouterType = Router();
 
+// Map AOI and corridor (ADR 0016): registered for one request; the provider adds
+// them to the agent request as custom_inputs. The caller releases them when the
+// stream and any generateText fallback finish. Not on res 'close': the stream is
+// teed into the resume cache and keeps running after the client disconnects, and
+// its fallback still needs both.
+export function bindRequestGeometry(body: {
+  activeAoi?: unknown;
+  activeCorridor?: unknown;
+}): { headers: Record<string, string>; release: () => void } {
+  const headers: Record<string, string> = {};
+  const releases: Array<() => void> = [];
+  if (body.activeAoi) {
+    const key = registerActiveAoi(body.activeAoi);
+    headers[CONTEXT_HEADER_ACTIVE_AOI_KEY] = key;
+    releases.push(() => releaseActiveAoi(key));
+  }
+  if (body.activeCorridor) {
+    const key = registerActiveCorridor(body.activeCorridor);
+    headers[CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY] = key;
+    releases.push(() => releaseActiveCorridor(key));
+  }
+  return {
+    headers,
+    release: () => {
+      for (const release of releases.splice(0)) release();
+    },
+  };
+}
+
 const streamCache = new StreamCache();
 // Apply auth middleware to all chat routes
 chatRouter.use(authMiddleware);
@@ -100,6 +129,7 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     return res.status(response.status).json(response.json);
   }
 
+  let geometry: ReturnType<typeof bindRequestGeometry> | undefined;
   try {
     const {
       id,
@@ -257,25 +287,11 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
     const model = await myProvider.languageModel(selectedChatModel);
     const modelMessages = await convertToModelMessages(uiMessages);
-    // Map AOI (ADR 0016): registered for this request only; the provider adds it to
-    // the agent request as custom_inputs.active_aoi.
-    const activeAoiKey = requestBody.activeAoi
-      ? registerActiveAoi(requestBody.activeAoi)
-      : null;
-    if (activeAoiKey) {
-      res.on('close', () => releaseActiveAoi(activeAoiKey));
-    }
-    const activeCorridorKey = requestBody.activeCorridor
-      ? registerActiveCorridor(requestBody.activeCorridor)
-      : null;
-    if (activeCorridorKey) {
-      res.on('close', () => releaseActiveCorridor(activeCorridorKey));
-    }
+    geometry = bindRequestGeometry(requestBody);
     const requestHeaders = {
       [CONTEXT_HEADER_CONVERSATION_ID]: id,
       [CONTEXT_HEADER_USER_ID]: session.user.email ?? session.user.id,
-      ...(activeAoiKey ? { [CONTEXT_HEADER_ACTIVE_AOI_KEY]: activeAoiKey } : {}),
-      ...(activeCorridorKey ? { [CONTEXT_HEADER_ACTIVE_CORRIDOR_KEY]: activeCorridorKey } : {}),
+      ...geometry.headers,
       // Forward OBO user token to the backend/serving endpoint
       ...(req.headers['x-forwarded-access-token']
         ? { 'x-forwarded-access-token': req.headers['x-forwarded-access-token'] as string }
@@ -327,6 +343,9 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       // rather than the AI SDK's default short-id format (e.g. "Xt8nZiQRj1fS4yiU").
       generateId: generateUUID,
       execute: async ({ writer }) => {
+        // Body kept at upstream indentation (ADR 0015); the finally releases the
+        // map geometry after the stream and any fallback (issue #89 E).
+        try {
         // Manually drain the AI stream so we can append the traceId data part
         // after all model chunks are processed (traceId is captured via onChunk).
         // result.toUIMessageStream() converts TextStreamPart → UIMessageChunk:
@@ -367,6 +386,9 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
         // Write traceId so the client knows whether feedback is supported.
         writer.write({ type: 'data-traceId', data: traceId });
+        } finally {
+          geometry?.release();
+        }
       },
       onFinish: async ({ responseMessage }) => {
         // Store in-memory for ephemeral mode (also useful when DB is available)
@@ -417,6 +439,7 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    geometry?.release();
     console.error('[Chat] Caught error in chat API:', {
       errorType: error?.constructor?.name,
       message: error instanceof Error ? error.message : String(error),
