@@ -16,6 +16,10 @@ import {
 import type { ActiveCorridor } from './corridorSession';
 import { GEOMETRY_ATTACH_EVENT } from './ActiveAoiContext';
 
+// Fired by the chip's Detach so the map panel clears the drawn corridor too
+// (issue #89 C); there is no corridor Undo.
+export const CORRIDOR_DETACH_EVENT = 'fpac:corridor-detach';
+
 type Value = {
   chatId: string | null;
   activeCorridor: ActiveCorridor | null;
@@ -73,7 +77,10 @@ export function ActiveCorridorProvider({ children }: { children: ReactNode }) {
     window.addEventListener(GEOMETRY_ATTACH_EVENT, detach);
     return () => window.removeEventListener(GEOMETRY_ATTACH_EVENT, detach);
   }, []);
-  const detach = useCallback(() => setCorridor(null), [setCorridor]);
+  const detach = useCallback(() => {
+    if (chatIdRef.current) window.dispatchEvent(new Event(CORRIDOR_DETACH_EVENT));
+    setCorridor(null);
+  }, [setCorridor]);
   const value = useMemo(
     () => ({
       chatId: state.chatId,

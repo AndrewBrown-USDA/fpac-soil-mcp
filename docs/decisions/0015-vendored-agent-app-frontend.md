@@ -428,6 +428,15 @@ Added paths:
   response if either changed; closing the identify popup aborts its outline
   request; switching chats resets corridor screening so a run in flight is
   dropped. The AOI-state fixture mounts a test-only Show on map button.
+* `client/src/components/map/aoiHistory.ts` (new), `ActiveAoiContext.tsx`,
+  `ActiveCorridorContext.tsx`, `MapPanel.tsx`, and
+  `tests/aoi-state/aoi-state.spec.ts`: AOI Undo restores the previous AOI as
+  it was (same `aoi_ref`, geometry, and summary) instead of minting a new
+  reference (issue #89 C). The one-level history lives in the AOI provider, per
+  chat and in memory only; Clear and the chip's Detach are undoable; Undo is
+  disabled with nothing to restore. Corridors have no Undo (user decision
+  2026-11-17); the chip's corridor Detach now clears the drawn corridor like
+  Clear corridor.
 
 ### Update procedure
 

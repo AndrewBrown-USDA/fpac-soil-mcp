@@ -346,6 +346,59 @@ test('an outline that returns after a chat switch attaches nothing', async ({ pa
   await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
 });
 
+const undoButton = (page: Page) => page.getByRole('button', { name: 'Undo', exact: true });
+
+test('Undo restores the replaced AOI with its reference and summary', async ({ page }) => {
+  await fakeGeo(page);
+  await startOnChatA(page);
+  const ref = await probe(page).getAttribute('data-aoi-ref');
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', /total_aoi_acres/);
+  const summary = await probe(page).getAttribute('data-aoi-summary');
+  await page.getByRole('tab', { name: 'Map', exact: true }).click();
+  await pasteAoi(page, SQUARE_2);
+  await expect(probe(page)).not.toHaveAttribute('data-aoi-ref', ref ?? '');
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', '');
+  await undoButton(page).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', summary ?? '');
+  await expect(undoButton(page)).toBeDisabled();
+});
+
+test('Clear and the chip Detach can be undone to the same AOI', async ({ page }) => {
+  await startOnChatA(page);
+  const ref = await probe(page).getAttribute('data-aoi-ref');
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+  await undoButton(page).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+  await page.getByRole('button', { name: /Detach map AOI/ }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+  await undoButton(page).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+  await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeEnabled();
+});
+
+test('Undo is disabled when there is nothing to restore', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await expect(undoButton(page)).toBeDisabled();
+  await pasteAoi(page);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', /^aoi-/);
+  await expect(undoButton(page)).toBeDisabled();
+});
+
+test('the chip Detach clears the drawn corridor', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await drawCorridor(page);
+  await expect(probe(page)).toHaveAttribute('data-corridor-ref', /.+/);
+  await page.getByRole('button', { name: /Detach corridor/ }).click();
+  await expect(probe(page)).toHaveAttribute('data-corridor-ref', '');
+  await expect(page.getByText(/Primary ready/)).toHaveCount(0);
+  await expect(page.getByTestId('active-geometry-chip')).toHaveCount(0);
+});
+
 function stored(page: Page, chatId: string) {
   return page.evaluate((id) => ({
     aoi: sessionStorage.getItem(`fpac-map-aoi:${id}`),

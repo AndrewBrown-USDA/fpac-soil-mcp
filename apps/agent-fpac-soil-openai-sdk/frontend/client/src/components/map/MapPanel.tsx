@@ -58,7 +58,7 @@ import { aoiFeaturesToRemove, aoiViewBounds, INITIAL_MAP_VIEW, setLayerVisibilit
 import { showNewScreeningResult } from './resultVisibility';
 import { BUFFER_SIDE_NOTICE, DEFAULT_CORRIDOR_UNIT, createCorridorInput, corridorReference, isCorridorPolygon, isLineGeometry } from './corridorGeometry';
 import type { CorridorUnit, LineGeometry } from './corridorGeometry';
-import { useOptionalActiveCorridor } from './ActiveCorridorContext';
+import { CORRIDOR_DETACH_EVENT, useOptionalActiveCorridor } from './ActiveCorridorContext';
 import { useCorridorScreening } from './useCorridorScreening';
 import { CorridorScreeningResults } from './CorridorScreeningResults';
 
@@ -124,7 +124,6 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const [bufferUnits, setBufferUnits] = useState<CorridorUnit>(DEFAULT_CORRIDOR_UNIT);
   const [mapReady, setMapReady] = useState(false);
   const [mode, setMode] = useState<DrawMode>('static');
-  const [previousAoi, setPreviousAoi] = useState<PolygonGeometry | null>(null);
   const [aoiError, setAoiError] = useState<string | null>(null);
   const [aoiLabel, setAoiLabel] = useState('');
   const [aoiExportMessage, setAoiExportMessage] = useState<string | null>(null);
@@ -155,7 +154,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const [resultHit, setResultHit] = useState<ResultInfo | null>(null);
   // The AOI is chat session context (ADR 0016): the active-AOI context owns it, keyed
   // by chat id. `aoiRef` is the geometry this panel last drew or loaded.
-  const { chatId, activeAoi, setGeometry, setSummary } = useActiveAoi();
+  const { chatId, activeAoi, setGeometry, setSummary, canUndo, undo: undoAoi } = useActiveAoi();
   const corridorContext = useOptionalActiveCorridor();
   // The result drawn on the map: this panel's screening or a tool card's "Show on map".
   const { shown, show, clear: clearShown } = useMapResult();
@@ -186,10 +185,10 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     previousScreeningStatus.current = screening.status;
   }, [screening.status]);
 
-  // One AOI at a time: a new AOI replaces the old and becomes undoable.
+  // One AOI at a time: a new AOI replaces the old; the provider keeps the old one
+  // for Undo (issue #89 C).
   const replaceAoi = useCallback(
     (next: PolygonGeometry | null) => {
-      setPreviousAoi(aoiRef.current);
       aoiRef.current = next;
       setGeometry(next);
       setAoiLabel('');
@@ -366,11 +365,11 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     };
   }, [replaceAoi]);
 
-  // Switching chats loads that chat's AOI (or none): redraw it and drop old results.
+  // Switching chats, Undo, or chip Detach changes the AOI from outside the map:
+  // redraw it and drop old results.
   useEffect(() => {
     if (!mapReady || aoi === aoiRef.current) return;
     aoiRef.current = aoi;
-    setPreviousAoi(null);
     setAoiLabel('');
     setAoiExportMessage(null);
     setAoiError(null);
@@ -711,6 +710,14 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     attachedCorridorSignature.current = '';
     corridorContext?.setCorridor(null);
   };
+  // The chip's Detach clears the drawn corridor too, like Clear corridor (issue #89 C).
+  const clearCorridorRef = useRef(clearCorridor);
+  clearCorridorRef.current = clearCorridor;
+  useEffect(() => {
+    const onDetach = () => clearCorridorRef.current();
+    window.addEventListener(CORRIDOR_DETACH_EVENT, onDetach);
+    return () => window.removeEventListener(CORRIDOR_DETACH_EVENT, onDetach);
+  }, []);
   const removeCorridorFeature = (kind: 'primary' | 'alternative' | 'staging', index = 0) => {
     const features = corridorDrawRef.current?.getSnapshot().filter((feature) => feature.properties.corridorKind === kind) ?? [];
     const feature = features[index];
@@ -783,17 +790,6 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     popupRef.current?.remove();
     onPasted(geometry);
     return { ok: true };
-  };
-
-  const undo = () => {
-    const restored = previousAoi;
-    setPreviousAoi(null);
-    aoiRef.current = restored;
-    setGeometry(restored);
-    setAoiLabel('');
-    setAoiExportMessage(null);
-    syncDraw(restored);
-    resetScreening();
   };
 
   const clear = () => {
@@ -962,7 +958,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
                 {toolButton('Polygon', 'polygon', Pentagon)}
                 {toolButton('Rectangle', 'rectangle', Square)}
                 {toolButton('Edit', 'select', MousePointer2)}
-                {actionButton('Undo', Undo2, undo, noChat || (!previousAoi && !aoi))}
+                {actionButton('Undo', Undo2, undoAoi, noChat || !canUndo)}
                 {actionButton('Clear', Trash2, clear, !aoi)}
               </div>
             </div>
