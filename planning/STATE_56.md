@@ -31,6 +31,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 9 | 56.9.1 Integrated validation and ADR sweep | pending | | |
 | 10 | 56.10.1 Post-SDA manual and deployed checks | pending | | Non-blocking; trigger: SDA available |
 | 11 | 56.11.1 Discovered: keep geometry out of request logs | pending | | User: low priority; after all other waves |
+| - | 56.12.1 Discovered: map tools waited for basemap tiles | done | 4a223b1, 5eb12f1 | User-approved 2026-11-17; was the cold-start flake |
 
 ## Task Reports
 
@@ -107,3 +108,12 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 
 ## Wave 6 gate
 - Committed tree (72ccf93): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 46/46; chat-geometry 3/3; local-auth 1/1; aoi-state 10/10; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2. No cold-start failure in the gate run.
+- Missed: site-assessment was not in this gate; its fixture used `ActiveAoiProvider` with no chat id, so one test broke (fixed in 5eb12f1, see 56.12.1). Later gates run all Playwright suites, including site-assessment and chat-export.
+
+## 56.12.1 (discovered: map readiness)
+- Root cause of the "cold-start" flake: `MapPanel.tsx` set up layers and Terra Draw (and `mapReady`) in MapLibre `load`, which waits for every visible USGS basemap tile. In Playwright about 15% of loads (6/40) left some blocked tile requests pending forever, so `load` never fired; the page was otherwise healthy and a reload fixed it. In the app, one hung USGS tile did the same (reproduced by holding one tile: never ready; all tiles +6 s: ready at 7.2 s).
+- Ruled out: Vite warmth (a globalSetup warm-up still failed; reverted, never committed), network (still hung with external DNS blocked). The earlier "1 in 5 hang" probe did not block tiles.
+- Fix (user-approved): 4a223b1 `fix(map): enable drawing tools once the map style loads` (`map.once('style.load', ...)`; no `setStyle` in the code). Trial: 0/40 hangs, slowest 2.0 s cold. New aoi-state test holds every basemap tile: passes on the fix, fails on old `load` (warm server).
+- 5eb12f1 `test(map): open a fixture chat in the site-assessment map fixture` (Wave 6 fixture gap).
+- Gate (4a223b1 + fixture fix): `make app-check` pytest 305; `make app-frontend-check` 0 errors, 10 warnings; Node 46/46; chat-geometry 3/3; local-auth 1/1; aoi-state 11/11 (plus 2 runs with the Vite cache cleared, 11/11 each); corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5 (x2); chat-export 3/3.
+- Not verified in the deployed app. Trade-off: tools can enable before the basemap shows; tile failures still show their own message.
