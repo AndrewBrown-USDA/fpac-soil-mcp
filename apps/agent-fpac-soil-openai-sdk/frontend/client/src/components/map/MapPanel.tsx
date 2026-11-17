@@ -54,7 +54,7 @@ import { summaryToAttach, useScreening } from './useScreening';
 import { aoiFilename, serializeAoiGeoJson } from './aoiExport';
 import { lineDistance } from './distance';
 import type { DistanceUnit } from './distance';
-import { aoiViewBounds, INITIAL_MAP_VIEW, setLayerVisibility } from './mapControls';
+import { aoiFeaturesToRemove, aoiViewBounds, INITIAL_MAP_VIEW, setLayerVisibility } from './mapControls';
 import { showNewScreeningResult } from './resultVisibility';
 import { BUFFER_SIDE_NOTICE, DEFAULT_CORRIDOR_UNIT, createCorridorInput, corridorReference, isCorridorPolygon, isLineGeometry } from './corridorGeometry';
 import type { CorridorUnit, LineGeometry } from './corridorGeometry';
@@ -274,18 +274,17 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
         ],
       });
       draw.start();
-      draw.on('finish', (id) => {
+      // Drawing and every Edit change (drag, midpoint insert, vertex delete) end
+      // here, so the attached AOI follows the shape on the map (issue #89 A).
+      draw.on('finish', (id, context) => {
         const feature = draw.getSnapshot().find((f) => f.id === id);
         const geometry = toPolygonGeometry(feature?.geometry);
         if (!geometry) {
           setAoiError('The drawn shape is not a valid polygon. Draw it again.');
           return;
         }
-        for (const other of draw.getSnapshot()) {
-          if (other.id !== id && other.id !== undefined) {
-            draw.removeFeatures([other.id]);
-          }
-        }
+        const stale = aoiFeaturesToRemove(draw.getSnapshot(), id, context);
+        if (stale.length) draw.removeFeatures(stale);
         replaceAoi(geometry);
         // One AOI at a time: a finished polygon or rectangle ends drawing, so the next
         // click does not start another shape. Edit (select) mode stays on. Deferred

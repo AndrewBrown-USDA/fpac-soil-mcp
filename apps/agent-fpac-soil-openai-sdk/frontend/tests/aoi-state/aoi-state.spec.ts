@@ -161,6 +161,47 @@ test('a corridor result without an MCP notice is shown as invalid, not as an err
   await expect(page.getByText('Corridor screening returned an incomplete result.')).toHaveCount(0);
 });
 
+function attachedRing(page: Page) {
+  return probe(page)
+    .getAttribute('data-aoi-geometry')
+    .then((value) => (value ? (JSON.parse(value).coordinates[0] as number[][]) : []));
+}
+
+test('every Edit change keeps the attached AOI equal to the shape on the map', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  const map = page.locator('.maplibregl-map');
+  // Drawing does not move the view, so the vertices stay at these pixels.
+  await page.getByRole('button', { name: 'Polygon' }).click();
+  for (const [x, y] of [[100, 100], [200, 100], [200, 200], [100, 200]]) {
+    await map.click({ position: { x, y } });
+  }
+  await map.dblclick({ position: { x: 100, y: 100 } });
+  await expect.poll(async () => (await attachedRing(page)).length).toBe(5);
+  const drawn = await attachedRing(page);
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await map.click({ position: { x: 150, y: 150 } });
+  const box = await map.boundingBox();
+  if (!box) throw new Error('map has no box');
+  await page.mouse.move(box.x + 200, box.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 220, box.y + 220, { steps: 8 });
+  await page.mouse.move(box.x + 240, box.y + 240, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(() => attachedRing(page)).not.toEqual(drawn);
+  expect(await attachedRing(page)).toHaveLength(5);
+
+  await map.click({ position: { x: 150, y: 100 } }); // midpoint of the top edge
+  await expect.poll(async () => (await attachedRing(page)).length).toBe(6);
+
+  await map.click({ button: 'right', position: { x: 100, y: 200 } }); // a vertex
+  await expect.poll(async () => (await attachedRing(page)).length).toBe(5);
+  expect(errors).toEqual([]);
+});
+
 test('each fixture chat keeps its own AOI, and ?chat=none starts without a chat', async ({ page }) => {
   await page.goto('/aoi-state-fixture.html');
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();

@@ -400,6 +400,14 @@ Added paths:
   path), not on response `close`, because the stream keeps running for resume
   after the client disconnects and its fallback still needs the geometry. The
   `execute` body keeps its upstream indentation inside the new `try`.
+* `client/src/components/map/MapPanel.tsx`, `mapControls.ts`,
+  `mapControls.test.ts`, `tests/aoi-state/aoi-state.spec.ts`, and
+  `tests/corridor-map/corridor-map.spec.ts`: the AOI draw `finish` handler
+  removes previous AOI shapes only after a new shape is drawn
+  (`aoiFeaturesToRemove`), never after an Edit (select-mode) finish, so Terra
+  Draw keeps its selection-point and midpoint features and every drag,
+  midpoint insert and vertex delete updates the attached AOI. A corridor test
+  guards that Edit corridor leaves the attached corridor in sync.
 
 ### Update procedure
 
