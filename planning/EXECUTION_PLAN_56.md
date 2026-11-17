@@ -52,6 +52,10 @@ autofix scripts.
   touched files. All offline (fakes, fixtures). Deployed-app check, manual
   browser pass and CI are Wave 10, run after SDA returns, and do not block the
   merge.
+- D6. Plan approved by the user as drafted (2026-11-17). Open judgment calls
+  carried into execution: corridor Undo for item C is confirmed with the user
+  before Wave 8; item A approach is chosen in 56.5.1's micro-plan; if
+  Playwright cannot run on serverless, the baseline stops for a decision.
 
 ## Wave Table
 
