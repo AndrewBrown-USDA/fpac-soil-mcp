@@ -40,6 +40,24 @@ BACKEND_READY = [r"Uvicorn running on", r"Application startup complete", r"Start
 FRONTEND_READY = [r"Server is running on http://localhost"]
 
 
+def prepare_frontend(frontend_dir: Path) -> bool:
+    """Install and build the frontend unless an image already contains its assets."""
+    if os.environ.get("FPAC_FRONTEND_PREBUILT", "").strip() == "1":
+        print("Using prebuilt frontend assets.")
+        return True
+
+    npm = shutil.which("npm") or "npm"
+    for args, desc in [(["ci"], "ci"), (["run", "build"], "build")]:
+        print(f"Running npm {desc}...")
+        result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-audit
+            [npm, *args], cwd=frontend_dir, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print(f"npm {desc} failed: {result.stderr}")
+            return False
+    return True
+
+
 def check_port_available(port: int) -> bool:
     """Check if a port is available (nothing is actively listening on it)."""
     try:
@@ -214,20 +232,11 @@ class ProcessManager:
             )
 
             if not self.no_ui:
-                # Setup and start frontend
-                # npm is a .cmd shim on Windows, which can't be launched by bare
-                # name without a shell; resolve its full path (honors PATHEXT) so
-                # argument lists work on every platform.
-                npm = shutil.which("npm") or "npm"
-                for args, desc in [(["ci"], "ci"), (["run", "build"], "build")]:
-                    print(f"Running npm {desc}...")
-                    result = subprocess.run(  # nosemgrep: dangerous-subprocess-use-audit
-                        [npm, *args], cwd=frontend_dir, capture_output=True, text=True
-                    )
-                    if result.returncode != 0:
-                        print(f"npm {desc} failed: {result.stderr}")
-                        return 1
+                if not prepare_frontend(frontend_dir):
+                    return 1
 
+                # npm may be a .cmd shim on Windows; resolve it without a shell.
+                npm = shutil.which("npm") or "npm"
                 self.frontend_process = self.start_process(
                     [npm, "run", "start"],
                     "frontend",
