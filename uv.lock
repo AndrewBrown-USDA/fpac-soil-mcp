@@ -16,9 +16,6 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
-[options]
-exclude-newer = "2026-11-17T00:00:00Z"
-
 [[package]]
 name = "aiofile"
 version = "3.12.3"
