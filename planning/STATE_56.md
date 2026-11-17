@@ -27,7 +27,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 5 | 56.5.1 A: Edit-mode changes update attached geometry | done | bc41661 | Corridor Edit inert (Discovered) |
 | 6 | 56.6.1 B1: chat-scoped AOI/corridor context | done | 72ccf93 | Cold-start warm-up proposed |
 | 7 | 56.7.1 B2: drop late results; abort outline | done | 9d4f37d | fakeGeo map shape fixed |
-| 8 | 56.8.1 C: Undo / Clear / Detach symmetry | pending | | |
+| 8 | 56.8.1 C: Undo / Clear / Detach symmetry | done | b039852 | User: Undo AOI-only |
 | 9 | 56.9.1 Integrated validation and ADR sweep | pending | | |
 | 10 | 56.10.1 Post-SDA manual and deployed checks | pending | | Non-blocking; trigger: SDA available |
 | 11 | 56.11.1 Discovered: keep geometry out of request logs | pending | | User: low priority; after all other waves |
@@ -124,6 +124,16 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 - Fix: `ShowOnMapButton.tsx` and `IdentifyPopup.tsx` (`AreaActions`) record chat id + `aoi_ref` at request start and drop the response if either changed (latest values from a ref); the outline uses a real `AbortController`, aborted on unmount (popup close); `MapPanel.tsx` resets corridor screening on chat change. AOI screening unchanged (already guarded).
 - Fixture: test-only Show on map button bound to the current AOI, `data-shown` probe, `__mapJumpTo` camera hook. Spec: `fakeGeo` map layer fixed to `inline_geojson` + `feature_collection` (the old `inline` + `data` was dropped by `inlineLayers`, the Wave 1 gotcha); `pasteAoi` opens the panel only when closed.
 - Tests: 8 new aoi-state cases. Negative check: the 5 late-result/abort cases fail on old code; control, null notice (moved from 56.3.2), AOI screening regression pass.
+
+## 56.8.1
+- Decision (user 2026-11-17): keep Undo AOI-only; corridor C = chip Detach through `clearCorridor` (TRIAGE_56 option b). Resolves the D6 open call.
+- Status: done, b039852 `fix(map): make AOI undo restore the previous AOI exactly`.
+- Fix: new pure `aoiHistory.ts` (`replaceAoi`, `undoAoi`); `ActiveAoiContext` keeps `previous` per chat (in memory), routes `setGeometry` and cross-detach through it, exposes `canUndo`/`undo` (undo fires the AOI attach event, so it detaches a corridor); `MapPanel` drops local `previousAoi`, Undo disabled when `noChat || !canUndo`; corridor chip Detach fires `CORRIDOR_DETACH_EVENT`, `MapPanel` runs `clearCorridor`.
+- Behaviour change: Undo after the first AOI (a hidden clear) is now disabled; Clear is undoable instead.
+- Tests: Node 4 new, aoi-state 4 new; negative check: all 4 Playwright cases fail on old code.
+
+## Wave 8 gate
+- Committed tree (b039852): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 50/50; chat-geometry 3/3; local-auth 1/1; aoi-state 23/23; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3.
 
 ## Wave 7 gate
 - Committed tree (9d4f37d): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 46/46; chat-geometry 3/3; local-auth 1/1; aoi-state 19/19; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3.
