@@ -191,8 +191,10 @@ frontend file and every added frontend path is listed in ADR 0015
 - **Spec:** Implement D3: when a screening for ref R ends with
   `display.error == 'screening_failed'`, attach its `chat_summary` to R (no-op
   if R is no longer attached). A valid result without a notice is still never
-  attached. Corridor: a response with a null notice shows the invalid-notice
-  message and is never treated as valid. Test with faked responses only.
+  attached. Corridor (per TRIAGE_56): a response with a null notice shows the
+  invalid-notice message (today `useCorridorScreening.ts` L41 turns it into a
+  generic error) and is never treated as valid; corridor screening has no
+  `chat_summary`, so no corridor summary work. Test with faked responses only.
 - **Acceptance:** Node test and `npm run test:aoi-state` cases for missing
   notice (AOI and corridor) and failed summary pass; `make app-frontend-check`.
 
@@ -229,7 +231,11 @@ frontend file and every added frontend path is listed in ADR 0015
 - **Spec:** Choose per the issue: either disable midpoints and vertex delete, or
   apply Terra Draw's saved-change event in Edit mode through `replaceAoi` (AOI)
   and the corridor attach path. Record the choice and why in the task notes.
-  Dragging still works. Pure logic goes in a tested helper.
+  Dragging still works. Pure logic goes in a tested helper. Corridor (per
+  TRIAGE_56): test-only. Its `change` handler already re-attaches on every
+  change; add a test that a drag in Edit corridor keeps the attached corridor
+  in sync. If Edit corridor cannot edit anything (select mode at L308 has no
+  flags), record that under Discovered; do not fix it here.
 - **Acceptance:** Node test for the helper; aoi-state and corridor-map
   Playwright cases: drag, vertex delete, midpoint insert each leave map shape
   equal to attached geometry; `make app-frontend-check`.
@@ -246,7 +252,9 @@ frontend file and every added frontend path is listed in ADR 0015
 - **Spec:** Chat sets `chatId` to null when it unmounts; providers accept null;
   the map disables AOI and corridor input while `chatId` is null. Switching
   chats never writes another chat's storage; the new-chat flow keeps its
-  geometry.
+  geometry. Corridor (per TRIAGE_56): keep the existing draft-chat guard
+  (`corridorDraftChatId`, about L684/L721); additionally disable corridor
+  drawing, clear, remove and chip detach while `chatId` is null.
 - **Acceptance:** Playwright: draw during "no chat" is blocked; switch A -> B ->
   A preserves each chat's AOI and corridor; new-chat keeps geometry;
   `make app-frontend-check`.
@@ -262,8 +270,10 @@ frontend file and every added frontend path is listed in ADR 0015
   `MapPanel.tsx` `applyAreaAsAoi`, `screenedRef`.
 - **Spec:** Record `chatId` and geometry ref when a request starts; read current
   values from a ref after `await`; drop the result if either changed. Abort the
-  outline request when the popup closes or unmounts. Same for corridor
-  screening.
+  outline request when the popup closes or unmounts. Scope (per TRIAGE_56):
+  Show on map, the Use-as-AOI outline, and corridor screening across a chat
+  switch. AOI screening is already guarded (`useScreening.ts` requestId +
+  `setSummary` ref check): add a regression test only, no code change.
 - **Acceptance:** Playwright with delayed fakes: switch chat / replace AOI
   before the response -> nothing applied; popup close aborts the route;
   `make app-frontend-check`.
@@ -278,8 +288,10 @@ frontend file and every added frontend path is listed in ADR 0015
   L946); provider `setGeometry` / `detach`.
 - **Spec:** Save the previous full context (ref, geometry, summary) and restore
   it as-is. Chip Detach goes through the Clear path and is undoable. Undo is
-  disabled with nothing to restore. Corridor scope per triage (G57 decides
-  whether this adds a corridor Undo).
+  disabled with nothing to restore. Corridor scope: the user decides before
+  Wave 8 between (a) a corridor Undo that restores the previous full context
+  with a stable `corridor_ref`, or (b) Detach via `clearCorridor` only
+  (TRIAGE_56 C-corridor).
 - **Acceptance:** Node test on the provider restore; Playwright: undo restores
   same `aoi_ref` and summary; detach -> undo restores; Undo disabled when
   empty; `make app-frontend-check`.
