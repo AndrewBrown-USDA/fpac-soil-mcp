@@ -8,6 +8,7 @@ RUN npm ci --omit=dev
 COPY eval/fpac_soil_mcp_harness/server.js ./server.js
 COPY eval/fpac_soil_mcp_harness/lib ./lib
 COPY eval/fpac_soil_mcp_harness/public ./public
+COPY eval/common /common
 COPY eval/eval_cases.v1.json ./eval_cases.v1.json
 
 ENV NODE_ENV=production \

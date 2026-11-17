@@ -3,7 +3,6 @@ FROM node:22-bookworm-slim AS node
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
 COPY --from=node /usr/local/ /usr/local/
-COPY --from=ghcr.io/astral-sh/uv:python3.11-bookworm-slim /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -21,7 +20,7 @@ RUN uv sync --frozen --no-install-project
 
 COPY . .
 RUN uv sync --frozen && \
-    npm --prefix frontend ci && \
+    npm --prefix frontend ci --include=dev && \
     npm --prefix frontend run build
 
 RUN apt-get update && \
