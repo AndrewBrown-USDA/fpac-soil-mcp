@@ -23,7 +23,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 2 | 56.2.2 Record the notice rule in ADR 0016 | done | 07d950b | Markdown only; ADR 0003 unchanged |
 | 3 | 56.3.1 D backend: notice from MCP only | done | a3e04d2 | pytest 305 |
 | 3 | 56.3.2 D frontend: invalid-notice display; attach failed summary | done | 84a43ba | Show-on-map test moved to 56.7.1 |
-| 4 | 56.4.1 E: keep geometry context through stream retry | pending | | |
+| 4 | 56.4.1 E: keep geometry context through stream retry | done | 430a200 | Reproduced, then fixed |
 | 5 | 56.5.1 A: Edit-mode changes update attached geometry | pending | | |
 | 6 | 56.6.1 B1: chat-scoped AOI/corridor context | pending | | |
 | 7 | 56.7.1 B2: drop late results; abort outline | pending | | |
@@ -73,3 +73,16 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 ## Wave 3 gate
 - Committed tree (84a43ba archive): `make app-check` ruff clean, pytest 305 passed; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 44/44; corridor-map 3/3; map-toolbar 10/10.
 - aoi-state: first run after fresh `npm ci`/build 5 passed, 1 failed (test not captured); 3 reruns with `--retries=0` 6/6 each. Treated as a cold-start flake like the baseline corridor-map one; watch in Wave 4.
+
+## 56.4.1
+- Status: done, 430a200 `fix(chat): keep map geometry context through the stream fallback`.
+- Bug real: the stream is teed into the resume cache and keeps running after the client disconnects; `res.on('close')` released both keys, so a later `generateText` fallback sent no `active_aoi` / `active_corridor`.
+- Repro: extracted `bindRequestGeometry` with the old behaviour; new test (real registry + real `databricksFetch`, stubbed `fetch`) failed on the missing `active_aoi`, while the pre-release assertion in test 2 passed (injection itself worked).
+- Fix: `bindRequestGeometry(body)` returns headers + idempotent `release()`; released in `execute` `finally` and the route's `catch`; no `close` listener.
+- Tests: `test:chat-geometry` 3/3 (needs `--test-force-exit`: importing `chat.ts` leaves open handles); local-auth 1/1; Node 44/44; `make app-frontend-check` 0 errors, 10 warnings; server `tsc --noEmit` 2 errors before and after, none in touched files.
+- Deviations: route-level test not used (needs OAuth provider, host, mock server); `execute` body left at upstream indentation inside the new `try` (ADR 0015 minimal diff).
+- Discovered: `databricksFetch` logs the full request body (`Databricks request:`), including `custom_inputs.active_aoi` geometry. Needs a user decision.
+
+## Wave 4 gate
+- Committed tree (430a200 archive): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 44/44; chat-geometry 3/3; local-auth 1/1; corridor-map 3/3; map-toolbar 10/10.
+- aoi-state: cold run 5/6. Failing test now identified: the first test, `getByRole('button', { name: 'Polygon' })` still disabled at the 5 s expect timeout while the cold Vite server loads the map. Warm rerun 6/6. Likely the same cause as the Wave 3 and baseline corridor-map cold-run failures (those were not captured). Proposed test-only fix: a longer timeout on the initial map-ready wait in the fixture specs (needs user approval; not in any task scope).
