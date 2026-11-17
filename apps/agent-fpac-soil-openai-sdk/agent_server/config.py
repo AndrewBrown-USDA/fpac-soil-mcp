@@ -20,6 +20,7 @@ DEFAULT_LOCAL_LLM_BASE_URL = "http://127.0.0.1:8090/v1"
 DEFAULT_LOCAL_MLFLOW_TRACKING_URI = (
     Path.home() / ".local" / "share" / "fpac-soil" / "mlflow" / "mlflow.db"
 )
+LOCAL_MCP_HOSTS = {"localhost", "127.0.0.1", "::1", "mcp"}
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system_prompt.txt"
 
@@ -98,8 +99,8 @@ def fpac_mcp_url(app_url_lookup: Callable[[str], str | None] | None = None) -> s
     if explicit:
         if local_dev_enabled():
             parsed = urlsplit(explicit)
-            if parsed.scheme != "http" or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
-                raise McpServerLookupError("FPAC_LOCAL_DEV requires a loopback HTTP FPAC_MCP_URL.")
+            if parsed.scheme != "http" or parsed.hostname not in LOCAL_MCP_HOSTS:
+                raise McpServerLookupError("FPAC_LOCAL_DEV requires a local HTTP FPAC_MCP_URL.")
         return explicit
     if local_dev_enabled():
         raise McpServerLookupError("FPAC_LOCAL_DEV requires an explicit FPAC_MCP_URL.")
