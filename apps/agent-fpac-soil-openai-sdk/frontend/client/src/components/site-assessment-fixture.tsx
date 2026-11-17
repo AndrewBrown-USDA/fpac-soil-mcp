@@ -72,7 +72,11 @@ const replacementGeometry: PolygonGeometry = {
 };
 
 function MapFixture() {
-  const { activeAoi, setGeometry, detach } = useActiveAoi();
+  const { activeAoi, setChatId, setGeometry, detach } = useActiveAoi();
+  // AOI writes are ignored outside an open chat (issue #89 B1).
+  useEffect(() => {
+    setChatId('fixture-chat');
+  }, [setChatId]);
   const { shown, clear } = useMapResult();
   const [resultAoiRef, setResultAoiRef] = useState<string | null>(null);
   useEffect(() => {
