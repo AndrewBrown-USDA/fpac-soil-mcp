@@ -41,6 +41,15 @@ source_context: "EXECUTION_PLAN_40, EXECUTION_PLAN_42"
 > context from polygon `active_aoi`. A corridor may be screened directly from
 > the map or attached to chat; it never replaces or widens the AOI contract.
 
+> **Amended 2026-11-17 (Plan 56, issue #89).** The regulatory notice on map
+> results comes only from the MCP result. The app appends its not-prime
+> limitation sentence to an MCP notice but never substitutes it for a missing
+> one; a result without an MCP notice is returned with
+> `regulatory_notice: null` and shown as invalid, for polygon AOI, corridor and
+> "Show on map" results alike (ADR 0003). A failed AOI screening's
+> `chat_summary` is attached to the chat for the `aoi_ref` the screening
+> started with, so the next turn says the screening failed.
+
 ## Context and Problem Statement
 
 The agent app needs a map panel where a user draws or pastes an area of
@@ -187,6 +196,15 @@ carried in `active_aoi`.
   `tabular_csv`, `manifest`, free-text `limitations`, and any key containing
   `geom`, `coordinates`, `bbox` or `wkt`. Acres and percentages are rounded to
   one decimal; the text form is at most 2,000 characters.
+* **Regulatory notice:** `regulatory_notice` is the MCP result's notice with the
+  app's not-prime limitation sentence appended. If the MCP result has no
+  notice, the field is `null`; the browser shows "Regulatory notice missing -
+  treat this result as invalid" and never attaches that result's summary to
+  the chat. The same rule applies to `/api/geo/corridor` and `/api/geo/map`.
+* **Failed screening:** the `display.error` response's summary
+  (`status: "screening_failed"`) is attached to the AOI the screening started
+  with, replacing any earlier summary for that `aoi_ref`; if that AOI is no
+  longer attached, nothing is attached.
 * **Route lifecycle:** the route is stateless, does not log request bodies or
   MCP payloads (log hygiene), and creates no traces, so map-only screenings do
   not add traces without a chat session. `databricks_openai` decorates
