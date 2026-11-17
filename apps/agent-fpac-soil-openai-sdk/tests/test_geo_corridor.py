@@ -113,6 +113,19 @@ def _post(start_server, body):
     return client.post("/api/geo/corridor", json=body)
 
 
+def test_missing_mcp_notice_is_returned_as_none(start_server, install_mcp):
+    _, set_outcome = install_mcp
+    structured = {"map": MAP, "impact_breakdown": {}, "county_segments": [], "alternatives": []}
+    set_outcome(CallToolResult(content=[], structuredContent=structured, isError=False))
+
+    body = _post(start_server, CONTEXT).json()
+
+    # ADR 0016: no MCP notice means no notice; the limitation never stands in.
+    assert body["regulatory_notice"] is None
+    assert body["display"]["regulatory_notice"] is None
+    assert body["status"] == "preliminary_screening"
+
+
 def test_corridor_route_is_registered(start_server):
     assert "/api/geo/corridor" in [route.path for route in start_server.app.routes]
 
@@ -151,6 +164,7 @@ def test_response_is_allowlisted_bounded_and_preliminary(start_server, install_m
     assert body["status"] == "preliminary_screening"
     assert body["map"] == MAP
     assert body["regulatory_notice"].startswith(NOTICE)
+    assert body["regulatory_notice"].endswith(geo.NON_PRIME_LIMITATION)
     assert body["display"] == {
         "corridor_ref": CONTEXT["corridor_ref"],
         "status": "preliminary_screening",

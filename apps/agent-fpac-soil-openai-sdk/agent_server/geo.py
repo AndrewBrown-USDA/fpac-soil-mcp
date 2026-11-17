@@ -173,12 +173,17 @@ def _short_text(value: Any, limit: int = 120) -> str | None:
     return value[:limit]
 
 
-def _result_notice(value: Any) -> str:
-    """Keep the upstream notice while adding the not-prime interpretation limit."""
+def _result_notice(value: Any) -> str | None:
+    """Keep the MCP notice and add the not-prime interpretation limit.
+
+    The notice must come from the MCP result (ADR 0003, ADR 0016 amendment
+    2026-11-17). The limitation sentence never stands in for it: without an MCP
+    notice this returns None, so the browser shows the result as invalid.
+    """
     server_notice = _short_text(value, 800)
-    if server_notice:
+    if server_notice and server_notice.strip():
         return f"{server_notice} {NON_PRIME_LIMITATION}"[:1000]
-    return NON_PRIME_LIMITATION
+    return None
 
 
 def select_display_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
