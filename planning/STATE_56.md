@@ -21,8 +21,8 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 1 | 56.1.1 Triage issue #89 against main | done | 43691a2 | User approved spec changes; applied in de8c367 |
 | 2 | 56.2.1 Offline AOI-state test fixture | done | 8dbb325 | aoi-state 3/3; negative check fails as expected |
 | 2 | 56.2.2 Record the notice rule in ADR 0016 | done | 07d950b | Markdown only; ADR 0003 unchanged |
-| 3 | 56.3.1 D backend: notice from MCP only | pending | | |
-| 3 | 56.3.2 D frontend: invalid-notice display; attach failed summary | pending | | |
+| 3 | 56.3.1 D backend: notice from MCP only | done | a3e04d2 | pytest 305 |
+| 3 | 56.3.2 D frontend: invalid-notice display; attach failed summary | done | 84a43ba | Show-on-map test moved to 56.7.1 |
 | 4 | 56.4.1 E: keep geometry context through stream retry | pending | | |
 | 5 | 56.5.1 A: Edit-mode changes update attached geometry | pending | | |
 | 6 | 56.6.1 B1: chat-scoped AOI/corridor context | pending | | |
@@ -56,3 +56,20 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 
 ## Wave 2 gate
 - `make app-check` on the committed tree: ruff all checks passed; pytest 297 passed. Frontend gates as in 56.2.1. No regressions vs baseline.
+
+## 56.3.1
+- Status: done, a3e04d2 `fix(geo): require the MCP regulatory notice on map screening results`.
+- Change: `_result_notice` returns `str | None`; missing, blank or non-string notice -> `None` on screen, corridor and map routes. `failed_chat_summary` kept.
+- Tests: 3 geo files 80 passed; 8 new/changed tests fail against the old `geo.py` (negative check); `make app-check` 305 passed (297 + 8), ruff clean.
+- Deviations: blank (whitespace-only) notice also treated as missing.
+
+## 56.3.2
+- Status: done, 84a43ba `fix(map): attach failed screening summaries and flag missing corridor notices`.
+- Change: `useScreening.ts` `summaryToAttach` (valid+notice, or `screening_failed`); `MapPanel.tsx` summary effect uses it; `useCorridorScreening.ts` keeps null-notice results (results view shows invalid message). No change needed in `ScreeningResults.tsx` / `CorridorScreeningResults.tsx`.
+- Tests: new `useScreening.test.ts` + `useCorridorScreening.test.ts` 8/8; Node total 44/44; aoi-state 6/6 (3 new); corridor-map 3/3; `make app-frontend-check` 659 files, 0 errors, 10 warnings, build OK.
+- Negative check (old product code, new spec): failed-summary and corridor-null-notice cases fail; AOI missing-notice case passes (guards existing behavior).
+- Deviations: Show-on-map null-notice test moved to 56.7.1 (fixture does not mount `ShowOnMapButton`; fixture outside scope); plan updated.
+
+## Wave 3 gate
+- Committed tree (84a43ba archive): `make app-check` ruff clean, pytest 305 passed; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 44/44; corridor-map 3/3; map-toolbar 10/10.
+- aoi-state: first run after fresh `npm ci`/build 5 passed, 1 failed (test not captured); 3 reruns with `--retries=0` 6/6 each. Treated as a cold-start flake like the baseline corridor-map one; watch in Wave 4.

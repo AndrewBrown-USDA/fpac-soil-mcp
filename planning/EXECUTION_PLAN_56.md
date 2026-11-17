@@ -197,8 +197,8 @@ frontend file and every added frontend path is listed in ADR 0015
   `chat_summary`, so no corridor summary work. "Show on map" results with a
   null notice also show the invalid-notice message (ADR 0016 amendment
   2026-11-17). The message already exists at `MapPanel.tsx` L1124-1131
-  (`shown.regulatory_notice`), so this part is a test only (fake
-  `/api/geo/map` with a null notice). Test with faked responses only.
+  (`shown.regulatory_notice`); its test moved to 56.7.1 (the aoi-state
+  fixture does not mount `ShowOnMapButton`). Test with faked responses only.
 - **Acceptance:** Node test and `npm run test:aoi-state` cases for missing
   notice (AOI and corridor) and failed summary pass; `make app-frontend-check`.
 
@@ -271,7 +271,9 @@ frontend file and every added frontend path is listed in ADR 0015
 - **Files in scope:** `ShowOnMapButton.tsx`, `IdentifyPopup.tsx`, `identify.ts`
   only if the signal plumbing needs it, `MapPanel.tsx` (`applyAreaAsAoi`,
   screening result effects), `useScreening.ts`, `useCorridorScreening.ts`,
-  focused tests, `tests/aoi-state/aoi-state.spec.ts`; ADR 0015.
+  focused tests, `tests/aoi-state/aoi-state.spec.ts`,
+  `client/src/components/map/aoi-state-fixture.tsx` (mount a test-only
+  `ShowOnMapButton`); ADR 0015.
 - **Anchors:** `ShowOnMapButton.tsx` `run` / `fetch('/api/geo/map'` (L107);
   `IdentifyPopup.tsx` L89 (`new AbortController().signal`);
   `MapPanel.tsx` `applyAreaAsAoi`, `screenedRef`.
@@ -281,9 +283,11 @@ frontend file and every added frontend path is listed in ADR 0015
   Show on map, the Use-as-AOI outline, and corridor screening across a chat
   switch. AOI screening is already guarded (`useScreening.ts` requestId +
   `setSummary` ref check): add a regression test only, no code change.
+  Also (moved from 56.3.2): a Show-on-map result with a null notice shows the
+  invalid-notice message (`MapPanel.tsx` L1124-1131); test only.
 - **Acceptance:** Playwright with delayed fakes: switch chat / replace AOI
   before the response -> nothing applied; popup close aborts the route;
-  `make app-frontend-check`.
+  Show-on-map null notice -> invalid-notice message; `make app-frontend-check`.
 
 ### 56.8.1 - C: Undo / Clear / Detach symmetry
 
