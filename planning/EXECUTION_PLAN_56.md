@@ -73,6 +73,7 @@ autofix scripts.
 | 8 | 56.8.1 | C: Undo / Clear / Detach symmetry | 56.5.1, 56.7.1 | `ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`, `MapPanel.tsx`, `ActiveAoiChip.tsx`, tests, ADR 0015/0016 |
 | 9 | 56.9.1 | Integrated validation and ADR sweep | 56.3.1-56.8.1 (incl. 56.3.2) | `planning/STATE_56.md`, ADR 0015/0016 wording only |
 | 10 | 56.10.1 | Post-SDA manual and deployed checks (non-blocking) | 56.9.1, SDA available | `planning/STATE_56.md`, `planning/evidence/` |
+| 11 | 56.11.1 | Discovered: keep geometry out of request logs | all other waves | `providers-server.ts`, `chat-geometry-release.test.ts`, ADR 0015 |
 
 Waves 3 and 4 are independent of each other (issue: "D and E can be done in
 parallel") but both edit ADR 0015, so they are sequenced. Waves 5-8 follow the
@@ -321,3 +322,20 @@ frontend file and every added frontend path is listed in ADR 0015
 - **Spec:** User-run or user-approved: browser pass on chat switch, late
   results, undo/detach, missing-notice display, against the dev app; CI on the
   PR. Record evidence in `planning/evidence/56.10.1-manual.md`.
+
+### 56.11.1 - Discovered: keep geometry out of request logs
+
+- **Origin:** found in 56.4.1. The user (2026-11-17): not a priority; add only
+  because the fix is small; run after all other waves.
+- **Files in scope:** `frontend/packages/ai-sdk-providers/src/providers-server.ts`
+  (request log only), `frontend/server/src/routes/chat-geometry-release.test.ts`;
+  ADR 0015.
+- **Anchors:** `providers-server.ts` `databricksFetch` `console.log(
+  'Databricks request:'` (about L191).
+- **Spec:** In the logged copy only, replace `custom_inputs.active_aoi` and
+  `active_corridor` with their refs (`aoi_ref`, `corridor_ref`); the sent body
+  is unchanged. Out of scope: `LOG_SSE_EVENTS` response logging (off by
+  default) and the raw-body log path (no injected context).
+- **Acceptance:** a test captures `console.log` and finds no coordinates while
+  the sent body still carries both; `npm run test:chat-geometry`;
+  `make app-frontend-check`.

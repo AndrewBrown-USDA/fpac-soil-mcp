@@ -30,6 +30,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 8 | 56.8.1 C: Undo / Clear / Detach symmetry | pending | | |
 | 9 | 56.9.1 Integrated validation and ADR sweep | pending | | |
 | 10 | 56.10.1 Post-SDA manual and deployed checks | pending | | Non-blocking; trigger: SDA available |
+| 11 | 56.11.1 Discovered: keep geometry out of request logs | pending | | User: low priority; after all other waves |
 
 ## Task Reports
 
@@ -81,7 +82,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 - Fix: `bindRequestGeometry(body)` returns headers + idempotent `release()`; released in `execute` `finally` and the route's `catch`; no `close` listener.
 - Tests: `test:chat-geometry` 3/3 (needs `--test-force-exit`: importing `chat.ts` leaves open handles); local-auth 1/1; Node 44/44; `make app-frontend-check` 0 errors, 10 warnings; server `tsc --noEmit` 2 errors before and after, none in touched files.
 - Deviations: route-level test not used (needs OAuth provider, host, mock server); `execute` body left at upstream indentation inside the new `try` (ADR 0015 minimal diff).
-- Discovered: `databricksFetch` logs the full request body (`Databricks request:`), including `custom_inputs.active_aoi` geometry. Needs a user decision.
+- Discovered: `databricksFetch` logs the full request body (`Databricks request:`), including `custom_inputs.active_aoi` geometry. User (2026-11-17): not a priority; small fix, so added as 56.11.1 after all other waves.
 
 ## Wave 4 gate
 - Committed tree (430a200 archive): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 44/44; chat-geometry 3/3; local-auth 1/1; corridor-map 3/3; map-toolbar 10/10.
