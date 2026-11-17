@@ -24,7 +24,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 3 | 56.3.1 D backend: notice from MCP only | done | a3e04d2 | pytest 305 |
 | 3 | 56.3.2 D frontend: invalid-notice display; attach failed summary | done | 84a43ba | Show-on-map test moved to 56.7.1 |
 | 4 | 56.4.1 E: keep geometry context through stream retry | done | 430a200 | Reproduced, then fixed |
-| 5 | 56.5.1 A: Edit-mode changes update attached geometry | pending | | |
+| 5 | 56.5.1 A: Edit-mode changes update attached geometry | done | bc41661 | Corridor Edit inert (Discovered) |
 | 6 | 56.6.1 B1: chat-scoped AOI/corridor context | pending | | |
 | 7 | 56.7.1 B2: drop late results; abort outline | pending | | |
 | 8 | 56.8.1 C: Undo / Clear / Detach symmetry | pending | | |
@@ -87,3 +87,13 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 ## Wave 4 gate
 - Committed tree (430a200 archive): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 44/44; chat-geometry 3/3; local-auth 1/1; corridor-map 3/3; map-toolbar 10/10.
 - aoi-state: cold run 5/6. Failing test now identified: the first test, `getByRole('button', { name: 'Polygon' })` still disabled at the 5 s expect timeout while the cold Vite server loads the map. Warm rerun 6/6. Likely the same cause as the Wave 3 and baseline corridor-map cold-run failures (those were not captured). Proposed test-only fix: a longer timeout on the initial map-ready wait in the fixture specs (needs user approval; not in any task scope).
+
+## 56.5.1
+- Status: done, bc41661 `fix(map): keep Edit-mode AOI changes attached`.
+- Root cause (differs from triage): Terra Draw 1.39 select mode already fires `finish` for drag, midpoint insert and vertex delete, but the `finish` handler removed every other snapshot feature, including Terra Draw's selection-point and midpoint features. After the first edit, midpoint/delete hit missing ids ("No feature with this id") and the AOI stopped updating.
+- Fix: pure `mapControls.ts` `aoiFeaturesToRemove` (select finish -> nothing; draw finish -> previous polygon/rectangle only); `MapPanel.tsx` `finish` uses it. Edits still go through `replaceAoi` (new ref, summary dropped; ref stability is item C).
+- Tests: Node 46/46 (2 new); new aoi-state Edit case (draw at known pixels, drag / midpoint / delete, no page errors); fails twice on old `MapPanel.tsx` at the midpoint step (expected 6 vertices, got 5). Corridor guard test: Edit corridor drag leaves the stored corridor unchanged.
+- Discovered: Edit corridor cannot edit (select mode has no flags), so the button does nothing; needs a product decision. Cold-start flake also seen in 3 of 7 cold probe runs, even with a 30 s wait.
+
+## Wave 5 gate
+- Committed tree (bc41661): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 46/46; chat-geometry 3/3; local-auth 1/1; corridor-map 4/4; map-toolbar 10/10; aoi-state 7/7 (gate run). An earlier working-copy run had the first aoi-state test fail on the cold map-ready wait.
