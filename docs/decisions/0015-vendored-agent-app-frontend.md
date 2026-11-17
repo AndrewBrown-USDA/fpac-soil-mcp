@@ -127,6 +127,13 @@ to upstream for every file this repo has not changed.
   the one mutually exclusive attached AOI or corridor without exposing coordinates.
 * `tests/map-toolbar/toolbar.spec.ts`: covers the unified geometry panel and its
   accessible import/export actions.
+* `client/src/components/map/IdentifyPopup.tsx`, `identify.ts`, and `MapPanel.tsx`:
+  offer compact Exact/BBOX AOI actions for county and urban areas, with exact
+  geometry disabled above the AOI vertex cap and county GEOID retained separately.
+* `client/src/components/map/GeoJsonInput.tsx`, `MapPanel.tsx`,
+  `tests/map-toolbar/toolbar.spec.ts`, and `tests/map-legend/legend.spec.ts`:
+  replace the geometry-transfer disclosure with four compact horizontal actions;
+  Paste reveals its editor inline.
 * `client/src/components/map/corridor-map-fixture.tsx` and
   `tests/corridor-map/corridor-map.spec.ts`: mount both active-geometry providers
   and the shared chat chip; exercise real polygon/corridor attachment, AOI
@@ -217,6 +224,29 @@ Modified upstream files:
   `tests/corridor-map/corridor-map.spec.ts`, and
   `client/src/components/map/map-legend-fixture.tsx`: cover the control,
   results, legend, and corridor layout behavior above.
+* `client/src/components/map/MapPanel.tsx`, `Legend.tsx`, and
+  `farmlandClasses.ts`: keep the core farmland legend available without map
+  results, render a restrained two-stroke AOI boundary above result polygons,
+  and match the server's diagonal farmland hatch styles. Corridor actions stay
+  inline after measurement and are disabled outside Corridor mode.
+* `tests/map-legend/legend.spec.ts` and `tests/map-toolbar/toolbar.spec.ts`:
+  cover the no-result and AOI-cleared core legend, farmland hatch direction,
+  AOI boundary visibility, and inline/mode-dependent corridor actions.
+* `client/src/components/map/IdentifyPopup.tsx`, `MapPanel.tsx`,
+  `OverlayControl.tsx`, `overlays.ts`, `geojson.ts`, and `identify.test.ts`,
+  plus `tests/map-toolbar/toolbar.spec.ts`: validate returned county geometry
+  before popup area calculations; Exact/BBOX actions retry outline retrieval on
+  selection, sit beside name/GEOID, remove context disclaimers, report
+  exact-outline size limits after selection, and cover Hamilton County identify
+  with synthetic TIGERweb Polygon and AOI replacement.
+* `client/src/components/map/MapPanel.tsx`,
+  `client/src/components/map/map-toolbar-fixture.tsx`, and
+  `tests/map-toolbar/toolbar.spec.ts`: decouple result-layer visibility from
+  camera fitting, re-fit the AOI only when the Map tab is visible, and cover
+  map-center stability and AOI recentering after Results. The isolated fixture
+  exposes a camera probe for these browser assertions; its Firefox stress case
+  captures console/page errors and network status while cycling CDL and retrying
+  a failed/delayed screening request.
 * `client/src/components/map/MapResultContext.tsx` and
   `client/src/components/map/ShowOnMapButton.tsx`: pass the original CDL tool
   result through the existing map-result context without requesting it again

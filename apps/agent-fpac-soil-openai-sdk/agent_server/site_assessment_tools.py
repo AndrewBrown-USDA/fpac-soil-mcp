@@ -16,8 +16,9 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
         name_override="get_site_assessment_question",
         failure_error_function=None,
         description_override=(
-            "Return one authoritative Site Assessment question, citation, resource-defined "
-            "answer choices, and point schedule. Ask one criterion at a time."
+            "Before presenting each Site Assessment criterion, call this tool with its number. "
+            "Return that authoritative question, citation, resource-defined answer choices, "
+            "and point schedule. Do not compose or reuse questions or choices from memory."
         ),
     )
     async def get_site_assessment_question(criterion_number: int) -> str:

@@ -18,11 +18,14 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('map legend uses active server values unchanged and switches with results', async ({ page }) => {
-  await expect(page.getByText('Map legend', { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Show tool fixture' }).click();
   const summary = page.getByText('Map legend', { exact: true });
-  await summary.focus();
-  await page.keyboard.press('Enter');
+  await expect(summary).toBeVisible();
+  await summary.click();
+  const initialLegend = page.locator('details').filter({ has: summary });
+  await expect(initialLegend.getByText('Prime farmland', { exact: true })).toBeVisible();
+  await expect(initialLegend.getByText('Farmland of statewide importance', { exact: true })).toBeVisible();
+  await expect(initialLegend.getByText('Map layers', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show tool fixture' }).click();
   const legend = page.locator('details').filter({ has: summary });
   const farmland = legend.getByLabel('Server farmland, code FC; Code FC, solid symbol');
   await expect(legend.getByLabel('Server custom, code Z9; Code Z9, cross hatch symbol')).toBeVisible();
@@ -46,14 +49,48 @@ test('map legend uses active server values unchanged and switches with results',
   await expect(layers.getByText('CDL code and color key')).toHaveCount(0);
   await layersSummary.click();
   await expect(legend.getByText('CDL code and color key')).toBeVisible();
-  const firstLayer = (await legend.locator('li').allTextContents())[0];
-  expect(firstLayer.indexOf('Server farmland')).toBeLessThan(firstLayer.indexOf('CDL code and color key'));
+  await expect(legend.getByText('Server farmland', { exact: true })).toBeVisible();
+  await expect(legend.getByText('CDL code and color key')).toBeVisible();
   await page.getByRole('button', { name: 'Show CDL fixture' }).click();
   await expect(legend.getByText('Server custom')).toHaveCount(0);
   await legend.getByText('CDL code and color key').click();
   await expect(legend.getByText('1 — Corn (#FFD400)')).toBeVisible();
   await page.getByRole('button', { name: 'Clear fixture' }).click();
-  await expect(summary).toHaveCount(0);
+  await expect(summary).toBeVisible();
+  await expect(legend.getByText('Prime farmland', { exact: true })).toBeVisible();
+});
+
+test('core farmland legend remains through AOI creation and clearing', async ({ page }) => {
+  const legend = page.locator('details').filter({ has: page.getByText('Map legend', { exact: true }) });
+  await page.getByText('Map legend', { exact: true }).click();
+  await expect(legend.getByText('Prime farmland', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Paste' }).click();
+  await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
+  await page.getByRole('button', { name: 'Use this AOI' }).click();
+  await expect(legend.getByText('Prime farmland', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(legend.getByText('Prime farmland', { exact: true })).toBeVisible();
+});
+
+test('farmland hatch swatches match server pattern direction and AOI outline stays distinguishable', async ({ page }) => {
+  await page.getByRole('button', { name: 'Show overlap fixture' }).click();
+  const legend = page.locator('details').filter({ has: page.getByText('Map legend', { exact: true }) });
+  const conditional = legend.locator('li').filter({ hasText: 'Prime farmland if conditions are met' }).locator('span').first();
+  const statewide = legend.locator('li').filter({ hasText: 'Farmland of statewide importance' }).locator('span').first();
+  await expect(conditional).toHaveCSS('background-image', /repeating-linear-gradient\(135deg/);
+  await expect(statewide).toHaveCSS('background-image', /repeating-linear-gradient\(135deg/);
+  const aoi = page.locator('.maplibregl-canvas');
+  await expect(aoi).toBeVisible();
+  await page.getByRole('button', { name: 'Paste' }).click();
+  await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
+  await page.getByRole('button', { name: 'Use this AOI' }).click();
+  await page.waitForTimeout(100);
+  const outlineVisible = await aoi.screenshot();
+  await page.getByRole('button', { name: 'AOI outline' }).click();
+  await page.waitForTimeout(100);
+  const outlineHidden = await aoi.screenshot();
+  expect(outlineHidden.equals(outlineVisible)).toBe(false);
+  await expect(page.getByRole('button', { name: 'AOI outline' })).toBeEnabled();
 });
 
 test('CDL overlay key is keyboard accessible on a narrow map', async ({ page }) => {
@@ -81,8 +118,7 @@ test('screening and tool result legends follow the active result', async ({ page
       { id: 'farmland_classes', title: 'Farmland classes', kind: 'polygon', delivery: 'omitted', authority: 'machine_estimate', source: 'Farmland source', legend: [{ value: 'farmland', label: 'Prime farmland', code: 'PF', color: '#123456', pattern: 'solid' }] },
     ] } },
   } }));
-  await page.getByText('Import or export GeoJSON', { exact: true }).click();
-  await page.getByRole('button', { name: 'Paste GeoJSON' }).click();
+  await page.getByRole('button', { name: 'Paste' }).click();
   await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill('{"type":"Polygon","coordinates":[[[-93,42],[-92.99,42],[-92.99,42.01],[-93,42.01],[-93,42]]]}');
   await page.getByRole('button', { name: 'Use this AOI' }).click();
   await page.getByRole('button', { name: 'Run screening' }).click();

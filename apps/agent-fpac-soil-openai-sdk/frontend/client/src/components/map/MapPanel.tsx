@@ -21,14 +21,14 @@ import ncssAcronymColor from '@/assets/ncss-acronym-color.png';
 import ncssAcronymWhite from '@/assets/ncss-acronym-white.png';
 import { GeoJsonInput } from './GeoJsonInput';
 import {
-  MAX_AOI_VERTICES,
-  countVertices,
   featureCollection,
+  countVertices,
   geometryBounds,
+  MAX_AOI_VERTICES,
   toPolygonGeometry,
 } from './geojson';
 import { IdentifyPopup, resultInfo } from './IdentifyPopup';
-import type { IdentifySection, ResultInfo, UseAsAoiResult } from './IdentifyPopup';
+import type { IdentifySection, ResultInfo } from './IdentifyPopup';
 import {
   fetchOutline,
   identifyOverlaysAtPoint,
@@ -38,7 +38,7 @@ import {
 import type { AreaInfo } from './identify';
 import type { PolygonGeometry } from './geojson';
 import { useActiveAoi } from './ActiveAoiContext';
-import { MapLegend } from './Legend';
+import { CoreFarmlandLegend, MapLegend } from './Legend';
 import { CDLLegend } from './CDLLegend';
 import { IDENTIFY_HIT_LAYER, clearMapBlock, inlineLayers, renderMapBlock } from './mapLayers';
 import { useMapResult } from './MapResultContext';
@@ -101,10 +101,13 @@ const lineCollection = (points: number[][]) => ({
 
 type MapPanelProps = {
   onCloseMap: () => void;
+  onMapReady?: (map: MapLibreMap) => void;
 };
 
-export function MapPanel({ onCloseMap }: MapPanelProps) {
+export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const onMapReadyRef = useRef(onMapReady);
+  onMapReadyRef.current = onMapReady;
   const mapRef = useRef<MapLibreMap | null>(null);
   const drawRef = useRef<TerraDraw | null>(null);
   const corridorDrawRef = useRef<TerraDraw | null>(null);
@@ -134,6 +137,8 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
   const [layersOpen, setLayersOpen] = useState(false);
   const [aoiVisible, setAoiVisible] = useState(true);
   const [resultsVisible, setResultsVisible] = useState(true);
+  const resultsVisibleRef = useRef(resultsVisible);
+  resultsVisibleRef.current = resultsVisible;
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<number[][]>([]);
   const [measurePreview, setMeasurePreview] = useState<number[] | null>(null);
@@ -229,12 +234,19 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     map.on('zoomend', () => setZoom(map.getZoom()));
 
     map.on('load', () => {
+      onMapReadyRef.current?.(map);
       map.addSource('aoi', { type: 'geojson', data: emptyCollection });
+      map.addLayer({
+        id: 'aoi-casing',
+        type: 'line',
+        source: 'aoi',
+        paint: { 'line-color': '#ffffff', 'line-width': 3.5, 'line-opacity': 0.8 },
+      });
       map.addLayer({
         id: 'aoi-line',
         type: 'line',
         source: 'aoi',
-        paint: { 'line-color': '#1f4e9c', 'line-width': 2.5 },
+        paint: { 'line-color': '#1f4e9c', 'line-width': 1.5, 'line-opacity': 0.95 },
       });
       map.addSource('measurement', { type: 'geojson', data: lineCollection([]) });
       map.addLayer({ id: 'measurement-line', type: 'line', source: 'measurement', paint: { 'line-color': '#d21f3c', 'line-width': 3, 'line-dasharray': [2, 1] } });
@@ -398,7 +410,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    setLayerVisibility(map.setLayoutProperty.bind(map), ['aoi-line'], aoiVisible);
+    setLayerVisibility(map.setLayoutProperty.bind(map), ['aoi-casing', 'aoi-line'], aoiVisible);
     const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
     setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
   }, [aoiVisible, resultsVisible, mapReady]);
@@ -472,15 +484,28 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     }
     clearMapBlock(map);
     if (shown.cdlSummary) {
+      return;
+    }
+    if (!shown.block) return;
+    // Server layers draw below both strokes of the panel's AOI outline.
+    renderMapBlock(map, shown.block, 'aoi-casing');
+    const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
+    setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisibleRef.current);
+  }, [shown, mapReady]);
+
+  // Fit only while the map tab is visible. Screening completion selects Results,
+  // where the map container is hidden and fitBounds can compute an offset center.
+  useEffect(() => {
+    if (!mapReady || activeTab !== 'map' || !shown) return;
+    const map = mapRef.current;
+    if (!map) return;
+    map.resize();
+    if (shown.cdlSummary) {
       const bounds = aoiRef.current ? geometryBounds(aoiRef.current) : null;
       if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
       return;
     }
     if (!shown.block) return;
-    // Server layers draw below the panel's own AOI outline (`aoi-line`).
-    renderMapBlock(map, shown.block, 'aoi-line');
-    const resultIds = (map.getStyle().layers ?? []).map((layer) => layer.id).filter((id) => id.startsWith('result-'));
-    setLayerVisibility(map.setLayoutProperty.bind(map), resultIds, resultsVisible);
     // Screening zooms to the AOI (urban areas are not clipped); a tool result zooms to
     // its layers (a corridor has no AOI).
     const bounds =
@@ -488,7 +513,7 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         ? geometryBounds(aoiRef.current)
         : (shown.block.bounds ?? null);
     if (bounds) map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
-  }, [shown, mapReady, resultsVisible]);
+  }, [shown, mapReady, activeTab]);
 
   // Add or remove overlays to match the toggles; a removed overlay forgets its error.
   useEffect(() => {
@@ -573,12 +598,23 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         controller.signal,
       )) {
         query
-          .then((found) => {
+          .then(async (found) => {
             if (controller.signal.aborted) return;
+            let sectionData = found;
+            if ('area' in found && found.area && isAreaOverlayId(overlayId)) {
+              try {
+                const areaGeometry = await fetchOutline(overlayId, found.area.geoid, controller.signal);
+                if (controller.signal.aborted) return;
+                sectionData = { ...found, areaGeometry };
+              } catch {
+                if (controller.signal.aborted) return;
+                sectionData = { ...found, areaGeometry: null };
+              }
+            }
             setSections((prev) =>
               prev.map((s) =>
                 s.overlay.id === overlayId
-                  ? { overlay: s.overlay, state: 'done' as const, ...found }
+                  ? { overlay: s.overlay, state: 'done' as const, ...sectionData }
                   : s,
               ),
             );
@@ -716,27 +752,19 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
     if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
   };
 
-  // Use as AOI: the exact outline, refused above the vertex cap (D6, never simplified).
-  const applyAreaAsAoi = async (section: IdentifySection, area: AreaInfo): Promise<UseAsAoiResult> => {
+  // Exact outlines are never simplified; enforce the vertex cap only after selection.
+  const applyAreaAsAoi = (section: IdentifySection, _area: AreaInfo, geometry: PolygonGeometry) => {
     const overlayId = section.overlay.id;
     if (overlayId === 'ssurgo') return { ok: false, message: 'Soil map units cannot be an AOI.' };
     if (!isAreaOverlayId(overlayId)) {
       return { ok: false, message: 'This context layer cannot be used as an AOI.' };
     }
-    const controller = new AbortController();
-    let geometry: PolygonGeometry | null = null;
-    try {
-      geometry = await fetchOutline(overlayId, area.geoid, controller.signal);
-    } catch {
-      return { ok: false, message: 'Could not load this outline. Try again later.' };
-    }
-    if (!geometry) return { ok: false, message: 'Could not load this outline. Try again later.' };
     const vertices = countVertices(geometry);
     if (vertices > MAX_AOI_VERTICES) {
-      return {
-        ok: false,
-        message: `This outline has ${vertices} vertices; the AOI limit is ${MAX_AOI_VERTICES}. Draw or paste a smaller AOI.`,
-      };
+      setAoiError(
+        `This outline has ${vertices} vertices; the AOI limit is ${MAX_AOI_VERTICES}. Draw or paste a smaller AOI.`,
+      );
+      return { ok: false, message: 'The exact outline exceeds the AOI vertex limit.' };
     }
     popupRef.current?.remove();
     onPasted(geometry);
@@ -906,45 +934,19 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               className="h-8 w-36 rounded border bg-background px-2 text-sm"
             />
           </label>
-          {mapMode === 'area' ? (
-          <>
-          <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>
-              Area of interest
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {toolButton('Polygon', 'polygon', Pentagon)}
-              {toolButton('Rectangle', 'rectangle', Square)}
-              {toolButton('Edit', 'select', MousePointer2)}
-              {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
-              {actionButton('Clear', Trash2, clear, !aoi)}
+          {mapMode === 'area' && (
+            <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
+              <span aria-hidden="true" className={groupLabel}>
+                Area of interest
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {toolButton('Polygon', 'polygon', Pentagon)}
+                {toolButton('Rectangle', 'rectangle', Square)}
+                {toolButton('Edit', 'select', MousePointer2)}
+                {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
+                {actionButton('Clear', Trash2, clear, !aoi)}
+              </div>
             </div>
-          </div>
-          </>
-          ) : (
-          <>
-          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>Corridor</span>
-            <div className="flex flex-wrap gap-1.5">
-              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), !mapReady)}
-              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), !mapReady)}
-              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, !mapReady)}
-              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), !mapReady)}
-              {actionButton(
-                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
-                MapIcon,
-                runCorridorScreening,
-                !corridorInput || corridorScreening.status === 'running',
-              )}
-              {actionButton(
-                'Clear corridor',
-                Trash2,
-                clearCorridor,
-                !corridorCenterline && !corridorAlternatives.length && !corridorStaging.length,
-              )}
-            </div>
-          </div>
-          </>
           )}
           <div role="group" aria-label="Map navigation and boundaries" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Map view</span>
@@ -961,6 +963,27 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
               <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
             </select>
             {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => { setMeasurePoints([]); setMeasurePreview(null); })}
+          </div>
+          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
+            <span aria-hidden="true" className={groupLabel}>Corridor</span>
+            <div className="flex flex-wrap gap-1.5">
+              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), mapMode !== 'corridor' || !mapReady)}
+              {actionButton(
+                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
+                MapIcon,
+                runCorridorScreening,
+                mapMode !== 'corridor' || !corridorInput || corridorScreening.status === 'running',
+              )}
+              {actionButton(
+                'Clear corridor',
+                Trash2,
+                clearCorridor,
+                mapMode !== 'corridor' || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
+              )}
+            </div>
           </div>
         </div>
         {mapMode === 'corridor' && (
@@ -1000,18 +1023,20 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
             onOpenChange={setLayersOpen}
             onToggle={toggleOverlay}
           />
-          {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && (
+          {(
             <details className="absolute top-2 left-2 z-10 max-w-[min(18rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                 <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
                 <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
-                  {shown.block && (
+                  <CoreFarmlandLegend />
+                  {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && <hr className="my-2" />}
+                  {shown?.block && (
                     <MapLegend
                       block={shown.block}
                       compact
                       contextLegend={shown.block.layers.some((layer) => layer.id === 'farmland_classes') && (shown.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
                     />
                   )}
-                  {(!shown.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown.cdlSummary || overlayOn.cdl) && <CDLLegend />}
+                  {(!shown?.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown?.cdlSummary || overlayOn.cdl) && <CDLLegend />}
                 </div>
               </details>
           )}
@@ -1030,24 +1055,23 @@ export function MapPanel({ onCloseMap }: MapPanelProps) {
         </div>
         {popupNode &&
           createPortal(
-            <IdentifyPopup result={resultHit} sections={sections} onUseAsAoi={applyAreaAsAoi} />,
+            <IdentifyPopup result={resultHit} sections={sections} onUseGeometry={applyAreaAsAoi} />,
             popupNode,
           )}
-        <details className="rounded-md border p-2" aria-label="Geometry GeoJSON transfer">
-        <summary className="cursor-pointer font-medium text-sm">Import or export GeoJSON</summary>
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="rounded-md border p-2">
+        <div className="flex flex-nowrap items-start gap-2" role="group" aria-label="AOI geometry transfer">
         <GeoJsonInput onGeometry={onPasted} />
-        <div className="flex flex-wrap items-end gap-2" role="group" aria-label="AOI GeoJSON export">
-          <Button type="button" size="sm" variant="default" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
-            <Copy aria-hidden="true" /> Copy GeoJSON
+        <div className="flex flex-nowrap items-center gap-2" role="group" aria-label="AOI geometry export">
+          <Button type="button" size="sm" variant="secondary" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
+            <Copy aria-hidden="true" /> Copy
           </Button>
-          <Button type="button" size="sm" variant="default" onClick={downloadAoi} disabled={!aoi} className="gap-1.5">
-            <Download aria-hidden="true" /> Download GeoJSON
+          <Button type="button" size="sm" variant="secondary" onClick={downloadAoi} disabled={!aoi} className="gap-1.5">
+            <Download aria-hidden="true" /> Download
           </Button>
           {aoiExportMessage && <span role="status" className="text-xs">{aoiExportMessage}</span>}
         </div>
         </div>
-        </details>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"
