@@ -25,7 +25,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 3 | 56.3.2 D frontend: invalid-notice display; attach failed summary | done | 84a43ba | Show-on-map test moved to 56.7.1 |
 | 4 | 56.4.1 E: keep geometry context through stream retry | done | 430a200 | Reproduced, then fixed |
 | 5 | 56.5.1 A: Edit-mode changes update attached geometry | done | bc41661 | Corridor Edit inert (Discovered) |
-| 6 | 56.6.1 B1: chat-scoped AOI/corridor context | pending | | |
+| 6 | 56.6.1 B1: chat-scoped AOI/corridor context | done | 72ccf93 | Cold-start warm-up proposed |
 | 7 | 56.7.1 B2: drop late results; abort outline | pending | | |
 | 8 | 56.8.1 C: Undo / Clear / Detach symmetry | pending | | |
 | 9 | 56.9.1 Integrated validation and ADR sweep | pending | | |
@@ -97,3 +97,13 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 
 ## Wave 5 gate
 - Committed tree (bc41661): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 46/46; chat-geometry 3/3; local-auth 1/1; corridor-map 4/4; map-toolbar 10/10; aoi-state 7/7 (gate run). An earlier working-copy run had the first aoi-state test fail on the cold map-ready wait.
+
+## 56.6.1
+- Status: done, 72ccf93 `fix(map): scope AOI and corridor context to the open chat`.
+- Fix: `chat.tsx` clears both chat ids on unmount; providers take `null` (no geometry, writes and cross-detach ignored, no attach event); `MapPanel.tsx` disables AOI/corridor drawing, paste (fieldset), Use-as-AOI, Undo, Clear and corridor removal with a status line, and leaves draw modes on chat loss. map-toolbar/map-legend fixtures set a chat id; aoi-state fixture adds Close fixture chat (test-only deviation).
+- New chat: `NewChatPage` keeps `Chat` mounted and switches the URL with `replaceState`, so the id never goes null; a remount reloads from sessionStorage.
+- Tests: 3 new aoi-state cases. Negative check: the no-chat and close-chat cases fail on the old code; A -> B -> A passes on old code (regression guard).
+- Discovered: single-test Playwright runs failed 3 of 3 at the first map-ready wait (always a cold load); cold load about 5 s, and about 1 in 5 cold loads hang until reload. Proposed: Playwright warm-up globalSetup (open fixture, wait up to 30 s, reload if needed). Suspected (not verified): re-entering a chat re-attaches a corridor draft under a new `corridor_ref` (item C).
+
+## Wave 6 gate
+- Committed tree (72ccf93): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 46/46; chat-geometry 3/3; local-auth 1/1; aoi-state 10/10; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2. No cold-start failure in the gate run.
