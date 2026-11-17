@@ -18,9 +18,9 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 
 | Wave | Task | Status | Commit | Notes |
 |---|---|---|---|---|
-| 1 | 56.1.1 Triage issue #89 against main | done | (this commit) | Triage gate open: spec changes listed in TRIAGE_56.md, awaiting user |
-| 2 | 56.2.1 Offline AOI-state test fixture | pending | | |
-| 2 | 56.2.2 Record the notice rule in ADR 0016 | pending | | |
+| 1 | 56.1.1 Triage issue #89 against main | done | 43691a2 | User approved spec changes; applied in de8c367 |
+| 2 | 56.2.1 Offline AOI-state test fixture | done | 8dbb325 | aoi-state 3/3; negative check fails as expected |
+| 2 | 56.2.2 Record the notice rule in ADR 0016 | done | 07d950b | Markdown only; ADR 0003 unchanged |
 | 3 | 56.3.1 D backend: notice from MCP only | pending | | |
 | 3 | 56.3.2 D frontend: invalid-notice display; attach failed summary | pending | | |
 | 4 | 56.4.1 E: keep geometry context through stream retry | pending | | |
@@ -40,3 +40,19 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 - Spot-check (orchestrator, independent grep): A-AOI select flags L259-272 and single `draw.on`; B2 `applyAreaAsAoi` L756, ShowOnMap `mapResult.show` L129; C-AOI `newAoiRef(), geometry, summary: null` L88; C-corridor `corridor_ref: corridorReference()` L693; E only server test is auth.test.ts. All match.
 - Deviations: 11 row headings (E combined; B split into B1/B2) instead of 10.
 - Gotchas: Playwright lib workaround above; corridor-map can flake on cold Vite start; user decision needed on corridor Undo before Wave 8.
+
+## 56.2.1
+- Status: done, 8dbb325 `test(map): add offline AOI and corridor state fixture`.
+- Files: new `client/aoi-state-fixture.html`, `client/src/components/map/aoi-state-fixture.tsx` (chat A/B buttons, `?chat=none`, hidden `fixture-state` probe), `playwright.aoi-state.config.ts` (port 5188), `tests/aoi-state/aoi-state.spec.ts` (`fakeGeo` with delayMs/fail/notice, `probe`, `pasteAoi`); `package.json` `test:aoi-state`; ADR 0015 entry.
+- Tests: `npm run test:aoi-state` 3/3; negative check (fake `notice: null`) makes the summary test fail 1/1 as expected; map-toolbar 10/10; corridor-map 3/3; `make app-frontend-check` 657 files, 0 errors, 10 warnings, build OK.
+- Deviations: none.
+- Gotchas: `map-toolbar-fixture.tsx` and `map-legend-fixture.tsx` mount `MapPanel` without setting a chat id (grep: 0 `setChatId`). Once 56.6.1 disables input when `chatId` is null, they need one; 56.6.1's file scope now includes both (plan updated). `fakeGeo`'s `/api/geo/map` layer shape is unchecked against `inlineLayers`; verify it before 56.3.2/56.7.1 rely on it.
+
+## 56.2.2
+- Status: done, 07d950b `docs(adr): require the MCP regulatory notice for map screening results`.
+- Files: ADR 0016 amendment blockquote (2026-11-17) and two `### Map screening route` bullets (Regulatory notice, Failed screening).
+- Checks: diff read against D2/D3; ADR 0003 L31/L35 require the notice on all primary screening responses, no contradiction, unchanged.
+- Deviations: the amendment names "Show on map" too; 56.3.2's spec now includes a Show-on-map null-notice test (message already at `MapPanel.tsx` L1124-1131).
+
+## Wave 2 gate
+- `make app-check` on the committed tree: ruff all checks passed; pytest 297 passed. Frontend gates as in 56.2.1. No regressions vs baseline.

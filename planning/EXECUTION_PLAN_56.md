@@ -194,7 +194,11 @@ frontend file and every added frontend path is listed in ADR 0015
   attached. Corridor (per TRIAGE_56): a response with a null notice shows the
   invalid-notice message (today `useCorridorScreening.ts` L41 turns it into a
   generic error) and is never treated as valid; corridor screening has no
-  `chat_summary`, so no corridor summary work. Test with faked responses only.
+  `chat_summary`, so no corridor summary work. "Show on map" results with a
+  null notice also show the invalid-notice message (ADR 0016 amendment
+  2026-11-17). The message already exists at `MapPanel.tsx` L1124-1131
+  (`shown.regulatory_notice`), so this part is a test only (fake
+  `/api/geo/map` with a null notice). Test with faked responses only.
 - **Acceptance:** Node test and `npm run test:aoi-state` cases for missing
   notice (AOI and corridor) and failed summary pass; `make app-frontend-check`.
 
@@ -245,7 +249,9 @@ frontend file and every added frontend path is listed in ADR 0015
 - **Files in scope:** `ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`,
   `frontend/client/src/components/chat.tsx`, `MapPanel.tsx` (input gating),
   `pages/ChatPage.tsx`/`NewChatPage.tsx` only if needed, focused tests,
-  `tests/aoi-state/aoi-state.spec.ts`; ADR 0015.
+  `tests/aoi-state/aoi-state.spec.ts`; `map-toolbar-fixture.tsx` and
+  `map-legend-fixture.tsx` (they mount `MapPanel` with no chat id and must set
+  one, per 56.2.1 report); ADR 0015.
 - **Anchors:** `setChatId` in both providers; `chat.tsx` L63-80
   (`setAoiChatId`, `activeAoiRef`, `setCorridorChatId`); `ChatPage.tsx`
   "Loading chat..." branch.
@@ -257,6 +263,7 @@ frontend file and every added frontend path is listed in ADR 0015
   drawing, clear, remove and chip detach while `chatId` is null.
 - **Acceptance:** Playwright: draw during "no chat" is blocked; switch A -> B ->
   A preserves each chat's AOI and corridor; new-chat keeps geometry;
+  `test:map-toolbar` and `test:map-legend` still pass;
   `make app-frontend-check`.
 
 ### 56.7.1 - B2: drop late results; abort outline
