@@ -421,6 +421,13 @@ Added paths:
   corridor layers and Terra Draw on `style.load` instead of `load`. `load`
   waits for every visible USGS basemap tile, so one hung tile left all drawing
   tools disabled (in the app, and in about 15% of Playwright fixture loads).
+* `client/src/components/map/ShowOnMapButton.tsx`, `IdentifyPopup.tsx`,
+  `MapPanel.tsx`, `aoi-state-fixture.tsx`, and `tests/aoi-state/aoi-state.spec.ts`:
+  late results are dropped (issue #89 B2). Show on map and the Use-as-AOI
+  outline record the chat id and AOI ref when the request starts and drop the
+  response if either changed; closing the identify popup aborts its outline
+  request; switching chats resets corridor screening so a run in flight is
+  dropped. The AOI-state fixture mounts a test-only Show on map button.
 
 ### Update procedure
 

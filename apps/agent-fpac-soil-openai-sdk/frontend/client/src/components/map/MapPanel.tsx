@@ -168,6 +168,13 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const screening = useScreening();
   const corridorScreening = useCorridorScreening();
   const { reset: resetScreening } = screening;
+  const { reset: resetCorridorScreening } = corridorScreening;
+  // A corridor screening belongs to the chat it started in: switching chats
+  // drops a run still in flight and its shown result (issue #89 B2).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on chat change
+  useEffect(() => {
+    resetCorridorScreening();
+  }, [chatId, resetCorridorScreening]);
   const previousScreeningStatus = useRef(screening.status);
   const attachedCorridorSignature = useRef('');
 

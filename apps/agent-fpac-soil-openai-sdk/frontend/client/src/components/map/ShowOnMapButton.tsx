@@ -32,6 +32,8 @@ function aoiRefs(input: unknown): string[] {
   );
 }
 
+const STALE_MESSAGE = 'This map result is stale because the chat or AOI changed while it loaded.';
+
 // Fixed messages per status; nothing from the arguments or response is shown or logged.
 function failureMessage(status: number): string {
   if (status === 400) return 'This tool call cannot be shown on the map.';
@@ -57,6 +59,10 @@ export function ShowOnMapButton({
   const [message, setMessage] = useState<string | null>(null);
   const activeAoi = aoiContext?.activeAoi ?? null;
   const refs = aoiRefs(input);
+  // The latest chat and AOI, read after each await: a response that lands after
+  // either changed is dropped (issue #89 B2).
+  const latest = useRef({ chatId: aoiContext?.chatId ?? null, aoiRef: activeAoi?.aoi_ref ?? null });
+  latest.current = { chatId: aoiContext?.chatId ?? null, aoiRef: activeAoi?.aoi_ref ?? null };
   const cdlAoiAtResult = useRef(
     tool === 'analyze_cdl_context' && activeAoi
       ? { aoi_ref: activeAoi.aoi_ref, geometry: activeAoi.geometry }
@@ -103,6 +109,13 @@ export function ShowOnMapButton({
     }
     setStatus('loading');
     setMessage(null);
+    const started = latest.current;
+    const stale = () => {
+      if (latest.current.chatId === started.chatId && latest.current.aoiRef === started.aoiRef) return false;
+      setStatus('error');
+      setMessage(STALE_MESSAGE);
+      return true;
+    };
     try {
       const response = await fetch('/api/geo/map', {
         method: 'POST',
@@ -115,12 +128,14 @@ export function ShowOnMapButton({
             : {}),
         }),
       });
+      if (stale()) return;
       if (!response.ok) {
         setStatus('error');
         setMessage(failureMessage(response.status));
         return;
       }
       const body = (await response.json()) as MapResponse;
+      if (stale()) return;
       if (!body.map || inlineLayers(body.map).length === 0) {
         setStatus('error');
         setMessage('No map layers came back for this result.');

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 // Offline AOI and corridor chat-state coverage (issue #89). Every geo request is
 // faked; no SDA, MCP or TIGERweb traffic leaves the browser.
@@ -64,7 +64,7 @@ async function fakeGeo(page: Page, options: FakeOptions = {}) {
     await hold();
     if (fail) return route.fulfill({ status: 502, json: { error: 'map_unavailable' } });
     await route.fulfill({ json: {
-      map: { bounds: [-93, 42, -92.99, 42.01], layers: [{ id: 'fake', title: 'Fake layer', kind: 'polygon', delivery: 'inline', data: { type: 'FeatureCollection', features: [] } }] },
+      map: { bounds: [-93, 42, -92.99, 42.01], layers: [{ id: 'fake', title: 'Fake layer', kind: 'polygon', delivery: 'inline_geojson', authority: 'reference_data', source: 'Fixture', legend: [], feature_collection: { type: 'FeatureCollection', features: [] } }] },
       regulatory_notice: notice,
     } });
   });
@@ -83,8 +83,10 @@ function probe(page: Page) {
 }
 
 async function pasteAoi(page: Page, geojson = SQUARE) {
-  await page.getByRole('button', { name: 'Paste' }).click();
-  await page.getByLabel('GeoJSON Polygon or MultiPolygon').fill(geojson);
+  const input = page.getByLabel('GeoJSON Polygon or MultiPolygon');
+  // The Paste button toggles the panel; open it only when it is closed.
+  if (!(await input.isVisible())) await page.getByRole('button', { name: 'Paste' }).click();
+  await input.fill(geojson);
   await page.getByRole('button', { name: 'Use this AOI' }).click();
 }
 
@@ -200,6 +202,148 @@ test('every Edit change keeps the attached AOI equal to the shape on the map', a
   await map.click({ button: 'right', position: { x: 100, y: 200 } }); // a vertex
   await expect.poll(async () => (await attachedRing(page)).length).toBe(5);
   expect(errors).toEqual([]);
+});
+
+const SQUARE_2 = '{"type":"Polygon","coordinates":[[[-93.1,42],[-93.09,42],[-93.09,42.01],[-93.1,42.01],[-93.1,42]]]}';
+const DELAY = 1500;
+const showOnMap = (page: Page) => page.getByRole('button', { name: /^analyze_farmland_by_polygon:/ });
+
+async function startOnChatA(page: Page) {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+}
+
+test('Show on map shows a result that arrives while the chat and AOI are unchanged', async ({ page }) => {
+  await fakeGeo(page);
+  await startOnChatA(page);
+  await showOnMap(page).click();
+  await expect(probe(page)).toHaveAttribute('data-shown', 'tool');
+});
+
+test('Show on map drops a result that arrives after the AOI was replaced', async ({ page }) => {
+  await fakeGeo(page, { delayMs: DELAY });
+  await startOnChatA(page);
+  const response = page.waitForResponse('**/api/geo/map');
+  await showOnMap(page).click();
+  await pasteAoi(page, SQUARE_2);
+  await response;
+  await expect(page.getByText('This map result is stale because the chat or AOI changed while it loaded.')).toBeVisible();
+  await expect(probe(page)).toHaveAttribute('data-shown', '');
+});
+
+test('Show on map drops a result that arrives after the chat changed', async ({ page }) => {
+  await fakeGeo(page, { delayMs: DELAY });
+  await startOnChatA(page);
+  const response = page.waitForResponse('**/api/geo/map');
+  await showOnMap(page).click();
+  await page.getByRole('button', { name: 'Fixture chat B' }).click();
+  await response;
+  await page.waitForTimeout(300);
+  await expect(probe(page)).toHaveAttribute('data-shown', '');
+});
+
+test('a Show on map result without an MCP notice is shown as invalid', async ({ page }) => {
+  await fakeGeo(page, { notice: null });
+  await startOnChatA(page);
+  await showOnMap(page).click();
+  await expect(probe(page)).toHaveAttribute('data-shown', 'tool');
+  await page.getByRole('tab', { name: 'Results' }).click();
+  await expect(page.getByText(INVALID).first()).toBeVisible();
+});
+
+test('a corridor screening that returns after a chat switch is not shown', async ({ page }) => {
+  await fakeGeo(page, { delayMs: DELAY });
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await drawCorridor(page);
+  const response = page.waitForResponse('**/api/geo/corridor');
+  await page.getByRole('button', { name: 'Screen corridor' }).click();
+  await page.getByRole('button', { name: 'Fixture chat B' }).click();
+  await response;
+  await page.waitForTimeout(300);
+  await expect(page.getByRole('region', { name: 'Corridor screening summary' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(page.getByRole('region', { name: 'Corridor screening summary' })).toHaveCount(0);
+});
+
+test('an AOI screening that returns after a chat switch attaches nothing (regression)', async ({ page }) => {
+  await fakeGeo(page, { delayMs: DELAY });
+  await startOnChatA(page);
+  const response = page.waitForResponse('**/api/geo/screen');
+  await page.getByRole('button', { name: 'Run screening' }).click();
+  await page.getByRole('button', { name: 'Fixture chat B' }).click();
+  await response;
+  await page.waitForTimeout(300);
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', '');
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', /^aoi-/);
+  await expect(probe(page)).toHaveAttribute('data-aoi-summary', '');
+});
+
+const HAMILTON = {
+  type: 'FeatureCollection',
+  features: [{
+    type: 'Feature',
+    properties: { GEOID: '20075', NAME: 'Hamilton County' },
+    geometry: { type: 'Polygon', coordinates: [[[-102.05, 38.25], [-101.9, 38.25], [-101.9, 38.4], [-102.05, 38.4], [-102.05, 38.25]]] },
+  }],
+};
+
+// Opens the Hamilton County identify popup with the identify-time outline failed,
+// so "Use exact polygon" fetches the outline itself. Returns the held request.
+async function openCountyPopup(page: Page) {
+  const held: { route: Route | null; outlines: number } = { route: null, outlines: 0 };
+  await page.route('https://tigerweb.geo.census.gov/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.has('geometry')) {
+      return route.fulfill({ contentType: 'application/geo+json', json: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { GEOID: '20075', NAME: 'Hamilton County' }, geometry: null }] } });
+    }
+    if (!url.searchParams.get('where')?.startsWith('GEOID')) return route.abort();
+    held.outlines += 1;
+    if (held.outlines === 1) return route.abort();
+    held.route = route;
+  });
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await page.evaluate(() => {
+    (window as unknown as { __mapJumpTo: (center: [number, number], zoom: number) => void }).__mapJumpTo([-101.975, 38.325], 7);
+  });
+  const layers = page.locator('details').filter({ has: page.getByText(/^Layers/) });
+  await layers.locator('summary').click();
+  await page.locator('#overlay-toggle-counties').check();
+  const box = await page.locator('.maplibregl-canvas').boundingBox();
+  if (!box) throw new Error('Map canvas is not visible');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const popup = page.locator('.maplibregl-popup-content');
+  await expect(popup).toContainText('Hamilton County', { timeout: 15000 });
+  await expect.poll(() => held.outlines).toBe(1);
+  await popup.getByRole('button', { name: /Use exact polygon/ }).click();
+  await expect.poll(() => held.route !== null).toBe(true);
+  return { popup, held };
+}
+
+test('closing the identify popup aborts its outline request and attaches nothing', async ({ page }) => {
+  const { popup } = await openCountyPopup(page);
+  const failed: string[] = [];
+  page.on('requestfailed', (request) => {
+    if (request.url().includes('where=GEOID')) failed.push(request.failure()?.errorText ?? '');
+  });
+  await popup.locator('xpath=..').locator('.maplibregl-popup-close-button').click();
+  await expect(popup).toHaveCount(0);
+  await expect.poll(() => failed.length).toBeGreaterThan(0);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+});
+
+test('an outline that returns after a chat switch attaches nothing', async ({ page }) => {
+  const { held } = await openCountyPopup(page);
+  await page.getByRole('button', { name: 'Fixture chat B' }).click();
+  await expect(probe(page)).toHaveAttribute('data-chat-id', 'fixture-chat-b');
+  await held.route?.fulfill({ contentType: 'application/geo+json', json: HAMILTON }).catch(() => {});
+  await page.waitForTimeout(500);
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
 });
 
 function stored(page: Page, chatId: string) {

@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useOptionalActiveAoi } from './ActiveAoiContext';
 import { geometryBounds, toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
 import { fetchOutline } from './identify';
@@ -79,14 +80,29 @@ function AreaActions({
   const validExact = exact ? toPolygonGeometry(exact) : null;
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // An outline belongs to the chat and AOI it was requested in; closing the
+  // popup (which unmounts this) aborts the request (issue #89 B2).
+  const aoiContext = useOptionalActiveAoi();
+  const latest = useRef({ chatId: aoiContext?.chatId ?? null, aoiRef: aoiContext?.activeAoi?.aoi_ref ?? null });
+  latest.current = { chatId: aoiContext?.chatId ?? null, aoiRef: aoiContext?.activeAoi?.aoi_ref ?? null };
+  const controllerRef = useRef<AbortController | null>(null);
+  useEffect(() => () => controllerRef.current?.abort(), []);
   const chooseGeometry = async (kind: 'exact' | 'bbox') => {
     if (busy) return;
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    const started = latest.current;
     setBusy(true);
     setActionError(null);
     try {
       const outline = validExact
         ? { geometry: validExact }
-        : await fetchOutline(section.overlay.id as AreaOverlayId, area.geoid, new AbortController().signal);
+        : await fetchOutline(section.overlay.id as AreaOverlayId, area.geoid, controller.signal);
+      if (controller.signal.aborted) return;
+      if (latest.current.chatId !== started.chatId || latest.current.aoiRef !== started.aoiRef) {
+        setActionError('The chat or AOI changed while the outline loaded. Try again.');
+        return;
+      }
       if (!outline) throw new Error('TIGERweb did not return a usable polygon outline.');
       const geometry = outline.geometry;
       const selected =
@@ -109,9 +125,10 @@ function AreaActions({
       const result = onUseGeometry(section, area, selected);
       if (result && !result.ok) setActionError(result.message ?? `Could not use this ${kind} geometry.`);
     } catch (error) {
+      if (controller.signal.aborted) return;
       setActionError(error instanceof Error ? error.message : 'Could not load the outline.');
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setBusy(false);
     }
   };
   return (
