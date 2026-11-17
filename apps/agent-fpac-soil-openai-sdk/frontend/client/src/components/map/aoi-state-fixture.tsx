@@ -32,7 +32,8 @@ function StateProbe() {
 function Fixture() {
   const { setChatId: setAoiChatId } = useActiveAoi();
   const setCorridorChatId = useOptionalActiveCorridor()?.setChatId;
-  const select = (chatId: string) => {
+  // null mimics the chat view unmounting ("Loading chat...").
+  const select = (chatId: string | null) => {
     setAoiChatId(chatId);
     setCorridorChatId?.(chatId);
   };
@@ -47,6 +48,7 @@ function Fixture() {
         <div style={{ display: 'flex', gap: 8, padding: 4 }}>
           <button type="button" onClick={() => select(CHATS[0])}>Fixture chat A</button>
           <button type="button" onClick={() => select(CHATS[1])}>Fixture chat B</button>
+          <button type="button" onClick={() => select(null)}>Close fixture chat</button>
           <ActiveAoiChip />
         </div>
         <StateProbe />

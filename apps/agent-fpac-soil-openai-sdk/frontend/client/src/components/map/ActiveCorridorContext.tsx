@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -18,7 +19,8 @@ import { GEOMETRY_ATTACH_EVENT } from './ActiveAoiContext';
 type Value = {
   chatId: string | null;
   activeCorridor: ActiveCorridor | null;
-  setChatId: (chatId: string) => void;
+  // Null while no chat is open: the corridor is cleared and writes are ignored.
+  setChatId: (chatId: string | null) => void;
   setCorridor: (corridor: ActiveCorridor | null) => void;
   detach: () => void;
 };
@@ -33,20 +35,26 @@ export function ActiveCorridorProvider({ children }: { children: ReactNode }) {
     chatId: null,
     corridor: null,
   });
-  const setChatId = useCallback((chatId: string) => {
+  // Read synchronously by setCorridor, so no attach event fires without a chat.
+  const chatIdRef = useRef<string | null>(null);
+  const setChatId = useCallback((chatId: string | null) => {
+    chatIdRef.current = chatId;
     setState((prev) =>
       prev.chatId === chatId
         ? prev
-        : { chatId, corridor: loadCorridor(chatId) },
+        : { chatId, corridor: chatId ? loadCorridor(chatId) : null },
     );
   }, []);
+  // Without an open chat there is nowhere to attach geometry (issue #89 B1).
   const setCorridor = useCallback((corridor: ActiveCorridor | null) => {
+    if (!chatIdRef.current) return;
     if (corridor && isActiveCorridor(corridor)) {
       window.dispatchEvent(
         new CustomEvent(GEOMETRY_ATTACH_EVENT, { detail: 'corridor' }),
       );
     }
     setState((prev) => {
+      if (!prev.chatId) return prev;
       const validCorridor =
         corridor && isActiveCorridor(corridor) ? corridor : null;
       saveCorridor(prev.chatId, validCorridor);
@@ -57,7 +65,7 @@ export function ActiveCorridorProvider({ children }: { children: ReactNode }) {
     const detach = (event: Event) => {
       if ((event as CustomEvent).detail !== 'aoi') return;
       setState((prev) => {
-        if (!prev.corridor) return prev;
+        if (!prev.corridor || !prev.chatId) return prev;
         saveCorridor(prev.chatId, null);
         return { ...prev, corridor: null };
       });

@@ -1,8 +1,18 @@
 import { createRoot } from 'react-dom/client';
+import { useEffect } from 'react';
 import '@/index.css';
-import { ActiveAoiProvider } from './ActiveAoiContext';
+import { ActiveAoiProvider, useActiveAoi } from './ActiveAoiContext';
 import { MapResultProvider, useMapResult } from './MapResultContext';
 import { MapPanel } from './MapPanel';
+
+// The map only accepts AOI input inside an open chat (issue #89 B1).
+function FixtureChat() {
+  const { setChatId } = useActiveAoi();
+  useEffect(() => {
+    setChatId('fixture-chat');
+  }, [setChatId]);
+  return null;
+}
 
 function Fixture() {
   const { show, clear } = useMapResult();
@@ -21,4 +31,4 @@ function Fixture() {
 }
 
 const root = document.getElementById('root');
-if (root) createRoot(root).render(<ActiveAoiProvider><MapResultProvider><Fixture /></MapResultProvider></ActiveAoiProvider>);
+if (root) createRoot(root).render(<ActiveAoiProvider><FixtureChat /><MapResultProvider><Fixture /></MapResultProvider></ActiveAoiProvider>);

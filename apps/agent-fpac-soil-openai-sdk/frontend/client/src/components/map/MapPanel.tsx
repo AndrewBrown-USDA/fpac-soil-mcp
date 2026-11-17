@@ -160,6 +160,9 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   // The result drawn on the map: this panel's screening or a tool card's "Show on map".
   const { shown, show, clear: clearShown } = useMapResult();
   const aoi = activeAoi?.geometry ?? null;
+  // No open chat (e.g. "Loading chat..."): geometry has nowhere to attach, so AOI
+  // and corridor input is disabled (issue #89 B1).
+  const noChat = !chatId;
   const aoiRef = useRef<PolygonGeometry | null>(null);
   const screenedRef = useRef<string | null>(null);
   const screening = useScreening();
@@ -727,6 +730,13 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     });
   };
 
+  // Leave any draw mode when the chat goes away, so a half-drawn shape is not
+  // finished into no chat.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on chat loss only
+  useEffect(() => {
+    if (noChat && mapReady) chooseMode('static');
+  }, [noChat, mapReady]);
+
   const zoomToAoi = () => {
     const bounds = aoiViewBounds(aoiRef.current);
     if (bounds) mapRef.current?.fitBounds(bounds, { padding: 32, maxZoom: 16 });
@@ -747,6 +757,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
 
   // Exact outlines are never simplified; enforce the vertex cap only after selection.
   const applyAreaAsAoi = (section: IdentifySection, _area: AreaInfo, geometry: PolygonGeometry) => {
+    if (noChat) return { ok: false, message: 'Open a chat to use this outline as an AOI.' };
     const overlayId = section.overlay.id;
     if (overlayId === 'ssurgo') return { ok: false, message: 'Soil map units cannot be an AOI.' };
     if (!isAreaOverlayId(overlayId)) {
@@ -820,7 +831,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const toolButton = (label: string, target: DrawMode, Icon: LucideIcon) => {
     const pressed = mode === target;
     const StateIcon = pressed ? Check : Icon;
-    return actionButton(label, StateIcon, () => chooseMode(pressed ? 'static' : target), !mapReady, pressed);
+    return actionButton(label, StateIcon, () => chooseMode(pressed ? 'static' : target), !mapReady || noChat, pressed);
   };
 
   const groupLabel = 'font-medium text-muted-foreground text-xs uppercase tracking-wide';
@@ -900,6 +911,11 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
         <StatusMessage variant="warning" className="font-medium text-xs">
           <p>Preliminary screening view. Not an official NRCS determination.</p>
         </StatusMessage>
+        {noChat && (
+          <p role="status" className="text-muted-foreground text-xs">
+            Open or start a chat to draw, paste or attach an area or corridor.
+          </p>
+        )}
         <TooltipProvider>
         <div className="flex flex-wrap items-end gap-3" role="toolbar" aria-label="Map tools">
           <div role="group" aria-label="Map mode" className="flex flex-col gap-1">
@@ -936,7 +952,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
                 {toolButton('Polygon', 'polygon', Pentagon)}
                 {toolButton('Rectangle', 'rectangle', Square)}
                 {toolButton('Edit', 'select', MousePointer2)}
-                {actionButton('Undo', Undo2, undo, !previousAoi && !aoi)}
+                {actionButton('Undo', Undo2, undo, noChat || (!previousAoi && !aoi))}
                 {actionButton('Clear', Trash2, clear, !aoi)}
               </div>
             </div>
@@ -960,10 +976,10 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
           <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
             <span aria-hidden="true" className={groupLabel}>Corridor</span>
             <div className="flex flex-wrap gap-1.5">
-              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), mapMode !== 'corridor' || !mapReady)}
-              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), mapMode !== 'corridor' || !mapReady)}
-              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, mapMode !== 'corridor' || !mapReady)}
-              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), mapMode !== 'corridor' || !mapReady)}
+              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), mapMode !== 'corridor' || !mapReady || noChat)}
+              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), mapMode !== 'corridor' || !mapReady || noChat)}
+              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, mapMode !== 'corridor' || !mapReady || noChat)}
+              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), mapMode !== 'corridor' || !mapReady || noChat)}
               {actionButton(
                 corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
                 MapIcon,
@@ -974,7 +990,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
                 'Clear corridor',
                 Trash2,
                 clearCorridor,
-                mapMode !== 'corridor' || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
+                mapMode !== 'corridor' || noChat || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
               )}
             </div>
           </div>
@@ -996,9 +1012,9 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
                   <TooltipContent>{BUFFER_SIDE_NOTICE}</TooltipContent>
                 </Tooltip>
                 {corridorScreening.status === 'running' && <span role="status">Screening…</span>}
-                {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`}>{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
-                {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="underline" onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
-                {corridorCenterline && <button type="button" className="underline" onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
+                {corridorAlternatives.map((alternative, index) => <span key={`${alternative.label}-${index}`}>{alternative.label}<button type="button" aria-label={`Remove ${alternative.label}`} disabled={noChat} onClick={() => removeCorridorFeature('alternative', index)}> ×</button></span>)}
+                {corridorStaging.map((geometry, index) => <button key={JSON.stringify(geometry)} type="button" aria-label={`Remove staging area ${index + 1}`} className="underline" disabled={noChat} onClick={() => removeCorridorFeature('staging', index)}>Remove staging {index + 1}</button>)}
+                {corridorCenterline && <button type="button" className="underline" disabled={noChat} onClick={() => removeCorridorFeature('primary')}>Remove primary line</button>}
               </div>
             </details>
           </div>
@@ -1053,7 +1069,9 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
           )}
         <div className="rounded-md border p-2">
         <div className="flex flex-nowrap items-start gap-2" role="group" aria-label="AOI geometry transfer">
-        <GeoJsonInput onGeometry={onPasted} />
+        <fieldset disabled={noChat} className="contents">
+          <GeoJsonInput onGeometry={onPasted} />
+        </fieldset>
         <div className="flex flex-nowrap items-center gap-2" role="group" aria-label="AOI geometry export">
           <Button type="button" size="sm" variant="secondary" onClick={copyAoi} disabled={!aoi} className="gap-1.5">
             <Copy aria-hidden="true" /> Copy

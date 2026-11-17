@@ -202,6 +202,83 @@ test('every Edit change keeps the attached AOI equal to the shape on the map', a
   expect(errors).toEqual([]);
 });
 
+function stored(page: Page, chatId: string) {
+  return page.evaluate((id) => ({
+    aoi: sessionStorage.getItem(`fpac-map-aoi:${id}`),
+    corridor: sessionStorage.getItem(`fpac-map-corridor:${id}`),
+  }), chatId);
+}
+
+async function drawCorridor(page: Page) {
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
+  await page.getByText('Corridor options', { exact: true }).click();
+  await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  const map = page.locator('.maplibregl-map');
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  await expect(page.getByText(/Primary ready/)).toBeVisible();
+}
+
+const NO_CHAT = 'Open or start a chat to draw, paste or attach an area or corridor.';
+
+test('without an open chat the map takes no AOI or corridor input', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html?chat=none');
+  await expect(page.getByText(NO_CHAT)).toBeVisible();
+  for (const name of ['Polygon', 'Rectangle', 'Edit', 'Paste']) {
+    await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
+  }
+  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Draw primary line' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(page.getByRole('button', { name: 'Draw primary line' })).toBeEnabled();
+  await expect(page.getByText(NO_CHAT)).toHaveCount(0);
+});
+
+test('closing the chat clears map context without touching its storage; reopening restores it', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  const ref = await probe(page).getAttribute('data-aoi-ref');
+  const before = await stored(page, 'fixture-chat-a');
+  expect(before.aoi).toContain(ref ?? 'missing');
+
+  await page.getByRole('button', { name: 'Close fixture chat' }).click();
+  await expect(probe(page)).toHaveAttribute('data-chat-id', '');
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Paste' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
+  expect(await stored(page, 'fixture-chat-a')).toEqual(before);
+
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', ref ?? '');
+});
+
+test('switching A -> B -> A keeps each chat\'s AOI and corridor in its own storage', async ({ page }) => {
+  await page.goto('/aoi-state-fixture.html');
+  await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();
+  await pasteAoi(page);
+  const aoiRef = await probe(page).getAttribute('data-aoi-ref');
+
+  await page.getByRole('button', { name: 'Fixture chat B' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', '');
+  await drawCorridor(page);
+  await expect(probe(page)).toHaveAttribute('data-corridor-ref', /.+/);
+  const corridorB = (await stored(page, 'fixture-chat-b')).corridor;
+  expect(corridorB).toBeTruthy();
+
+  await page.getByRole('button', { name: 'Fixture chat A' }).click();
+  await expect(probe(page)).toHaveAttribute('data-aoi-ref', aoiRef ?? '');
+  await expect(probe(page)).toHaveAttribute('data-corridor-ref', '');
+  const a = await stored(page, 'fixture-chat-a');
+  expect(a.aoi).toContain(aoiRef ?? 'missing');
+  expect(a.corridor).toBeNull();
+  const b = await stored(page, 'fixture-chat-b');
+  expect(b.aoi).toBeNull();
+  expect(JSON.parse(b.corridor ?? 'null')?.centerline).toEqual(JSON.parse(corridorB ?? 'null')?.centerline);
+});
+
 test('each fixture chat keeps its own AOI, and ?chat=none starts without a chat', async ({ page }) => {
   await page.goto('/aoi-state-fixture.html');
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeEnabled();

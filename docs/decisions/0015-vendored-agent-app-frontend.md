@@ -408,6 +408,15 @@ Added paths:
   Draw keeps its selection-point and midpoint features and every drag,
   midpoint insert and vertex delete updates the attached AOI. A corridor test
   guards that Edit corridor leaves the attached corridor in sync.
+* `client/src/components/map/ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`,
+  `client/src/components/chat.tsx`, `MapPanel.tsx`, `map-toolbar-fixture.tsx`,
+  `map-legend-fixture.tsx`, `aoi-state-fixture.tsx`, and
+  `tests/aoi-state/aoi-state.spec.ts`: the chat view clears the map's chat id
+  when it unmounts; with no chat open both providers hold no geometry and
+  ignore writes, and the map disables AOI and corridor drawing, paste,
+  Use-as-AOI, Undo, Clear and corridor removal with a short status line, so
+  nothing is written to the previous chat's storage (issue #89 B1). The map
+  fixtures set a fixture chat id; the AOI-state fixture adds Close fixture chat.
 
 ### Update procedure
 
