@@ -37,6 +37,7 @@ from fpac_soil_mcp.core.constants import (
 from fpac_soil_mcp.domain.lesa import (
     _normalize_productivity_index as _normalize_fixed_productivity_index,
 )
+from fpac_soil_mcp.domain.nccpi_baseline import fetch_nccpi_baseline, nccpi_baseline_fields
 from fpac_soil_mcp.models.integration import CountyIdentifier, CountyPartitionGeometry
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
@@ -469,6 +470,13 @@ class CorridorAnalyzer:
                         exc,
                     )
 
+            # NCCPI v3 national baseline: context only, never used for Land Evaluation
+            baseline_map, baseline_limitation = fetch_nccpi_baseline(
+                self.sda_client, mukeys, primary_index=norm_idx, primary_rows=interp_map
+            )
+            if baseline_limitation and baseline_limitation not in limitations:
+                limitations.append(baseline_limitation)
+
             partition_max: dict[str, float] = {}
             if max_county_rating_override is None:
                 areasymbol = {
@@ -599,6 +607,7 @@ class CorridorAnalyzer:
                         productivity_rated_pct=rated_pct,
                         productivity_total_pct=total_pct,
                         productivity_coverage_caveats=rating_coverage_caveats,
+                        **nccpi_baseline_fields(baseline_map.get(m_str)),
                     )
                 )
 

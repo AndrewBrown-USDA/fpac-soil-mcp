@@ -22,8 +22,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 | 57.2.3 | Remove from JS eval harness | done | ca66a5d |
 | 57.2.4 | Remove from polygon analyzer | done | 5250a21 |
 | 57.2.5 | Remove from corridor analyzer | done | 95210f5 |
-| 57.3.1 | Wire baseline into polygon analysis | done | (next commit) |
-| 57.3.2 | Wire baseline into corridor analysis | pending | |
+| 57.3.1 | Wire baseline into polygon analysis | done | 2a6bae7 |
+| 57.3.2 | Wire baseline into corridor analysis | done | (next commit) |
 | 57.4.1 | Tool descriptions, metadata, docs | pending | |
 | 57.4.2 | SA-MA-04 eval prompt | pending | |
 | 57.4.3 | Amend ADR 0008 | pending | |
@@ -36,6 +36,7 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 
 - Wave 1 (2026-11-18): root 1016 passed / 3 skipped (+23 new); ruff clean on touched files.
 - Wave 2 (2026-11-18): root 1018 passed / 3 skipped (-1 opt-out test, +3 TypeError tests); app 310 passed; harness 20/20; ruff clean (root files + `APP_LINT_PATHS`). `git grep include_nccpi -- ':!planning'` = only the 3 TypeError tests.
+- Wave 3 (2026-11-18): root 1028 passed / 3 skipped (+6 polygon, +4 corridor); ruff clean on touched files.
 
 ## Task reports
 
@@ -75,3 +76,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 - Tests: polygon_analysis + polygon_map + phase2 46 passed; ruff clean.
 - Deviations: none. 57.2.4's spec asked to fix the perimeter test mock; it already passed unchanged, so no fix was needed.
 - Gotcha: if the NCCPI *primary* query fails, the baseline is empty with no extra limitation (the primary warning already covers it).
+
+## 57.3.2
+- Status: done. `domain/corridor_analyzer.py`: per segment, baseline fetched after `_get_corridor_ratings` (`interp_map` reused for NCCPI), limitation deduped, `**nccpi_baseline_fields(baseline_map.get(m_str))` on each unit. Alternatives untouched. `tests/test_corridor_analysis.py`: `_two_county_corridor` helper + 4 tests (two-county csr2 incl. Water misc unit, NCCPI reuse, failure in one or every segment).
+- Tests: corridor_analysis + multi_county + scoring 56 passed; root 1028 / 3; ruff clean. Deviations: none.
+- Gotcha: corridor NCCPI primary goes through `get_productivity_ratings` (not `get_interpretations`), so the reuse test asserts `get_interpretations` is never called.

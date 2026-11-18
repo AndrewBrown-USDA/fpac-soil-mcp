@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from fpac_soil_mcp.clients.sda import SDAClient
+from fpac_soil_mcp.clients.sda import SDAClient, SDAClientError
 from fpac_soil_mcp.clients.tigerweb import TigerwebClient
 from fpac_soil_mcp.core.authority import Provenance
 from fpac_soil_mcp.domain.corridor_analyzer import (
@@ -967,3 +967,150 @@ def test_corridor_sentinels_and_rule_unchanged_by_registry_dedupe():
         corridor_analysis._NCCPI_RULE
         == "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
     )
+
+
+BASELINE_ROWS = [
+    {
+        "mukey": "1001",
+        "numeric_rating": 0.71,
+        "rating_class": "High",
+        "rated_pct": 90,
+        "total_pct": 90,
+    },
+    {
+        "mukey": "1003",
+        "numeric_rating": None,
+        "rating_class": None,
+        "rated_pct": 0,
+        "total_pct": 100,
+    },
+]
+
+
+def _two_county_corridor(index, *, primary_rows, nccpi=None, nccpi_side_effect=None):
+    sc2 = load_corridor_fixtures()["corridor_2county_ia_transmission"]
+    mock_sda = MagicMock(spec=SDAClient)
+    mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    mock_sda.get_spatial_intersection.return_value = [
+        {
+            "mukey": "1001",
+            "musym": "101",
+            "muname": "Clarion loam",
+            "farmlndcl": "All areas are prime farmland",
+            "areasymbol": "IA169",
+            "area_ac": "12.5",
+        },
+        {
+            "mukey": "1003",
+            "musym": "W",
+            "muname": "Water",
+            "farmlndcl": "Not prime farmland",
+            "areasymbol": "IA169",
+            "area_ac": "2.0",
+        },
+    ]
+    mock_sda.get_productivity_ratings.return_value = primary_rows
+    mock_sda.get_county_max_productivity_rating.return_value = 100.0
+    if nccpi_side_effect is not None:
+        mock_sda.get_interpretations.side_effect = nccpi_side_effect
+    else:
+        mock_sda.get_interpretations.return_value = nccpi or []
+
+    from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
+
+    buf = buffer_centerline(sc2["centerline"], sc2["buffer_distance"], sc2["buffer_units"])
+    half_ac = calculate_acreage(buf) / 2.0
+    mock_tiger = MagicMock(spec=TigerwebClient)
+    mock_tiger.check_urban_exemption_with_geometries.side_effect = lambda geom: (
+        mock_urban_record(),
+        [],
+    )
+    counties = [("169", "Story"), ("015", "Boone")]
+    mock_tiger.get_intersecting_counties.return_value = [
+        {"state_fips": "19", "county_fips": f, "county_name": n, "state_name": "IA"}
+        for f, n in counties
+    ]
+    mock_tiger.partition_geometry_by_counties.return_value = [
+        {
+            "state_fips": "19",
+            "county_fips": f,
+            "county_name": n,
+            "state_name": "IA",
+            "geometry": buf,
+            "calculated_acres": half_ac,
+        }
+        for f, n in counties
+    ]
+    mock_nass = MagicMock()
+    mock_nass.get_county_ag_profile.side_effect = lambda county, **kwargs: mock_nass_profile(
+        county.county_name, county.state_fips, county.county_fips
+    )
+    response = CorridorAnalyzer(
+        sda_client=mock_sda, tigerweb_client=mock_tiger, nass_client=mock_nass
+    ).analyze_corridor(
+        centerline_input=sc2["centerline"],
+        buffer_distance=sc2["buffer_distance"],
+        buffer_units=sc2["buffer_units"],
+        productivity_index=index,
+    )
+    return response, mock_sda
+
+
+CSR2_ROWS = [{"mukey": "1001", "numeric_rating": "80", "rating_class": "80"}]
+
+
+def _le_view(response):
+    return (
+        response.composite_relative_rating,
+        [seg.relative_rating_le for seg in response.county_segments],
+        [
+            [(u.mukey, u.productivity_rating, u.productivity_rating_class) for u in seg.map_units]
+            for seg in response.county_segments
+        ],
+    )
+
+
+def test_corridor_two_county_csr2_baseline_on_every_segment_unit():
+    response, sda = _two_county_corridor("CSR2", primary_rows=CSR2_ROWS, nccpi=BASELINE_ROWS)
+    plain, _ = _two_county_corridor("CSR2", primary_rows=CSR2_ROWS, nccpi=[])
+
+    assert len(response.county_segments) == 2
+    assert sda.get_interpretations.call_count == 2
+    for seg in response.county_segments:
+        units = {u.mukey: u for u in seg.map_units}
+        assert units["1001"].productivity_rating == 80.0
+        assert units["1001"].nccpi_baseline_rating == 0.71
+        assert units["1001"].nccpi_baseline_coverage_status == "rated"
+        assert units["1003"].nccpi_baseline_rating is None
+        assert units["1003"].nccpi_baseline_rating_class is None
+        assert units["1003"].nccpi_baseline_coverage_status == "unrated"
+    assert _le_view(response) == _le_view(plain)
+
+
+def test_corridor_nccpi_primary_baseline_reuses_rows():
+    response, sda = _two_county_corridor("NCCPI", primary_rows=BASELINE_ROWS)
+
+    sda.get_interpretations.assert_not_called()
+    for seg in response.county_segments:
+        for unit in seg.map_units:
+            assert unit.nccpi_baseline_rating == unit.productivity_rating
+    first = {u.mukey: u for u in response.county_segments[0].map_units}
+    assert first["1001"].nccpi_baseline_rating == 0.71
+
+
+@pytest.mark.parametrize(
+    "side_effect",
+    [[SDAClientError("SDA down"), BASELINE_ROWS], SDAClientError("SDA down")],
+    ids=["one-segment", "every-segment"],
+)
+def test_corridor_baseline_failure_adds_one_limitation_and_keeps_le(side_effect):
+    response, _ = _two_county_corridor(
+        "CSR2", primary_rows=CSR2_ROWS, nccpi_side_effect=side_effect
+    )
+    plain, _ = _two_county_corridor("CSR2", primary_rows=CSR2_ROWS, nccpi=[])
+
+    lines = [m for m in response.limitations if "NCCPI national baseline" in m]
+    assert lines == ["NCCPI national baseline unavailable: SDA down"]
+    assert _le_view(response) == _le_view(plain)
+    failed_units = response.county_segments[0].map_units
+    assert all(u.nccpi_baseline_rating is None for u in failed_units)
