@@ -1,7 +1,7 @@
 # STATE_57 -- include_nccpi removal and NCCPI national baseline (issue #85)
 
 Branch: `feature/nccpi-baseline1` off `origin/main` e0c625e. Local only; ask before every push.
-Plan approved by the user 2026-11-18 (D11). Next: lint baseline, then Wave 1.
+Plan approved by the user 2026-11-18 (D11). Status: Waves 1-5 complete (57.5.1 green); not pushed. Next: user approval to push; 57.5.2 when SDA is reachable.
 Resume: read this file, then `git log --oneline origin/main..HEAD`, then the next pending wave in EXECUTION_PLAN_57.md.
 
 ## Baseline (recorded 2026-11-18 on e0c625e, before Wave 1)
@@ -23,11 +23,11 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 | 57.2.4 | Remove from polygon analyzer | done | 5250a21 |
 | 57.2.5 | Remove from corridor analyzer | done | 95210f5 |
 | 57.3.1 | Wire baseline into polygon analysis | done | 2a6bae7 |
-| 57.3.2 | Wire baseline into corridor analysis | done | (next commit) |
-| 57.4.1 | Tool descriptions, metadata, docs | pending | |
-| 57.4.2 | SA-MA-04 eval prompt | pending | |
-| 57.4.3 | Amend ADR 0008 | pending | |
-| 57.5.1 | Final verification | pending | |
+| 57.3.2 | Wire baseline into corridor analysis | done | 829c4c1 |
+| 57.4.1 | Tool descriptions, metadata, docs | done | 2e32d97 |
+| 57.4.2 | SA-MA-04 eval prompt | done | 94b1f8e |
+| 57.4.3 | Amend ADR 0008 | done | bcbd2da |
+| 57.5.1 | Final verification | done | (this commit) |
 | 57.5.2 | Post-SDA checks (non-blocking) | pending | |
 
 ## Gate log
@@ -37,6 +37,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 - Wave 1 (2026-11-18): root 1016 passed / 3 skipped (+23 new); ruff clean on touched files.
 - Wave 2 (2026-11-18): root 1018 passed / 3 skipped (-1 opt-out test, +3 TypeError tests); app 310 passed; harness 20/20; ruff clean (root files + `APP_LINT_PATHS`). `git grep include_nccpi -- ':!planning'` = only the 3 TypeError tests.
 - Wave 3 (2026-11-18): root 1028 passed / 3 skipped (+6 polygon, +4 corridor); ruff clean on touched files.
+- Wave 4 (2026-11-18): root 1031 passed / 3 skipped (+3 server); eval/common + eval/contract 178 passed; tests/eval 6 passed; harness 20/20.
+- Wave 5 / 57.5.1 (2026-11-18, HEAD bcbd2da archive): root 1031 / 3 / 45; ruff check + format clean (807 files); app lint scope clean (21 files); app 310 passed; harness 20/20 (needs `databricks/bootstrap-serverless.sh` for npm). `git grep include_nccpi -- ':!planning'`: the 3 TypeError tests, 2 server tests, plus the breaking-change notes in README, QUICKSTART and ADR 0008 that 57.4.1/57.4.3 required. No function signature declares it. In-memory FastMCP Client smoke with fake SDA (csr2): polygon and corridor units carry CSR2 primary + NCCPI baseline (0.72 High rated); Water unit baseline null / `unrated`, empty CSV cells; LE, segment LE and composite identical to a no-baseline run; no baseline limitation.
 
 ## Task reports
 
