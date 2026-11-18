@@ -26,7 +26,7 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 | 58.3.1 | Polygon analyzer | done | f088519 |
 | 58.3.2 | Corridor analyzer | done | da02e61 |
 | 58.3.3 | LESA domain and `_lesa_coverage_status` | done | c408c5b |
-| 58.4.1 | Type every coverage field; output schemas | pending | |
+| 58.4.1 | Type every coverage field; output schemas | done (deviation, see report) | b80177a |
 | 58.4.2 | Agent app and frontend consumers | pending | |
 | 58.4.3 | README note and ADR 0019 | pending | |
 | 58.5.1 | Final verification | pending | |
@@ -76,3 +76,10 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 - Files: `domain/lesa.py` (`RATING_*` constants, `covered` -> `rated`); `mcp/tools/lesa_tools.py` (`_lesa_coverage_status` returns `RatingCoverage`, `error` if any source status is `error`; corridor sources add segment `productivity_coverage_status`; polygon sources add the manifest LE `coverage_status` so a rating failure with covered mapping reports `error`); `tests/test_tools.py` (`rated`; parametrized `_lesa_coverage_status` test; polygon rating-error LESA test).
 - Tests: `pytest tests/test_lesa.py tests/test_tools.py` 133 passed; ruff clean.
 - Wave 3 gate: root offline suite 1073 passed / 3 skipped / 45 deselected.
+
+## 58.4.1
+- Status: done (b80177a, `feat(models)!`).
+- Files: `models/soil.py` (`FarmlandClassificationResponse.coverage_status: SoilMappingCoverage`; `SoilMapUnitAcreage.productivity_coverage_status: RatingCoverage`; `nccpi_baseline_coverage_status: RatingCoverage | None`); `models/spatial.py` (polygon and segment mapping `SoilMappingCoverage`, segment rating `RatingCoverage`); `models/lesa.py` (D19 widening removed); `tests/test_coverage_vocab.py` (LE rejects `covered`; every public model rejects a retired value; baseline null allowed); `tests/test_server.py` (exact enum lists in `list_tools()` output schemas; corridor segment enums on the response model).
+- Tests: `pytest tests/test_coverage_vocab.py tests/test_server.py tests/test_map_contract.py` 76 passed; `git grep "coverage_status: str" -- src` empty; root suite 1091 passed / 3 skipped / 45 deselected; ruff clean.
+- Deviation (needs user decision): `analyze_corridor_fppa` returns `dict[str, Any]`, so its MCP output schema is `{"additionalProperties": true, "type": "object"}` and cannot list the enums. The corridor check was done on `CorridorFarmlandAnalysisResponse.model_json_schema()` instead. Typing the corridor tool's return (or giving it an explicit output schema) is outside 58.4.1's file list.
+- `test_map_contract.py` needed no change (it constructs with `covered`, still valid).
