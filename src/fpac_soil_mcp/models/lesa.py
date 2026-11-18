@@ -167,12 +167,11 @@ class LandEvaluationSummary(BaseModel):
         default=0.0,
         description="Percentage of AOI footprint with rated soil productivity",
     )
-    # transitional: legacy "covered" accepted until every producer emits "rated".
-    coverage_status: RatingCoverage | Literal["covered"] = Field(
+    coverage_status: RatingCoverage = Field(
         default="unknown",
         description=(
-            "Reconciled productivity coverage state: covered, partial, unrated, "
-            "unmapped, or unknown (source states are normalized to this vocabulary)"
+            "Reconciled productivity rating coverage: rated, partial, unrated, unmapped, "
+            "unknown, or error (a source query failed); see fpac_soil_mcp.models.coverage"
         ),
     )
     rating_source_provenance: list[str] = Field(

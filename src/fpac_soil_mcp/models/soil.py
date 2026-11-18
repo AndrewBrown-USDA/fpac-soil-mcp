@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from fpac_soil_mcp.models.coverage import RatingCoverage, SoilMappingCoverage
+
 
 class SoilMapUnit(BaseModel):
     """SSURGO Soil Map Unit data structure."""
@@ -53,8 +55,11 @@ class FarmlandClassificationResponse(BaseModel):
 
     query_type: str = Field(description="Query type performed, e.g. 'point' or 'mukey'")
     input_query: dict[str, Any] = Field(description="Parameters passed to the query")
-    coverage_status: str = Field(
-        description="Data coverage status: 'covered', 'no_data', or 'unmapped'"
+    coverage_status: SoilMappingCoverage = Field(
+        description=(
+            "Soil mapping coverage: covered, partial, unmapped, or error (query failed); "
+            "see fpac_soil_mcp.models.coverage"
+        )
     )
     map_units: list[SoilMapUnit] = Field(
         default_factory=list, description="Soil map units identified in the query area"
@@ -128,9 +133,13 @@ class SoilMapUnitAcreage(BaseModel):
         default=None,
         description="SDA interpretation rule or catalog provenance used for the productivity rating",
     )
-    productivity_coverage_status: str = Field(
+    productivity_coverage_status: RatingCoverage = Field(
         default="unknown",
-        description="Selected productivity interpretation coverage status within this map unit",
+        description=(
+            "Selected productivity rating coverage within this map unit: rated, partial, "
+            "unrated, unmapped, unknown, or error (query failed); "
+            "see fpac_soil_mcp.models.coverage"
+        ),
     )
     productivity_rated_pct: float | None = Field(
         default=None,
@@ -159,11 +168,12 @@ class SoilMapUnitAcreage(BaseModel):
         default=None,
         description="SDA interpretation rule or catalog provenance of the NCCPI national baseline",
     )
-    nccpi_baseline_coverage_status: str | None = Field(
+    nccpi_baseline_coverage_status: RatingCoverage | None = Field(
         default=None,
         description=(
-            "NCCPI baseline coverage: 'rated', 'partial', or 'unrated'; null when SDA "
-            "returned no NCCPI row for this map unit"
+            "NCCPI baseline rating coverage: rated, partial, unrated, or error (query "
+            "failed); null when SDA returned no NCCPI row for this map unit; "
+            "see fpac_soil_mcp.models.coverage"
         ),
     )
     nccpi_baseline_rated_pct: float | None = Field(
