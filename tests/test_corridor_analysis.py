@@ -558,6 +558,16 @@ def test_corridor_unsupported_selector_rejected_before_sda_lookup():
     mock_sda.get_productivity_ratings.assert_not_called()
 
 
+def test_corridor_rejects_removed_include_nccpi_argument():
+    analyzer = CorridorAnalyzer(sda_client=MagicMock(spec=SDAClient))
+    with pytest.raises(TypeError, match="include_nccpi"):
+        analyzer.analyze_corridor(
+            centerline_input="LINESTRING(-93.90 42.03, -93.50 42.03)",
+            buffer_distance=50.0,
+            include_nccpi=True,
+        )
+
+
 @pytest.mark.parametrize("productivity_index", ["CSR2", "CPI", "STORIE"])
 def test_corridor_ratings_route_selected_productivity_index(productivity_index):
     mock_sda = MagicMock(spec=SDAClient)

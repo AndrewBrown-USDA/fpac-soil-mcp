@@ -20,8 +20,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 | 57.2.1 | Remove from MCP tools and LESA call sites | done | 0c935dd |
 | 57.2.2 | Remove from agent app | done | 85e1b6b |
 | 57.2.3 | Remove from JS eval harness | done | ca66a5d |
-| 57.2.4 | Remove from polygon analyzer | done | (next commit) |
-| 57.2.5 | Remove from corridor analyzer | pending | |
+| 57.2.4 | Remove from polygon analyzer | done | 5250a21 |
+| 57.2.5 | Remove from corridor analyzer | done | (next commit) |
 | 57.3.1 | Wire baseline into polygon analysis | pending | |
 | 57.3.2 | Wire baseline into corridor analysis | pending | |
 | 57.4.1 | Tool descriptions, metadata, docs | pending | |
@@ -35,6 +35,7 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 (one line per wave gate: suites, counts, date)
 
 - Wave 1 (2026-11-18): root 1016 passed / 3 skipped (+23 new); ruff clean on touched files.
+- Wave 2 (2026-11-18): root 1018 passed / 3 skipped (-1 opt-out test, +3 TypeError tests); app 310 passed; harness 20/20; ruff clean (root files + `APP_LINT_PATHS`). `git grep include_nccpi -- ':!planning'` = only the 3 TypeError tests.
 
 ## Task reports
 
@@ -63,3 +64,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 ## 57.2.4
 - Status: done. `domain/polygon_analyzer.py` (3 signatures, 2 forwards, docstring, gate on ~184 and ~226); `tests/test_polygon_analysis.py` (opt-out test deleted, kwarg dropped, TypeError test x2); `tests/test_phase2_contracts.py:99`.
 - Tests: test_polygon_analysis + phase2 + polygon_map + lesa 102 passed; ruff clean. Deviations: none.
+
+## 57.2.5
+- Status: done. `domain/corridor_analyzer.py` (signature, docstring, `ratings_requested` + 6 uses incl. 2 dead `unknown` branches); `tests/test_corridor_analysis.py` (+TypeError test).
+- Tests: corridor_analysis + scoring + multi_county + corridor_map 73 passed; root 1018 / 3. Deviations: none.
+- Gotcha for 57.3.2: segment loop `interp_map` is built at ~462 via `_get_corridor_ratings`; `SoilMapUnitAcreage(` at ~583.
