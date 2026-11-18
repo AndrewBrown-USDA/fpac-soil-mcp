@@ -44,10 +44,10 @@
     "dotenv": "17.2.3",
     "drizzle-kit": "0.31.11",
     "drizzle-orm": "0.45.3",
-    "tsx": "4.21.0"
+    "tsx": "4.23.15"
   },
   "devDependencies": {
-    "@ai-sdk/provider": "3.0.6",
+    "@ai-sdk/provider": "3.0.19",
     "@biomejs/biome": "1.9.4",
     "@playwright/test": "1.58.1",
     "@types/node": "22.19.7",
