@@ -1,6 +1,7 @@
 # STATE_57 -- include_nccpi removal and NCCPI national baseline (issue #85)
 
 Branch: `feature/nccpi-baseline1` off `origin/main` e0c625e. Local only; ask before every push.
+Plan approved by the user 2026-11-18 (D11). Next: lint baseline, then Wave 1.
 Resume: read this file, then `git log --oneline origin/main..HEAD`, then the next pending wave in EXECUTION_PLAN_57.md.
 
 ## Baseline (recorded 2026-11-18 on e0c625e, before Wave 1)

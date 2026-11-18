@@ -44,8 +44,9 @@ Branch: `feature/nccpi-baseline1` (off `origin/main` e0c625e). Breaking change t
 | D6 | 2026-11-18 | Baseline content: raw weighted-average NCCPI v3 rating, class, source, rated pct, total pct, coverage status. No benchmark query, no relative rating, no LE effect. Non-NCCPI primary costs one extra `get_interpretations` call per analysis (per county segment for corridors); NCCPI primary reuses the rows already fetched. | user (accepted rec) |
 | D7 | 2026-11-18 | Leave historical `planning/` mentions untouched. | user (accepted rec) |
 | D8 | 2026-11-18 | Execution model as Plan 56: one Genie Code agent runs tasks serially in `~/fpac-soil-mcp` with a plan gate per task; one local commit per task (commits allowed on the feature branch); ask before every push; offline only (fakes / fixtures). | user (accepted rec) |
-| D9 | 2026-11-18 | Polygon `tabular_csv` gains `nccpi_baseline_rating` and `nccpi_baseline_rating_class` columns (empty cell for null). Corridor CSV is a per-county summary and is unchanged. | my proposal, flagged for review |
-| D10 | 2026-11-18 | `nccpi_baseline_coverage_status` is `null` when SDA returned no NCCPI row for the map unit; `"rated"` / `"partial"` / `"unrated"` only when a row exists. | my proposal, flagged for review |
+| D9 | 2026-11-18 | Polygon `tabular_csv` gains `nccpi_baseline_rating` and `nccpi_baseline_rating_class` columns (empty cell for null). Corridor CSV is a per-county summary and is unchanged. | my proposal, approved by user 2026-11-18 |
+| D10 | 2026-11-18 | `nccpi_baseline_coverage_status` is `null` when SDA returned no NCCPI row for the map unit; `"rated"` / `"partial"` / `"unrated"` only when a row exists. | my proposal, approved by user 2026-11-18 |
+| D11 | 2026-11-18 | Plan 57 approved by the user as written (including D9, D10). | user |
 
 ## Recon log (facts, 2026-11-18 on e0c625e)
 
