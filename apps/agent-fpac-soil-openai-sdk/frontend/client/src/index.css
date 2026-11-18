@@ -3,7 +3,6 @@
 
 /* include plugins */
 @plugin "tailwindcss-animate";
-@plugin "@tailwindcss/typography";
 
 /* custom variant for setting dark mode programmatically */
 @custom-variant dark (&:is(.dark, .dark *));
