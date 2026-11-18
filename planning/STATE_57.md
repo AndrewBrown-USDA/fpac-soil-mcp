@@ -9,14 +9,14 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 - [x] Root offline pytest (`-m "not live_network and not agent_eval"`): 993 passed, 3 skipped, 45 deselected.
 - [x] App pytest (`apps/agent-fpac-soil-openai-sdk`, `--frozen`): 310 passed.
 - [x] JS harness (`node --test test/harness.test.js test/smoke.test.js`, `/tmp` archive copy + `npm ci`): 20/20.
-- [ ] `make lint` + `make format-check` on a `/tmp` archive copy (run before Wave 1).
+- [x] `ruff check` + `ruff format --check` on a `/tmp` archive copy: all checks passed, 794 files formatted.
 - [x] FastMCP 4.1.7 rejects unknown tool arguments with `ToolError` (probe with a throwaway tool).
 
 ## Wave board
 
 | Task | Title | Status | Commit |
 | --- | --- | --- | --- |
-| 57.1.1 | NCCPI baseline model fields and helper | pending | |
+| 57.1.1 | NCCPI baseline model fields and helper | done | (this commit) |
 | 57.2.1 | Remove from MCP tools and LESA call sites | pending | |
 | 57.2.2 | Remove from agent app | pending | |
 | 57.2.3 | Remove from JS eval harness | pending | |
@@ -34,4 +34,13 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 
 (one line per wave gate: suites, counts, date)
 
+- Wave 1 (2026-11-18): root 1016 passed / 3 skipped (+23 new); ruff clean on touched files.
+
 ## Task reports
+
+## 57.1.1
+- Status: done.
+- Files: `models/soil.py` (+6 fields after `productivity_coverage_caveats`); new `domain/nccpi_baseline.py` (`NCCPI_BASELINE_RULE`, `NCCPI_BASELINE_FIELDS`, `fetch_nccpi_baseline`, `nccpi_baseline_fields`); new `tests/test_nccpi_baseline.py`.
+- Tests: `pytest tests/test_nccpi_baseline.py tests/test_models.py` 25 passed; root 1016 passed / 3 skipped.
+- Deviations: none. Also treats bool / NaN / non-numeric ratings as null.
+- Gotchas: `fetch_nccpi_baseline` takes `primary_rows` keyed by str mukey; for NCCPI primary pass the analyzer's rating map. Rows need `numeric_rating`, `rating_class`, `rated_pct`, `total_pct`; source falls back to the registry rule name. SDA `rated_pct=0` for misc units is kept (coverage data); rating/class stay null.
