@@ -377,6 +377,73 @@ Added paths:
   variants prepared from the
   [NCSS Visual Standards Guide](https://www.nrcs.usda.gov/sites/default/files/2022-09/NCSS_logo_style_guide.pdf)
   for light and dark map-panel headers.
+* `client/aoi-state-fixture.html`,
+  `client/src/components/map/aoi-state-fixture.tsx`,
+  `playwright.aoi-state.config.ts`, `tests/aoi-state/aoi-state.spec.ts`, and
+  `package.json` (`test:aoi-state`): isolated browser fixture for AOI and
+  corridor chat state with a switchable fake chat id (`?chat=none` starts
+  without one), a hidden state probe, and faked `/api/geo/*` and TIGERweb
+  responses with controllable delay and failure, so the issue #89 hardening is
+  tested without SDA (no new dependencies).
+* `client/src/components/map/useScreening.ts`, `MapPanel.tsx`,
+  `useCorridorScreening.ts`, `useScreening.test.ts`,
+  `useCorridorScreening.test.ts`, and `tests/aoi-state/aoi-state.spec.ts`:
+  a failed AOI screening attaches its `screening_failed` chat summary to the
+  AOI it started from (`summaryToAttach`); a result without its MCP regulatory
+  notice is still never attached; a corridor result with a null notice is kept
+  and shown with the invalid-notice message instead of a generic error
+  (ADR 0016 amendment 2026-11-17).
+* `server/src/routes/chat.ts`, `server/src/routes/chat-geometry-release.test.ts`,
+  and `package.json` (`test:chat-geometry`): the request's AOI and corridor
+  registry keys (`bindRequestGeometry`) are released when the stream and any
+  `generateText` fallback finish (`execute` `finally`, and the route's error
+  path), not on response `close`, because the stream keeps running for resume
+  after the client disconnects and its fallback still needs the geometry. The
+  `execute` body keeps its upstream indentation inside the new `try`.
+* `client/src/components/map/MapPanel.tsx`, `mapControls.ts`,
+  `mapControls.test.ts`, `tests/aoi-state/aoi-state.spec.ts`, and
+  `tests/corridor-map/corridor-map.spec.ts`: the AOI draw `finish` handler
+  removes previous AOI shapes only after a new shape is drawn
+  (`aoiFeaturesToRemove`), never after an Edit (select-mode) finish, so Terra
+  Draw keeps its selection-point and midpoint features and every drag,
+  midpoint insert and vertex delete updates the attached AOI. A corridor test
+  guards that Edit corridor leaves the attached corridor in sync.
+* `client/src/components/map/ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`,
+  `client/src/components/chat.tsx`, `MapPanel.tsx`, `map-toolbar-fixture.tsx`,
+  `map-legend-fixture.tsx`, `aoi-state-fixture.tsx`,
+  `client/src/components/site-assessment-fixture.tsx`, and
+  `tests/aoi-state/aoi-state.spec.ts`: the chat view clears the map's chat id
+  when it unmounts; with no chat open both providers hold no geometry and
+  ignore writes, and the map disables AOI and corridor drawing, paste,
+  Use-as-AOI, Undo, Clear and corridor removal with a short status line, so
+  nothing is written to the previous chat's storage (issue #89 B1). The map
+  fixtures set a fixture chat id; the AOI-state fixture adds Close fixture chat.
+* `client/src/components/map/MapPanel.tsx`: the map sets up its AOI and
+  corridor layers and Terra Draw on `style.load` instead of `load`. `load`
+  waits for every visible USGS basemap tile, so one hung tile left all drawing
+  tools disabled (in the app, and in about 15% of Playwright fixture loads).
+* `client/src/components/map/ShowOnMapButton.tsx`, `IdentifyPopup.tsx`,
+  `MapPanel.tsx`, `aoi-state-fixture.tsx`, and `tests/aoi-state/aoi-state.spec.ts`:
+  late results are dropped (issue #89 B2). Show on map and the Use-as-AOI
+  outline record the chat id and AOI ref when the request starts and drop the
+  response if either changed; closing the identify popup aborts its outline
+  request; switching chats resets corridor screening so a run in flight is
+  dropped. The AOI-state fixture mounts a test-only Show on map button.
+* `client/src/components/map/aoiHistory.ts` and `aoiHistory.test.ts` (new),
+  `ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`, `MapPanel.tsx`, and
+  `tests/aoi-state/aoi-state.spec.ts`: AOI Undo restores the previous AOI as
+  it was (same `aoi_ref`, geometry, and summary) instead of minting a new
+  reference (issue #89 C). The one-level history lives in the AOI provider, per
+  chat and in memory only; Clear and the chip's Detach are undoable; Undo is
+  disabled with nothing to restore. Corridors have no Undo (user decision
+  2026-11-17); the chip's corridor Detach now clears the drawn corridor like
+  Clear corridor.
+* `packages/ai-sdk-providers/src/providers-server.ts` and
+  `server/src/routes/chat-geometry-release.test.ts`: the `Databricks request:`
+  log names `custom_inputs.active_aoi` and `active_corridor` by `aoi_ref` and
+  `corridor_ref` only, so map geometry stays out of the server log (issue #89).
+  The request sent to the agent is unchanged. `LOG_SSE_EVENTS` response logging
+  (off by default) and the raw-body log (no injected context) are unchanged.
 
 ### Update procedure
 

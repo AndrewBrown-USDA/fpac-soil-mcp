@@ -148,10 +148,21 @@ def test_corridor_call_and_wrapped_result(start_server, fake_mcp):
     body = _post(start_server, {"tool": geo.CORRIDOR_TOOL, "arguments": arguments}).json()
 
     assert body["map"] == MAP
-    assert body["regulatory_notice"] == NON_PRIME_LIMITATION
+    # No MCP notice: the limitation sentence must not stand in for it (ADR 0016).
+    assert body["regulatory_notice"] is None
     assert body["status"] is None
     assert body["coverage_status"] is None
     assert fake.calls == [(geo.CORRIDOR_TOOL, {**arguments, "include_map": True})]
+
+
+@pytest.mark.parametrize("value", [None, "", "   ", 42, {"text": NOTICE}])
+def test_result_notice_is_none_without_an_mcp_notice(value):
+    assert geo._result_notice(value) is None
+
+
+def test_result_notice_appends_the_limitation_to_an_mcp_notice():
+    assert geo._result_notice(NOTICE) == f"{NOTICE} {NON_PRIME_LIMITATION}"
+    assert len(geo._result_notice("N" * 5000)) <= 1000
 
 
 @pytest.mark.parametrize("supplied", [False, "false", None, 0])

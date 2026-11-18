@@ -64,8 +64,11 @@ export function Chat({
   // AOI with every turn. A ref, because the transport below is created once.
   const activeAoiContext = useOptionalActiveAoi();
   const setAoiChatId = activeAoiContext?.setChatId;
+  // On unmount (e.g. "Loading chat..." between chats) no chat is open, so the map
+  // cannot write into this chat's storage (issue #89 B1).
   useEffect(() => {
     setAoiChatId?.(id);
+    return () => setAoiChatId?.(null);
   }, [id, setAoiChatId]);
   const activeAoiRef = useRef(activeAoiContext?.activeAoi ?? null);
   activeAoiRef.current =
@@ -74,6 +77,7 @@ export function Chat({
   const setCorridorChatId = activeCorridorContext?.setChatId;
   useEffect(() => {
     setCorridorChatId?.(id);
+    return () => setCorridorChatId?.(null);
   }, [id, setCorridorChatId]);
   const activeCorridorRef = useRef(activeCorridorContext?.activeCorridor ?? null);
   activeCorridorRef.current =

@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { replaceAoi, undoAoi } from './aoiHistory';
 import { toPolygonGeometry } from './geojson';
 import type { PolygonGeometry } from './geojson';
 
@@ -59,35 +60,50 @@ function save(chatId: string | null, aoi: ActiveAoi | null) {
   }
 }
 
-type State = { chatId: string | null; aoi: ActiveAoi | null };
+// `previous` is the AOI before the last change, for Undo; per chat, in memory only.
+type State = { chatId: string | null; aoi: ActiveAoi | null; previous: ActiveAoi | null };
 
 type ActiveAoiContextValue = {
   chatId: string | null;
   activeAoi: ActiveAoi | null;
   // Called by the chat view; switching chats loads that chat's AOI (or none).
-  setChatId: (chatId: string) => void;
+  // Null while no chat is open: the AOI is cleared and writes are ignored.
+  setChatId: (chatId: string | null) => void;
   // A new geometry gets a new reference; null detaches the AOI.
   setGeometry: (geometry: PolygonGeometry | null) => void;
   // Ignored unless `aoiRef` is still the attached AOI.
   setSummary: (aoiRef: string, summary: Record<string, unknown>) => void;
   detach: () => void;
+  // Restores the AOI before the last change as it was (same ref and summary).
+  canUndo: boolean;
+  undo: () => void;
 };
 
 const ActiveAoiContext = createContext<ActiveAoiContextValue | null>(null);
 
 export function ActiveAoiProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>({ chatId: null, aoi: null });
+  const [state, setState] = useState<State>({ chatId: null, aoi: null, previous: null });
+  // Read synchronously by setGeometry, so no attach event fires without a chat.
+  const chatIdRef = useRef<string | null>(null);
 
-  const setChatId = useCallback((chatId: string) => {
-    setState((prev) => (prev.chatId === chatId ? prev : { chatId, aoi: load(chatId) }));
+  const setChatId = useCallback((chatId: string | null) => {
+    chatIdRef.current = chatId;
+    setState((prev) =>
+      prev.chatId === chatId ? prev : { chatId, aoi: chatId ? load(chatId) : null, previous: null },
+    );
   }, []);
 
+  // Without an open chat there is nowhere to attach geometry (issue #89 B1).
   const setGeometry = useCallback((geometry: PolygonGeometry | null) => {
+    if (!chatIdRef.current) return;
     if (geometry) window.dispatchEvent(new CustomEvent(GEOMETRY_ATTACH_EVENT, { detail: 'aoi' }));
     setState((prev) => {
+      if (!prev.chatId) return prev;
       const aoi = geometry ? { aoi_ref: newAoiRef(), geometry, summary: null } : null;
-      save(prev.chatId, aoi);
-      return { ...prev, aoi };
+      const next = replaceAoi(prev, aoi);
+      if (next === prev) return prev;
+      save(prev.chatId, next.aoi);
+      return { ...prev, ...next };
     });
   }, []);
 
@@ -95,9 +111,9 @@ export function ActiveAoiProvider({ children }: { children: ReactNode }) {
     const detach = (event: Event) => {
       if ((event as CustomEvent).detail !== 'corridor') return;
       setState((prev) => {
-        if (!prev.aoi) return prev;
+        if (!prev.aoi || !prev.chatId) return prev;
         save(prev.chatId, null);
-        return { ...prev, aoi: null };
+        return { ...prev, ...replaceAoi(prev, null) };
       });
     };
     window.addEventListener(GEOMETRY_ATTACH_EVENT, detach);
@@ -106,7 +122,7 @@ export function ActiveAoiProvider({ children }: { children: ReactNode }) {
 
   const setSummary = useCallback((aoiRef: string, summary: Record<string, unknown>) => {
     setState((prev) => {
-      if (prev.aoi?.aoi_ref !== aoiRef) return prev;
+      if (!prev.chatId || prev.aoi?.aoi_ref !== aoiRef) return prev;
       const aoi = { ...prev.aoi, summary };
       save(prev.chatId, aoi);
       return { ...prev, aoi };
@@ -114,6 +130,19 @@ export function ActiveAoiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const detach = useCallback(() => setGeometry(null), [setGeometry]);
+
+  const canUndo = Boolean(state.chatId && state.previous);
+  const undo = useCallback(() => {
+    if (!chatIdRef.current || !canUndo) return;
+    // The restored AOI is attached again, so it detaches a corridor (ADR 0016).
+    window.dispatchEvent(new CustomEvent(GEOMETRY_ATTACH_EVENT, { detail: 'aoi' }));
+    setState((prev) => {
+      if (!prev.chatId || !prev.previous) return prev;
+      const next = undoAoi(prev);
+      save(prev.chatId, next.aoi);
+      return { ...prev, ...next };
+    });
+  }, [canUndo]);
 
   const value = useMemo(
     () => ({
@@ -123,8 +152,10 @@ export function ActiveAoiProvider({ children }: { children: ReactNode }) {
       setGeometry,
       setSummary,
       detach,
+      canUndo,
+      undo,
     }),
-    [state, setChatId, setGeometry, setSummary, detach],
+    [state, setChatId, setGeometry, setSummary, detach, canUndo, undo],
   );
 
   return <ActiveAoiContext.Provider value={value}>{children}</ActiveAoiContext.Provider>;

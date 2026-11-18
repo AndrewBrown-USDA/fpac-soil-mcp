@@ -274,6 +274,20 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
     assert server.entered == server.exited == 1
 
 
+def test_missing_mcp_notice_is_returned_as_none(start_server, fake_mcp):
+    analysis = _analysis_with_map()
+    del analysis["regulatory_notice"]
+    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured(analysis)}))
+
+    body = _post(start_server, {"geometry": SQUARE}).json()
+
+    # ADR 0016: no MCP notice means no notice; the limitation never stands in.
+    assert body["display"]["regulatory_notice"] is None
+    assert body["chat_summary"]["regulatory_notice"] is None
+    assert "Notice:" not in body["chat_summary_text"]
+    assert geo.NON_PRIME_LIMITATION not in json.dumps(body)
+
+
 def test_summary_preserves_partial_status_and_unknown_class_labels():
     analysis = _analysis()
     analysis.update(status="partial", coverage_status="partially_covered")

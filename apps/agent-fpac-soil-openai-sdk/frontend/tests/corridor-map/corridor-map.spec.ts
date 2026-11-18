@@ -111,3 +111,33 @@ test('corridor auto-attach replaces AOI and the shared chat chip detaches it', a
   await expect(chip).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem('fpac-map-corridor:corridor-fixture'))).toBeNull();
 });
+
+// Issue #89 A (corridor): the change handler re-attaches on every corridor edit.
+// Edit corridor's select mode has no edit flags today, so a vertex drag moves
+// nothing; this guards that the attached corridor stays as drawn and no error
+// is raised. If corridor editing is enabled later, assert the moved vertex here.
+test('a drag in Edit corridor leaves the attached corridor in sync', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  const stored = () => page.evaluate(() => sessionStorage.getItem('fpac-map-corridor:corridor-fixture'));
+  await page.getByText('Corridor options', { exact: true }).click();
+  await page.getByLabel('Required buffer distance').fill('50');
+  await page.getByRole('button', { name: 'Draw primary line' }).click();
+  const map = page.locator('.maplibregl-map');
+  await map.click({ position: { x: 120, y: 130 } });
+  await map.dblclick({ position: { x: 200, y: 190 } });
+  await expect.poll(stored).not.toBeNull();
+  const drawn = await stored();
+
+  await page.getByRole('button', { name: 'Edit corridor' }).click();
+  await map.click({ position: { x: 160, y: 160 } });
+  const box = await map.boundingBox();
+  if (!box) throw new Error('map has no box');
+  await page.mouse.move(box.x + 200, box.y + 190);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 260, box.y + 230, { steps: 12 });
+  await page.mouse.up();
+
+  await expect.poll(stored).toBe(drawn);
+  expect(errors).toEqual([]);
+});

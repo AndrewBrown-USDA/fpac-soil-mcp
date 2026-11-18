@@ -45,6 +45,24 @@ export type ScreeningResponse = {
 
 export type ScreeningStatus = 'idle' | 'running' | 'done' | 'error';
 
+// The chat summary to attach for a finished screening (ADR 0016): a valid result
+// with its MCP notice, or the server's screening_failed summary so the agent is
+// told the screening failed. A result without its notice is invalid (ADR 0003)
+// and is never attached.
+export function summaryToAttach(
+  status: ScreeningStatus,
+  result: ScreeningResponse | null,
+): Record<string, unknown> | null {
+  if (!result) return null;
+  if (status === 'done' && !result.display?.error && result.display?.regulatory_notice) {
+    return result.chat_summary;
+  }
+  if (status === 'error' && result.display?.error === 'screening_failed') {
+    return result.chat_summary;
+  }
+  return null;
+}
+
 // Calls the out-of-band screening route. The response stays in React state only
 // (no localStorage or sessionStorage) and is never logged.
 export function useScreening() {

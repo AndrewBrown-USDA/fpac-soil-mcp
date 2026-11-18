@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { aoiViewBounds, INITIAL_MAP_VIEW, measurementModeAfterCancel, setLayerVisibility } from './mapControls';
+import { aoiFeaturesToRemove, aoiViewBounds, INITIAL_MAP_VIEW, measurementModeAfterCancel, setLayerVisibility } from './mapControls';
 import type { PolygonGeometry } from './geojson';
 
 const polygon: PolygonGeometry = { type: 'Polygon', coordinates: [[[1, 2], [4, 2], [4, 5], [1, 2]]] };
@@ -25,4 +25,22 @@ test('visibility changes only layer layout and does not mutate AOI/result data',
 test('measurement cancellation returns to static mode without modifying AOI', () => {
   assert.equal(measurementModeAfterCancel(), 'static');
   assert.deepEqual(polygon.coordinates[0][0], [1, 2]);
+});
+
+const snapshot = [
+  { id: 'old-polygon', properties: { mode: 'polygon' } },
+  { id: 'old-rectangle', properties: { mode: 'rectangle' } },
+  { id: 'new', properties: { mode: 'polygon' } },
+  { id: 'selection-point', properties: { mode: 'select', selectionPoint: true } },
+  { id: 'midpoint', properties: { mode: 'select', midPoint: true } },
+  { properties: { mode: 'polygon' } },
+];
+
+test('a newly drawn AOI replaces only the previous AOI shapes', () => {
+  assert.deepEqual(aoiFeaturesToRemove(snapshot, 'new', { mode: 'polygon' }), ['old-polygon', 'old-rectangle']);
+  assert.deepEqual(aoiFeaturesToRemove(snapshot, 'new', { mode: 'rectangle' }), ['old-polygon', 'old-rectangle']);
+});
+
+test('an Edit-mode finish removes nothing, so Terra Draw keeps its selection and midpoint features', () => {
+  assert.deepEqual(aoiFeaturesToRemove(snapshot, 'new', { mode: 'select' }), []);
 });

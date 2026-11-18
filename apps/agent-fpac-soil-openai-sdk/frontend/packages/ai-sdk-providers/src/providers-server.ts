@@ -129,6 +129,20 @@ function shouldInjectContext(): boolean {
   return shouldInjectContextForEndpoint(endpointTask);
 }
 
+// The logged copy of a request names the map context by reference only, so AOI
+// and corridor geometry never reach the server log (issue #89). The sent body
+// is unchanged.
+function withoutMapGeometry(body: unknown): unknown {
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  if (!isRecord(body) || !isRecord(body.custom_inputs)) return body;
+  const inputs = { ...body.custom_inputs };
+  const byRef = (value: unknown, key: string) => ({ [key]: isRecord(value) ? (value[key] ?? null) : null });
+  if ('active_aoi' in inputs) inputs.active_aoi = byRef(inputs.active_aoi, 'aoi_ref');
+  if ('active_corridor' in inputs) inputs.active_corridor = byRef(inputs.active_corridor, 'corridor_ref');
+  return { ...body, custom_inputs: inputs };
+}
+
 // Custom fetch function to transform Databricks responses to OpenAI format
 export const databricksFetch: typeof fetch = async (input, init) => {
   const url = input.toString();
@@ -193,7 +207,7 @@ export const databricksFetch: typeof fetch = async (input, init) => {
         JSON.stringify({
           url,
           method: requestInit.method || 'POST',
-          body: requestBody,
+          body: withoutMapGeometry(requestBody),
         }),
       );
     } catch (_e) {

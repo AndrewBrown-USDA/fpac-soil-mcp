@@ -14,6 +14,27 @@ export function setLayerVisibility(
   for (const id of layerIds) setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
 }
 
+type DrawFeatureLike = { id?: string | number; properties?: Record<string, unknown> | null };
+
+// One AOI at a time: after a new shape is drawn, the previous AOI shapes go.
+// An Edit (select-mode) finish removes nothing: Terra Draw 1.39 fires finish for
+// drag, midpoint insert and vertex delete, and its own selection-point and
+// midpoint features are in the snapshot (issue #89 A).
+export function aoiFeaturesToRemove(
+  snapshot: DrawFeatureLike[],
+  finishedId: string | number,
+  context: { mode: string },
+): Array<string | number> {
+  if (context.mode === 'select') return [];
+  return snapshot.flatMap((feature) =>
+    feature.id !== undefined &&
+    feature.id !== finishedId &&
+    (feature.properties?.mode === 'polygon' || feature.properties?.mode === 'rectangle')
+      ? [feature.id]
+      : [],
+  );
+}
+
 export type MeasurementMode = 'static' | 'measure';
 
 export function measurementModeAfterCancel(): MeasurementMode {
