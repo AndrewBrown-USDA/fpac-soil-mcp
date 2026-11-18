@@ -438,6 +438,12 @@ Added paths:
   disabled with nothing to restore. Corridors have no Undo (user decision
   2026-11-17); the chip's corridor Detach now clears the drawn corridor like
   Clear corridor.
+* `packages/ai-sdk-providers/src/providers-server.ts` and
+  `server/src/routes/chat-geometry-release.test.ts`: the `Databricks request:`
+  log names `custom_inputs.active_aoi` and `active_corridor` by `aoi_ref` and
+  `corridor_ref` only, so map geometry stays out of the server log (issue #89).
+  The request sent to the agent is unchanged. `LOG_SSE_EVENTS` response logging
+  (off by default) and the raw-body log (no injected context) are unchanged.
 
 ### Update procedure
 

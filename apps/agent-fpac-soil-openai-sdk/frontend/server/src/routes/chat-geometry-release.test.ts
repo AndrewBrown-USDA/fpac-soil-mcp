@@ -15,6 +15,8 @@ type Provider = typeof import('../../../packages/ai-sdk-providers/src/providers-
 let chat: Module;
 let provider: Provider;
 const realFetch = globalThis.fetch;
+// What databricksFetch logged during the last fallbackCustomInputs call.
+const logged: string[] = [];
 
 before(async () => {
   // The provider injects context only for agent endpoints; API_PROXY selects that
@@ -39,7 +41,11 @@ async function fallbackCustomInputs(geometryHeaders: Record<string, string>) {
     return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
   }) as typeof fetch;
   const log = console.log;
-  console.log = () => {}; // databricksFetch logs request bodies
+  logged.length = 0;
+  // databricksFetch logs request bodies; keep them for the log test.
+  console.log = (...args: unknown[]) => {
+    logged.push(args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' '));
+  };
   try {
     await provider.databricksFetch(process.env.API_PROXY as string, {
       method: 'POST',
@@ -76,6 +82,29 @@ test('release() drops both keys, is idempotent, and the next request sends neith
   geometry.release();
 
   assert.deepEqual(await fallbackCustomInputs(geometry.headers), {});
+});
+
+test('the request log names the AOI and corridor by reference, without geometry', async () => {
+  const aoi = {
+    aoi_ref: 'aoi-0123abcd',
+    geometry: { type: 'Polygon', coordinates: [[[-93.123456, 42.5], [-93.1, 42.5], [-93.1, 42.6], [-93.123456, 42.5]]] },
+  };
+  const corridor = {
+    corridor_ref: 'corridor-0123abcd',
+    centerline: { type: 'LineString', coordinates: [[-94.654321, 41.1], [-94.6, 41.2]] },
+  };
+  const geometry = chat.bindRequestGeometry({ activeAoi: aoi, activeCorridor: corridor });
+  const inputs = await fallbackCustomInputs(geometry.headers);
+  geometry.release();
+
+  // The agent still gets the full context.
+  assert.deepEqual(inputs.active_aoi, aoi);
+  assert.deepEqual(inputs.active_corridor, corridor);
+  const log = logged.join('\n');
+  assert.match(log, /Databricks request:/);
+  assert.match(log, /"active_aoi":\{"aoi_ref":"aoi-0123abcd"\}/);
+  assert.match(log, /"active_corridor":\{"corridor_ref":"corridor-0123abcd"\}/);
+  assert.doesNotMatch(log, /93\.123456|94\.654321|coordinates/);
 });
 
 test('a request without geometry registers nothing', async () => {
