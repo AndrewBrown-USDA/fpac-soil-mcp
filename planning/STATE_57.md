@@ -21,8 +21,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 | 57.2.2 | Remove from agent app | done | 85e1b6b |
 | 57.2.3 | Remove from JS eval harness | done | ca66a5d |
 | 57.2.4 | Remove from polygon analyzer | done | 5250a21 |
-| 57.2.5 | Remove from corridor analyzer | done | (next commit) |
-| 57.3.1 | Wire baseline into polygon analysis | pending | |
+| 57.2.5 | Remove from corridor analyzer | done | 95210f5 |
+| 57.3.1 | Wire baseline into polygon analysis | done | (next commit) |
 | 57.3.2 | Wire baseline into corridor analysis | pending | |
 | 57.4.1 | Tool descriptions, metadata, docs | pending | |
 | 57.4.2 | SA-MA-04 eval prompt | pending | |
@@ -69,3 +69,9 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 - Status: done. `domain/corridor_analyzer.py` (signature, docstring, `ratings_requested` + 6 uses incl. 2 dead `unknown` branches); `tests/test_corridor_analysis.py` (+TypeError test).
 - Tests: corridor_analysis + scoring + multi_county + corridor_map 73 passed; root 1018 / 3. Deviations: none.
 - Gotcha for 57.3.2: segment loop `interp_map` is built at ~462 via `_get_corridor_ratings`; `SoilMapUnitAcreage(` at ~583.
+
+## 57.3.1
+- Status: done. `domain/polygon_analyzer.py`: baseline fetched right after the primary rating block (before county benchmark), limitation appended, `**nccpi_baseline_fields(...)` on each unit, CSV +2 columns at the end. `tests/test_polygon_analysis.py`: +6 tests (3 non-NCCPI selectors, NCCPI reuse, misc unit + CSV, SDA failure).
+- Tests: polygon_analysis + polygon_map + phase2 46 passed; ruff clean.
+- Deviations: none. 57.2.4's spec asked to fix the perimeter test mock; it already passed unchanged, so no fix was needed.
+- Gotcha: if the NCCPI *primary* query fails, the baseline is empty with no extra limitation (the primary warning already covers it).

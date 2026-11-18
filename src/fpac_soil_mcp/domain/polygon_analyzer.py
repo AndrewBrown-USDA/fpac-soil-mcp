@@ -27,6 +27,7 @@ from fpac_soil_mcp.core.constants import (
     REGULATORY_NOTICE,
 )
 from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
+from fpac_soil_mcp.domain.nccpi_baseline import fetch_nccpi_baseline, nccpi_baseline_fields
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
@@ -219,6 +220,13 @@ class PolygonAnalyzer:
                     logger.warning("Productivity rating query failed (%s): %s", norm_idx, exc)
                     limitations.append(f"Productivity rating warning ({norm_idx}): {exc}")
 
+        # NCCPI v3 national baseline: context only, never used for Land Evaluation
+        baseline_map, baseline_limitation = fetch_nccpi_baseline(
+            self.sda_client, mukeys, primary_index=norm_idx, primary_rows=rating_map
+        )
+        if baseline_limitation:
+            limitations.append(baseline_limitation)
+
         # Determine county max benchmark
         county_max = max_county_rating_override
         partition_max: dict[str, float] = {}
@@ -326,6 +334,7 @@ class PolygonAnalyzer:
                     ),
                     productivity_rating_source=rating_info.get("productivity_rating_source")
                     or PRODUCTIVITY_PROVENANCE.get(norm_idx),
+                    **nccpi_baseline_fields(baseline_map.get(mukey_str)),
                 )
             )
 
@@ -436,6 +445,8 @@ class PolygonAnalyzer:
                 "pct_of_aoi",
                 "productivity_rating",
                 "productivity_rating_class",
+                "nccpi_baseline_rating",
+                "nccpi_baseline_rating_class",
             ]
         )
         for um in unit_models:
@@ -450,6 +461,8 @@ class PolygonAnalyzer:
                     um.percentage_of_aoi,
                     um.productivity_rating if um.productivity_rating is not None else "",
                     um.productivity_rating_class or "",
+                    um.nccpi_baseline_rating if um.nccpi_baseline_rating is not None else "",
+                    um.nccpi_baseline_rating_class or "",
                 ]
             )
         csv_str = output_io.getvalue()
