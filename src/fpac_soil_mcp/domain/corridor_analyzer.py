@@ -37,7 +37,25 @@ from fpac_soil_mcp.core.constants import (
 from fpac_soil_mcp.domain.lesa import (
     _normalize_productivity_index as _normalize_fixed_productivity_index,
 )
-from fpac_soil_mcp.domain.nccpi_baseline import fetch_nccpi_baseline, nccpi_baseline_fields
+from fpac_soil_mcp.domain.nccpi_baseline import (
+    BASELINE_ERROR_MARKER,
+    fetch_nccpi_baseline,
+    nccpi_baseline_fields,
+)
+from fpac_soil_mcp.models.coverage import (
+    MAPPING_COVERED,
+    MAPPING_ERROR,
+    MAPPING_PARTIAL,
+    MAPPING_UNMAPPED,
+    RATING_ERROR,
+    RATING_PARTIAL,
+    RATING_RATED,
+    RATING_UNKNOWN,
+    RATING_UNMAPPED,
+    RATING_UNRATED,
+    RatingCoverage,
+    SoilMappingCoverage,
+)
 from fpac_soil_mcp.models.integration import CountyIdentifier, CountyPartitionGeometry
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
@@ -392,6 +410,7 @@ class CorridorAnalyzer:
         sum_direct_acres = 0.0
         sum_indirect_acres = 0.0
 
+        any_segment_failed = False
         for seg in segments_raw:
             seg_geom = seg.geometry if isinstance(seg, CountyPartitionGeometry) else seg["geometry"]
             county = _county_identifier(seg)
@@ -445,6 +464,8 @@ class CorridorAnalyzer:
             # SDA soils query for segment
             seg_wkt = geometry_to_wkt(seg_geom)
             raw_units: list[dict[str, Any]] = []
+            seg_spatial_failed = False
+            seg_rating_failed = False
             try:
                 raw_units = self.sda_client.get_spatial_intersection(
                     seg_wkt,
@@ -455,6 +476,7 @@ class CorridorAnalyzer:
             except SDAClientError as exc:
                 logger.error("SDA spatial query failed for county %s: %s", seg_county_name, exc)
                 limitations.append(f"SDA error for {seg_county_name}: {exc}")
+                seg_spatial_failed = True
 
             # Selected productivity interpretations
             mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
@@ -469,6 +491,14 @@ class CorridorAnalyzer:
                         seg_county_name,
                         exc,
                     )
+                    seg_rating_failed = True
+                    rating_limitation = (
+                        f"Productivity rating error ({norm_idx}) for {seg_county_name}: {exc}"
+                    )
+                    if rating_limitation not in limitations:
+                        limitations.append(rating_limitation)
+            if seg_spatial_failed or seg_rating_failed:
+                any_segment_failed = True
 
             # NCCPI v3 national baseline: context only, never used for Land Evaluation
             baseline_map, baseline_limitation = fetch_nccpi_baseline(
@@ -476,6 +506,9 @@ class CorridorAnalyzer:
             )
             if baseline_limitation and baseline_limitation not in limitations:
                 limitations.append(baseline_limitation)
+            if seg_rating_failed and norm_idx == "nccpi":
+                # The baseline reuses the failed primary NCCPI query.
+                baseline_map = {k: {BASELINE_ERROR_MARKER: True} for k in mukeys}
 
             partition_max: dict[str, float] = {}
             if max_county_rating_override is None:
@@ -557,16 +590,16 @@ class CorridorAnalyzer:
                     total_pct = rated_pct
                 rated_pct = min(100.0, max(0.0, rated_pct))
                 total_pct = min(100.0, max(0.0, total_pct))
-                rating_coverage_status = str(
-                    interp_info.get("coverage_status")
+                rating_coverage_status: RatingCoverage = (
+                    RATING_ERROR
+                    if seg_rating_failed
+                    else interp_info.get("coverage_status")
                     or (
-                        "partial"
+                        RATING_PARTIAL
                         if numeric_rating is not None and rated_pct < total_pct
-                        else "rated"
+                        else RATING_RATED
                         if numeric_rating is not None
-                        else "unrated"
-                        if total_pct > 0
-                        else "no_coverage"
+                        else RATING_UNRATED
                     )
                 )
                 rating_coverage_caveats = interp_info.get("caveats")
@@ -659,12 +692,15 @@ class CorridorAnalyzer:
                 census_year=settings.nass_census_year,
             )
 
-            if not unit_models:
-                coverage_status = "unmapped"
+            coverage_status: SoilMappingCoverage
+            if seg_spatial_failed:
+                coverage_status = MAPPING_ERROR
+            elif not unit_models:
+                coverage_status = MAPPING_UNMAPPED
             elif _coverage_is_complete(seg_total_acres, total_mapped_acres):
-                coverage_status = "covered"
+                coverage_status = MAPPING_COVERED
             else:
-                coverage_status = "partially_covered"
+                coverage_status = MAPPING_PARTIAL
             segment_component_rated_acres = sum(
                 unit.calculated_acres * (unit.productivity_rated_pct or 0.0) / 100.0
                 for unit in unit_models
@@ -675,16 +711,18 @@ class CorridorAnalyzer:
                 if seg_total_acres > 0
                 else 0.0
             )
-            segment_productivity_coverage_status = (
-                "unknown"
+            segment_productivity_coverage_status: RatingCoverage = (
+                RATING_ERROR
+                if seg_spatial_failed or (seg_rating_failed and unit_models)
+                else RATING_UNKNOWN
                 if seg_total_acres <= 0
-                else "unmapped"
+                else RATING_UNMAPPED
                 if not unit_models
-                else "unrated"
+                else RATING_UNRATED
                 if segment_component_rated_acres <= 0
-                else "covered"
+                else RATING_RATED
                 if _coverage_is_complete(seg_total_acres, segment_component_rated_acres)
-                else "partial"
+                else RATING_PARTIAL
             )
             segment_productivity_coverage_caveats = list(
                 dict.fromkeys(
@@ -696,7 +734,7 @@ class CorridorAnalyzer:
                     "Unmapped corridor acreage is not included in productivity ratings."
                 )
             if (
-                segment_productivity_coverage_status == "covered"
+                segment_productivity_coverage_status == RATING_RATED
                 and segment_component_rated_acres < seg_total_acres
             ):
                 segment_productivity_coverage_caveats.append(
@@ -803,16 +841,19 @@ class CorridorAnalyzer:
             for unit in segment.map_units
             if unit.productivity_rating is not None
         )
-        if total_project_acres <= 0:
-            productivity_coverage_status = "unknown"
+        productivity_coverage_status: RatingCoverage
+        if any_segment_failed:
+            productivity_coverage_status = RATING_ERROR
+        elif total_project_acres <= 0:
+            productivity_coverage_status = RATING_UNKNOWN
         elif component_rated_productivity_acres <= 0:
             productivity_coverage_status = (
-                "unmapped" if mapped_productivity_acres <= 0 else "unrated"
+                RATING_UNMAPPED if mapped_productivity_acres <= 0 else RATING_UNRATED
             )
         elif _coverage_is_complete(total_project_acres, component_rated_productivity_acres):
-            productivity_coverage_status = "covered"
+            productivity_coverage_status = RATING_RATED
         else:
-            productivity_coverage_status = "partial"
+            productivity_coverage_status = RATING_PARTIAL
         productivity_coverage_caveats = list(
             dict.fromkeys(
                 caveat
@@ -821,7 +862,7 @@ class CorridorAnalyzer:
             )
         )
         if (
-            productivity_coverage_status == "covered"
+            productivity_coverage_status == RATING_RATED
             and component_rated_productivity_acres < total_project_acres
         ):
             productivity_coverage_caveats.append(

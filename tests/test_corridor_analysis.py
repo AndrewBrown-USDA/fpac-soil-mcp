@@ -697,7 +697,7 @@ def test_corridor_direct_ratings_preserve_zero_and_filter_sentinels(numeric_rati
 
 
 def test_corridor_partially_covered_status():
-    """Verify that coverage_status is 'partially_covered' when soils map is incomplete."""
+    """Verify that coverage_status is 'partial' when soils map is incomplete."""
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
     # Return 5 acres for a 20+ acre corridor segment
@@ -752,7 +752,7 @@ def test_corridor_partially_covered_status():
 
     assert len(res.county_segments) == 1
     seg = res.county_segments[0]
-    assert seg.coverage_status == "partially_covered"
+    assert seg.coverage_status == "partial"
     assert seg.productivity_coverage_status == "partial"
     assert seg.map_units[0].productivity_coverage_status == "partial"
     assert seg.map_units[0].productivity_rated_pct == 50.0
@@ -987,7 +987,15 @@ BASELINE_ROWS = [
 ]
 
 
-def _two_county_corridor(index, *, primary_rows, nccpi=None, nccpi_side_effect=None):
+def _two_county_corridor(
+    index,
+    *,
+    primary_rows,
+    nccpi=None,
+    nccpi_side_effect=None,
+    spatial_side_effect=None,
+    primary_side_effect=None,
+):
     sc2 = load_corridor_fixtures()["corridor_2county_ia_transmission"]
     mock_sda = MagicMock(spec=SDAClient)
     mock_sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
@@ -1009,7 +1017,14 @@ def _two_county_corridor(index, *, primary_rows, nccpi=None, nccpi_side_effect=N
             "area_ac": "2.0",
         },
     ]
+    if spatial_side_effect is not None:
+        spatial_rows = mock_sda.get_spatial_intersection.return_value
+        mock_sda.get_spatial_intersection.side_effect = [
+            spatial_rows if effect is None else effect for effect in spatial_side_effect
+        ]
     mock_sda.get_productivity_ratings.return_value = primary_rows
+    if primary_side_effect is not None:
+        mock_sda.get_productivity_ratings.side_effect = primary_side_effect
     mock_sda.get_county_max_productivity_rating.return_value = 100.0
     if nccpi_side_effect is not None:
         mock_sda.get_interpretations.side_effect = nccpi_side_effect
@@ -1114,3 +1129,47 @@ def test_corridor_baseline_failure_adds_one_limitation_and_keeps_le(side_effect)
     assert _le_view(response) == _le_view(plain)
     failed_units = response.county_segments[0].map_units
     assert all(u.nccpi_baseline_rating is None for u in failed_units)
+
+
+def test_corridor_one_county_spatial_failure_reports_error():
+    response, _ = _two_county_corridor(
+        "CSR2",
+        primary_rows=CSR2_ROWS,
+        spatial_side_effect=[None, SDAClientError("SDA down")],
+    )
+    seg_a, seg_b = response.county_segments
+    assert seg_a.coverage_status != "error"
+    assert seg_a.productivity_coverage_status != "error"
+    assert seg_b.coverage_status == "error"
+    assert seg_b.productivity_coverage_status == "error"
+    assert response.reconciliation_summary["productivity_coverage_status"] == "error"
+    assert [m for m in response.limitations if m.startswith("SDA error for")] == [
+        "SDA error for Boone: SDA down"
+    ]
+
+
+def test_corridor_rating_failure_adds_limitation_and_rating_error():
+    response, _ = _two_county_corridor(
+        "CSR2", primary_rows=CSR2_ROWS, primary_side_effect=SDAClientError("SDA down")
+    )
+    lines = [m for m in response.limitations if m.startswith("Productivity rating error")]
+    assert lines
+    assert len(lines) == len(set(lines))
+    for seg in response.county_segments:
+        assert seg.coverage_status in {"covered", "partial"}
+        assert seg.productivity_coverage_status == "error"
+        assert all(u.productivity_coverage_status == "error" for u in seg.map_units)
+    assert response.reconciliation_summary["productivity_coverage_status"] == "error"
+
+
+def test_corridor_healthy_statuses_use_shared_vocabulary():
+    response, _ = _two_county_corridor("CSR2", primary_rows=CSR2_ROWS, nccpi=[])
+    for seg in response.county_segments:
+        assert seg.coverage_status in {"covered", "partial", "unmapped"}
+        assert seg.productivity_coverage_status in {"rated", "partial", "unrated"}
+        assert {u.productivity_coverage_status for u in seg.map_units} <= {
+            "rated",
+            "partial",
+            "unrated",
+        }
+    assert response.reconciliation_summary["productivity_coverage_status"] != "error"

@@ -332,7 +332,7 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
     # Partial coverage status detection when mapped acreage < total segment acreage
     assert len(res_50.county_segments) == 1
     segment = res_50.county_segments[0]
-    assert segment.coverage_status == "partially_covered"
+    assert segment.coverage_status == "partial"
     assert segment.farmland_summary.prime_farmland_acres == 15.0
     assert segment.farmland_summary.unmapped_acres > 0.0
 
