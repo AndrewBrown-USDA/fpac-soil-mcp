@@ -230,6 +230,8 @@ Tools accept validated coordinates, map-unit keys, or GeoJSON geometries. Full i
 | `explain_fppa_screening_scope` | Explain the difference between preliminary screening and formal FPPA review. |
 | `list_farmland_classes` | List USDA NRCS farmland-class categories and regulatory references. |
 
+**Coverage status values (0.6.0, breaking change).** Soil mapping coverage is `covered`, `partial`, `unmapped`, or `error`. Rating coverage (map-unit productivity, NCCPI baseline, corridor productivity, and Land Evaluation) is `rated`, `partial`, `unrated`, `unmapped`, `unknown`, or `error`. `error` means a query failed or the input was invalid; a failed query is never reported as `unmapped` or `unrated`. Renamed values: `partially_covered` -> `partial`; `no_data` and `invalid_request` -> `error`; rating `covered` -> `rated`; `no_coverage` -> `unrated`; `not_found` -> `unknown`. Field names are unchanged. See [ADR 0019](docs/decisions/0019-shared-coverage-vocabularies.md).
+
 ---
 
 ## Resources, Prompts & HTTP Routes
