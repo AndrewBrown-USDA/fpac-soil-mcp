@@ -7,7 +7,7 @@ authors:
   - "Andrew G. Brown"
 supersedes: null
 superseded_by: null
-source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27"
+source_context: "EXECUTION_PLAN_17, EXECUTION_PLAN_26, EXECUTION_PLAN_27, EXECUTION_PLAN_57"
 ---
 
 # 8. NCCPI, CSR2, CPI, and Storie as Validated Public Productivity Indexes
@@ -146,3 +146,32 @@ public selector set is unchanged.
   selectors run through the same registry engine. The `SQL_PRODUCTIVITY_*`
   templates and `_round_for_index()` named above have been retired; precision,
   sentinels, and provenance now come from the registry.
+
+### Amendment (2026-11-18, EP57)
+
+This amendment extends the decision above; status stays Accepted and the
+public selector set is unchanged.
+
+* `analyze_farmland_by_polygon` and `analyze_corridor_fppa` now always return
+  the NCCPI v3 national baseline for every map unit, whatever
+  `productivity_index` is selected. The purpose is simpler tool calling and
+  consistent baseline productivity data across states.
+* Each `SoilMapUnitAcreage` carries `nccpi_baseline_rating`, `_rating_class`,
+  `_rating_source`, `_coverage_status`, `_rated_pct` and `_total_pct`. For an
+  NCCPI primary they equal the primary values and no extra SDA call is made;
+  any other selector costs one NCCPI interpretation query per analysis (per
+  county segment for corridors). The polygon CSV gains
+  `nccpi_baseline_rating` and `nccpi_baseline_rating_class`.
+* Null means no rating: unpopulated, miscellaneous and non-soil map units,
+  sentinel values, and a failed baseline query all yield null, never 0 or
+  any value readable as a rating. A failed baseline query adds one limitation
+  line and leaves the primary ratings unchanged. Coverage status is null when
+  SDA returns no row.
+* Land Evaluation is still computed only from `productivity_index`; the
+  baseline is context and never enters LE, relative ratings or benchmarks.
+* Breaking: the `include_nccpi` argument is removed from both tools, the
+  analyzers and their callers. MCP clients that still send it receive a
+  validation error.
+* Follow-ups, not decided here: an NCCPI relative rating against a county
+  benchmark, a single SDA call that returns primary and baseline together, and
+  showing the baseline on the map.

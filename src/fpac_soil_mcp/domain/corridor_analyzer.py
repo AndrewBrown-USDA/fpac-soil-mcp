@@ -37,6 +37,7 @@ from fpac_soil_mcp.core.constants import (
 from fpac_soil_mcp.domain.lesa import (
     _normalize_productivity_index as _normalize_fixed_productivity_index,
 )
+from fpac_soil_mcp.domain.nccpi_baseline import fetch_nccpi_baseline, nccpi_baseline_fields
 from fpac_soil_mcp.models.integration import CountyIdentifier, CountyPartitionGeometry
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
@@ -208,7 +209,6 @@ class CorridorAnalyzer:
         buffer_units: str = "feet",
         indirect_geometry_input: dict[str, Any] | str | Polygon | MultiPolygon | None = None,
         alternatives: list[dict[str, Any]] | None = None,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -222,8 +222,7 @@ class CorridorAnalyzer:
             indirect_geometry_input: Optional indirect staging/access areas.
             alternatives: Optional list of alternative alignment dicts:
                 [{'alternative_id': 'B', 'centerline': ..., 'buffer_distance': ..., 'buffer_units': ...}]
-            include_nccpi: Whether to retrieve component-weighted interpretations.
-            productivity_index: Soil productivity index type ('nccpi').
+            productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
             max_county_rating_override: Optional positive county maximum benchmark.
             include_map: Include display geometry in the ``map`` layers (ADR 0017).
                 Numbers are computed from exact geometry either way.
@@ -244,7 +243,6 @@ class CorridorAnalyzer:
             not math.isfinite(max_county_rating_override) or max_county_rating_override <= 0
         ):
             raise ValueError("max_county_rating_override must be a positive finite number")
-        ratings_requested = include_nccpi or norm_idx != "nccpi"
 
         # 1. Resolve direct centerline geometry and compute geometry hash from centerline
         try:
@@ -461,7 +459,7 @@ class CorridorAnalyzer:
             # Selected productivity interpretations
             mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
             interp_map: dict[str, dict[str, Any]] = {}
-            if ratings_requested and mukeys:
+            if mukeys:
                 try:
                     interp_map = _get_corridor_ratings(self.sda_client, mukeys, norm_idx)
                 except SDAClientError as exc:
@@ -472,8 +470,15 @@ class CorridorAnalyzer:
                         exc,
                     )
 
+            # NCCPI v3 national baseline: context only, never used for Land Evaluation
+            baseline_map, baseline_limitation = fetch_nccpi_baseline(
+                self.sda_client, mukeys, primary_index=norm_idx, primary_rows=interp_map
+            )
+            if baseline_limitation and baseline_limitation not in limitations:
+                limitations.append(baseline_limitation)
+
             partition_max: dict[str, float] = {}
-            if ratings_requested and max_county_rating_override is None:
+            if max_county_rating_override is None:
                 areasymbol = {
                     str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
                 }
@@ -602,6 +607,7 @@ class CorridorAnalyzer:
                         productivity_rated_pct=rated_pct,
                         productivity_total_pct=total_pct,
                         productivity_coverage_caveats=rating_coverage_caveats,
+                        **nccpi_baseline_fields(baseline_map.get(m_str)),
                     )
                 )
 
@@ -671,7 +677,7 @@ class CorridorAnalyzer:
             )
             segment_productivity_coverage_status = (
                 "unknown"
-                if not ratings_requested or seg_total_acres <= 0
+                if seg_total_acres <= 0
                 else "unmapped"
                 if not unit_models
                 else "unrated"
@@ -797,7 +803,7 @@ class CorridorAnalyzer:
             for unit in segment.map_units
             if unit.productivity_rating is not None
         )
-        if total_project_acres <= 0 or not ratings_requested:
+        if total_project_acres <= 0:
             productivity_coverage_status = "unknown"
         elif component_rated_productivity_acres <= 0:
             productivity_coverage_status = (
@@ -991,7 +997,7 @@ class CorridorAnalyzer:
                             {str(r.get("mukey")) for r in alt_raw_units if r.get("mukey")}
                         )
                         alt_interp_map: dict[str, dict[str, Any]] = {}
-                        if ratings_requested and alt_mukeys:
+                        if alt_mukeys:
                             try:
                                 alt_interp_map = _get_corridor_ratings(
                                     self.sda_client,
@@ -1014,7 +1020,7 @@ class CorridorAnalyzer:
                             )
 
                         alt_partition_max: dict[str, float] = {}
-                        if ratings_requested and max_county_rating_override is None:
+                        if max_county_rating_override is None:
                             alt_symbols = {
                                 str(unit.get("areasymbol")).strip()
                                 for unit in alt_raw_units

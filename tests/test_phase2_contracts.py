@@ -96,7 +96,7 @@ def test_phase2_end_to_end_screening_with_fixtures():
     )
 
     analyzer = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client)
-    res = analyzer.analyze_polygon(geojson, include_nccpi=True)
+    res = analyzer.analyze_polygon(geojson)
 
     # 1. Total acreage matches within tolerance
     assert abs(res.total_aoi_acres - fixture["expected_acreage"]) <= 0.05

@@ -27,6 +27,7 @@ from fpac_soil_mcp.core.constants import (
     REGULATORY_NOTICE,
 )
 from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
+from fpac_soil_mcp.domain.nccpi_baseline import fetch_nccpi_baseline, nccpi_baseline_fields
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
@@ -100,7 +101,6 @@ class PolygonAnalyzer:
     def analyze_polygon(
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -109,7 +109,6 @@ class PolygonAnalyzer:
 
         Args:
             geojson_input: GeoJSON dict/string or Shapely geometry.
-            include_nccpi: Whether to retrieve component-weighted interpretations.
             productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
             max_county_rating_override: Optional user-supplied maximum county rating benchmark.
             include_map: Include display geometry in the ``map`` layers (ADR 0017).
@@ -178,11 +177,10 @@ class PolygonAnalyzer:
             logger.error("SDA spatial query failed: %s", exc)
             limitations.append(f"SDA spatial query error: {exc}")
 
-        # 4. Ingest Productivity Ratings if requested
+        # 4. Ingest productivity ratings for the selected index
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
         rating_map: dict[str, dict[str, Any]] = {}
-        ratings_requested = include_nccpi or norm_idx != "nccpi"
-        if ratings_requested and mukeys:
+        if mukeys:
             if norm_idx == "nccpi":
                 try:
                     interp_rows = self.sda_client.get_interpretations(
@@ -222,10 +220,17 @@ class PolygonAnalyzer:
                     logger.warning("Productivity rating query failed (%s): %s", norm_idx, exc)
                     limitations.append(f"Productivity rating warning ({norm_idx}): {exc}")
 
+        # NCCPI v3 national baseline: context only, never used for Land Evaluation
+        baseline_map, baseline_limitation = fetch_nccpi_baseline(
+            self.sda_client, mukeys, primary_index=norm_idx, primary_rows=rating_map
+        )
+        if baseline_limitation:
+            limitations.append(baseline_limitation)
+
         # Determine county max benchmark
         county_max = max_county_rating_override
         partition_max: dict[str, float] = {}
-        if ratings_requested and county_max is None and raw_units:
+        if county_max is None and raw_units:
             areasymbols = {
                 str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
             }
@@ -329,6 +334,7 @@ class PolygonAnalyzer:
                     ),
                     productivity_rating_source=rating_info.get("productivity_rating_source")
                     or PRODUCTIVITY_PROVENANCE.get(norm_idx),
+                    **nccpi_baseline_fields(baseline_map.get(mukey_str)),
                 )
             )
 
@@ -439,6 +445,8 @@ class PolygonAnalyzer:
                 "pct_of_aoi",
                 "productivity_rating",
                 "productivity_rating_class",
+                "nccpi_baseline_rating",
+                "nccpi_baseline_rating_class",
             ]
         )
         for um in unit_models:
@@ -453,6 +461,8 @@ class PolygonAnalyzer:
                     um.percentage_of_aoi,
                     um.productivity_rating if um.productivity_rating is not None else "",
                     um.productivity_rating_class or "",
+                    um.nccpi_baseline_rating if um.nccpi_baseline_rating is not None else "",
+                    um.nccpi_baseline_rating_class or "",
                 ]
             )
         csv_str = output_io.getvalue()
@@ -559,7 +569,6 @@ class PolygonAnalyzer:
     def analyze_polygon_sync(
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -567,7 +576,6 @@ class PolygonAnalyzer:
         """Synchronous wrapper for analyze_polygon."""
         return self.analyze_polygon(
             geojson_input=geojson_input,
-            include_nccpi=include_nccpi,
             productivity_index=productivity_index,
             max_county_rating_override=max_county_rating_override,
             include_map=include_map,
@@ -576,7 +584,6 @@ class PolygonAnalyzer:
     async def analyze_polygon_async(
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -584,7 +591,6 @@ class PolygonAnalyzer:
         """Asynchronous wrapper for analyze_polygon."""
         return self.analyze_polygon(
             geojson_input=geojson_input,
-            include_nccpi=include_nccpi,
             productivity_index=productivity_index,
             max_county_rating_override=max_county_rating_override,
             include_map=include_map,

@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/mcp-server-registry.json",
   "name": "fpac-soil-mcp",
   "description": "FastMCP server for USDA NRCS Soil Data Access and preliminary FPPA farmland classification screening",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "command": "uv",
   "args": [
     "run",
@@ -19,7 +19,7 @@
     },
     {
       "name": "analyze_farmland_by_polygon",
-      "description": "Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI. Calculates total equal-area acreage, checks Census 2020 Urban Area statutory exemption status, queries intersecting SSURGO map units via SDA with exact spatial clipping, retrieves crop NCCPI productivity ratings, calculates candidate Land Evaluation (LE) scores, and generates acreage breakdowns by farmland classification."
+      "description": "Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI. Calculates total equal-area acreage, checks Census 2020 Urban Area statutory exemption status, queries intersecting SSURGO map units via SDA with exact spatial clipping, retrieves ratings for the selected productivity_index (nccpi, csr2, cpi, or storie) to calculate candidate Land Evaluation (LE) scores, always includes NCCPI v3 per map unit as national baseline context, and generates acreage breakdowns by farmland classification."
     },
     {
       "name": "analyze_cdl_histogram",
@@ -47,7 +47,7 @@
     },
     {
       "name": "analyze_corridor_fppa",
-      "description": "Execute multi-county linear corridor FPPA screening, topological erasure of indirect staging areas, Census TIGERweb county partitioning, USDA SDA soil intersection, NASS agricultural baseline queries, composite LE calculation, sum reconciliation, and optional 7 CFR § 658.5(c) Form NRCS-CPA-106 LESA scoring."
+      "description": "Execute multi-county linear corridor FPPA screening, topological erasure of indirect staging areas, Census TIGERweb county partitioning, USDA SDA soil intersection, NASS agricultural baseline queries, composite LE calculation, sum reconciliation, and optional 7 CFR § 658.5(c) Form NRCS-CPA-106 LESA scoring. productivity_index (nccpi, csr2, cpi, or storie) selects the index used for Land Evaluation scoring; NCCPI v3 is always included per map unit as national baseline context."
     },
     {
       "name": "explain_fppa_screening_scope",

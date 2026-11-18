@@ -181,7 +181,6 @@ def test_phase3_multi_county_corridor_analyzer_contract():
         centerline_input=sc2["centerline"],
         buffer_distance=sc2["buffer_distance"],
         buffer_units=sc2["buffer_units"],
-        include_nccpi=True,
     )
 
     assert isinstance(result, CorridorFarmlandAnalysisResponse)
@@ -311,7 +310,6 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
         buffer_distance=50.0,
         buffer_units="feet",
         indirect_geometry_input=indirect_wkt,
-        include_nccpi=True,
     )
 
     # 2. Run with 100ft buffer to verify centerline hash invariance
@@ -320,7 +318,6 @@ def test_contract_corridor_wkt_indirect_geometry_hashing_and_partial_coverage():
         buffer_distance=100.0,
         buffer_units="feet",
         indirect_geometry_input=indirect_wkt,
-        include_nccpi=True,
     )
 
     # Centerline hash invariance
@@ -658,7 +655,6 @@ def test_contract_alternative_composite_le_scoring():
         buffer_distance=60.0,
         buffer_units="feet",
         alternatives=alternatives,
-        include_nccpi=True,
     )
 
     assert len(res.alternatives) == 1

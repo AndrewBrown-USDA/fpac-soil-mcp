@@ -144,6 +144,36 @@ class SoilMapUnitAcreage(BaseModel):
         default_factory=list,
         description="Selected productivity interpretation coverage caveats for this map unit",
     )
+    nccpi_baseline_rating: float | None = Field(
+        default=None,
+        description=(
+            "Weighted-average NCCPI v3 rating (0-1), always included as national baseline "
+            "context and never used for Land Evaluation scoring; null when unrated or not populated"
+        ),
+    )
+    nccpi_baseline_rating_class: str | None = Field(
+        default=None,
+        description="NCCPI v3 rating class for the national baseline; null when unrated",
+    )
+    nccpi_baseline_rating_source: str | None = Field(
+        default=None,
+        description="SDA interpretation rule or catalog provenance of the NCCPI national baseline",
+    )
+    nccpi_baseline_coverage_status: str | None = Field(
+        default=None,
+        description=(
+            "NCCPI baseline coverage: 'rated', 'partial', or 'unrated'; null when SDA "
+            "returned no NCCPI row for this map unit"
+        ),
+    )
+    nccpi_baseline_rated_pct: float | None = Field(
+        default=None,
+        description="Percent of map-unit component area with an NCCPI rating, as returned by SDA",
+    )
+    nccpi_baseline_total_pct: float | None = Field(
+        default=None,
+        description="Percent of map-unit component area in the NCCPI coverage calculation",
+    )
 
 
 class FarmlandCategoryBreakdown(BaseModel):

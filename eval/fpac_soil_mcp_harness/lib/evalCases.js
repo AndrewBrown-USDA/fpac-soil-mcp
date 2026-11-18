@@ -93,7 +93,7 @@ const TOOL_DERIVERS = {
     const c = tc.sample_geometry?.coordinates;
     return Array.isArray(c) ? { latitude: c[1], longitude: c[0] } : {};
   },
-  analyze_farmland_by_polygon: (tc) => ({ geojson: tc.sample_geometry, include_nccpi: true }),
+  analyze_farmland_by_polygon: (tc) => ({ geojson: tc.sample_geometry }),
   get_soil_polygons_by_geometry: (tc) => ({ geojson: tc.sample_geometry, clip: true }),
   check_urban_area_exemption: (tc) => ({ geojson: tc.sample_geometry }),
   analyze_corridor_fppa: (tc) => ({ centerline: tc.sample_geometry, buffer_distance: 100, buffer_units: "feet" }),

@@ -46,7 +46,7 @@ The implementation is organized into transport and registration (`mcp/`), domain
 ## Features
 
 - **Soil and farmland information**: Look up soil map units and USDA farmland classifications by point, map-unit key, or project-area boundary.
-- **Project-area summaries**: Review mapped farmland categories and acreage, validated soil productivity ratings (NCCPI, CSR2, CPI, or STORIE), and whether an area intersects Census urban boundaries.
+- **Project-area summaries**: Review mapped farmland categories and acreage, validated soil productivity ratings (NCCPI, CSR2, CPI, or STORIE), and whether an area intersects Census urban boundaries. `productivity_index` (nccpi, csr2, cpi, or storie) selects the index used for Land Evaluation scoring; NCCPI v3 is always included per map unit as national baseline context. The `include_nccpi` argument was removed (breaking change); calls that still send it are rejected.
 - **Cropland Data Layer evidence**: Explore mapped CDL classes in an area and nearby bands. CDL is a land-cover dataset; it does not verify active farming or determine farmland classification.
 - **Corridor screening**: Summarize soil and agricultural context along a line-based project corridor and compare alternatives.
 - **Traceable results**: Responses identify sources, coverage, and limitations to help users interpret screening evidence.

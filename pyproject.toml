@@ -1,6 +1,6 @@
 [project]
 name = "fpac-soil-mcp"
-version = "0.5.0"
+version = "0.6.0"
 description = "FastMCP server for querying USDA NRCS Soil Data Access (SDA) farmland classification and preliminary FPPA screening"
 readme = "README.md"
 license = { text = "MIT" }

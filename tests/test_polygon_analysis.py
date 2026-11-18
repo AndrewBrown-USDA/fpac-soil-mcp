@@ -1,12 +1,15 @@
 """Tests for PolygonFarmlandAnalysis and polygon screening engine."""
 
+import csv
+import io
 from unittest.mock import MagicMock
 
 import httpx
 import pytest
 
-from fpac_soil_mcp.clients.sda import PRODUCTIVITY_PROVENANCE, SDAClient
+from fpac_soil_mcp.clients.sda import PRODUCTIVITY_PROVENANCE, SDAClient, SDAClientError
 from fpac_soil_mcp.clients.tigerweb import TigerwebClient
+from fpac_soil_mcp.domain.nccpi_baseline import NCCPI_BASELINE_FIELDS, NCCPI_BASELINE_RULE
 from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer, categorize_farmland_class
 
 GEOJSON = {
@@ -138,47 +141,18 @@ def test_analyze_polygon_preserves_perimeter_evidence_status(evidence_status, is
         "normalized_ratio": 1.0 if evidence_status == "measured" else None,
     }
 
-    result = analyzer.analyze_polygon(GEOJSON, include_nccpi=False)
+    result = analyzer.analyze_polygon(GEOJSON)
 
     evidence = result.manifest["criterion_2_perimeter_evidence"]
     assert evidence["evidence_status"] == evidence_status
     assert evidence["is_verified"] is is_verified
 
 
-def test_analyze_polygon_include_nccpi_false_skips_rating_query():
-    geojson = {
-        "type": "Polygon",
-        "coordinates": [
-            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
-        ],
-    }
-    spatial = {
-        "Table": [
-            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
-            ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", 10.0],
-        ]
-    }
-
-    def sda_handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=spatial)
-
-    class NoNccpiClient(SDAClient):
-        def get_interpretations(self, *args, **kwargs):
-            raise AssertionError("NCCPI query should be skipped")
-
-        def get_county_max_productivity_rating(self, *args, **kwargs):
-            raise AssertionError("County benchmark query should be skipped")
-
-    sda_client = NoNccpiClient(http_client=httpx.Client(transport=httpx.MockTransport(sda_handler)))
-    tiger_client = TigerwebClient(
-        http_client=httpx.Client(
-            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
-        )
-    )
-    result = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client).analyze_polygon(
-        geojson, include_nccpi=False
-    )
-    assert result.map_units[0].productivity_rating is None
+@pytest.mark.parametrize("method", ["analyze_polygon", "analyze_polygon_sync"])
+def test_analyze_polygon_rejects_removed_include_nccpi_argument(method):
+    analyzer = PolygonAnalyzer(sda_client=MagicMock(), tigerweb_client=MagicMock())
+    with pytest.raises(TypeError, match="include_nccpi"):
+        getattr(analyzer, method)(GEOJSON, include_nccpi=True)
 
 
 def test_analyze_polygon_treats_decimal_99_as_unrated_nccpi():
@@ -477,3 +451,117 @@ def test_polygon_forwards_selected_productivity_index(index):
     assert result.manifest["land_evaluation"]["rating_source_provenance"] == [
         PRODUCTIVITY_PROVENANCE[index]
     ]
+
+
+BASELINE_UNITS = [
+    {
+        "mukey": "1",
+        "musym": "A",
+        "muname": "Clarion loam",
+        "farmlndcl": "All areas are prime farmland",
+        "areasymbol": "IA169",
+        "area_ac": 10.0,
+    },
+    {
+        "mukey": "2",
+        "musym": "W",
+        "muname": "Water",
+        "farmlndcl": "Not prime farmland",
+        "areasymbol": "IA169",
+        "area_ac": 2.0,
+    },
+]
+BASELINE_NCCPI_ROWS = [
+    {
+        "mukey": "1",
+        "numeric_rating": 0.72,
+        "rating_class": "High",
+        "rated_pct": 85,
+        "total_pct": 85,
+    },
+    {
+        "mukey": "2",
+        "numeric_rating": None,
+        "rating_class": None,
+        "rated_pct": 0,
+        "total_pct": 100,
+    },
+]
+
+
+def _baseline_sda(nccpi_rows=None, nccpi_error=None):
+    sda = MagicMock(spec=SDAClient)
+    sda.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+    sda.get_spatial_intersection.return_value = [dict(u) for u in BASELINE_UNITS]
+    sda.get_productivity_ratings.return_value = [
+        {"mukey": "1", "numeric_rating": 80.0, "rating_class": "80", "is_rated": True}
+    ]
+    sda.get_county_max_productivity_rating.return_value = 100.0
+    if nccpi_error is not None:
+        sda.get_interpretations.side_effect = nccpi_error
+    else:
+        sda.get_interpretations.return_value = [dict(r) for r in (nccpi_rows or [])]
+    return sda
+
+
+def _primary_view(result):
+    units = [u.model_dump(exclude=set(NCCPI_BASELINE_FIELDS)) for u in result.map_units]
+    return units, result.manifest["land_evaluation"], result.farmland_summary.model_dump()
+
+
+@pytest.mark.parametrize("index", ["csr2", "cpi", "storie"])
+def test_polygon_nccpi_baseline_populated_without_changing_primary(index):
+    sda = _baseline_sda(BASELINE_NCCPI_ROWS)
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index=index)
+    without = _analyzer(_baseline_sda([])).analyze_polygon(GEOJSON, productivity_index=index)
+
+    sda.get_interpretations.assert_called_once()
+    assert sda.get_interpretations.call_args.kwargs["rule_name"] == NCCPI_BASELINE_RULE
+    unit = next(u for u in result.map_units if u.mukey == "1")
+    assert unit.productivity_rating == 80.0
+    assert unit.nccpi_baseline_rating == 0.72
+    assert unit.nccpi_baseline_rating_class == "High"
+    assert unit.nccpi_baseline_coverage_status == "rated"
+    assert unit.nccpi_baseline_rated_pct == 85.0
+    assert _primary_view(result) == _primary_view(without)
+
+
+def test_polygon_nccpi_primary_baseline_reuses_primary_rows():
+    sda = _baseline_sda(BASELINE_NCCPI_ROWS)
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index="nccpi")
+
+    sda.get_interpretations.assert_called_once()
+    for unit in result.map_units:
+        assert unit.nccpi_baseline_rating == unit.productivity_rating
+        assert unit.nccpi_baseline_rating_class == unit.productivity_rating_class
+    assert next(u for u in result.map_units if u.mukey == "1").nccpi_baseline_rating == 0.72
+
+
+def test_polygon_nccpi_baseline_null_for_misc_unit_and_empty_in_csv():
+    result = _analyzer(_baseline_sda(BASELINE_NCCPI_ROWS)).analyze_polygon(
+        GEOJSON, productivity_index="csr2"
+    )
+    water = next(u for u in result.map_units if u.mukey == "2")
+    assert water.nccpi_baseline_rating is None
+    assert water.nccpi_baseline_rating_class is None
+    assert water.nccpi_baseline_coverage_status == "unrated"
+
+    rows = {r["mukey"]: r for r in csv.DictReader(io.StringIO(result.tabular_csv))}
+    assert rows["2"]["nccpi_baseline_rating"] == ""
+    assert rows["2"]["nccpi_baseline_rating_class"] == ""
+    assert rows["1"]["nccpi_baseline_rating"] == "0.72"
+    assert rows["1"]["nccpi_baseline_rating_class"] == "High"
+
+
+def test_polygon_nccpi_baseline_failure_adds_one_limitation_only():
+    failed = _analyzer(_baseline_sda(nccpi_error=SDAClientError("SDA down"))).analyze_polygon(
+        GEOJSON, productivity_index="csr2"
+    )
+    without = _analyzer(_baseline_sda([])).analyze_polygon(GEOJSON, productivity_index="csr2")
+
+    baseline_lines = [m for m in failed.limitations if "NCCPI national baseline" in m]
+    assert baseline_lines == ["NCCPI national baseline unavailable: SDA down"]
+    assert [m for m in failed.limitations if m not in baseline_lines] == without.limitations
+    assert all(u.nccpi_baseline_rating is None for u in failed.map_units)
+    assert all(u.nccpi_baseline_coverage_status is None for u in failed.map_units)
+    assert _primary_view(failed) == _primary_view(without)

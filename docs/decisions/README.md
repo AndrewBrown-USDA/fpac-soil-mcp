@@ -19,7 +19,7 @@ and refined through `adr-distillation`.
 | [0005](0005-sda-server-side-polygon-clipping.md) | SDA Server-Side Polygon Clipping for Spatial Soil Analysis | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4, 7 |
 | [0006](0006-dynamic-tigerweb-county-partitioning-for-corridors.md) | Dynamic TIGERweb County Partitioning for Corridors | Accepted | 2026-09-18 | - | - | EXECUTION_PLAN_7 |
 | [0007](0007-unified-lesa-module-architecture.md) | Unified LESA Module Architecture | Accepted | 2026-09-28 | - | - | EXECUTION_PLAN_17 |
-| [0008](0008-nccpi-validated-public-index-with-extensible-sdv-routing.md) | NCCPI as Validated Public Productivity Index with Extensible SDV Routing | Accepted (amended 2026-10-27, EP39) | 2026-09-28 | - | - | EXECUTION_PLAN_17, 26 |
+| [0008](0008-nccpi-validated-public-index-with-extensible-sdv-routing.md) | NCCPI as Validated Public Productivity Index with Extensible SDV Routing | Accepted (amended 2026-10-27, EP39; 2026-11-18, EP57) | 2026-09-28 | - | - | EXECUTION_PLAN_17, 26 |
 | [0009](0009-shared-http-request-helper-with-retry-composition.md) | Shared HTTP Request Helper with Retry Composition | Accepted | 2026-09-21 | - | - | EXECUTION_PLAN_10 |
 | [0010](0010-public-payload-pii-detection-and-sanitization.md) | Public Payload PII Detection & Sanitization | Accepted | 2026-09-17 | - | - | EXECUTION_PLAN_4 |
 | [0011](0011-mocked-default-live-opt-in-test-architecture.md) | Mocked Default, Live Opt-In Test Architecture | Accepted | 2026-09-16 | - | - | EXECUTION_PLAN_1, 13 |
