@@ -23,9 +23,9 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 | 58.2.1 | SDA client rating rows | done | bc5ba5d |
 | 58.2.2 | Soil lookup tools | done | 29510c9 |
 | 58.2.3 | NCCPI baseline failure reports `error` | done | 33ae3c5 |
-| 58.3.1 | Polygon analyzer | pending | |
-| 58.3.2 | Corridor analyzer | pending | |
-| 58.3.3 | LESA domain and `_lesa_coverage_status` | pending | |
+| 58.3.1 | Polygon analyzer | done | f088519 |
+| 58.3.2 | Corridor analyzer | done | da02e61 |
+| 58.3.3 | LESA domain and `_lesa_coverage_status` | done | c408c5b |
 | 58.4.1 | Type every coverage field; output schemas | pending | |
 | 58.4.2 | Agent app and frontend consumers | pending | |
 | 58.4.3 | README note and ADR 0019 | pending | |
@@ -59,3 +59,20 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 - Files: `domain/nccpi_baseline.py` (`BASELINE_ERROR_MARKER`, failure marker per mukey, marker -> `RATING_ERROR`, constants); `tests/test_nccpi_baseline.py` (failure markers, no-row null); `tests/test_polygon_analysis.py` (~566 `error`).
 - Tests: `pytest tests/test_nccpi_baseline.py tests/test_polygon_analysis.py tests/test_corridor_analysis.py` 101 passed. Wave 2 gate: root suite 1056 passed / 3 skipped / 45 deselected; ruff clean.
 - Deviations: none. Discovered: with primary index `nccpi` and a failed primary rating query the baseline stays null (reuses empty primary rows); see `tasks/58.2.3.todo.md`.
+
+## 58.3.1
+- Status: done (f088519, `fix(polygon)!`).
+- Files: `domain/polygon_analyzer.py` (constants; `spatial_failed`/`rating_failed` flags; mapping `error`/`unmapped`/`partial`/`covered`; LE `error` on spatial or rating failure, else `unknown`/`unmapped`/`unrated`/`rated`/`partial`; new `_unit_rating_coverage` sets `productivity_coverage_status` per D17; NCCPI-primary rating failure marks baseline `error`); `tests/test_polygon_analysis.py` (renamed values + 5 new failure/D17 tests); `tests/test_polygon_map.py` (`invalid_request` -> `error`).
+- Tests: `pytest tests/test_polygon_analysis.py tests/test_polygon_map.py tests/test_phase2_contracts.py` 51 passed; ruff clean. Mutation check: 7 tests fail against the pre-change analyzer.
+- Deviations: also fixed the 58.2.3 discovered gap (NCCPI-primary failure -> baseline `error`) in the analyzer, since the analyzer owns the failure flag.
+
+## 58.3.2
+- Status: done (da02e61, `fix(corridor)!`).
+- Files: `domain/corridor_analyzer.py` (constants; per-segment `seg_spatial_failed`/`seg_rating_failed`; rating failure adds deduped `Productivity rating error (<idx>) for <county>: <exc>` limitation; map unit `error` on rating failure, fallback `no_coverage` folded into `unrated`; segment mapping/rating `error`; reconciliation `error` if any segment failed (D9); NCCPI baseline `error` on NCCPI-primary failure); `tests/test_corridor_analysis.py` (helper gains `spatial_side_effect`/`primary_side_effect`; 3 new tests); `tests/test_phase3_contracts.py` (`partial`).
+- Tests: corridor set (5 files) 93 passed; ruff clean. Mutation check: 5 tests fail against the pre-change analyzer. Alternatives path untouched (no coverage fields).
+
+## 58.3.3
+- Status: done (c408c5b, `fix(lesa)!`).
+- Files: `domain/lesa.py` (`RATING_*` constants, `covered` -> `rated`); `mcp/tools/lesa_tools.py` (`_lesa_coverage_status` returns `RatingCoverage`, `error` if any source status is `error`; corridor sources add segment `productivity_coverage_status`; polygon sources add the manifest LE `coverage_status` so a rating failure with covered mapping reports `error`); `tests/test_tools.py` (`rated`; parametrized `_lesa_coverage_status` test; polygon rating-error LESA test).
+- Tests: `pytest tests/test_lesa.py tests/test_tools.py` 133 passed; ruff clean.
+- Wave 3 gate: root offline suite 1073 passed / 3 skipped / 45 deselected.
