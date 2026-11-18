@@ -28,7 +28,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 6 | 56.6.1 B1: chat-scoped AOI/corridor context | done | 72ccf93 | Cold-start warm-up proposed |
 | 7 | 56.7.1 B2: drop late results; abort outline | done | 9d4f37d | fakeGeo map shape fixed |
 | 8 | 56.8.1 C: Undo / Clear / Detach symmetry | done | b039852 | User: Undo AOI-only |
-| 9 | 56.9.1 Integrated validation and ADR sweep | pending | | |
+| 9 | 56.9.1 Integrated validation and ADR sweep | done | (this record) | ADR 0015 path gaps fixed |
 | 10 | 56.10.1 Post-SDA manual and deployed checks | pending | | Non-blocking; trigger: SDA available |
 | 11 | 56.11.1 Discovered: keep geometry out of request logs | pending | | User: low priority; after all other waves |
 | - | 56.12.1 Discovered: map tools waited for basemap tiles | done | 4a223b1, 5eb12f1 | User-approved 2026-11-17; was the cold-start flake |
@@ -131,6 +131,27 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 - Fix: new pure `aoiHistory.ts` (`replaceAoi`, `undoAoi`); `ActiveAoiContext` keeps `previous` per chat (in memory), routes `setGeometry` and cross-detach through it, exposes `canUndo`/`undo` (undo fires the AOI attach event, so it detaches a corridor); `MapPanel` drops local `previousAoi`, Undo disabled when `noChat || !canUndo`; corridor chip Detach fires `CORRIDOR_DETACH_EVENT`, `MapPanel` runs `clearCorridor`.
 - Behaviour change: Undo after the first AOI (a hidden clear) is now disabled; Clear is undoable instead.
 - Tests: Node 4 new, aoi-state 4 new; negative check: all 4 Playwright cases fail on old code.
+
+## 56.9.1
+- Branch pushed 2026-11-17 (user request): `origin/fix/map-aoi-hardening1` bd9fb8d..d087399, verified with ls-remote. Plain `git push` from a shell worked; the runGit CLI runner had blocked the first push.
+- Serial gate on d087399, fresh serverless instance (1118-000602; `/tmp` setup rebuilt from the STATE recipe, no warm-up, `--retries=0`): `make app-check` ruff clean, pytest 305; `make app-frontend-check` npm ci 573 packages, 0 errors, 10 warnings, build OK; Node 50/50; chat-geometry 3/3; local-auth 1/1; aoi-state 23/23; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3. All 7 Playwright suites: 53/53.
+- ADR sweep: checked every frontend path in `git diff 129a091..HEAD` (25) against the lines this branch added to ADR 0015. Two were missing: `site-assessment-fixture.tsx` (5eb12f1) and `aoiHistory.test.ts` (b039852). Added; recheck 0/25 missing. ADR 0016 needed no further change (07d950b amendment covers D2/D3; no Undo wording).
+- Goal evidence (GOALS.md G57-G66):
+
+| Goal | Verdict | Evidence |
+| --- | --- | --- |
+| G57 triage | met | `TRIAGE_56.md` (43691a2): item x {AOI, corridor} rows with file:line and verdicts |
+| G58 offline fixtures | met | aoi-state fixture + spec (8dbb325 onward, 23 cases); chat-geometry Node test (430a200); no SDA/MCP |
+| G63 notice ADR | met | ADR 0016 amendment 2026-11-17 (07d950b) |
+| G59 Edit sync | met for AOI; corridor guard only | AOI: Edit test covers drag, midpoint insert, vertex delete (bc41661). Corridor Edit has no edit flags, so nothing moves; guard test only (Discovered in Wave 5, not fixed) |
+| G60 chat scope | met; new-chat by code reading | 72ccf93 + aoi-state cases 8-11. New-chat flow (`NewChatPage` keeps `Chat` mounted, id never null) verified by reading only; no fixture mounts it |
+| G61 late results | met | 9d4f37d; negative check 5/5 fail on old code |
+| G62 Undo/Clear/Detach | met for AOI; corridor Undo waived | b039852. User 2026-11-17: Undo AOI-only; corridor chip Detach goes through `clearCorridor` (not undoable) |
+| G64 notice/failed summary | met | a3e04d2, 84a43ba; Show-on-map null notice case in 9d4f37d |
+| G65 retry context | met | 430a200: reproduced, then fixed; release after stream and on error paths |
+| G66 ADR wording | met | ADR 0015 entries per wave; path sweep 0/25 missing after this task |
+
+- Open items: 56.10.1 (post-SDA manual and deployed checks, non-blocking, needs SDA); 56.11.1 (request-log geometry, low priority); corridor Edit inert (Discovered, unplanned); deployed check of the `style.load` fix is part of 56.10.1. `origin/main` is at 50e0e13, ahead of the 129a091 branch point; merge not attempted.
 
 ## Wave 8 gate
 - Committed tree (b039852): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 50/50; chat-geometry 3/3; local-auth 1/1; aoi-state 23/23; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3.
