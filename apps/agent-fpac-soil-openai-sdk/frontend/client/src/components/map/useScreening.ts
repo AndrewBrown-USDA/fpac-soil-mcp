@@ -23,7 +23,8 @@ export type DisplayMapUnit = {
 // Shape of `display.analysis` from `geo.select_display_analysis` (browser-only).
 export type DisplayAnalysis = {
   total_aoi_acres?: number | null;
-  coverage_status?: string | null;
+  // Soil mapping coverage (fpac_soil_mcp.models.coverage.SoilMappingCoverage).
+  coverage_status?: 'covered' | 'partial' | 'unmapped' | 'error' | null;
   farmland_summary?: Record<string, unknown>;
   urban_intersected?: boolean | null;
   map_units?: DisplayMapUnit[];

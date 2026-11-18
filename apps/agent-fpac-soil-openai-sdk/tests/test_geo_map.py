@@ -97,7 +97,7 @@ def _result(extra: dict | None = None) -> CallToolResult:
         "authority": AUTHORITY,
         "regulatory_notice": NOTICE,
         "status": "partial",
-        "coverage_status": "partially_covered",
+        "coverage_status": "partial",
         **(extra or {}),
     }
     return CallToolResult(content=[], structuredContent=data, isError=False)
@@ -130,7 +130,7 @@ def test_polygon_call_returns_map_only(start_server, fake_mcp):
         "regulatory_notice": f"{NOTICE} {NON_PRIME_LIMITATION}",
         "authority": AUTHORITY,
         "status": "partial",
-        "coverage_status": "partially_covered",
+        "coverage_status": "partial",
     }
     assert MARKER not in response.text  # nothing beyond map, notice, authority and status
     assert fake.calls == [(geo.ANALYSIS_TOOL, {"geojson": SQUARE, "include_map": True})]
