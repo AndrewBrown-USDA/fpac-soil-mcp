@@ -141,7 +141,7 @@ class TestSoilTools:
         response = get_farmland_classification_by_point(latitude=120.0, longitude=-86.1581)
 
         assert isinstance(response, FarmlandClassificationResponse)
-        assert response.coverage_status == "no_data"
+        assert response.coverage_status == "error"
         assert len(response.map_units) == 0
         assert any("Latitude out of range" in lim for lim in response.limitations)
         assert response.error is not None
@@ -161,7 +161,7 @@ class TestSoilTools:
         response = get_farmland_classification_by_point(latitude=39.7684, longitude=-86.1581)
 
         assert isinstance(response, FarmlandClassificationResponse)
-        assert response.coverage_status == "no_data"
+        assert response.coverage_status == "error"
         assert len(response.map_units) == 0
         assert any("SDA connection timeout" in lim for lim in response.limitations)
         assert response.error is not None
@@ -223,8 +223,28 @@ class TestSoilTools:
         response = get_farmland_classification_by_mukey(mukey="invalid-mukey")
 
         assert isinstance(response, FarmlandClassificationResponse)
-        assert response.coverage_status == "no_data"
+        assert response.coverage_status == "error"
         assert any("Invalid mukey" in lim for lim in response.limitations)
+        assert response.error is not None
+        assert response.error.code == "validation_error"
+
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
+    def test_get_farmland_classification_by_mukey_upstream_error_is_not_unmapped(
+        self,
+        mock_sda_client_cls: MagicMock,
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_sda_client_cls.return_value = mock_instance
+        mock_instance.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+        mock_instance.get_by_mukey.side_effect = SDAQueryError("SDA unavailable")
+
+        response = get_farmland_classification_by_mukey(mukey="402001")
+
+        assert response.coverage_status == "error"
+        assert response.map_units == []
+        assert response.error is not None
+        assert response.error.code == "upstream_error"
+        assert any("SDA unavailable" in lim for lim in response.limitations)
 
 
 class TestFPPATools:

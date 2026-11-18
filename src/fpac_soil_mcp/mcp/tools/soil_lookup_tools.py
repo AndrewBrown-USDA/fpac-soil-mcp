@@ -15,6 +15,7 @@ from fpac_soil_mcp.clients.sda import SDAClient, SDAClientError, SDAValidationEr
 from fpac_soil_mcp.core.config import settings
 from fpac_soil_mcp.core.constants import REGULATORY_LIMITATIONS, REGULATORY_NOTICE
 from fpac_soil_mcp.mcp.tools.spatial_analysis_tools import IncludeMap
+from fpac_soil_mcp.models.coverage import MAPPING_COVERED, MAPPING_ERROR, MAPPING_UNMAPPED
 from fpac_soil_mcp.models.soil import (
     FarmlandClassificationResponse,
     QuerySource,
@@ -69,7 +70,7 @@ def get_farmland_classification_by_point(
             query_type="point",
             input_query={"latitude": latitude, "longitude": longitude},
             map_units=[],
-            coverage_status="no_data",
+            coverage_status=MAPPING_ERROR,
             error=ToolError(
                 code="validation_error"
                 if isinstance(exc, SDAValidationError)
@@ -92,7 +93,7 @@ def get_farmland_classification_by_point(
             query_type="point",
             input_query={"latitude": latitude, "longitude": longitude},
             map_units=[],
-            coverage_status="unmapped",
+            coverage_status=MAPPING_UNMAPPED,
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
@@ -112,7 +113,7 @@ def get_farmland_classification_by_point(
         query_type="point",
         input_query={"latitude": latitude, "longitude": longitude},
         map_units=map_units,
-        coverage_status="covered",
+        coverage_status=MAPPING_COVERED,
         source=QuerySource(
             service="USDA NRCS Soil Data Access",
             endpoint=client.base_url,
@@ -154,7 +155,7 @@ def get_farmland_classification_by_mukey(
             query_type="mukey",
             input_query={"mukey": mukey},
             map_units=[],
-            coverage_status="no_data",
+            coverage_status=MAPPING_ERROR,
             error=ToolError(
                 code="validation_error",
                 message=str(exc),
@@ -174,7 +175,7 @@ def get_farmland_classification_by_mukey(
             query_type="mukey",
             input_query={"mukey": mukey},
             map_units=[],
-            coverage_status="no_data",
+            coverage_status=MAPPING_ERROR,
             error=ToolError(
                 code="validation_error"
                 if isinstance(exc, SDAValidationError)
@@ -196,7 +197,7 @@ def get_farmland_classification_by_mukey(
             query_type="mukey",
             input_query={"mukey": mukey},
             map_units=[],
-            coverage_status="unmapped",
+            coverage_status=MAPPING_UNMAPPED,
             source=QuerySource(
                 service="USDA NRCS Soil Data Access",
                 endpoint=client.base_url,
@@ -215,7 +216,7 @@ def get_farmland_classification_by_mukey(
         query_type="mukey",
         input_query={"mukey": mukey},
         map_units=map_units,
-        coverage_status="covered",
+        coverage_status=MAPPING_COVERED,
         source=QuerySource(
             service="USDA NRCS Soil Data Access",
             endpoint=client.base_url,

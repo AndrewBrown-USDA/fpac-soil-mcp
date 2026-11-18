@@ -446,7 +446,8 @@ async def test_invalid_inputs_return_structured_errors(
     if result.is_error:
         return
     payload = _payload(result)
-    assert payload["coverage_status"] == "no_data"
+    assert payload["coverage_status"] == "error"
+    assert payload["error"] is not None
     assert payload["map_units"] == []
     assert any(item.startswith("Query error:") for item in payload["limitations"])
     assert payload["regulatory_notice"] == REGULATORY_NOTICE
