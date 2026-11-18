@@ -1,6 +1,6 @@
 # EXECUTION_PLAN_58 -- Shared coverage vocabularies; failed queries report `error` (issue #84)
 
-Branch: `refactor/coverage-vocab1` off `feature/nccpi-baseline1` 8c5ade6 (Plan 57, unmerged). Rebase onto `main` after #85 merges. Breaking change to the public MCP output contract, shipped in 0.6.0 (unreleased).
+Branch: `refactor/coverage-vocab1` off `origin/main` 9acfbd2 (PR #118 merged Plan 57; tree identical to 8c5ade6, where recon was done). Breaking change to the public MCP output contract, shipped in 0.6.0 (unreleased).
 
 ## Goal & Scope
 
@@ -62,9 +62,10 @@ Renames: `partially_covered` -> `partial`; `no_data`, `invalid_request` -> `erro
 | D14 | 2026-11-18 | Ship in 0.6.0; no version bump; rename note in README. | user (accepted rec) |
 | D15 | 2026-11-18 | Frontend keeps raw string display; only the TS type and fixtures change. | user (accepted rec) |
 | D16 | 2026-11-18 | Add a Follow-on section for the `_meta` plan; no `_meta` work here. | user (accepted rec) |
-| D17 | 2026-11-18 | PROPOSED: polygon map units set `productivity_coverage_status` from the rating row (today always the default `unknown`, even when rated), using the corridor rule. | my proposal, pending |
-| D18 | 2026-11-18 | PROPOSED: `manifest.yaml` / `server.json` unchanged. They have no release-notes field, no tool description lists coverage values, and `tests/test_server.py` pins description parity; the rename note goes in README only. | my proposal, pending |
-| D19 | 2026-11-18 | PROPOSED: `LandEvaluationSummary.coverage_status` is temporarily widened to `RatingCoverage` plus legacy `"covered"` in Wave 1 so every commit stays green; narrowed in 58.4.1. | my proposal, pending |
+| D17 | 2026-11-18 | Polygon map units set `productivity_coverage_status` from the rating row (today always the default `unknown`, even when rated), using the corridor rule. | my proposal, approved by user 2026-11-18 |
+| D18 | 2026-11-18 | `manifest.yaml` / `server.json` unchanged. They have no release-notes field, no tool description lists coverage values, and `tests/test_server.py` pins description parity; the rename note goes in README only. | my proposal, approved by user 2026-11-18 |
+| D19 | 2026-11-18 | `LandEvaluationSummary.coverage_status` is temporarily widened to `RatingCoverage` plus legacy `"covered"` in Wave 1 so every commit stays green; narrowed in 58.4.1. | my proposal, approved by user 2026-11-18 |
+| D20 | 2026-11-18 | Plan 58 approved by the user as written (including D17-D19). PR #118 (Plan 57) merged to `main` as 9acfbd2; branch rebased onto it (D1 done). | user |
 
 ## Recon log (facts, 2026-11-18 on 8c5ade6)
 

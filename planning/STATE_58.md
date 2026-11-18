@@ -1,12 +1,12 @@
 # STATE_58 -- Shared coverage vocabularies and `error` status (issue #84)
 
-Branch: `refactor/coverage-vocab1` off `feature/nccpi-baseline1` 8c5ade6. Local only, no upstream; ask before every push.
-Plan status: drafted 2026-11-18, awaiting user approval (D17-D19 pending).
-Resume: read this file, then `git log --oneline 8c5ade6..HEAD`, then the next pending wave in EXECUTION_PLAN_58.md.
+Branch: `refactor/coverage-vocab1` off `origin/main` 9acfbd2 (Plan 57 merged via PR #118). Local only, no upstream; ask before every push.
+Plan status: approved by the user 2026-11-18 (D20). Next: record the baseline, then Wave 1.
+Resume: read this file, then `git log --oneline origin/main..HEAD`, then the next pending wave in EXECUTION_PLAN_58.md.
 
 ## Baseline (record before Wave 1)
 
-Expected from STATE_57 final (5dec901); 8c5ade6 only bumps the version.
+Expected from STATE_57 final (5dec901); 8c5ade6 only bumps the version and 9acfbd2 has the same tree.
 
 - [ ] Root offline pytest (`-m "not live_network and not agent_eval"`): expect 1031 passed, 3 skipped, 45 deselected.
 - [ ] App pytest (`apps/agent-fpac-soil-openai-sdk`, `--frozen`): expect 310 passed.
