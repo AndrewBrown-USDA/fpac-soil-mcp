@@ -7,6 +7,9 @@
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   },
+  "overrides": {
+    "esbuild": "0.28.2"
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm run dev --workspace=@databricks/chatbot-server",
