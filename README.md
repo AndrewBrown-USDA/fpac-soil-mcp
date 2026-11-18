@@ -22,6 +22,7 @@ An [MCP](https://modelcontextprotocol.io/) server that lets compatible assistant
 - [Tool Reference](#tool-reference)
 - [Resources, Prompts & HTTP Routes](#resources-prompts--http-routes)
 - [Configuration](#configuration)
+- [Evaluation](#evaluation)
 - [For Contributors](#for-contributors)
 - [License](#license)
 
@@ -222,22 +223,18 @@ Tools accept validated coordinates, map-unit keys, or GeoJSON geometries. Full i
 
 | Tool | What it does |
 | :--- | :--- |
-| `get_farmland_classification_by_point` | Look up soil map unit and farmland classification at a coordinate. |
-| `get_farmland_classification_by_mukey` | Look up soil and farmland information by SSURGO map-unit key. |
-| `analyze_farmland_by_polygon` | Summarize soil map units, farmland classes, acreage, urban context, and optional productivity ratings in a project area. |
-| `get_soil_polygons_by_geometry` | Return intersecting SSURGO map-unit polygons and attributes. |
-| `get_soil_interpretations` | Retrieve USDA soil interpretation ratings for map units. |
-| `analyze_cdl_histogram` | Summarize selected Cropland Data Layer classes in a project area. |
-| `analyze_cdl_context` | Summarize mapped Cropland Data Layer classes in the project area and two surrounding zones. |
-| `check_urban_area_exemption` | Screen a point or project area against Census 2020 Urban Areas. |
-| `calculate_preliminary_lesa` | Calculate preliminary LESA screening context from supplied project information and available soil data. |
-| `analyze_corridor_fppa` | Summarize soil and agricultural context along a linear corridor, by county, with optional alternatives. |
 | `explain_fppa_screening_scope` | Explain the difference between preliminary screening and formal FPPA review. |
 | `list_farmland_classes` | List USDA NRCS farmland-class categories and regulatory references. |
-
-**Coverage status values (0.6.0, breaking change).** Soil mapping coverage is `covered`, `partial`, `unmapped`, or `error`. Rating coverage (map-unit productivity, NCCPI baseline, corridor productivity, and Land Evaluation) is `rated`, `partial`, `unrated`, `unmapped`, `unknown`, or `error`. `error` means a query failed or the input was invalid; a failed query is never reported as `unmapped` or `unrated`. Renamed values: `partially_covered` -> `partial`; `no_data` and `invalid_request` -> `error`; rating `covered` -> `rated`; `no_coverage` -> `unrated`; `not_found` -> `unknown`. Field names are unchanged. See [ADR 0019](docs/decisions/0019-shared-coverage-vocabularies.md).
-
-**Map geometry in result `_meta` (map schema 2.0, breaking change).** With `include_map=true`, `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and `get_soil_polygons_by_geometry` return map display geometry in the MCP result `_meta` under `gov.usda.fpac-soil/map` (bounds, warnings, and per-layer feature collections keyed by layer id), not in the result body. The body `map.layers` entries describe each layer; `delivery` is `meta_geojson` or `omitted` (`inline_geojson` is gone). A layer dropped by the size cap is `{"truncated": true}` in `_meta`. The three tools publish explicit output schemas. See [ADR 0017](docs/decisions/0017-server-map-result-contract.md).
+| `get_farmland_classification_by_point` | Look up soil map unit and farmland classification at a coordinate. |
+| `get_farmland_classification_by_mukey` | Look up soil and farmland information by SSURGO map-unit key. |
+| `get_soil_polygons_by_geometry` | Return intersecting SSURGO map-unit polygons and attributes. |
+| `get_soil_interpretations` | Retrieve USDA soil interpretation ratings for map units. |
+| `check_urban_area_exemption` | Screen a point or project area against Census 2020 Urban Areas. |
+| `analyze_farmland_by_polygon` | Summarize soil map units, farmland classes, acreage, urban context, and optional productivity ratings in a project area. |
+| `analyze_cdl_histogram` | Summarize selected Cropland Data Layer classes in a project area. |
+| `analyze_cdl_context` | Summarize mapped Cropland Data Layer classes in the project area and two surrounding zones. |
+| `analyze_corridor_fppa` | Summarize soil and agricultural context along a linear corridor, by county, with optional alternatives. |
+| `calculate_preliminary_lesa` | Calculate preliminary LESA screening context from supplied project information and available soil data. |
 
 ---
 
@@ -263,6 +260,10 @@ For network transports, `GET /health` reports service health and `GET /meta` rep
 ## Configuration
 
 The default transport is `stdio`, suitable for a local MCP client. For a network deployment, set `MCP_TRANSPORT` to `sse` or `http` and configure `MCP_HOST` and `MCP_PORT` for the deployment environment. USDA NASS Quick Stats is disabled by default; enable it with `NASS_ENABLED=true` and provide `NASS_API_KEY`. See [`.env.example`](.env.example) for supported settings.
+
+## Evaluation
+
+The evaluation program combines offline MCP contracts, Pi agent runs, and MLflow-traced Databricks evaluations. The [evaluation guide](docs/evaluation.md) describes case coverage, recorded results, and safe artifact handling.
 
 ## For Contributors
 

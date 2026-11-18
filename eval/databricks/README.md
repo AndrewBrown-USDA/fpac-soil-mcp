@@ -60,7 +60,7 @@ uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --cases
 # Plan 45 model-assisted Site Assessment cases
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --cases SA-MA-01,SA-MA-02,SA-MA-03,SA-MA-04
 
-# All 38 cases
+# All cases in the current shared corpus
 uv run --group eval-databricks python eval/databricks/run_mlflow_eval.py --all
 ```
 
@@ -87,7 +87,7 @@ up as tool errors in the traces; rerun after the window.
 | --- | --- | --- |
 | `--cases ID,ID` | | Comma-separated case IDs |
 | `--ground-truth` | (default) | Only verified rows |
-| `--all` | | All 38 rows |
+| `--all` | | All rows in the shared corpus (42 in v1.1.0) |
 | `--model` | `databricks-gpt-5-6-luna` | Agent model |
 | `--judge-model` | `databricks-claude-sonnet-4-5` | Judge model |
 | `--experiment` | `/Users/<user>/fpac-soil-mcp-eval` | MLflow experiment path |
@@ -128,7 +128,7 @@ exemption overclaims, missing or failed data, malformed input, prompt
 injection, privacy, and performance budgets. Deterministic scorers and MLflow
 judges are separate: scorer outputs are not judge results, and judges are
 model-assisted observations rather than the deterministic contract gate.
-The [root evaluation summary](../../README.md#prompt-policy-and-adversarial-cases)
+The [evaluation coverage guide](../../docs/evaluation.md#case-coverage)
 and [Orchestration 46 state](../../planning/STATE_46.md) record the
 cross-surface gates.
 
@@ -218,9 +218,13 @@ and [raw output](../../planning/evidence/46.4.2-performance.json).
   not fallback paths for this smoke. The deployed server's current stateful
   session behavior is unchanged.
 - Scheduled serverless Lakeflow Job for recurring T1 runs.
-- Dataset expansion to 50+ rows and scope-refusal rows.
+- Dataset expansion to 50+ rows and broader held-out coverage; scope-refusal and adversarial rows already exist in the shared corpus.
 - MLflow prompt registry and UC-backed dataset sync.
 - Roadmap and T2 backlog: [master plan Track E](../../planning/MASTER_PLAN.md#track-e-evaluation).
+
+## Evaluation results
+
+The [evaluation guide](../../docs/evaluation.md) summarizes corpus coverage, full-suite results, and the v1/v2 prompt comparison. Its [future evaluation](../../docs/evaluation.md#future-evaluation) section describes a planned full-suite comparison of agents with and without MCP access.
 
 All results are preliminary screening and are not an official FPPA determination,
 LESA score, Form AD-1006, or NRCS-CPA-106.

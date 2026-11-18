@@ -144,6 +144,8 @@ The console entry point is `fpac_soil_mcp.mcp.app:main`. Local MCP clients commo
 
 Automated checks use mocked upstream HTTP responses by default. Offline contract and evaluation suites exercise MCP behavior without requiring live federal services; live-network tests and deployment-specific evaluations are opt-in. The browser harness under `eval/fpac_soil_mcp_harness/` is a local client/workbench for connecting to the server.
 
+The [evaluation guide](evaluation.md) describes case coverage and recorded results. T1 evaluates the checked-out server in process; deployed endpoint access and health are checked separately.
+
 ## Source Map
 
 | Area | Location |
