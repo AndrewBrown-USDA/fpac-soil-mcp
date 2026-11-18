@@ -8,6 +8,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from fpac_soil_mcp.models.coverage import RatingCoverage
+
 
 class CriterionPointInput(BaseModel):
     """Analyst-proposed point input for one Site Assessment criterion."""
@@ -165,7 +167,8 @@ class LandEvaluationSummary(BaseModel):
         default=0.0,
         description="Percentage of AOI footprint with rated soil productivity",
     )
-    coverage_status: Literal["covered", "partial", "unrated", "unmapped", "unknown"] = Field(
+    # transitional: legacy "covered" accepted until every producer emits "rated".
+    coverage_status: RatingCoverage | Literal["covered"] = Field(
         default="unknown",
         description=(
             "Reconciled productivity coverage state: covered, partial, unrated, "
