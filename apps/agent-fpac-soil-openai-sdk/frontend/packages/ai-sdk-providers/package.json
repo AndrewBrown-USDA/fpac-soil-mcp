@@ -33,10 +33,10 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/provider": "3.0.8",
+    "@ai-sdk/provider": "3.0.19",
     "@databricks/chatbot-auth": "*",
     "@databricks/chatbot-utils": "*",
     "@databricks/ai-sdk-provider": "0.5.1",
-    "ai": "6.0.94"
+    "ai": "6.0.333"
   }
 }

@@ -40,7 +40,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "ai": "6.0.94",
+    "ai": "6.0.333",
     "typescript": "5.9.3"
   },
   "dependencies": {
