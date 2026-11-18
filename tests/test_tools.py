@@ -21,7 +21,11 @@ from fpac_soil_mcp.mcp.tools.fppa_tools import (
     explain_fppa_screening_scope,
     list_farmland_classes,
 )
-from fpac_soil_mcp.mcp.tools.lesa_tools import _score_registry_facts, calculate_preliminary_lesa
+from fpac_soil_mcp.mcp.tools.lesa_tools import (
+    _lesa_coverage_status,
+    _score_registry_facts,
+    calculate_preliminary_lesa,
+)
 from fpac_soil_mcp.mcp.tools.soil_lookup_tools import (
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
@@ -657,7 +661,7 @@ class TestFPPATools:
         )
 
         assert response.project_name == "wkt polygon"
-        assert response.land_evaluation.coverage_status == "covered"
+        assert response.land_evaluation.coverage_status == "rated"
         assert response.land_evaluation.rating_source_provenance == ["SDA:NCCPI_V3"]
         assert any("SDA:NCCPI_V3" in notice for notice in response.land_evaluation.notices)
         mock_analyzer_cls.return_value.analyze_polygon.assert_called_once()
@@ -1139,3 +1143,49 @@ def test_analyze_corridor_fppa_forwards_include_map(
     )
     kwargs = mock_analyzer_cls.return_value.analyze_corridor.call_args.kwargs
     assert kwargs["include_map"] is include_map
+
+
+@pytest.mark.parametrize(
+    ("rated", "total", "sources", "mapped", "expected"),
+    [
+        (5.0, 5.0, ["error"], 5.0, "error"),
+        (0.0, 5.0, ["covered", "error"], 5.0, "error"),
+        (0.0, 0.0, ["error"], 0.0, "error"),
+        (0.0, 0.0, ["covered"], 0.0, "unknown"),
+        (0.0, 5.0, ["unmapped"], 0.0, "unmapped"),
+        (0.0, 5.0, ["covered"], 5.0, "unrated"),
+        (5.0, 5.0, ["covered"], 5.0, "rated"),
+        (2.0, 5.0, ["partial"], 5.0, "partial"),
+    ],
+)
+def test_lesa_coverage_status_uses_rating_vocabulary(rated, total, sources, mapped, expected):
+    assert _lesa_coverage_status(rated, total, sources, mapped) == expected
+
+
+@patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
+def test_calculate_preliminary_lesa_reports_rating_error(mock_analyzer_cls: MagicMock) -> None:
+    mock_response = MagicMock()
+    mock_response.manifest = {
+        "land_evaluation": {
+            "productivity_index": "NCCPI",
+            "candidate_le_score": None,
+            "aoi_relative_rating": None,
+            "rated_acreage": 0.0,
+            "unrated_acreage": 1.0,
+            "total_acreage": 1.0,
+            "coverage_percent": 0.0,
+            "coverage_status": "error",
+        }
+    }
+    mock_response.total_aoi_acres = 1.0
+    mock_response.limitations = ["NCCPI interpretation warning: SDA down"]
+    mock_response.coverage_status = "covered"
+    mock_response.map_units = [MagicMock(calculated_acres=1.0, productivity_rating=None)]
+    mock_analyzer_cls.return_value.analyze_polygon.return_value = mock_response
+
+    response = calculate_preliminary_lesa(
+        project_name="rating failure",
+        geometry="POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
+    )
+
+    assert response.land_evaluation.coverage_status == "error"

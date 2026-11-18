@@ -35,6 +35,12 @@ from fpac_soil_mcp.core.constants import (
     STATUTORY_DETERMINATIONS,
 )
 from fpac_soil_mcp.domain.site_assessment import SITE_ASSESSMENT_REGISTRY
+from fpac_soil_mcp.models.coverage import (
+    RATING_PARTIAL,
+    RATING_RATED,
+    RATING_UNKNOWN,
+    RATING_UNRATED,
+)
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     LandEvaluationSummary,
@@ -497,13 +503,13 @@ def evaluate_land_evaluation(
     total_acres = rated_acres + unrated_acres
     coverage_pct = round((rated_acres / total_acres * 100.0), 1) if total_acres > 0 else 0.0
     coverage_status = (
-        "unknown"
+        RATING_UNKNOWN
         if total_acres <= 0
-        else "unrated"
+        else RATING_UNRATED
         if rated_acres <= 0
-        else "covered"
+        else RATING_RATED
         if rated_acres >= total_acres
-        else "partial"
+        else RATING_PARTIAL
     )
 
     if rated_acres > 0:
