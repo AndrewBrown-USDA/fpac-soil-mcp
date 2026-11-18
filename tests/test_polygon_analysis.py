@@ -563,5 +563,5 @@ def test_polygon_nccpi_baseline_failure_adds_one_limitation_only():
     assert baseline_lines == ["NCCPI national baseline unavailable: SDA down"]
     assert [m for m in failed.limitations if m not in baseline_lines] == without.limitations
     assert all(u.nccpi_baseline_rating is None for u in failed.map_units)
-    assert all(u.nccpi_baseline_coverage_status is None for u in failed.map_units)
+    assert all(u.nccpi_baseline_coverage_status == "error" for u in failed.map_units)
     assert _primary_view(failed) == _primary_view(without)

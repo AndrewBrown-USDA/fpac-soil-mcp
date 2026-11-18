@@ -81,11 +81,24 @@ def test_empty_mukeys_skip_query() -> None:
     assert sda.calls == []
 
 
-def test_sda_error_returns_limitation_and_no_rows() -> None:
+def test_sda_error_returns_limitation_and_failure_markers() -> None:
     sda = FakeSDA(error=SDAClientError("SDA down"))
-    rows, limitation = fetch_nccpi_baseline(sda, ["1"], primary_index="csr2", primary_rows={})
-    assert rows == {}
+    rows, limitation = fetch_nccpi_baseline(sda, ["1", "2"], primary_index="csr2", primary_rows={})
+    assert set(rows) == {"1", "2"}
     assert limitation == "NCCPI national baseline unavailable: SDA down"
+    for row in rows.values():
+        fields = nccpi_baseline_fields(row)
+        assert fields["nccpi_baseline_coverage_status"] == "error"
+        assert fields["nccpi_baseline_rating"] is None
+        assert all(
+            fields[name] is None
+            for name in NCCPI_BASELINE_FIELDS
+            if name != "nccpi_baseline_coverage_status"
+        )
+
+
+def test_no_row_stays_all_null() -> None:
+    assert nccpi_baseline_fields(None) == dict.fromkeys(NCCPI_BASELINE_FIELDS)
 
 
 def test_rated_row_maps_all_fields() -> None:
