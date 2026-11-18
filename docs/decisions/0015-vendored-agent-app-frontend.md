@@ -410,7 +410,8 @@ Added paths:
   guards that Edit corridor leaves the attached corridor in sync.
 * `client/src/components/map/ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`,
   `client/src/components/chat.tsx`, `MapPanel.tsx`, `map-toolbar-fixture.tsx`,
-  `map-legend-fixture.tsx`, `aoi-state-fixture.tsx`, and
+  `map-legend-fixture.tsx`, `aoi-state-fixture.tsx`,
+  `client/src/components/site-assessment-fixture.tsx`, and
   `tests/aoi-state/aoi-state.spec.ts`: the chat view clears the map's chat id
   when it unmounts; with no chat open both providers hold no geometry and
   ignore writes, and the map disables AOI and corridor drawing, paste,
@@ -428,8 +429,8 @@ Added paths:
   response if either changed; closing the identify popup aborts its outline
   request; switching chats resets corridor screening so a run in flight is
   dropped. The AOI-state fixture mounts a test-only Show on map button.
-* `client/src/components/map/aoiHistory.ts` (new), `ActiveAoiContext.tsx`,
-  `ActiveCorridorContext.tsx`, `MapPanel.tsx`, and
+* `client/src/components/map/aoiHistory.ts` and `aoiHistory.test.ts` (new),
+  `ActiveAoiContext.tsx`, `ActiveCorridorContext.tsx`, `MapPanel.tsx`, and
   `tests/aoi-state/aoi-state.spec.ts`: AOI Undo restores the previous AOI as
   it was (same `aoi_ref`, geometry, and summary) instead of minting a new
   reference (issue #89 C). The one-level history lives in the AOI provider, per
