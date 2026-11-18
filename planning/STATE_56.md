@@ -30,7 +30,7 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | 8 | 56.8.1 C: Undo / Clear / Detach symmetry | done | b039852 | User: Undo AOI-only |
 | 9 | 56.9.1 Integrated validation and ADR sweep | done | (this record) | ADR 0015 path gaps fixed |
 | 10 | 56.10.1 Post-SDA manual and deployed checks | pending | | Non-blocking; trigger: SDA available |
-| 11 | 56.11.1 Discovered: keep geometry out of request logs | pending | | User: low priority; after all other waves |
+| 11 | 56.11.1 Discovered: keep geometry out of request logs | done | db10d21 | User: low priority; after all other waves |
 | - | 56.12.1 Discovered: map tools waited for basemap tiles | done | 4a223b1, 5eb12f1 | User-approved 2026-11-17; was the cold-start flake |
 
 ## Task Reports
@@ -151,7 +151,14 @@ Recorded 2026-11-17 at f0af2fc (apps/ identical to 129a091), in a `git archive` 
 | G65 retry context | met | 430a200: reproduced, then fixed; release after stream and on error paths |
 | G66 ADR wording | met | ADR 0015 entries per wave; path sweep 0/25 missing after this task |
 
-- Open items: 56.10.1 (post-SDA manual and deployed checks, non-blocking, needs SDA); 56.11.1 (request-log geometry, low priority); corridor Edit inert (Discovered, unplanned); deployed check of the `style.load` fix is part of 56.10.1. `origin/main` is at 50e0e13, ahead of the 129a091 branch point; merge not attempted.
+- Open items: 56.10.1 (post-SDA manual and deployed checks, non-blocking, needs SDA); corridor Edit inert (Discovered, unplanned); deployed check of the `style.load` fix is part of 56.10.1. `origin/main` is at 50e0e13, ahead of the 129a091 branch point; merge not attempted.
+
+## 56.11.1
+- Status: done, db10d21 `fix(chat): keep map geometry out of the request log`.
+- Fix: `providers-server.ts` `withoutMapGeometry` rewrites the logged copy of the `Databricks request:` body so `custom_inputs.active_aoi` / `active_corridor` show only `aoi_ref` / `corridor_ref`; the sent body is unchanged. Out of scope as specified: `LOG_SSE_EVENTS` (off by default) and the raw-body log path.
+- Test: `chat-geometry-release.test.ts` captures `console.log`; the new case checks the sent body still has full AOI and corridor, and the log has both refs and no coordinates. Negative check: the new case fails on the old provider (3 pass, 1 fail).
+- Gate on db10d21: `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 50/50; chat-geometry 4/4; local-auth 1/1; aoi-state 23/23; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3.
+- ADR 0015 entry added in db10d21.
 
 ## Wave 8 gate
 - Committed tree (b039852): `make app-check` ruff clean, pytest 305; `make app-frontend-check` 0 errors, 10 warnings, build OK; Node 50/50; chat-geometry 3/3; local-auth 1/1; aoi-state 23/23; corridor-map 4/4; map-toolbar 10/10; map-legend 6/6; map-tabs 2/2; site-assessment 5/5; chat-export 3/3.
