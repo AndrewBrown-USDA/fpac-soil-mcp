@@ -28,7 +28,7 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 | 58.3.3 | LESA domain and `_lesa_coverage_status` | done | c408c5b |
 | 58.4.1 | Type every coverage field; output schemas | done (D21) | b80177a |
 | 58.4.2 | Agent app and frontend consumers | done | 6f5848f |
-| 58.4.3 | README note and ADR 0019 | pending | |
+| 58.4.3 | README note and ADR 0019 | done | 1791a88 |
 | 58.5.1 | Final verification | pending | |
 | 58.5.2 | Post-SDA checks (non-blocking) | pending | |
 
@@ -90,3 +90,9 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 - Tests: `git grep partially_covered -- apps` empty. App pytest 310 passed (= baseline); app ruff check + format clean (21 files); frontend `npm ci`, biome 0 errors / 10 warnings (= baseline), build OK. All run on a `/tmp/l58` working-tree copy.
 - Note: the frontend build has no typecheck, so the new TS literal type is not compiler-checked.
 - Gotcha (environment): serverless restarted, `/tmp` was wiped. Running `uv run` inside the app dir in the workspace created an untracked, gitignored `apps/agent-fpac-soil-openai-sdk/.venv` (Python 3.12, created 23:22 UTC by this session, slow on the workspace FS). Deleted with user approval 2026-11-18. Use `UV_PROJECT_ENVIRONMENT=/tmp/app-venv` on a `/tmp` copy instead.
+
+## 58.4.3
+- Status: done (1791a88, `docs`).
+- Files: new `docs/decisions/0019-shared-coverage-vocabularies.md` (Accepted, 2026-11-18; context = issue #84 and the outage misreport; decision = two vocabularies, `error` rule, hard rename, field names kept, SDV keys unchanged; consequences incl. D21; deferred = structured error field, corridor output schema and `_meta` plan); `docs/decisions/README.md` (index row + era paragraph); `README.md` (0.6.0 breaking-change note after the Tool Reference table, linking ADR 0019).
+- Checks: both new links resolve to existing files; `git diff --name-only -- docs/decisions` shows only `README.md` and the new ADR (no other ADR edited); root suite 1091 passed / 3 skipped / 45 deselected.
+- Wave 4 gate: root suite 1091 passed; app pytest 310 passed; biome 0 errors; build OK (58.4.2). JS harness not yet re-run (58.5.1).
