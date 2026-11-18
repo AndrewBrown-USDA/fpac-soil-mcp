@@ -349,7 +349,7 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
             analysis_result = await _call_tool_untraced(
                 server,
                 ANALYSIS_TOOL,
-                {"geojson": geometry, "include_nccpi": True, "include_map": True},
+                {"geojson": geometry, "include_map": True},
             )
     except Exception as exc:  # noqa: BLE001 - every MCP failure becomes a bounded 502
         # Exception text may echo tool arguments, so only the type is logged.

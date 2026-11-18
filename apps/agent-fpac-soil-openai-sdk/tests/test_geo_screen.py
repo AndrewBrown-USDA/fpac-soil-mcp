@@ -268,9 +268,7 @@ def test_happy_path_returns_display_and_summary(start_server, fake_mcp):
     assert "My field" not in json.dumps(summary) + body["chat_summary_text"]
     assert body["chat_summary_text"].startswith("Map screening result (preliminary)")
     assert len(body["chat_summary_text"]) <= 2000
-    assert server.calls == [
-        (geo.ANALYSIS_TOOL, {"geojson": SQUARE, "include_nccpi": True, "include_map": True})
-    ]
+    assert server.calls == [(geo.ANALYSIS_TOOL, {"geojson": SQUARE, "include_map": True})]
     assert server.entered == server.exited == 1
 
 
