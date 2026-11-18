@@ -27,8 +27,7 @@
           ]
         },
         "buffer_distance": 50,
-        "buffer_units": "feet",
-        "include_nccpi": true
+        "buffer_units": "feet"
       }
     },
     {
@@ -56,8 +55,7 @@
           ]
         },
         "buffer_distance": 75,
-        "buffer_units": "feet",
-        "include_nccpi": true
+        "buffer_units": "feet"
       }
     },
     {
@@ -91,8 +89,7 @@
               [-93.5, 42.0]
             ]
           ]
-        },
-        "include_nccpi": true
+        }
       }
     },
     {
@@ -126,8 +123,7 @@
               [-91.72, 41.96]
             ]
           ]
-        },
-        "include_nccpi": true
+        }
       }
     }
   ]

@@ -32,7 +32,6 @@ IncludeMap = Annotated[bool, Field(description=INCLUDE_MAP_DESCRIPTION)]
 
 def analyze_farmland_by_polygon(
     geojson: dict | str,
-    include_nccpi: bool = True,
     productivity_index: str = "nccpi",
     max_county_rating_override: Annotated[
         float | None, Field(default=None, gt=0, allow_inf_nan=False)
@@ -42,14 +41,16 @@ def analyze_farmland_by_polygon(
     """Execute comprehensive FPPA preliminary screening on a GeoJSON Polygon or MultiPolygon AOI.
 
     Calculates geodesic surface acreage, checks Census 2020 Urban Area boundaries,
-    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches NCCPI
-    crop productivity ratings, computes candidate Land
-    Evaluation scores, and summarizes acreage across statutory farmland categories.
+    queries intersecting SSURGO soil map units from USDA NRCS SDA, fetches ratings for
+    the selected productivity index plus NCCPI v3 as national baseline context, computes
+    candidate Land Evaluation scores, and summarizes acreage across statutory farmland
+    categories.
 
     Args:
         geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
-        include_nccpi: Whether to retrieve crop productivity ratings.
-        productivity_index: Soil productivity index type ('nccpi'). Default is 'nccpi'.
+        productivity_index: Productivity index used for Land Evaluation scoring ('nccpi',
+            'csr2', 'cpi', or 'storie'). Default is 'nccpi'. NCCPI v3 is always included
+            per map unit as national baseline context.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
         include_map: Leave false. True embeds display GeoJSON in ``map.layers``
             (ADR 0017); by default the layers are descriptors without geometry.
@@ -65,7 +66,6 @@ def analyze_farmland_by_polygon(
     analyzer = PolygonAnalyzer()
     return analyzer.analyze_polygon(
         geojson,
-        include_nccpi=include_nccpi,
         productivity_index=normalized_productivity_index,
         max_county_rating_override=max_county_rating_override,
         include_map=include_map,
@@ -78,7 +78,6 @@ def analyze_corridor_fppa(
     buffer_units: Literal["feet", "meters", "miles"] = "feet",
     indirect_geometry: dict | str | None = None,
     alternatives: list[CorridorAlternativeInput] | None = None,
-    include_nccpi: bool = True,
     site_assessment_inputs: SiteAssessmentInputs | None = None,
     productivity_index: str = "nccpi",
     max_county_rating_override: Annotated[
@@ -100,8 +99,9 @@ def analyze_corridor_fppa(
         buffer_units: Buffer distance units ('feet', 'meters', 'miles'). Default is 'feet'.
         indirect_geometry: Optional GeoJSON Polygon/MultiPolygon or WKT for staging/access areas.
         alternatives: Optional list of alternative alignment dicts [{'alternative_id': 'Alt B', 'centerline': ...}].
-        include_nccpi: Whether to retrieve component-weighted NCCPI v3 crop productivity ratings.
-        productivity_index: Requested soil productivity index ('nccpi').
+        productivity_index: Productivity index used for Land Evaluation scoring ('nccpi',
+            'csr2', 'cpi', or 'storie'). NCCPI v3 is always included per map unit as
+            national baseline context.
         max_county_rating_override: Optional positive county benchmark override used
             for corridor normalization and Land Evaluation scoring.
         site_assessment_inputs: Optional dictionary of Part VI Site Assessment inputs for CPA-106 scoring:
@@ -135,7 +135,6 @@ def analyze_corridor_fppa(
             if alternatives is not None
             else None
         ),
-        "include_nccpi": include_nccpi,
         "productivity_index": normalized_productivity_index,
         "include_map": include_map,
     }

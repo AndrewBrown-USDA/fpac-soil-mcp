@@ -569,7 +569,6 @@ class TestFPPATools:
                 centerline_input=geometry,
                 buffer_distance=100.0,
                 buffer_units="feet",
-                include_nccpi=True,
                 productivity_index="NCCPI",
                 max_county_rating_override=None,
             )
@@ -704,7 +703,6 @@ class TestFPPATools:
             centerline_input="LINESTRING (-93.5 42.0, -93.4 42.1)",
             buffer_distance=250.0,
             buffer_units="meters",
-            include_nccpi=True,
             productivity_index="NCCPI",
             max_county_rating_override=None,
         )
@@ -934,7 +932,6 @@ class TestCorridorTools:
             buffer_units="feet",
             indirect_geometry_input=None,
             alternatives=None,
-            include_nccpi=True,
             productivity_index="NCCPI",
             include_map=False,
         )
@@ -970,7 +967,6 @@ class TestCorridorTools:
             buffer_units="meters",
             indirect_geometry="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
             alternatives=alternatives,
-            include_nccpi=True,
             productivity_index="NCCPI",
             max_county_rating_override=88.0,
         )
@@ -982,7 +978,6 @@ class TestCorridorTools:
             buffer_units="meters",
             indirect_geometry_input="POLYGON((-93.5 42.0, -93.4 42.0, -93.4 42.1, -93.5 42.0))",
             alternatives=alternatives,
-            include_nccpi=True,
             productivity_index="NCCPI",
             max_county_rating_override=88.0,
             include_map=False,
@@ -1003,7 +998,6 @@ class TestCorridorTools:
             centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
             buffer_distance=50.0,
             productivity_index="csr2",
-            include_nccpi=False,
         )
 
         mock_instance.analyze_corridor.assert_called_once_with(
@@ -1012,7 +1006,6 @@ class TestCorridorTools:
             buffer_units="feet",
             indirect_geometry_input=None,
             alternatives=None,
-            include_nccpi=False,
             productivity_index="CSR2",
             include_map=False,
         )

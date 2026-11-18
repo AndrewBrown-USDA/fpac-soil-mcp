@@ -16,8 +16,8 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 
 | Task | Title | Status | Commit |
 | --- | --- | --- | --- |
-| 57.1.1 | NCCPI baseline model fields and helper | done | (this commit) |
-| 57.2.1 | Remove from MCP tools and LESA call sites | pending | |
+| 57.1.1 | NCCPI baseline model fields and helper | done | c092783 |
+| 57.2.1 | Remove from MCP tools and LESA call sites | done | (next commit) |
 | 57.2.2 | Remove from agent app | pending | |
 | 57.2.3 | Remove from JS eval harness | pending | |
 | 57.2.4 | Remove from polygon analyzer | pending | |
@@ -44,3 +44,10 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 - Tests: `pytest tests/test_nccpi_baseline.py tests/test_models.py` 25 passed; root 1016 passed / 3 skipped.
 - Deviations: none. Also treats bool / NaN / non-numeric ratings as null.
 - Gotchas: `fetch_nccpi_baseline` takes `primary_rows` keyed by str mukey; for NCCPI primary pass the analyzer's rating map. Rows need `numeric_rating`, `rating_class`, `rated_pct`, `total_pct`; source falls back to the registry rule name. SDA `rated_pct=0` for misc units is kept (coverage data); rating/class stay null.
+
+## 57.2.1
+- Status: done.
+- Files: `mcp/tools/spatial_analysis_tools.py` (both signatures, docstrings, polygon call, `corridor_kwargs`; `productivity_index` docs now list four selectors + NCCPI baseline); `mcp/tools/lesa_tools.py` (2 kwargs + now-unused `ProductivityIndexType` import); `tests/test_tools.py` (7 lines); `tests/test_phase3_contracts.py` (4 lines); `tests/fixtures/criterion2_benchmark.v1.json` (4 keys).
+- Tests: targeted 143 passed; root 1016 passed / 3 skipped; ruff clean.
+- Deviations: removed the unused import (F401 after the kwarg went).
+- Gotchas: analyzers still accept the kwarg until 57.2.4/57.2.5; registered descriptions in `tools/__init__.py` untouched (57.4.1).

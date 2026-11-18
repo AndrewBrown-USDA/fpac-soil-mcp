@@ -23,7 +23,6 @@ from fpac_soil_mcp.models.lesa import (
     VALIDATED_PRODUCTIVITY_INDEXES,
     LandEvaluationSummary,
     PreliminaryLESAResponse,
-    ProductivityIndexType,
     SiteAssessmentInputs,
     SiteAssessmentSummary,
 )
@@ -345,7 +344,6 @@ def calculate_preliminary_lesa(
             centerline_input=geometry,
             buffer_distance=corridor_buffer_distance,
             buffer_units=corridor_buffer_units,
-            include_nccpi=normalized_productivity_index is ProductivityIndexType.NCCPI,
             productivity_index=normalized_productivity_index.value,
             max_county_rating_override=max_county_rating_override,
         )
@@ -431,7 +429,6 @@ def calculate_preliminary_lesa(
         analyzer = PolygonAnalyzer()
         polygon_response = analyzer.analyze_polygon(
             geojson_input=analysis_geometry,
-            include_nccpi=productivity_index.strip().lower() == "nccpi",
             productivity_index=normalized_productivity_index,
             max_county_rating_override=max_county_rating_override,
         )
