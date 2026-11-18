@@ -7,7 +7,12 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from fpac_soil_mcp.clients.sda import PRODUCTIVITY_PROVENANCE, SDAClient, SDAClientError
+from fpac_soil_mcp.clients.sda import (
+    PRODUCTIVITY_PROVENANCE,
+    SDAClient,
+    SDAClientError,
+    SDAQueryError,
+)
 from fpac_soil_mcp.clients.tigerweb import TigerwebClient
 from fpac_soil_mcp.domain.nccpi_baseline import NCCPI_BASELINE_FIELDS, NCCPI_BASELINE_RULE
 from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer, categorize_farmland_class
@@ -104,7 +109,7 @@ def test_analyze_polygon_success():
     analyzer = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client)
     res = analyzer.analyze_polygon(geojson)
 
-    assert res.coverage_status == "partially_covered"
+    assert res.coverage_status == "partial"
     assert res.total_aoi_acres > 0
     assert len(res.map_units) == 2
     assert res.farmland_summary.prime_farmland_acres == 120.5
@@ -404,7 +409,8 @@ def test_analyze_polygon_fully_covered():
 
     assert res.coverage_status == "covered"
     assert res.farmland_summary.unmapped_acres == 0.0
-    assert res.manifest["land_evaluation"]["coverage_status"] == "covered"
+    assert res.manifest["land_evaluation"]["coverage_status"] == "rated"
+    assert [u.productivity_coverage_status for u in res.map_units] == ["rated"]
 
 
 @pytest.mark.parametrize("index", ["nccpi", "csr2", "cpi", "storie"])
@@ -565,3 +571,56 @@ def test_polygon_nccpi_baseline_failure_adds_one_limitation_only():
     assert all(u.nccpi_baseline_rating is None for u in failed.map_units)
     assert all(u.nccpi_baseline_coverage_status == "error" for u in failed.map_units)
     assert _primary_view(failed) == _primary_view(without)
+
+
+def test_polygon_spatial_failure_reports_error_not_unmapped():
+    sda = _baseline_sda(BASELINE_NCCPI_ROWS)
+    sda.get_spatial_intersection.side_effect = SDAQueryError("SDA unavailable")
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index="csr2")
+
+    assert result.coverage_status == "error"
+    assert result.manifest["land_evaluation"]["coverage_status"] == "error"
+    assert result.map_units == []
+    assert any("SDA spatial query error: SDA unavailable" in m for m in result.limitations)
+
+
+def test_polygon_rating_failure_keeps_mapping_and_reports_rating_error():
+    ok = _analyzer(_baseline_sda(BASELINE_NCCPI_ROWS)).analyze_polygon(
+        GEOJSON, productivity_index="csr2"
+    )
+    sda = _baseline_sda(BASELINE_NCCPI_ROWS)
+    sda.get_productivity_ratings.side_effect = SDAQueryError("SDA unavailable")
+    failed = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index="csr2")
+
+    assert failed.coverage_status == ok.coverage_status
+    assert failed.coverage_status in {"covered", "partial"}
+    assert failed.manifest["land_evaluation"]["coverage_status"] == "error"
+    assert all(u.productivity_coverage_status == "error" for u in failed.map_units)
+    assert any("Productivity rating warning (csr2)" in m for m in failed.limitations)
+
+
+def test_polygon_nccpi_primary_failure_marks_baseline_error():
+    sda = _baseline_sda(nccpi_error=SDAQueryError("SDA unavailable"))
+    result = _analyzer(sda).analyze_polygon(GEOJSON, productivity_index="nccpi")
+
+    assert result.manifest["land_evaluation"]["coverage_status"] == "error"
+    assert result.map_units
+    assert all(u.productivity_coverage_status == "error" for u in result.map_units)
+    assert all(u.nccpi_baseline_coverage_status == "error" for u in result.map_units)
+
+
+def test_polygon_unit_productivity_coverage_from_rating_row():
+    result = _analyzer(_baseline_sda(BASELINE_NCCPI_ROWS)).analyze_polygon(
+        GEOJSON, productivity_index="csr2"
+    )
+    statuses = {u.mukey: u.productivity_coverage_status for u in result.map_units}
+    assert statuses["1"] == "rated"
+    assert statuses["2"] == "unknown"
+
+
+def test_polygon_invalid_geometry_reports_error():
+    result = _analyzer(_baseline_sda()).analyze_polygon(
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 1], [0, 0]]]}
+    )
+    assert result.coverage_status == "error"
+    assert any(m.startswith("Geometry validation error:") for m in result.limitations)
