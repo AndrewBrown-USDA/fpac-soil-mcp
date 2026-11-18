@@ -92,7 +92,9 @@ Once connected, test the server tools, resources, and prompt templates using the
   >   ]]
   > }
   > ```
-  > *Please include NCCPI crop productivity index ratings and check for Census 2020 urban area overlap."*
+  > *Please check for Census 2020 urban area overlap."*
+
+  `productivity_index` (nccpi, csr2, cpi, or storie) selects the index used for Land Evaluation scoring; NCCPI v3 is always included per map unit as national baseline context. The `include_nccpi` argument was removed (breaking change); calls that still send it are rejected.
 - **SSURGO Soil Boundary Vector Geometry Export (`get_soil_polygons_by_geometry`)**:
   > *"Retrieve the clipped SSURGO soil map unit polygon boundaries and properties as a GeoJSON FeatureCollection for the following project boundary:*
   > `POLYGON((-93.65 42.02, -93.63 42.02, -93.63 42.04, -93.65 42.04, -93.65 42.02))`"*

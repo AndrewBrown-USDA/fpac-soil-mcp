@@ -61,6 +61,54 @@ class TestServerInitialization:
         assert set(tool_names) == self.EXPECTED_TOOLS
         assert len(tool_names) == 12
 
+    @pytest.mark.asyncio
+    async def test_spatial_tools_do_not_publish_include_nccpi(self) -> None:
+        server = create_mcp_server()
+        tools = {tool.name: tool for tool in await server.list_tools()}
+        for name in ("analyze_farmland_by_polygon", "analyze_corridor_fppa"):
+            properties = tools[name].parameters["properties"]
+            assert "include_nccpi" not in properties
+            assert "productivity_index" in properties
+            assert "national baseline" in tools[name].description
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("name", "arguments"),
+        [
+            (
+                "analyze_farmland_by_polygon",
+                {
+                    "geojson": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.0]]
+                        ],
+                    }
+                },
+            ),
+            (
+                "analyze_corridor_fppa",
+                {"centerline": "LINESTRING(-93.5 42.0, -93.4 42.1)", "buffer_distance": 50.0},
+            ),
+        ],
+    )
+    async def test_spatial_tools_reject_removed_include_nccpi(
+        self, name: str, arguments: dict, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from fastmcp import Client
+        from fastmcp.exceptions import ToolError
+
+        from fpac_soil_mcp.mcp.tools import spatial_analysis_tools
+
+        def _no_network(*args: object, **kwargs: object) -> None:
+            raise AssertionError("analyzer must not run for rejected arguments")
+
+        monkeypatch.setattr(spatial_analysis_tools, "PolygonAnalyzer", _no_network)
+        monkeypatch.setattr(spatial_analysis_tools, "CorridorAnalyzer", _no_network)
+        async with Client(create_mcp_server()) as client:
+            with pytest.raises(ToolError, match="include_nccpi"):
+                await client.call_tool(name, {**arguments, "include_nccpi": True})
+
     def test_published_server_metadata_exposes_lesa_capabilities(self) -> None:
         with open("server.json", encoding="utf-8") as metadata_file:
             metadata = json.load(metadata_file)
