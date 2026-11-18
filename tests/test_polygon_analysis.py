@@ -138,47 +138,18 @@ def test_analyze_polygon_preserves_perimeter_evidence_status(evidence_status, is
         "normalized_ratio": 1.0 if evidence_status == "measured" else None,
     }
 
-    result = analyzer.analyze_polygon(GEOJSON, include_nccpi=False)
+    result = analyzer.analyze_polygon(GEOJSON)
 
     evidence = result.manifest["criterion_2_perimeter_evidence"]
     assert evidence["evidence_status"] == evidence_status
     assert evidence["is_verified"] is is_verified
 
 
-def test_analyze_polygon_include_nccpi_false_skips_rating_query():
-    geojson = {
-        "type": "Polygon",
-        "coordinates": [
-            [[-93.5, 42.0], [-93.4, 42.0], [-93.4, 42.1], [-93.5, 42.1], [-93.5, 42.0]]
-        ],
-    }
-    spatial = {
-        "Table": [
-            ["mukey", "musym", "muname", "farmlndcl", "areasymbol", "area_ac"],
-            ["412915", "138B", "Clarion loam", "All areas are prime farmland", "IA169", 10.0],
-        ]
-    }
-
-    def sda_handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=spatial)
-
-    class NoNccpiClient(SDAClient):
-        def get_interpretations(self, *args, **kwargs):
-            raise AssertionError("NCCPI query should be skipped")
-
-        def get_county_max_productivity_rating(self, *args, **kwargs):
-            raise AssertionError("County benchmark query should be skipped")
-
-    sda_client = NoNccpiClient(http_client=httpx.Client(transport=httpx.MockTransport(sda_handler)))
-    tiger_client = TigerwebClient(
-        http_client=httpx.Client(
-            transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"features": []}))
-        )
-    )
-    result = PolygonAnalyzer(sda_client=sda_client, tigerweb_client=tiger_client).analyze_polygon(
-        geojson, include_nccpi=False
-    )
-    assert result.map_units[0].productivity_rating is None
+@pytest.mark.parametrize("method", ["analyze_polygon", "analyze_polygon_sync"])
+def test_analyze_polygon_rejects_removed_include_nccpi_argument(method):
+    analyzer = PolygonAnalyzer(sda_client=MagicMock(), tigerweb_client=MagicMock())
+    with pytest.raises(TypeError, match="include_nccpi"):
+        getattr(analyzer, method)(GEOJSON, include_nccpi=True)
 
 
 def test_analyze_polygon_treats_decimal_99_as_unrated_nccpi():

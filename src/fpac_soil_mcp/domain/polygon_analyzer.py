@@ -100,7 +100,6 @@ class PolygonAnalyzer:
     def analyze_polygon(
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -109,7 +108,6 @@ class PolygonAnalyzer:
 
         Args:
             geojson_input: GeoJSON dict/string or Shapely geometry.
-            include_nccpi: Whether to retrieve component-weighted interpretations.
             productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
             max_county_rating_override: Optional user-supplied maximum county rating benchmark.
             include_map: Include display geometry in the ``map`` layers (ADR 0017).
@@ -178,11 +176,10 @@ class PolygonAnalyzer:
             logger.error("SDA spatial query failed: %s", exc)
             limitations.append(f"SDA spatial query error: {exc}")
 
-        # 4. Ingest Productivity Ratings if requested
+        # 4. Ingest productivity ratings for the selected index
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
         rating_map: dict[str, dict[str, Any]] = {}
-        ratings_requested = include_nccpi or norm_idx != "nccpi"
-        if ratings_requested and mukeys:
+        if mukeys:
             if norm_idx == "nccpi":
                 try:
                     interp_rows = self.sda_client.get_interpretations(
@@ -225,7 +222,7 @@ class PolygonAnalyzer:
         # Determine county max benchmark
         county_max = max_county_rating_override
         partition_max: dict[str, float] = {}
-        if ratings_requested and county_max is None and raw_units:
+        if county_max is None and raw_units:
             areasymbols = {
                 str(u.get("areasymbol")).strip() for u in raw_units if u.get("areasymbol")
             }
@@ -559,7 +556,6 @@ class PolygonAnalyzer:
     def analyze_polygon_sync(
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -567,7 +563,6 @@ class PolygonAnalyzer:
         """Synchronous wrapper for analyze_polygon."""
         return self.analyze_polygon(
             geojson_input=geojson_input,
-            include_nccpi=include_nccpi,
             productivity_index=productivity_index,
             max_county_rating_override=max_county_rating_override,
             include_map=include_map,
@@ -576,7 +571,6 @@ class PolygonAnalyzer:
     async def analyze_polygon_async(
         self,
         geojson_input: dict[str, Any] | str | Polygon | MultiPolygon,
-        include_nccpi: bool = True,
         productivity_index: str = "nccpi",
         max_county_rating_override: float | None = None,
         include_map: bool = False,
@@ -584,7 +578,6 @@ class PolygonAnalyzer:
         """Asynchronous wrapper for analyze_polygon."""
         return self.analyze_polygon(
             geojson_input=geojson_input,
-            include_nccpi=include_nccpi,
             productivity_index=productivity_index,
             max_county_rating_override=max_county_rating_override,
             include_map=include_map,

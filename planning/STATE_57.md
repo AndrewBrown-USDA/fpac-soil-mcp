@@ -17,10 +17,10 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 | Task | Title | Status | Commit |
 | --- | --- | --- | --- |
 | 57.1.1 | NCCPI baseline model fields and helper | done | c092783 |
-| 57.2.1 | Remove from MCP tools and LESA call sites | done | (next commit) |
-| 57.2.2 | Remove from agent app | pending | |
-| 57.2.3 | Remove from JS eval harness | pending | |
-| 57.2.4 | Remove from polygon analyzer | pending | |
+| 57.2.1 | Remove from MCP tools and LESA call sites | done | 0c935dd |
+| 57.2.2 | Remove from agent app | done | 85e1b6b |
+| 57.2.3 | Remove from JS eval harness | done | ca66a5d |
+| 57.2.4 | Remove from polygon analyzer | done | (next commit) |
 | 57.2.5 | Remove from corridor analyzer | pending | |
 | 57.3.1 | Wire baseline into polygon analysis | pending | |
 | 57.3.2 | Wire baseline into corridor analysis | pending | |
@@ -51,3 +51,15 @@ Resume: read this file, then `git log --oneline origin/main..HEAD`, then the nex
 - Tests: targeted 143 passed; root 1016 passed / 3 skipped; ruff clean.
 - Deviations: removed the unused import (F401 after the kwarg went).
 - Gotchas: analyzers still accept the kwarg until 57.2.4/57.2.5; registered descriptions in `tools/__init__.py` untouched (57.4.1).
+
+## 57.2.2
+- Status: done. `agent_server/geo.py` (tool args), `tests/test_geo_screen.py` (expected call, reformatted to one line).
+- Tests: app pytest 310 passed (test_geo_screen 33); ruff on `APP_LINT_PATHS` clean. Deviations: none.
+- Gotcha: ruff on whole `agent_server/` reports 7 pre-existing findings in template files outside `APP_LINT_PATHS`; use the Makefile scope.
+
+## 57.2.3
+- Status: done. `eval/fpac_soil_mcp_harness/lib/evalCases.js` deriver. Harness 20/20. No test asserted the key. Deviations: none.
+
+## 57.2.4
+- Status: done. `domain/polygon_analyzer.py` (3 signatures, 2 forwards, docstring, gate on ~184 and ~226); `tests/test_polygon_analysis.py` (opt-out test deleted, kwarg dropped, TypeError test x2); `tests/test_phase2_contracts.py:99`.
+- Tests: test_polygon_analysis + phase2 + polygon_map + lesa 102 passed; ruff clean. Deviations: none.
