@@ -26,8 +26,8 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 | 58.3.1 | Polygon analyzer | done | f088519 |
 | 58.3.2 | Corridor analyzer | done | da02e61 |
 | 58.3.3 | LESA domain and `_lesa_coverage_status` | done | c408c5b |
-| 58.4.1 | Type every coverage field; output schemas | done (deviation, see report) | b80177a |
-| 58.4.2 | Agent app and frontend consumers | pending | |
+| 58.4.1 | Type every coverage field; output schemas | done (D21) | b80177a |
+| 58.4.2 | Agent app and frontend consumers | done | 6f5848f |
 | 58.4.3 | README note and ADR 0019 | pending | |
 | 58.5.1 | Final verification | pending | |
 | 58.5.2 | Post-SDA checks (non-blocking) | pending | |
@@ -81,5 +81,12 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 - Status: done (b80177a, `feat(models)!`).
 - Files: `models/soil.py` (`FarmlandClassificationResponse.coverage_status: SoilMappingCoverage`; `SoilMapUnitAcreage.productivity_coverage_status: RatingCoverage`; `nccpi_baseline_coverage_status: RatingCoverage | None`); `models/spatial.py` (polygon and segment mapping `SoilMappingCoverage`, segment rating `RatingCoverage`); `models/lesa.py` (D19 widening removed); `tests/test_coverage_vocab.py` (LE rejects `covered`; every public model rejects a retired value; baseline null allowed); `tests/test_server.py` (exact enum lists in `list_tools()` output schemas; corridor segment enums on the response model).
 - Tests: `pytest tests/test_coverage_vocab.py tests/test_server.py tests/test_map_contract.py` 76 passed; `git grep "coverage_status: str" -- src` empty; root suite 1091 passed / 3 skipped / 45 deselected; ruff clean.
-- Deviation (needs user decision): `analyze_corridor_fppa` returns `dict[str, Any]`, so its MCP output schema is `{"additionalProperties": true, "type": "object"}` and cannot list the enums. The corridor check was done on `CorridorFarmlandAnalysisResponse.model_json_schema()` instead. Typing the corridor tool's return (or giving it an explicit output schema) is outside 58.4.1's file list.
+- Deviation (resolved by user as D21, option A, 2026-11-18): `analyze_corridor_fppa` returns `dict[str, Any]`, so its MCP output schema is `{"additionalProperties": true, "type": "object"}` and cannot list the enums. The corridor check was done on `CorridorFarmlandAnalysisResponse.model_json_schema()` instead. Typing the corridor tool's return (or giving it an explicit output schema) is outside 58.4.1's file list.
 - `test_map_contract.py` needed no change (it constructs with `covered`, still valid).
+
+## 58.4.2
+- Status: done (6f5848f, `refactor(app)`).
+- Files: `frontend/client/src/components/map/useScreening.ts` (`coverage_status?: 'covered' | 'partial' | 'unmapped' | 'error' | null`); `tests/test_geo_map.py` (2 fixtures `partial`); `tests/test_geo_screen.py` (fixture + assert `partial`). `test_geo_corridor.py`, `geo.py`, `test_aoi_context.py` unchanged (values still valid / out of scope).
+- Tests: `git grep partially_covered -- apps` empty. App pytest 310 passed (= baseline); app ruff check + format clean (21 files); frontend `npm ci`, biome 0 errors / 10 warnings (= baseline), build OK. All run on a `/tmp/l58` working-tree copy.
+- Note: the frontend build has no typecheck, so the new TS literal type is not compiler-checked.
+- Gotcha (environment): serverless restarted, `/tmp` was wiped. Running `uv run` inside the app dir in the workspace created an untracked, gitignored `apps/agent-fpac-soil-openai-sdk/.venv` (Python 3.12, created 23:22 UTC by this session, slow on the workspace FS). Deleting it was blocked pending user confirmation. Use `UV_PROJECT_ENVIRONMENT=/tmp/app-venv` on a `/tmp` copy instead.
