@@ -66,6 +66,7 @@ Renames: `partially_covered` -> `partial`; `no_data`, `invalid_request` -> `erro
 | D18 | 2026-11-18 | `manifest.yaml` / `server.json` unchanged. They have no release-notes field, no tool description lists coverage values, and `tests/test_server.py` pins description parity; the rename note goes in README only. | my proposal, approved by user 2026-11-18 |
 | D19 | 2026-11-18 | `LandEvaluationSummary.coverage_status` is temporarily widened to `RatingCoverage` plus legacy `"covered"` in Wave 1 so every commit stays green; narrowed in 58.4.1. | my proposal, approved by user 2026-11-18 |
 | D20 | 2026-11-18 | Plan 58 approved by the user as written (including D17-D19). PR #118 (Plan 57) merged to `main` as 9acfbd2; branch rebased onto it (D1 done). | user |
+| D21 | 2026-11-18 | `analyze_corridor_fppa` returns a plain dict, so its MCP output schema is untyped; 58.4.1 checks corridor enums on `CorridorFarmlandAnalysisResponse.model_json_schema()` instead. Typing the corridor tool output is left to the `_meta` follow-on plan (explicit output schemas). | user (option A, my rec) |
 
 ## Recon log (facts, 2026-11-18 on 8c5ade6)
 
