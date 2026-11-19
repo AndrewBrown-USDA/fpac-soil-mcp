@@ -20,6 +20,7 @@ from fpac_soil_mcp.models.integration import (
     UrbanExemptionRecord,
 )
 from fpac_soil_mcp.spatial.geometry import buffer_centerline, calculate_acreage
+from fpac_soil_mcp.spatial.map_builder import MAP_SCHEMA_VERSION
 
 MARKER = "R6-MARKER"
 CENTERLINE = "LINESTRING(0.0 0.005, 0.01 0.005)"
@@ -33,6 +34,18 @@ PROVENANCE = Provenance(
     method_version="1.0.0",
     configuration_version="1.0.0",
 )
+# Display-only keys that must never appear in the body (D3).
+MOVED_KEYS = {
+    "coordinates",
+    "feature_collection",
+    "feature_count",
+    "simplified",
+    "simplify_tolerance_m",
+    "truncated",
+    "bounds",
+    "display_crs",
+    "warnings",
+}
 
 
 def _row(mukey: str, farmlndcl: str, geom) -> dict:
@@ -143,6 +156,19 @@ def _layers(result) -> dict:
     return {layer.id: layer for layer in result.map.layers}
 
 
+def _display(result) -> dict:
+    assert result.map.display is not None
+    return result.map.display.layers
+
+
+def _keys(node) -> set[str]:
+    if isinstance(node, dict):
+        return set(node) | {key for value in node.values() for key in _keys(value)}
+    if isinstance(node, list):
+        return {key for item in node for key in _keys(item)}
+    return set()
+
+
 def test_numbers_identical_with_and_without_map():
     plain, _, _ = _run(False, alternatives=ALTERNATIVES, indirect=INDIRECT)
     mapped, _, _ = _run(True, alternatives=ALTERNATIVES, indirect=INDIRECT)
@@ -168,7 +194,7 @@ def test_call_counts_and_return_geom(include_map):
 
 def test_default_map_is_descriptor_only():
     result, _, _ = _run(False, alternatives=ALTERNATIVES, indirect=INDIRECT)
-    assert result.schema_version == "1.0"
+    assert result.schema_version == MAP_SCHEMA_VERSION
     assert result.authority.official_filing is False
     assert [layer.id for layer in result.map.layers] == [
         "corridor_direct",
@@ -179,7 +205,7 @@ def test_default_map_is_descriptor_only():
         "urban_context",
     ]
     assert all(layer.delivery == "omitted" for layer in result.map.layers)
-    assert result.map.bounds is None
+    assert result.map.display is None
     assert "coordinates" not in json.dumps(result.map.model_dump())
 
 
@@ -196,14 +222,16 @@ def test_no_indirect_or_alternative_layers_without_inputs():
 def test_inline_layers_when_requested():
     result, _, _ = _run(True, alternatives=ALTERNATIVES, indirect=INDIRECT)
     layers = _layers(result)
-    assert all(layer.delivery == "inline_geojson" for layer in layers.values())
+    assert all(layer.delivery == "meta_geojson" for layer in layers.values())
+    display = _display(result)
+    assert set(display) == set(layers)
 
-    direct = shape(layers["corridor_direct"].feature_collection["features"][0]["geometry"])
+    direct = shape(display["corridor_direct"].feature_collection["features"][0]["geometry"])
     expected = buffer_centerline(CENTERLINE, 50.0, "meters")
     assert direct.equals(expected)
-    assert layers["corridor_direct"].simplified is False
+    assert display["corridor_direct"].simplified is False
 
-    indirect = layers["corridor_indirect"]
+    indirect = display["corridor_indirect"]
     assert indirect.feature_count == 1
     assert (
         shape(indirect.feature_collection["features"][0]["geometry"]).intersection(direct).area
@@ -214,12 +242,12 @@ def test_inline_layers_when_requested():
     assert alt.title == "Alternative B-2 footprint"
     assert alt.legend[0].color != layers["corridor_direct"].legend[0].color
 
-    farmland = layers["farmland_classes"]
+    farmland = display["farmland_classes"]
     assert farmland.feature_count == 4  # two rows per primary segment
     classes = {f["properties"]["farmland_class"] for f in farmland.feature_collection["features"]}
     assert classes == {"prime", "statewide"}
 
-    counties = layers["county_segments"]
+    counties = display["county_segments"]
     props = [f["properties"] for f in counties.feature_collection["features"]]
     assert props == [
         {
@@ -236,36 +264,38 @@ def test_inline_layers_when_requested():
         },
     ]
 
-    urban = layers["urban_context"]
+    urban = display["urban_context"]
     assert urban.feature_count == 1  # same urban area from both segments, de-duplicated
     assert urban.feature_collection["features"][0]["properties"] == {"name": f"{MARKER} Urban"}
 
-    assert result.map.bounds is not None
-    assert result.map.bounds[2] == pytest.approx(0.03)
-    assert result.map.warnings == []
+    assert result.map.display.bounds is not None
+    assert result.map.display.bounds[2] == pytest.approx(0.03)
+    assert result.map.display.warnings == []
 
 
 def test_inline_without_urban_areas():
     result, _, _ = _run(True, urban_names=())
-    urban = _layers(result)["urban_context"]
-    assert urban.delivery == "inline_geojson"
-    assert urban.feature_count == 0
+    assert _layers(result)["urban_context"].delivery == "meta_geojson"
+    assert _display(result)["urban_context"].feature_count == 0
 
 
 def test_size_cap_drops_context_layers_first(monkeypatch):
     plain, _, _ = _run(True)
     sizes = {
-        layer.id: len(json.dumps(layer.feature_collection, separators=(",", ":")))
-        for layer in plain.map.layers
+        layer_id: len(json.dumps(layer.feature_collection, separators=(",", ":")))
+        for layer_id, layer in _display(plain).items()
     }
     keep = sizes["corridor_direct"] + sizes["farmland_classes"]
     monkeypatch.setattr(corridor_analysis.map_settings, "map_max_geojson_bytes", keep + 1)
     capped, _, _ = _run(True)
     layers = _layers(capped)
-    assert layers["urban_context"].truncated is True
-    assert layers["county_segments"].truncated is True
-    assert layers["farmland_classes"].delivery == "inline_geojson"
-    assert layers["corridor_direct"].delivery == "inline_geojson"
+    display = _display(capped)
+    for dropped in ("urban_context", "county_segments"):
+        assert display[dropped].truncated is True
+        assert display[dropped].feature_collection is None
+        assert layers[dropped].delivery == "omitted"
+    assert layers["farmland_classes"].delivery == "meta_geojson"
+    assert layers["corridor_direct"].delivery == "meta_geojson"
     assert capped.tabular_csv == plain.tabular_csv
 
 
@@ -365,7 +395,7 @@ OVERLAPPING_ALT = [{"alternative_id": "C", "centerline": "LINESTRING(0.0 0.0055,
 def test_alternative_farmland_features_carry_productivity():
     """Plan 44 A7: alternative features use the alternative's own rating query."""
     result, _, _ = _run(True, alternatives=OVERLAPPING_ALT)
-    features = _layers(result)["farmland_classes"].feature_collection["features"]
+    features = _display(result)["farmland_classes"].feature_collection["features"]
     alt_features = [f for f in features if f["properties"].get("alignment") == "C"]
     assert alt_features
     expected = {"2001": (0.8, "High"), "2002": (0.5, "Moderate")}
@@ -381,7 +411,7 @@ def test_alternative_farmland_is_drawn_outside_the_primary_footprint():
     result, _, _ = _run(True, alternatives=OVERLAPPING_ALT)
     layer = _layers(result)["farmland_classes"]
     assert layer.title == "Farmland classification (all alignments)"
-    features = layer.feature_collection["features"]
+    features = _display(result)["farmland_classes"].feature_collection["features"]
     alt_features = [f for f in features if f["properties"].get("alignment") == "C"]
     primary = [f for f in features if "alignment" not in f["properties"]]
     assert primary and alt_features
@@ -405,6 +435,12 @@ def test_alternative_farmland_is_drawn_outside_the_primary_footprint():
 def test_alternative_outside_soil_rows_adds_no_features():
     # ALTERNATIVES lies outside every synthetic soil row, so it adds no features.
     result, _, _ = _run(True, alternatives=ALTERNATIVES)
-    layer = _layers(result)["farmland_classes"]
-    features = layer.feature_collection["features"]
+    features = _display(result)["farmland_classes"].feature_collection["features"]
     assert not [f for f in features if "alignment" in f["properties"]]
+
+
+@pytest.mark.parametrize("include_map", [False, True])
+def test_body_dump_has_no_moved_keys(include_map):
+    result, _, _ = _run(include_map, alternatives=ALTERNATIVES, indirect=INDIRECT)
+    leaked = MOVED_KEYS & _keys(result.model_dump(mode="json"))
+    assert not leaked

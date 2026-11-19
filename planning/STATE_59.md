@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.5 done (plus 59.1.3b). Next: 59.1.6. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.6 done (plus 59.1.3b). Next: 59.1.7. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -28,7 +28,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.3b | FastMCP 4.2.2 bump (user request, inserted) | done |
 | 59.1.4 | `_meta` wrapper and explicit schemas | done |
 | 59.1.5 | Polygon map tests | done |
-| 59.1.6 | Corridor map tests | pending |
+| 59.1.6 | Corridor map tests | done |
 | 59.1.7 | Tool-layer map tests | pending |
 | 59.2.1 | App merges `_meta` into the browser block | pending |
 | 59.2.2 | App trace guard | pending |
@@ -83,3 +83,10 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Tests: `pytest tests/test_polygon_map.py` -> 11 passed (9 before, 5 of them red). Ruff check + format clean.
 - Full root pytest (info): 20 failed, 1095 passed; remaining red: test_corridor_map 7, test_map_tool_contracts 10, test_soil_polygons_map 3 (59.1.6/59.1.7). Session compute restarted before this run, so /tmp failure lists from 59.1.4 were gone; compared by per-file counts (25 - 5 polygon = 20).
 - Deviations: none. Gotchas: the size-cap test now measures layer sizes from `map.display.layers`.
+
+## 59.1.6
+- Status: done. Micro-plan `planning/tasks/59.1.6.todo.md` self-approved.
+- Files: `domain/corridor_analyzer.py` (two docstrings; `footprint -> LayerBuild`; `MapLayer` import replaced by `LayerBuild` -- annotation/import only, no logic); `tests/test_corridor_map.py` (display reads moved to `map.display`, schema 2.0, `meta_geojson`, D10 size-cap checks, new `test_body_dump_has_no_moved_keys` x2).
+- Tests: `pytest tests/test_corridor_map.py` -> 23 passed (21 before, 7 red). Ruff check + format clean.
+- Full root pytest (info): 13 failed, 1104 passed; no new failing IDs vs 59.1.5 (comm); remaining red: test_map_tool_contracts 10, test_soil_polygons_map 3 (59.1.7).
+- Warnings: only the existing shapely `ops.transform` deprecation and pytest-asyncio loop-scope notice; count grows with test count.

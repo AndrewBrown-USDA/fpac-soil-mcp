@@ -61,10 +61,7 @@ from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
 )
-from fpac_soil_mcp.models.map import (
-    MapBlock,
-    MapLayer,
-)
+from fpac_soil_mcp.models.map import MapBlock
 from fpac_soil_mcp.models.soil import (
     FarmlandCategoryBreakdown,
     QuerySource,
@@ -94,6 +91,7 @@ from fpac_soil_mcp.spatial.map_builder import (
     NEUTRAL_OUTLINE_COLOR,
     URBAN_CONTEXT_COLOR,
     GeometryWithProperties,
+    LayerBuild,
     build_layer,
     build_map_block,
     categorize_farmland_class,
@@ -242,8 +240,9 @@ class CorridorAnalyzer:
                 [{'alternative_id': 'B', 'centerline': ..., 'buffer_distance': ..., 'buffer_units': ...}]
             productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
             max_county_rating_override: Optional positive county maximum benchmark.
-            include_map: Include display geometry in the ``map`` layers (ADR 0017).
-                Numbers are computed from exact geometry either way.
+            include_map: Build display geometry for result ``_meta`` (``map.display``,
+                ADR 0017); the ``map`` layers stay descriptors either way. Numbers
+                are computed from exact geometry either way.
 
         Returns:
             CorridorFarmlandAnalysisResponse with partitioned county segments, composite LE, and sum audit.
@@ -1335,7 +1334,7 @@ def _corridor_map(
     county_features: list[GeometryWithProperties] | None = None,
     urban_by_name: dict[str, Polygon | MultiPolygon] | None = None,
 ) -> MapBlock:
-    """Build the ADR 0017 corridor map block; geometry only when ``include_map`` is true.
+    """Build the ADR 0017 corridor map block; display geometry only with ``include_map``.
 
     Layer order is the size-cap drop priority: urban context, then county
     segments, then farmland classes are dropped before the footprints.
@@ -1350,7 +1349,7 @@ def _corridor_map(
 
     def footprint(
         layer_id: str, title: str, geom, color: str, pattern: str = "outline"
-    ) -> MapLayer:
+    ) -> LayerBuild:
         return build_layer(
             layer_id=layer_id,
             title=title,
