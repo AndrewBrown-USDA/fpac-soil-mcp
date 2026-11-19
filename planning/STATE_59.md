@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.3 done. Next: 59.1.4. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.4 done (plus 59.1.3b). Next: 59.1.5. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -26,7 +26,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.2 | Tool response models | done |
 | 59.1.3 | Tool functions return models | done |
 | 59.1.3b | FastMCP 4.2.2 bump (user request, inserted) | done |
-| 59.1.4 | `_meta` wrapper and explicit schemas | pending |
+| 59.1.4 | `_meta` wrapper and explicit schemas | done |
 | 59.1.5 | Polygon map tests | pending |
 | 59.1.6 | Corridor map tests | pending |
 | 59.1.7 | Tool-layer map tests | pending |
@@ -66,3 +66,13 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Files: `pyproject.toml` `fastmcp>=2.0.0` -> `fastmcp>=4.2.2`; `uv.lock` (`uv lock --upgrade-package fastmcp`): fastmcp 4.1.7 -> 4.2.2, fastmcp-slim 4.1.7 -> 4.2.2, uncalled-for 0.4.1 -> 0.6.2; nothing else moved. App lock has no fastmcp entry.
 - 4.2.0 breaking notes checked (GitHub release): Python 3.11 required (we require >=3.11); 4.1 skills API deprecated (unused here); `gen_ai.operation.name` on tools/call spans; non-finite floats rejected at JSON serialization. 4.2.1/4.2.2 notes read (auth/skills fixes, middleware `CallToolResult` edits kept). 4.1.8 notes not reviewed (output cut off); the test run is the evidence for that step.
 - Tests: full root pytest on 4.2.2: 25 failed, 1081 passed, 3 skipped, 45 deselected; failing test IDs identical to the 4.1.7 run after 59.1.3 (diff of sorted FAILED lines). No FastMCP deprecation warnings in the run.
+
+## 59.1.4
+- Status: done. Micro-plan `planning/tasks/59.1.4.todo.md` self-approved.
+- Serialization finding (FastMCP 4.2.2): a returned Pydantic model became one `TextContent` holding compact JSON from `fastmcp.tools.base.default_serializer(model)`; `json.loads(text) == structured_content`. Probe on HEAD before the wrapper: only `manifest.execution_timestamp_utc` and `source.timestamp_utc` differed (per-call clock). The wrapper passes `content=body` so FastMCP's same serializer writes the text.
+- Files: new `mcp/tools/results.py` (`meta_tool`); `mcp/tools/__init__.py` (imports; three map tools get `output_schema=<Model>.model_json_schema()` and `meta_tool(...)`); `tests/test_server.py` (2 corridor rows added, `test_corridor_segment_schema_lists_coverage_enums` deleted); new `tests/test_meta_results.py` (7 cases).
+- Tests: `pytest tests/test_server.py tests/test_meta_results.py` -> 36 passed, 3 deselected (first run: 2 corridor cases failed on `manifest.generated_at_utc`, a per-call clock key; the normalizer now drops `timestamp*` and `generated_at*`). Ruff check clean; format fixed once.
+- Mutation check: a wrapper that adds `map.bounds` to the body makes the 4 analyze cases with a display fail on assert 2 (`{'bounds'}`). The client did not reject the extra key, so the key scan is the guard.
+- Full root pytest (info): 25 failed, 1088 passed; failing IDs identical to 59.1.3b (diff).
+- Deviations: "corridor county failure" implemented as per-county SDA failure, not a TIGERweb failure.
+- Gotchas: server `_meta` also carries `io.modelcontextprotocol/serverInfo`; only `gov.usda.fpac-soil/*` keys are ours. Importing `fpac_soil_mcp.mcp.tools` before `fpac_soil_mcp.mcp.app` in a fresh process hits a circular import (seen in a pytest plugin); tests import `app` first.

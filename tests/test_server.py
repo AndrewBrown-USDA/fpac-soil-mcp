@@ -548,6 +548,18 @@ def _enum(schema: dict, node: dict) -> tuple[list[str], bool]:
             RATING_ENUM,
             False,
         ),
+        (
+            "analyze_corridor_fppa",
+            ["county_segments", "[]", "coverage_status"],
+            MAPPING_ENUM,
+            False,
+        ),
+        (
+            "analyze_corridor_fppa",
+            ["county_segments", "[]", "productivity_coverage_status"],
+            RATING_ENUM,
+            False,
+        ),
     ],
 )
 async def test_tool_output_schemas_list_coverage_enums(tool, path, expected, nullable) -> None:
@@ -556,17 +568,3 @@ async def test_tool_output_schemas_list_coverage_enums(tool, path, expected, nul
     values, is_nullable = _enum(schema, _field(schema, path))
     assert values == expected
     assert is_nullable is nullable
-
-
-@pytest.mark.parametrize(
-    ("field", "expected"),
-    [("coverage_status", MAPPING_ENUM), ("productivity_coverage_status", RATING_ENUM)],
-)
-def test_corridor_segment_schema_lists_coverage_enums(field, expected) -> None:
-    # analyze_corridor_fppa returns a plain dict, so its MCP output schema is an untyped
-    # object; the corridor contract is checked on the response model instead.
-    from fpac_soil_mcp.models.spatial import CorridorFarmlandAnalysisResponse
-
-    schema = CorridorFarmlandAnalysisResponse.model_json_schema()
-    values, _ = _enum(schema, _field(schema, ["county_segments", "[]", field]))
-    assert values == expected
