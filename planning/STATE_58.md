@@ -29,7 +29,7 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 | 58.4.1 | Type every coverage field; output schemas | done (D21) | b80177a |
 | 58.4.2 | Agent app and frontend consumers | done | 6f5848f |
 | 58.4.3 | README note and ADR 0019 | done | 1791a88 |
-| 58.5.1 | Final verification | pending | |
+| 58.5.1 | Final verification | done | (verified at f1e92e5) |
 | 58.5.2 | Post-SDA checks (non-blocking) | pending | |
 
 ## Task reports
@@ -96,3 +96,14 @@ Matches STATE_57 final (5dec901); 9acfbd2 has the same tree as 8c5ade6.
 - Files: new `docs/decisions/0019-shared-coverage-vocabularies.md` (Accepted, 2026-11-18; context = issue #84 and the outage misreport; decision = two vocabularies, `error` rule, hard rename, field names kept, SDV keys unchanged; consequences incl. D21; deferred = structured error field, corridor output schema and `_meta` plan); `docs/decisions/README.md` (index row + era paragraph); `README.md` (0.6.0 breaking-change note after the Tool Reference table, linking ADR 0019).
 - Checks: both new links resolve to existing files; `git diff --name-only -- docs/decisions` shows only `README.md` and the new ADR (no other ADR edited); root suite 1091 passed / 3 skipped / 45 deselected.
 - Wave 4 gate: root suite 1091 passed; app pytest 310 passed; biome 0 errors; build OK (58.4.2). JS harness not yet re-run (58.5.1).
+
+## 58.5.1
+- Status: done, verified on a `git archive HEAD` copy of f1e92e5 (clean working tree).
+- Retired-value grep (`"partially_covered|no_data|invalid_request"` in src/tests/eval/apps, excluding node_modules and `tests/test_coverage_vocab.py`): empty. `no_coverage`/`not_found` in src only as `SDV_CAVEATS` keys, their usages, and doc comments.
+- Eval datasets: `expected_status` values are `covered` (9, top-level mapping, still valid), `indeterminate` (3), `error` (2: ADV-OUTAGE-01, ADV-GEOMETRY-01). Both `error` cases now match what the tools emit (polygon bad geometry was `invalid_request`).
+- In-memory FastMCP smoke (`/tmp/smoke58.py`, `SDAClient._execute_query` raising `SDAQueryError`, TIGERweb/NASS patched, no network):
+  - Total outage: point and mukey `error` + error object; polygon mapping `error`, LE `error`, 3 limitations; corridor both segments `error`/`error`, reconciliation `error`, `SDA error for <county>` limitations; LESA LE `error`.
+  - Spatial ok, rating queries fail: polygon mapping `partial` (computed; fixture smaller than AOI), LE `error`, map units `error`; corridor segments `partial`/`error`, reconciliation `error`, one `Productivity rating error (csr2) for <county>` per county; LESA LE `error`.
+- Gates vs baseline: root pytest 1091 passed / 3 skipped / 45 deselected (baseline 1031; +60 new tests); ruff check + format clean (818 files; baseline 811, +ADR/test files); app ruff clean (21 files); app pytest 310 passed (= baseline); frontend biome 0 errors / 10 warnings (= baseline), build OK; JS harness 20/20 (= baseline).
+- Not verified: live SDA behaviour (58.5.2, non-blocking, SDA down); the frontend TS literal type is not compiler-checked (no typecheck step).
+- Push: not pushed; awaiting user approval.
