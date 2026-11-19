@@ -50,6 +50,7 @@ Branch `feature/meta-map1` off `origin/main` 6a00e222 (PR #119, issue #84, merge
 | D9 | 2026-11-18 | Plan 58 execution model: one agent, tasks serially in id order, micro-plan approval per task, one local commit per task, offline, ask before every push. Gates below. | user (Q9) |
 | D10 | 2026-11-18 | A size-capped layer keeps a `_meta` layers entry `{truncated: true}` without `feature_collection`/`feature_count`; body `delivery` is `omitted`; the warning names it. `geo.py` copies `truncated` to the browser layer. Amends D4 for capped layers. | user (Q10, option A) |
 | D11 | 2026-11-18 | Display data rides a `PrivateAttr` on `MapBlock` (not in schema or `model_dump`). A `functools.wraps` wrapper turns the tool's model into `ToolResult(content, structured_content, meta)` at registration, so direct Python calls still return the model. Probed on FastMCP 4.1.7: input schema and descriptions kept, unknown args still rejected. | my rec (recon) |
+| D12 | 2026-11-18 | Plan 59 approved as drafted, including D11 and the ordered wave 1 (suite red inside the wave; first full gate at wave-1 end). | user |
 
 ## Gates
 
