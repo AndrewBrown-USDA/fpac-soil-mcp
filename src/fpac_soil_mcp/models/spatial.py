@@ -6,12 +6,24 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from fpac_soil_mcp.domain.lesa import LESAEvaluationResult
 from fpac_soil_mcp.models.coverage import RatingCoverage, SoilMappingCoverage
-from fpac_soil_mcp.models.map import MAP_SCHEMA_VERSION, MapBlock, ResultAuthority
+from fpac_soil_mcp.models.map import (
+    MAP_META_KEY,
+    MAP_SCHEMA_VERSION,
+    MapBlock,
+    ResultAuthority,
+)
 from fpac_soil_mcp.models.soil import (
     FarmlandCategoryBreakdown,
     QuerySource,
     SoilMapUnitAcreage,
+    ToolError,
+)
+
+MAP_FIELD_DESCRIPTION = (
+    "Map layer descriptions; display geometry is returned in result _meta under "
+    f"{MAP_META_KEY} when include_map is true (ADR 0017)"
 )
 
 
@@ -71,7 +83,57 @@ class PolygonFarmlandAnalysisResponse(BaseModel):
     )
     map: MapBlock = Field(
         default_factory=MapBlock,
-        description="Map layers; geometry only when include_map is true (ADR 0017)",
+        description=MAP_FIELD_DESCRIPTION,
+    )
+
+
+class SoilPolygonsProperties(BaseModel):
+    """Summary properties of a successful soil polygons FeatureCollection."""
+
+    total_aoi_acres: float = Field(description="Geodesic acreage of the area of interest")
+    feature_count: int = Field(description="Number of soil map unit features returned")
+    clipped: bool = Field(description="Whether map units were clipped to the AOI boundary")
+
+
+class SoilPolygonsResponse(BaseModel):
+    """Response of ``get_soil_polygons_by_geometry``: success and error bodies.
+
+    ``features`` carry soil map unit geometry in the body (that is the tool's
+    purpose); only the ``map`` display geometry goes to result ``_meta``.
+    """
+
+    type: Literal["FeatureCollection"] = Field(description="GeoJSON object type")
+    features: list[dict[str, Any]] = Field(
+        description="GeoJSON Features of intersecting SSURGO map units; empty on error"
+    )
+    properties: SoilPolygonsProperties | None = Field(
+        default=None, description="Collection summary; absent on error"
+    )
+    source: dict[str, Any] = Field(description="Query source metadata")
+    limitations: list[str] = Field(description="Regulatory and technical limitations")
+    regulatory_notice: str = Field(
+        description="Official regulatory disclaimer regarding FPPA screening"
+    )
+    error: str | None = Field(default=None, description="Error message when the query failed")
+    status: Literal["error"] | None = Field(
+        default=None, description="'error' when the query failed; absent on success"
+    )
+    error_details: ToolError | None = Field(
+        default=None, description="Source-aware failure details; absent on success"
+    )
+    schema_version: str = Field(
+        default=MAP_SCHEMA_VERSION, description="Map result contract version (ADR 0017)"
+    )
+    data_mode: Literal["live"] = Field(
+        default="live", description="Data mode: live upstream services"
+    )
+    authority: ResultAuthority = Field(
+        default_factory=ResultAuthority,
+        description="Result authority: preliminary machine estimate, not an official filing",
+    )
+    map: MapBlock = Field(
+        default_factory=MapBlock,
+        description=MAP_FIELD_DESCRIPTION,
     )
 
 
@@ -257,5 +319,14 @@ class CorridorFarmlandAnalysisResponse(BaseModel):
     )
     map: MapBlock = Field(
         default_factory=MapBlock,
-        description="Map layers; geometry only when include_map is true (ADR 0017)",
+        description=MAP_FIELD_DESCRIPTION,
+    )
+
+
+class CorridorToolResponse(CorridorFarmlandAnalysisResponse):
+    """Response of ``analyze_corridor_fppa``: corridor analysis plus optional LESA."""
+
+    lesa_evaluation: LESAEvaluationResult | None = Field(
+        default=None,
+        description="Preliminary corridor LESA evaluation when site assessment inputs are given",
     )

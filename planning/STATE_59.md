@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1 done. Next: 59.1.2.
+- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.2 done. Next: 59.1.3.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -23,7 +23,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | Task | Title | Status |
 | --- | --- | --- |
 | 59.1.1 | Map models and builder split | done |
-| 59.1.2 | Tool response models | pending |
+| 59.1.2 | Tool response models | done |
 | 59.1.3 | Tool functions return models | pending |
 | 59.1.4 | `_meta` wrapper and explicit schemas | pending |
 | 59.1.5 | Polygon map tests | pending |
@@ -43,3 +43,11 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Full root pytest (info, expected red per D12): 24 failed, 1071 passed, 3 skipped, 45 deselected. Failures only in `test_corridor_map.py` (7), `test_map_tool_contracts.py` (9), `test_polygon_map.py` (5), `test_soil_polygons_map.py` (3), all owned by 59.1.5-59.1.7.
 - Deviations: none.
 - Gotchas: `build_layer` now returns `LayerBuild` (`.layer`, `.display`); read display via `block.display` (None when `include_map=false`). A capped layer is `MapLayerDisplay(truncated=True)` in `display.layers[id]`. `model_copy()` and re-validation into a parent model keep the display; `MapBlock.model_validate(block.model_dump())` drops it (by design). 59.1.6: change `corridor_analyzer.py` `footprint(...) -> MapLayer` (~1351) to `LayerBuild`. Ruff on a tar copy reports false EXE002 unless `chmod -x` first.
+
+## 59.1.2
+- Status: done. Micro-plan approved by the user (answer: import `LESAEvaluationResult` from `domain/lesa.py`).
+- Files: `models/spatial.py` 11-27 (imports, `MAP_FIELD_DESCRIPTION` from `MAP_META_KEY`), 86 + 322 (both `map` descriptions), 90-137 (`SoilPolygonsProperties`, `SoilPolygonsResponse`), 326-332 (`CorridorToolResponse`); new `tests/test_tool_response_models.py` (11 tests).
+- Tests: `PYTHONDONTWRITEBYTECODE=1 UV_PROJECT_ENVIRONMENT=/tmp/fpac-venv uv run --group dev pytest tests/test_tool_response_models.py tests/test_map_contract.py -q -p no:cacheprovider` -> 30 passed (first run 2 failed: test compared schema enum order to the unordered `*_COVERAGE_VALUES` frozensets; fixed to `get_args(SoilMappingCoverage/RatingCoverage)`). Ruff check + format clean.
+- Full root pytest (info): 24 failed, 1082 passed; same 24 failures as after 59.1.1 (59.1.5-59.1.7 files).
+- Deviations: spec said `models.lesa`; class is in `fpac_soil_mcp.domain.lesa` (first `models` -> `domain` import; no cycle, probed).
+- Gotchas: import new models from `fpac_soil_mcp.models.spatial` (not re-exported). `SoilPolygonsResponse.source` is `dict[str, Any]` (success adds `endpoint`). Coverage enum order comes from the `Literal`s, not the frozensets.
