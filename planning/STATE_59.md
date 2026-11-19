@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.6 done (plus 59.1.3b). Next: 59.1.7. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Next: 59.2.1. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -29,7 +29,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.4 | `_meta` wrapper and explicit schemas | done |
 | 59.1.5 | Polygon map tests | done |
 | 59.1.6 | Corridor map tests | done |
-| 59.1.7 | Tool-layer map tests | pending |
+| 59.1.7 | Tool-layer map tests | done |
 | 59.2.1 | App merges `_meta` into the browser block | pending |
 | 59.2.2 | App trace guard | pending |
 | 59.3.1 | ADR 0017 amendment and docs | pending |
@@ -90,3 +90,13 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Tests: `pytest tests/test_corridor_map.py` -> 23 passed (21 before, 7 red). Ruff check + format clean.
 - Full root pytest (info): 13 failed, 1104 passed; no new failing IDs vs 59.1.5 (comm); remaining red: test_map_tool_contracts 10, test_soil_polygons_map 3 (59.1.7).
 - Warnings: only the existing shapely `ops.transform` deprecation and pytest-asyncio loop-scope notice; count grows with test count.
+
+## 59.1.7
+- Status: done. Micro-plan `planning/tasks/59.1.7.todo.md` self-approved.
+- Files: `tests/test_map_tool_contracts.py` (docstring; `_call_full`/`_polygon_full`/`_corridor_full` return body + `result.meta[MAP_META_KEY]`; include_map description == `INCLUDE_MAP_DESCRIPTION`; delivery `meta_geojson`; geometry, bounds, display_crs, warnings read from `_meta`; schema 2.0; section-4 table test unchanged; size-margin comment re-measured), `tests/test_soil_polygons_map.py` (same move; D10 capped layer in `_meta`).
+- Size margin: additive keys shrank to 1,879 B (polygon) and 2,261 B (corridor) from 2,163/2,657; `DEFAULT_SIZE_MARGIN_BYTES` kept at 4,000 (not loosened).
+- Tests: 22 passed for the two files.
+
+## Wave 1 gate
+- Full root pytest: 1117 passed, 3 skipped, 45 deselected (baseline 1091 + 26 new tests). 0 failed.
+- Root ruff check + format --check on a /tmp copy (830 files): clean (one I001 import order fixed in test_map_tool_contracts.py first).

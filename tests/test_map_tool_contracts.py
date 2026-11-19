@@ -4,6 +4,9 @@ Calls ``analyze_farmland_by_polygon`` and ``analyze_corridor_fppa`` through a
 ``FastMCP`` server built with ``register_tools``; the analyzers run for real on
 synthetic SDA, TIGERweb and NASS clients. Synthetic geometry only.
 
+The body carries layer descriptors only; display geometry, bounds and warnings
+come back in result ``_meta`` under ``gov.usda.fpac-soil/map`` (Plan 59, #117).
+
 The Phase 8 M3 "soil" exit item is met by the ``farmland_classes`` layer on
 these two tools. ``get_soil_polygons_by_geometry`` also takes ``include_map``
 (EXECUTION_PLAN_44 A6); its map block is tested in ``test_soil_polygons_map.py``.
@@ -30,11 +33,13 @@ from fpac_soil_mcp.core.authority import Provenance
 from fpac_soil_mcp.domain.corridor_analyzer import CorridorAnalyzer
 from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
 from fpac_soil_mcp.mcp.tools import register_tools
+from fpac_soil_mcp.mcp.tools.spatial_analysis_tools import INCLUDE_MAP_DESCRIPTION
 from fpac_soil_mcp.models.integration import (
     CountyAgProfile,
     IntegrationStatus,
     UrbanExemptionRecord,
 )
+from fpac_soil_mcp.models.map import MAP_META_KEY, MAP_SCHEMA_VERSION
 from fpac_soil_mcp.spatial.geometry import calculate_acreage
 
 MARKER = "R6-MARKER"
@@ -52,8 +57,9 @@ UNCHANGED_TOOLS = (
 ADDITIVE_KEYS = ("schema_version", "data_mode", "authority", "map")
 # Fixed allowance for the additive keys in a default (descriptor-only) response.
 # A percentage does not work on small fixtures: the additive keys measured
-# 2,163 bytes (polygon, +43%) and 2,657 bytes (corridor, +47%) here, mostly the
-# seven-item farmland legend. Real responses are larger, so the share is lower.
+# 1,879 bytes (polygon) and 2,261 bytes (corridor) here after Plan 59 moved
+# display fields to _meta (2,163 and 2,657 before), mostly the seven-item
+# farmland legend. Real responses are larger, so the share is lower.
 DEFAULT_SIZE_MARGIN_BYTES = 4_000
 
 POLYGON = {
@@ -180,25 +186,39 @@ def synthetic_analyzers():
         yield
 
 
-def _call(mcp: FastMCP, name: str, **arguments: Any) -> dict[str, Any]:
+def _call_full(mcp: FastMCP, name: str, **arguments: Any) -> tuple[dict[str, Any], dict | None]:
+    """Return (body, our map ``_meta`` entry or None)."""
     result = asyncio.run(mcp.call_tool(name, arguments))
     assert isinstance(result.structured_content, dict)
-    return result.structured_content
+    return result.structured_content, (result.meta or {}).get(MAP_META_KEY)
+
+
+def _call(mcp: FastMCP, name: str, **arguments: Any) -> dict[str, Any]:
+    return _call_full(mcp, name, **arguments)[0]
+
+
+POLYGON_ARGS: dict[str, Any] = {"geojson": POLYGON}
+CORRIDOR_ARGS: dict[str, Any] = {
+    "centerline": CENTERLINE,
+    "buffer_distance": 50.0,
+    "buffer_units": "meters",
+}
 
 
 def _polygon(mcp: FastMCP, **kw: Any) -> dict[str, Any]:
-    return _call(mcp, "analyze_farmland_by_polygon", geojson=POLYGON, **kw)
+    return _call(mcp, "analyze_farmland_by_polygon", **POLYGON_ARGS, **kw)
 
 
 def _corridor(mcp: FastMCP, **kw: Any) -> dict[str, Any]:
-    return _call(
-        mcp,
-        "analyze_corridor_fppa",
-        centerline=CENTERLINE,
-        buffer_distance=50.0,
-        buffer_units="meters",
-        **kw,
-    )
+    return _call(mcp, "analyze_corridor_fppa", **CORRIDOR_ARGS, **kw)
+
+
+def _polygon_full(mcp: FastMCP, **kw: Any) -> tuple[dict[str, Any], dict | None]:
+    return _call_full(mcp, "analyze_farmland_by_polygon", **POLYGON_ARGS, **kw)
+
+
+def _corridor_full(mcp: FastMCP, **kw: Any) -> tuple[dict[str, Any], dict | None]:
+    return _call_full(mcp, "analyze_corridor_fppa", **CORRIDOR_ARGS, **kw)
 
 
 def _size(payload: dict[str, Any]) -> int:
@@ -214,7 +234,8 @@ def test_include_map_only_on_the_map_tools(mcp):
         prop = tools[name].parameters["properties"]["include_map"]
         assert prop["type"] == "boolean"
         assert prop["default"] is False
-        assert prop["description"].startswith("Leave false.")
+        assert prop["description"] == INCLUDE_MAP_DESCRIPTION
+        assert MAP_META_KEY in prop["description"]
         assert "include_map" not in tools[name].parameters.get("required", [])
     for name in UNCHANGED_TOOLS:
         assert "include_map" not in tools[name].parameters["properties"]
@@ -223,37 +244,43 @@ def test_include_map_only_on_the_map_tools(mcp):
 # --- delivery -------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("call", [_polygon, _corridor])
+@pytest.mark.parametrize("call", [_polygon_full, _corridor_full])
 def test_default_call_returns_descriptors_only(mcp, call):
-    payload = call(mcp)
+    payload, meta = call(mcp)
     layers = payload["map"]["layers"]
     assert layers
     assert all(layer["delivery"] == "omitted" for layer in layers)
-    assert all(layer["feature_collection"] is None for layer in layers)
-    assert payload["map"]["bounds"] is None
+    assert all("feature_collection" not in layer for layer in layers)
+    assert set(payload["map"]) == {"layers"}
     assert '"coordinates"' not in json.dumps(payload["map"])
+    assert meta is None
 
 
-@pytest.mark.parametrize("call", [_polygon, _corridor])
-def test_include_map_returns_inline_layers(mcp, call):
-    payload = call(mcp, include_map=True)
+@pytest.mark.parametrize("call", [_polygon_full, _corridor_full])
+def test_include_map_returns_meta_layers(mcp, call):
+    payload, meta = call(mcp, include_map=True)
     layers = {layer["id"]: layer for layer in payload["map"]["layers"]}
-    assert all(layer["delivery"] == "inline_geojson" for layer in layers.values())
-    farmland = layers["farmland_classes"]["feature_collection"]
+    assert all(layer["delivery"] == "meta_geojson" for layer in layers.values())
+    assert '"coordinates"' not in json.dumps(payload["map"])
+    assert meta is not None
+    assert set(meta["layers"]) == set(layers)
+    farmland = meta["layers"]["farmland_classes"]["feature_collection"]
     assert farmland["type"] == "FeatureCollection"
     assert {f["properties"]["farmland_class"] for f in farmland["features"]} == {"prime", "local"}
-    assert payload["map"]["bounds"] is not None
+    assert meta["bounds"] is not None
+    assert meta["display_crs"] == "EPSG:4326"
 
 
 def test_corridor_lesa_evaluation_survives_include_map(mcp):
-    payload = _corridor(
+    payload, meta = _corridor_full(
         mcp,
         include_map=True,
         site_assessment_inputs={"criteria_inputs": {"1": {"awarded_points": 10}}},
     )
     assert "lesa_evaluation" in payload
     assert payload["lesa_evaluation"]["total_lesa_score"] >= 0
-    assert any(layer["delivery"] == "inline_geojson" for layer in payload["map"]["layers"])
+    assert any(layer["delivery"] == "meta_geojson" for layer in payload["map"]["layers"])
+    assert meta is not None
 
 
 @pytest.mark.parametrize("call", [_polygon, _corridor])
@@ -285,13 +312,12 @@ def _response_units(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return payload["map_units"]
 
 
-@pytest.mark.parametrize("call", [_polygon, _corridor])
+@pytest.mark.parametrize("call", [_polygon_full, _corridor_full])
 def test_farmland_features_carry_map_unit_productivity(mcp, call):
     """Plan 44 A7: popup data comes from the ratings the analyzer already fetched."""
-    payload = call(mcp, include_map=True)
+    payload, meta = call(mcp, include_map=True)
     units = {u["mukey"]: u for u in _response_units(payload)}
-    layers = {layer["id"]: layer for layer in payload["map"]["layers"]}
-    features = layers["farmland_classes"]["feature_collection"]["features"]
+    features = meta["layers"]["farmland_classes"]["feature_collection"]["features"]
     assert features
     for feature in features:
         props = feature["properties"]
@@ -344,9 +370,9 @@ def test_section_4_table_matches_adr():
     assert _adr_section_4_fields() == list(SECTION_4)
 
 
-@pytest.mark.parametrize(("call", "side"), [(_polygon, 0), (_corridor, 1)])
+@pytest.mark.parametrize(("call", "side"), [(_polygon_full, 0), (_corridor_full, 1)])
 def test_section_4_parity_field_by_field(mcp, call, side):
-    payload = call(mcp)
+    payload, _ = call(mcp)
     for field, keys in SECTION_4.items():
         top = field.split(".", 1)[0]
         if keys is None:
@@ -356,12 +382,14 @@ def test_section_4_parity_field_by_field(mcp, call, side):
             assert key in payload, (field, key)
 
     # Details the table promises beyond key presence.
-    assert payload["schema_version"] == "1.0"
+    assert payload["schema_version"] == MAP_SCHEMA_VERSION
     assert payload["data_mode"] == "live"
     assert payload["authority"]["official_filing"] is False
     assert payload["source"]["timestamp_utc"]
-    assert payload["map"]["display_crs"] == "EPSG:4326"
-    assert isinstance(payload["map"]["warnings"], list)
+    # Display CRS and map warnings travel in _meta (Plan 59 D3).
+    _, meta = call(mcp, include_map=True)
+    assert meta["display_crs"] == "EPSG:4326"
+    assert isinstance(meta["warnings"], list)
     for layer in payload["map"]["layers"]:
         assert layer["source"]
         assert "data_vintage" in layer
