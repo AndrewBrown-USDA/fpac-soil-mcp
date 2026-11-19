@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2 done; wave-2 gate green. 59.3.1 done. Next: 59.3.2. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2 done; wave-2 gate green. Wave 3 done. All tasks done; awaiting user approval to push. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -33,7 +33,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.2.1 | App merges `_meta` into the browser block | done |
 | 59.2.2 | App trace guard | done |
 | 59.3.1 | ADR 0017 amendment and docs | done |
-| 59.3.2 | Final verification | pending |
+| 59.3.2 | Final verification | done |
 
 ## Task reports
 
@@ -131,3 +131,19 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - ADR 0017: dated amendment block under the title (2026-11-19, Plan 59, #117, map schema 2.0) covering D2, D3, D5, D6, D7, D10 and the `_meta` key (D4); notes that later sections' inline shape is now the app-rebuilt browser block. Field and model names checked against `models/map.py` and `mcp/tools/__init__.py`.
 - Root README: breaking-change paragraph after the coverage-status note. App README: `_meta` bullet in the map results list. App AGENTS.md: `agent.py` and `geo.py` entries. `.env.example`: byte cap applies to `_meta`.
 - Root pytest after docs (ADR parity tests in `test_map_tool_contracts.py` read this ADR): 1117 passed.
+
+## 59.3.2 Final verification (2026-11-19)
+
+| Check | Baseline | Final |
+| --- | --- | --- |
+| Root pytest | 1091 passed, 3 skipped, 45 deselected | 1117 passed, 3 skipped, 45 deselected |
+| Root ruff | clean | clean |
+| App ruff | clean | clean |
+| App pytest | 310 passed | 316 passed |
+| Frontend | biome 0 errors, 10 warnings; build OK | same; no frontend diff |
+| JS harness | 20/20 | 20/20 |
+
+- `git grep inline_geojson -- src`: empty. In the app it appears only in `geo.map_block` (the browser block).
+- `list_tools` on a fresh FastMCP with `register_tools`: all three map tools publish an output schema (16 / 19 / 13 properties); none contains `feature_collection` or `inline_geojson`; all contain `meta_geojson`.
+- Not verified: a deployed run against the live MCP app and browser (offline plan; no live calls). Follow-up candidate: trace redaction of tool arguments and of `get_soil_polygons_by_geometry` body `features`.
+- Push: not done. 14 local commits on `feature/meta-map1` ahead of `origin/main`; ask the user before `git push -u origin feature/meta-map1`.
