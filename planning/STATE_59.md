@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2: 59.2.1-59.2.2 done. Next: wave-2 gate, then 59.3.1. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2 done; wave-2 gate green. 59.3.1 done. Next: 59.3.2. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -32,7 +32,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.7 | Tool-layer map tests | done |
 | 59.2.1 | App merges `_meta` into the browser block | done |
 | 59.2.2 | App trace guard | done |
-| 59.3.1 | ADR 0017 amendment and docs | pending |
+| 59.3.1 | ADR 0017 amendment and docs | done |
 | 59.3.2 | Final verification | pending |
 
 ## Task reports
@@ -119,3 +119,15 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Note: the trace still records tool arguments (the AOI) and the body, as before; for `get_soil_polygons_by_geometry` the body `features` (D2) still carry coordinates. Out of scope for #117; flag for a follow-up.
 - App pytest (full, from a full-repo /tmp copy): 316 passed (baseline 310 + 6 new). App ruff clean after one format fix.
 - Gotcha: app tests that load `src/fpac_soil_mcp/data/site_assessment.v1.json` need the full-repo copy, not an app-only copy.
+
+## Wave 2 gate (2026-11-19, @ c6232cf3, full-repo copy /tmp/w2)
+- Root pytest: 1117 passed, 3 skipped, 45 deselected.
+- App pytest: 316 passed. App ruff check + format --check: clean. Root ruff check on the copy: clean.
+- Frontend: `git diff --stat origin/main -- apps/agent-fpac-soil-openai-sdk/frontend` empty; biome 0 errors, 10 warnings (662 files, = baseline); build OK.
+- JS harness: 20/20.
+
+## 59.3.1
+- Status: done (self-approved).
+- ADR 0017: dated amendment block under the title (2026-11-19, Plan 59, #117, map schema 2.0) covering D2, D3, D5, D6, D7, D10 and the `_meta` key (D4); notes that later sections' inline shape is now the app-rebuilt browser block. Field and model names checked against `models/map.py` and `mcp/tools/__init__.py`.
+- Root README: breaking-change paragraph after the coverage-status note. App README: `_meta` bullet in the map results list. App AGENTS.md: `agent.py` and `geo.py` entries. `.env.example`: byte cap applies to `_meta`.
+- Root pytest after docs (ADR parity tests in `test_map_tool_contracts.py` read this ADR): 1117 passed.

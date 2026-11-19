@@ -12,6 +12,39 @@ source_context: "EXECUTION_PLAN_44"
 
 # 17. Server Map Result Contract for the Analyze Tools
 
+> **Amended 2026-11-19 (Plan 59, issue #117; breaking, map schema 2.0).**
+> Display geometry no longer travels in the tool result body. With
+> `include_map=true`, `analyze_farmland_by_polygon`, `analyze_corridor_fppa`
+> and `get_soil_polygons_by_geometry` return it in the MCP result `_meta`
+> under `gov.usda.fpac-soil/map` (FastMCP `ToolResult(meta=...)`), which MCP
+> clients do not pass to the model.
+>
+> * Split rule (D3): the body `map.layers` entries are descriptors only (id,
+>   title, kind, authority, source, data vintage, style key, legend,
+>   `delivery`). `_meta` holds the display part:
+>   `display_crs`, `bounds`, `warnings`, and `layers` keyed by layer id with
+>   `feature_collection`, `feature_count`, `simplified`,
+>   `simplify_tolerance_m` and `truncated`.
+> * `delivery` (D5) is `meta_geojson` when `_meta` carries the layer and
+>   `omitted` otherwise; `inline_geojson` is gone from the server.
+> * A layer dropped by the size cap (D10) is `delivery: omitted` in the body
+>   and `{"truncated": true}` in `_meta`; the warning stays in
+>   `_meta.warnings`.
+> * Output schemas (D6): the three tools declare explicit typed output
+>   schemas (`PolygonFarmlandAnalysisResponse`, `CorridorToolResponse`,
+>   `SoilPolygonsResponse`). `get_soil_polygons_by_geometry` keeps its
+>   top-level `features` in the body (D2).
+> * App (D7): `geo.py` merges `_meta` back into the body descriptors, so the
+>   browser still gets the block shape described below (`delivery:
+>   inline_geojson` with `feature_collection`). Without `_meta` every layer is
+>   `omitted`. The chat MCP client (`FpacMcpServer`) records its tool span
+>   with each `gov.usda.fpac-soil/*` `_meta` value replaced by
+>   `{omitted_from_trace, layers, bytes}`.
+>
+> Sections below that place `feature_collection` or `inline_geojson` in the
+> tool result describe the pre-2.0 server body; read them as the browser block
+> the app now rebuilds.
+
 ## Context and Problem Statement
 
 The agent app map panel (ADR 0016) draws a screened AOI with soil polygons from
