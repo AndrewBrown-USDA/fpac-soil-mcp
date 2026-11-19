@@ -4,8 +4,8 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 
 ## Status
 
-- Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2 done; wave-2 gate green. Wave 3 done. All tasks done; awaiting user approval to push. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Branch `feature/meta-map1` off `origin/main` 6a00e222. Pushed 2026-11-19 (user approved) to `origin/feature/meta-map1` @ bf96434a; PR not opened.
+- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2 done; wave-2 gate green. Wave 3 done. All tasks done; pushed. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -146,4 +146,4 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - `git grep inline_geojson -- src`: empty. In the app it appears only in `geo.map_block` (the browser block).
 - `list_tools` on a fresh FastMCP with `register_tools`: all three map tools publish an output schema (16 / 19 / 13 properties); none contains `feature_collection` or `inline_geojson`; all contain `meta_geojson`.
 - Not verified: a deployed run against the live MCP app and browser (offline plan; no live calls). Follow-up candidate: trace redaction of tool arguments and of `get_soil_polygons_by_geometry` body `features`.
-- Push: not done. 14 local commits on `feature/meta-map1` ahead of `origin/main`; ask the user before `git push -u origin feature/meta-map1`.
+- Push: done 2026-11-19 at the user's request (`git push -u origin feature/meta-map1`, 14 commits, HEAD bf96434a = origin). This note was committed and pushed separately.
