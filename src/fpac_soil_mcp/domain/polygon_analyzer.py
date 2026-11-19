@@ -154,8 +154,9 @@ class PolygonAnalyzer:
             geojson_input: GeoJSON dict/string or Shapely geometry.
             productivity_index: Soil productivity index type ('nccpi', 'csr2', 'cpi', 'storie').
             max_county_rating_override: Optional user-supplied maximum county rating benchmark.
-            include_map: Include display geometry in the ``map`` layers (ADR 0017).
-                Numbers are computed from exact geometry either way.
+            include_map: Build display geometry for result ``_meta`` (``map.display``,
+                ADR 0017); the ``map`` layers stay descriptors either way. Numbers
+                are computed from exact geometry either way.
 
         Returns:
             PolygonFarmlandAnalysisResponse with complete acreage breakdowns, urban screening, LE summary, and provenance.
@@ -573,7 +574,7 @@ class PolygonAnalyzer:
         raw_units: list[dict[str, Any]],
         urban_geometries: list[tuple[str, Polygon | MultiPolygon]],
     ) -> MapBlock:
-        """Build the ADR 0017 map block; geometry only when ``include_map`` is true.
+        """Build the ADR 0017 map block; display geometry (``display``) only with ``include_map``.
 
         Layer order is the size-cap drop priority: urban context first, then
         farmland classes; the AOI outline is kept.

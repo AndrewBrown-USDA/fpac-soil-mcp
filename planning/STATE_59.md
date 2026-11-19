@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.4 done (plus 59.1.3b). Next: 59.1.5. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.5 done (plus 59.1.3b). Next: 59.1.6. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -27,7 +27,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.3 | Tool functions return models | done |
 | 59.1.3b | FastMCP 4.2.2 bump (user request, inserted) | done |
 | 59.1.4 | `_meta` wrapper and explicit schemas | done |
-| 59.1.5 | Polygon map tests | pending |
+| 59.1.5 | Polygon map tests | done |
 | 59.1.6 | Corridor map tests | pending |
 | 59.1.7 | Tool-layer map tests | pending |
 | 59.2.1 | App merges `_meta` into the browser block | pending |
@@ -76,3 +76,10 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Full root pytest (info): 25 failed, 1088 passed; failing IDs identical to 59.1.3b (diff).
 - Deviations: "corridor county failure" implemented as per-county SDA failure, not a TIGERweb failure.
 - Gotchas: server `_meta` also carries `io.modelcontextprotocol/serverInfo`; only `gov.usda.fpac-soil/*` keys are ours. Importing `fpac_soil_mcp.mcp.tools` before `fpac_soil_mcp.mcp.app` in a fresh process hits a circular import (seen in a pytest plugin); tests import `app` first.
+
+## 59.1.5
+- Status: done. Micro-plan `planning/tasks/59.1.5.todo.md` self-approved.
+- Files: `domain/polygon_analyzer.py` docstrings only (git diff shows only the two docstring hunks); `tests/test_polygon_map.py` (display reads moved to `result.map.display`, delivery `meta_geojson`, schema 2.0, new `test_body_dump_has_no_moved_keys` x2).
+- Tests: `pytest tests/test_polygon_map.py` -> 11 passed (9 before, 5 of them red). Ruff check + format clean.
+- Full root pytest (info): 20 failed, 1095 passed; remaining red: test_corridor_map 7, test_map_tool_contracts 10, test_soil_polygons_map 3 (59.1.6/59.1.7). Session compute restarted before this run, so /tmp failure lists from 59.1.4 were gone; compared by per-file counts (25 - 5 polygon = 20).
+- Deviations: none. Gotchas: the size-cap test now measures layer sizes from `map.display.layers`.

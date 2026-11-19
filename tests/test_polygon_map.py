@@ -14,7 +14,7 @@ from fpac_soil_mcp.clients.tigerweb import TigerwebClient
 from fpac_soil_mcp.core.authority import Provenance
 from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
 from fpac_soil_mcp.models.integration import IntegrationStatus, UrbanExemptionRecord
-from fpac_soil_mcp.spatial.map_builder import FARMLAND_CLASS_VALUES
+from fpac_soil_mcp.spatial.map_builder import FARMLAND_CLASS_VALUES, MAP_SCHEMA_VERSION
 
 MARKER = "R6-MARKER"
 AOI = box(0.0, 0.0, 0.01, 0.01)
@@ -25,6 +25,18 @@ AOI_GEOJSON = {
 LEFT = box(0.0, 0.0, 0.005, 0.01)
 RIGHT = box(0.005, 0.0, 0.01, 0.01)
 URBAN = box(0.008, 0.008, 0.02, 0.02)
+# Display-only keys that must never appear in the body (D3).
+MOVED_KEYS = {
+    "coordinates",
+    "feature_collection",
+    "feature_count",
+    "simplified",
+    "simplify_tolerance_m",
+    "truncated",
+    "bounds",
+    "display_crs",
+    "warnings",
+}
 
 ROWS = [
     {
@@ -99,6 +111,14 @@ def _layers(result) -> dict:
     return {layer.id: layer for layer in result.map.layers}
 
 
+def _keys(node) -> set[str]:
+    if isinstance(node, dict):
+        return set(node) | {key for value in node.values() for key in _keys(value)}
+    if isinstance(node, list):
+        return {key for item in node for key in _keys(item)}
+    return set()
+
+
 def test_numbers_identical_with_and_without_map():
     plain, _, _ = _run(False)
     mapped, _, _ = _run(True)
@@ -123,15 +143,13 @@ def test_one_spatial_and_one_urban_call(include_map):
 
 def test_default_map_is_descriptor_only():
     result, _, _ = _run(False)
-    assert result.schema_version == "1.0"
+    assert result.schema_version == MAP_SCHEMA_VERSION
     assert result.data_mode == "live"
     assert result.authority.official_filing is False
     assert [layer.id for layer in result.map.layers] == ["aoi", "farmland_classes", "urban_context"]
     for layer in result.map.layers:
         assert layer.delivery == "omitted"
-        assert layer.feature_collection is None
-        assert layer.feature_count is None
-    assert result.map.bounds is None
+    assert result.map.display is None
     dumped = json.dumps(result.map.model_dump())
     assert "coordinates" not in dumped
     assert [item.value for item in _layers(result)["farmland_classes"].legend] == list(
@@ -142,36 +160,38 @@ def test_default_map_is_descriptor_only():
 def test_inline_layers_when_requested():
     result, _, _ = _run(True)
     layers = _layers(result)
-    assert all(layer.delivery == "inline_geojson" for layer in layers.values())
+    assert all(layer.delivery == "meta_geojson" for layer in layers.values())
+    display = result.map.display
+    assert display is not None
+    assert set(display.layers) == set(layers)
 
-    aoi = layers["aoi"]
-    assert aoi.authority == "user_input"
+    assert layers["aoi"].authority == "user_input"
+    aoi = display.layers["aoi"]
     assert aoi.simplified is False
     assert shape(aoi.feature_collection["features"][0]["geometry"]).equals(AOI)
 
-    farmland = layers["farmland_classes"]
+    assert layers["farmland_classes"].style_key == "farmland_class"
+    farmland = display.layers["farmland_classes"]
     assert farmland.feature_count == 2
-    assert farmland.style_key == "farmland_class"
     assert farmland.simplified is True and farmland.simplify_tolerance_m == 1.0
     props = [f["properties"] for f in farmland.feature_collection["features"]]
     assert [p["farmland_class"] for p in props] == ["prime", "conditional_prime"]
     assert props[0]["mukey"] == "1001" and props[0]["muname"] == f"{MARKER} prime unit"
 
-    urban = layers["urban_context"]
-    assert urban.authority == "reference_data"
-    assert urban.data_vintage == "Census 2020 Urban Areas"
+    assert layers["urban_context"].authority == "reference_data"
+    assert layers["urban_context"].data_vintage == "Census 2020 Urban Areas"
+    urban = display.layers["urban_context"]
     assert urban.feature_collection["features"][0]["properties"] == {"name": f"{MARKER} Urban"}
 
-    assert result.map.bounds == [0.0, 0.0, 0.02, 0.02]
-    assert result.map.warnings == []
+    assert display.bounds == [0.0, 0.0, 0.02, 0.02]
+    assert display.warnings == []
 
 
 def test_inline_without_urban_areas_has_empty_urban_layer():
     result, _, _ = _run(True, urban=[])
-    urban = _layers(result)["urban_context"]
-    assert urban.delivery == "inline_geojson"
-    assert urban.feature_count == 0
-    assert result.map.bounds == [0.0, 0.0, 0.01, 0.01]
+    assert _layers(result)["urban_context"].delivery == "meta_geojson"
+    assert result.map.display.layers["urban_context"].feature_count == 0
+    assert result.map.display.bounds == [0.0, 0.0, 0.01, 0.01]
 
 
 def test_size_cap_drops_urban_layer_first(monkeypatch):
@@ -179,8 +199,8 @@ def test_size_cap_drops_urban_layer_first(monkeypatch):
 
     plain, _, _ = _run(True)
     sizes = {
-        layer.id: len(json.dumps(layer.feature_collection, separators=(",", ":")))
-        for layer in plain.map.layers
+        layer_id: len(json.dumps(layer.feature_collection, separators=(",", ":")))
+        for layer_id, layer in plain.map.display.layers.items()
     }
     monkeypatch.setattr(
         polygon_analysis.settings,
@@ -189,10 +209,11 @@ def test_size_cap_drops_urban_layer_first(monkeypatch):
     )
     capped, _, _ = _run(True)
     layers = _layers(capped)
-    assert layers["urban_context"].truncated is True
+    assert capped.map.display.layers["urban_context"].truncated is True
+    assert capped.map.display.layers["urban_context"].feature_collection is None
     assert layers["urban_context"].delivery == "omitted"
-    assert layers["farmland_classes"].delivery == "inline_geojson"
-    assert len(capped.map.warnings) == 1
+    assert layers["farmland_classes"].delivery == "meta_geojson"
+    assert len(capped.map.display.warnings) == 1
     assert capped.tabular_csv == plain.tabular_csv
 
 
@@ -211,4 +232,12 @@ def test_wrappers_pass_include_map():
     sda, tiger = _sda(), _tiger()
     analyzer = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger)
     result = analyzer.analyze_polygon_sync(AOI_GEOJSON, include_map=True)
-    assert _layers(result)["aoi"].delivery == "inline_geojson"
+    assert _layers(result)["aoi"].delivery == "meta_geojson"
+    assert result.map.display is not None
+
+
+@pytest.mark.parametrize("include_map", [False, True])
+def test_body_dump_has_no_moved_keys(include_map):
+    result, _, _ = _run(include_map)
+    leaked = MOVED_KEYS & _keys(result.model_dump(mode="json"))
+    assert not leaked
