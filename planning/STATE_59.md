@@ -25,6 +25,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.1 | Map models and builder split | done |
 | 59.1.2 | Tool response models | done |
 | 59.1.3 | Tool functions return models | done |
+| 59.1.3b | FastMCP 4.2.2 bump (user request, inserted) | done |
 | 59.1.4 | `_meta` wrapper and explicit schemas | pending |
 | 59.1.5 | Polygon map tests | pending |
 | 59.1.6 | Corridor map tests | pending |
@@ -58,4 +59,10 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Tests: `pytest tests/test_tools.py tests/test_phase3_contracts.py tests/test_tool_response_models.py tests/test_map_contract.py` -> 114 passed. `git grep "Leave false\|Leave it false" -- src` empty. Ruff check + format clean (one format fix applied).
 - Full root pytest (info): 25 failed, 1081 passed. New vs 59.1.2: `test_map_tool_contracts.py::test_include_map_only_on_the_map_tools` asserts the description `startswith("Leave false.")`; expected from the wording change, fix in 59.1.7.
 - Deviations: `test_analyze_corridor_fppa_basic` dropped the `productivity_rating`/`productivity_rating_class` passthrough asserts (keys only existed in the old mock dict, not on the response model) and now checks `reconciliation_summary`; `"composite_relative_rating" in result` became `== 82.5`.
-- Gotchas: `lesa_tools.py` has its own `CorridorAnalyzer` mock (`_mock_lesa_corridor`), untouched. The returned `map` is a validated copy of the analyzer's `MapBlock`; `_display` survives via the 59.1.1 validator.
+- Gotchas (59.1.3): `lesa_tools.py` has its own `CorridorAnalyzer` mock (`_mock_lesa_corridor`), untouched. The returned `map` is a validated copy of the analyzer's `MapBlock`; `_display` survives via the 59.1.1 validator.
+
+## 59.1.3b
+- Status: done. User asked (2026-11-18) to bump FastMCP to 4.2.x as part of Plan 59, before 59.1.4 builds on `ToolResult(meta=...)`.
+- Files: `pyproject.toml` `fastmcp>=2.0.0` -> `fastmcp>=4.2.2`; `uv.lock` (`uv lock --upgrade-package fastmcp`): fastmcp 4.1.7 -> 4.2.2, fastmcp-slim 4.1.7 -> 4.2.2, uncalled-for 0.4.1 -> 0.6.2; nothing else moved. App lock has no fastmcp entry.
+- 4.2.0 breaking notes checked (GitHub release): Python 3.11 required (we require >=3.11); 4.1 skills API deprecated (unused here); `gen_ai.operation.name` on tools/call spans; non-finite floats rejected at JSON serialization. 4.2.1/4.2.2 notes read (auth/skills fixes, middleware `CallToolResult` edits kept). 4.1.8 notes not reviewed (output cut off); the test run is the evidence for that step.
+- Tests: full root pytest on 4.2.2: 25 failed, 1081 passed, 3 skipped, 45 deselected; failing test IDs identical to the 4.1.7 run after 59.1.3 (diff of sorted FAILED lines). No FastMCP deprecation warnings in the run.
