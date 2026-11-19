@@ -525,7 +525,9 @@ def test_untraced_target_is_the_undecorated_parent():
 def test_fixture_uses_the_real_mcp_server_class():
     server = _real_server(_happy_server())
 
-    assert type(server) is McpServer
+    # Plan 59: the deployed client is the trace-guarded McpServer subclass.
+    assert type(server).__mro__[1] is McpServer
+    assert type(server).__name__ == "FpacMcpServer"
 
 
 def test_screening_creates_no_traces(start_server, fake_mcp, tmp_path):

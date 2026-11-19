@@ -8,7 +8,7 @@ from contextlib import AsyncExitStack
 from functools import lru_cache
 from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import mlflow
 from agents import (
@@ -25,6 +25,7 @@ from databricks.sdk import WorkspaceClient
 from databricks_openai import AsyncDatabricksOpenAI
 from databricks_openai.agents import McpServer
 from mcp.shared.exceptions import McpError
+from mlflow.entities import SpanType
 from mlflow.genai.agent_server import invoke, stream
 from mlflow.types.responses import (
     ResponsesAgentRequest,
@@ -284,6 +285,53 @@ def _update_trace_session(session_id: str | None) -> None:
         mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})
 
 
+# Result ``_meta`` keys under this prefix carry display payloads (map geometry, ADR
+# 0017 / Plan 59); the trace records a stub in their place.
+FPAC_META_PREFIX = "gov.usda.fpac-soil/"
+
+
+def _meta_trace_stub(value: Any) -> dict[str, Any]:
+    layers = value.get("layers") if isinstance(value, dict) else None
+    return {
+        "omitted_from_trace": True,
+        "layers": list(layers) if isinstance(layers, dict) else [],
+        "bytes": len(json.dumps(value, separators=(",", ":"), default=str)),
+    }
+
+
+def trace_safe_result(result: Any) -> Any:
+    """Dump a ``CallToolResult`` for the trace with fpac-soil ``_meta`` values stubbed."""
+    if not hasattr(result, "model_dump"):
+        return result
+    dumped = result.model_dump(mode="json", by_alias=True)
+    meta = dumped.get("_meta")
+    if isinstance(meta, dict):
+        dumped["_meta"] = {
+            key: _meta_trace_stub(value) if key.startswith(FPAC_META_PREFIX) else value
+            for key, value in meta.items()
+        }
+    return dumped
+
+
+class FpacMcpServer(McpServer):
+    """``McpServer`` whose tool span leaves map display ``_meta`` out of the trace.
+
+    The parent decorates ``call_tool`` with ``@mlflow.trace``, which records the full
+    result. This override records the same TOOL span by hand, with every
+    ``gov.usda.fpac-soil/*`` ``_meta`` value replaced by a size stub, and returns the
+    result unchanged.
+    """
+
+    async def call_tool(
+        self, tool_name: str, arguments: dict[str, Any] | None, **kwargs: Any
+    ) -> Any:
+        with mlflow.start_span(name=tool_name, span_type=SpanType.TOOL) as span:
+            span.set_inputs({"tool_name": tool_name, "arguments": arguments})
+            result = await MCPServerStreamableHttp.call_tool(self, tool_name, arguments, **kwargs)
+            span.set_outputs(trace_safe_result(result))
+            return result
+
+
 def init_fpac_mcp_server(workspace_client: WorkspaceClient | None = None):
     """Build the client for the deployed fpac-soil-mcp server."""
     url = fpac_mcp_url(
@@ -296,7 +344,7 @@ def init_fpac_mcp_server(workspace_client: WorkspaceClient | None = None):
             name=FPAC_MCP_SERVER_NAME,
             params={"url": url, "timeout": fpac_mcp_timeout_seconds()},
         )
-    return McpServer(
+    return FpacMcpServer(
         # FPAC_MCP_APP (the ``mcp_server`` resource) resolves through the Apps API.
         url=url,
         name=FPAC_MCP_SERVER_NAME,

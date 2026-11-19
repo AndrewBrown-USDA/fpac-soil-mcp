@@ -11,12 +11,15 @@ import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import mlflow
 import pytest
 from agent_server import agent as agent_module
 from agent_server import config as config_module
 from agents.exceptions import UserError
+from agents.mcp.server import MCPServerStreamableHttp
+from databricks_openai.agents import McpServer
 from mcp.shared.exceptions import McpError
-from mcp.types import ErrorData
+from mcp.types import CallToolResult, ErrorData, TextContent
 from mlflow.types.responses import ResponsesAgentRequest
 
 DEFAULT_URL = "https://mcp-fpac-soil-7474654188777746.aws.databricksapps.com/mcp"
@@ -85,8 +88,8 @@ def _run_stream(request=None):
 
 
 def test_init_fpac_mcp_server_defaults(monkeypatch):
-    mcp_server = MagicMock(name="McpServer")
-    monkeypatch.setattr(agent_module, "McpServer", mcp_server)
+    mcp_server = MagicMock(name="FpacMcpServer")
+    monkeypatch.setattr(agent_module, "FpacMcpServer", mcp_server)
     ws = MagicMock(name="ws")
     result = agent_module.init_fpac_mcp_server(ws)
     assert result is mcp_server.return_value
@@ -96,8 +99,8 @@ def test_init_fpac_mcp_server_defaults(monkeypatch):
 
 
 def test_init_fpac_mcp_server_env_overrides(monkeypatch):
-    mcp_server = MagicMock(name="McpServer")
-    monkeypatch.setattr(agent_module, "McpServer", mcp_server)
+    mcp_server = MagicMock(name="FpacMcpServer")
+    monkeypatch.setattr(agent_module, "FpacMcpServer", mcp_server)
     monkeypatch.setenv("FPAC_MCP_URL", "https://example.com/mcp")
     monkeypatch.setenv("FPAC_MCP_TIMEOUT_SECONDS", "30")
     ws = MagicMock(name="ws")
@@ -105,6 +108,81 @@ def test_init_fpac_mcp_server_env_overrides(monkeypatch):
     mcp_server.assert_called_once_with(
         url="https://example.com/mcp", name="fpac-soil-mcp", workspace_client=ws, timeout=30.0
     )
+
+
+MAP_META_KEY = "gov.usda.fpac-soil/map"
+TRACE_MARKER = "R6-TRACE-MARKER"
+
+
+def _meta_result() -> CallToolResult:
+    feature = {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [1.5, 2.5]},
+        "properties": {"note": TRACE_MARKER},
+    }
+    return CallToolResult(
+        content=[TextContent(type="text", text='{"map": {}}')],
+        structuredContent={"map": {"layers": [{"id": "aoi", "delivery": "meta_geojson"}]}},
+        isError=False,
+        _meta={
+            MAP_META_KEY: {
+                "layers": {
+                    "aoi": {
+                        "feature_collection": {"type": "FeatureCollection", "features": [feature]}
+                    },
+                    "urban_context": {"truncated": True},
+                }
+            },
+            "io.modelcontextprotocol/serverInfo": {"name": "fpac-soil-mcp"},
+        },
+    )
+
+
+def test_init_fpac_mcp_server_returns_the_trace_guarded_subclass():
+    server = agent_module.init_fpac_mcp_server(MagicMock(name="ws"))
+    assert type(server) is agent_module.FpacMcpServer
+    assert isinstance(server, McpServer)
+
+
+def test_fpac_server_keeps_map_meta_out_of_the_trace(monkeypatch, tmp_path):
+    result = _meta_result()
+    expected_meta = result.model_dump(by_alias=True)["_meta"]
+    parent = AsyncMock(return_value=result)
+    monkeypatch.setattr(MCPServerStreamableHttp, "call_tool", parent)
+    server = agent_module.init_fpac_mcp_server(MagicMock(name="ws"))
+    arguments = {"geojson": "aoi-0123abcd"}
+
+    previous = mlflow.get_tracking_uri()
+    mlflow.set_tracking_uri(f"sqlite:///{tmp_path / 'mlflow.db'}")
+    try:
+        experiment_id = mlflow.create_experiment("fpac-trace-guard")
+        mlflow.set_experiment(experiment_id=experiment_id)
+        returned = asyncio.run(server.call_tool("analyze_farmland_by_polygon", arguments))
+        if hasattr(mlflow, "flush_trace_async_logging"):
+            mlflow.flush_trace_async_logging()
+        traces = mlflow.MlflowClient().search_traces(locations=[experiment_id])
+    finally:
+        mlflow.set_tracking_uri(previous)
+
+    # The caller gets the result untouched.
+    assert returned is result
+    assert result.model_dump(by_alias=True)["_meta"] == expected_meta
+    parent.assert_awaited_once_with(server, "analyze_farmland_by_polygon", arguments)
+
+    assert len(traces) == 1
+    (span,) = traces[0].data.spans
+    assert span.name == "analyze_farmland_by_polygon"
+    assert span.span_type == "TOOL"
+    assert span.inputs == {"tool_name": "analyze_farmland_by_polygon", "arguments": arguments}
+    recorded = json.dumps(traces[0].to_dict())
+    assert "coordinates" not in recorded
+    assert TRACE_MARKER not in recorded
+    stub = span.outputs["_meta"][MAP_META_KEY]
+    assert stub["omitted_from_trace"] is True
+    assert stub["layers"] == ["aoi", "urban_context"]
+    assert stub["bytes"] > 0
+    assert span.outputs["_meta"]["io.modelcontextprotocol/serverInfo"] == {"name": "fpac-soil-mcp"}
+    assert span.outputs["structuredContent"]["map"]["layers"][0]["delivery"] == "meta_geojson"
 
 
 def test_local_mcp_client_avoids_workspace_client(monkeypatch):
@@ -173,8 +251,8 @@ def test_local_mlflow_tracing_configures_explicit_external_store(monkeypatch, tm
 
 
 def test_init_fpac_mcp_server_resolves_mcp_app(monkeypatch):
-    mcp_server = MagicMock(name="McpServer")
-    monkeypatch.setattr(agent_module, "McpServer", mcp_server)
+    mcp_server = MagicMock(name="FpacMcpServer")
+    monkeypatch.setattr(agent_module, "FpacMcpServer", mcp_server)
     monkeypatch.setenv("FPAC_MCP_APP", "mcp-fpac-soil-dev")
     ws = MagicMock(name="ws")
     ws.apps.get.return_value.url = "https://mcp-fpac-soil-dev-0000.aws.databricksapps.com"

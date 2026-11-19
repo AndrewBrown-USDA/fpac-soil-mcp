@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2: 59.2.1 done. Next: 59.2.2. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2: 59.2.1-59.2.2 done. Next: wave-2 gate, then 59.3.1. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -31,7 +31,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.6 | Corridor map tests | done |
 | 59.1.7 | Tool-layer map tests | done |
 | 59.2.1 | App merges `_meta` into the browser block | done |
-| 59.2.2 | App trace guard | pending |
+| 59.2.2 | App trace guard | done |
 | 59.3.1 | ADR 0017 amendment and docs | pending |
 | 59.3.2 | Final verification | pending |
 
@@ -108,3 +108,14 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Tests: fixtures moved to body descriptors + `_meta`; each asserts the browser block equals the full old-shape block, including a capped layer (`{"truncated": true}` in meta -> `truncated: true`, `omitted`). New: `test_server_map_shape_has_no_display_in_body`, `test_map_without_meta_is_all_omitted`, `test_map_block_merges_meta_by_layer_id`, `test_map_meta_ignores_other_keys_and_bad_values`. The screen tests run through the real `McpServer`/Agents SDK `call_tool` path, so `_meta` survives that path.
 - Results: 84 passed (3 geo files). App ruff (from a full-repo /tmp copy so the root config applies) clean after one format fix.
 - Gotcha: ruff from /tmp/app alone reports false I001s (no root config); run app lint from the full-repo copy.
+
+## 59.2.2
+- Status: done (self-approved).
+- `databricks_openai` 0.17.1: parent `McpServer.call_tool(self, tool_name, arguments, **kwargs)` is `@mlflow.trace(span_type=TOOL)` and forwards kwargs; `MCPServerStreamableHttp.call_tool(self, tool_name, arguments, meta=None)`.
+- `agent.py`: `FPAC_META_PREFIX = "gov.usda.fpac-soil/"`; `trace_safe_result(result)` dumps `model_dump(mode="json", by_alias=True)` and replaces each prefixed `_meta` value with `{omitted_from_trace: true, layers: [ids], bytes: n}`; `class FpacMcpServer(McpServer)` overrides `call_tool` with `mlflow.start_span(name=tool_name, span_type=SpanType.TOOL)`, inputs `{tool_name, arguments}`, awaits `MCPServerStreamableHttp.call_tool(self, ...)`, outputs the safe dump, returns the result unchanged. `init_fpac_mcp_server` returns `FpacMcpServer` (non-local branch). `geo._call_tool_untraced` is unchanged and still bypasses both.
+- Tests (`test_agent_mcp_wiring.py`): 3 init tests patch `FpacMcpServer`; new `test_init_fpac_mcp_server_returns_the_trace_guarded_subclass`, `test_fpac_server_keeps_map_meta_out_of_the_trace` (real sqlite MLflow store; result identity and `_meta` unchanged; one TOOL span; no `coordinates`/marker in the trace dict; stub layers `[aoi, urban_context]`; serverInfo kept).
+- Deviation: `tests/test_geo_screen.py::test_fixture_uses_the_real_mcp_server_class` asserted `type(server) is McpServer`; now asserts the direct parent is `McpServer` and the class is `FpacMcpServer` (file outside the 59.2.2 list; needed).
+- Mutation check: disabling the stub makes the trace test fail on `coordinates`.
+- Note: the trace still records tool arguments (the AOI) and the body, as before; for `get_soil_polygons_by_geometry` the body `features` (D2) still carry coordinates. Out of scope for #117; flag for a follow-up.
+- App pytest (full, from a full-repo /tmp copy): 316 passed (baseline 310 + 6 new). App ruff clean after one format fix.
+- Gotcha: app tests that load `src/fpac_soil_mcp/data/site_assessment.v1.json` need the full-repo copy, not an app-only copy.
