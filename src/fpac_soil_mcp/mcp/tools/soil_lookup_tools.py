@@ -22,6 +22,7 @@ from fpac_soil_mcp.models.soil import (
     SoilMapUnit,
     ToolError,
 )
+from fpac_soil_mcp.models.spatial import SoilPolygonsProperties, SoilPolygonsResponse
 from fpac_soil_mcp.spatial.geometry import (
     GeometryValidationError,
     calculate_acreage,
@@ -29,9 +30,8 @@ from fpac_soil_mcp.spatial.geometry import (
     parse_geojson_geometry,
 )
 from fpac_soil_mcp.spatial.map_builder import (
-    MAP_SCHEMA_VERSION,
     NEUTRAL_OUTLINE_COLOR,
-    ResultAuthority,
+    MapBlock,
     build_layer,
     build_map_block,
     farmland_legend,
@@ -267,8 +267,8 @@ def _soil_map_fields(
     geom: Polygon | MultiPolygon | None,
     rows: list[dict[str, Any]],
     clip: bool,
-) -> dict[str, Any]:
-    """ADR 0017 additive keys; layer geometry only when ``include_map`` is true.
+) -> MapBlock:
+    """ADR 0017 map block; display geometry (for ``_meta``) only when ``include_map``.
 
     Uses the SDA rows already fetched, so no extra upstream call. As in
     ``PolygonAnalyzer._polygon_map``, the size cap drops layers from the end, so
@@ -300,20 +300,14 @@ def _soil_map_fields(
             simplify_tolerance_m=settings.map_simplify_tolerance_m,
         ),
     ]
-    block = build_map_block(layers, settings.map_max_geojson_bytes)
-    return {
-        "schema_version": MAP_SCHEMA_VERSION,
-        "data_mode": "live",
-        "authority": ResultAuthority().model_dump(),
-        "map": block.model_dump(),
-    }
+    return build_map_block(layers, settings.map_max_geojson_bytes)
 
 
 def get_soil_polygons_by_geometry(
     geojson: dict | str,
     clip: bool = True,
     include_map: IncludeMap = False,
-) -> dict:
+) -> SoilPolygonsResponse:
     """Retrieve intersecting SSURGO soil map unit polygons as a GeoJSON FeatureCollection.
 
     Queries USDA NRCS Soil Data Access (SDA) for spatial intersection with a GeoJSON Polygon
@@ -323,13 +317,14 @@ def get_soil_polygons_by_geometry(
     Args:
         geojson: GeoJSON geometry dict or string (Polygon or MultiPolygon).
         clip: Whether to clip map units to AOI boundary (default True).
-        include_map: Leave false. True embeds display GeoJSON in ``map.layers``
-            (ADR 0017); by default the layers are descriptors without geometry.
+        include_map: Return display geometry for client apps in result ``_meta``
+            under ``gov.usda.fpac-soil/map`` (ADR 0017). The model-visible result is
+            the same either way.
 
     Returns:
-        GeoJSON FeatureCollection dict with map unit attributes (mukey, musym, muname,
-        farmlndcl, areasymbol, area_ac) and polygon geometries, plus the ADR 0017
-        ``schema_version``, ``data_mode``, ``authority`` and ``map`` keys.
+        SoilPolygonsResponse: a GeoJSON FeatureCollection with map unit attributes
+        (mukey, musym, muname, farmlndcl, areasymbol, area_ac) and polygon geometries,
+        plus the ADR 0017 ``schema_version``, ``data_mode``, ``authority`` and ``map``.
     """
     timestamp = datetime.now(UTC).isoformat()
     client = SDAClient()
@@ -339,24 +334,24 @@ def get_soil_polygons_by_geometry(
         wkt_str = geometry_to_wkt(geom)
         aoi_acres = calculate_acreage(geom)
     except GeometryValidationError as exc:
-        return {
-            "type": "FeatureCollection",
-            "features": [],
-            "error": str(exc),
-            "status": "error",
-            "error_details": ToolError(
+        return SoilPolygonsResponse(
+            type="FeatureCollection",
+            features=[],
+            error=str(exc),
+            status="error",
+            error_details=ToolError(
                 code="validation_error",
                 message=str(exc),
                 source="GeoJSON geometry validation",
-            ).model_dump(),
-            "source": {
+            ),
+            source={
                 "service": "USDA NRCS Soil Data Access",
                 "timestamp_utc": timestamp,
             },
-            "limitations": [*REGULATORY_LIMITATIONS, f"Geometry validation error: {exc}"],
-            "regulatory_notice": REGULATORY_NOTICE,
-            **_soil_map_fields(False, None, [], clip),
-        }
+            limitations=[*REGULATORY_LIMITATIONS, f"Geometry validation error: {exc}"],
+            regulatory_notice=REGULATORY_NOTICE,
+            map=_soil_map_fields(False, None, [], clip),
+        )
 
     try:
         raw_rows = client.get_spatial_intersection(
@@ -367,24 +362,24 @@ def get_soil_polygons_by_geometry(
         )
     except SDAClientError as exc:
         logger.error("SDA spatial geometry query failed: %s", exc)
-        return {
-            "type": "FeatureCollection",
-            "features": [],
-            "error": str(exc),
-            "status": "error",
-            "error_details": ToolError(
+        return SoilPolygonsResponse(
+            type="FeatureCollection",
+            features=[],
+            error=str(exc),
+            status="error",
+            error_details=ToolError(
                 code="upstream_error",
                 message=str(exc),
                 source="USDA NRCS Soil Data Access (SDA)",
-            ).model_dump(),
-            "source": {
+            ),
+            source={
                 "service": "USDA NRCS Soil Data Access",
                 "timestamp_utc": timestamp,
             },
-            "limitations": [*REGULATORY_LIMITATIONS, f"SDA spatial query error: {exc}"],
-            "regulatory_notice": REGULATORY_NOTICE,
-            **_soil_map_fields(False, None, [], clip),
-        }
+            limitations=[*REGULATORY_LIMITATIONS, f"SDA spatial query error: {exc}"],
+            regulatory_notice=REGULATORY_NOTICE,
+            map=_soil_map_fields(False, None, [], clip),
+        )
 
     features: list[dict] = []
     for row in raw_rows:
@@ -418,20 +413,20 @@ def get_soil_polygons_by_geometry(
             }
         )
 
-    return {
-        "type": "FeatureCollection",
-        "features": features,
-        "properties": {
-            "total_aoi_acres": aoi_acres,
-            "feature_count": len(features),
-            "clipped": clip,
-        },
-        "source": {
+    return SoilPolygonsResponse(
+        type="FeatureCollection",
+        features=features,
+        properties=SoilPolygonsProperties(
+            total_aoi_acres=aoi_acres,
+            feature_count=len(features),
+            clipped=clip,
+        ),
+        source={
             "service": "USDA NRCS Soil Data Access",
             "endpoint": client.base_url,
             "timestamp_utc": timestamp,
         },
-        "limitations": REGULATORY_LIMITATIONS,
-        "regulatory_notice": REGULATORY_NOTICE,
-        **_soil_map_fields(include_map, geom, raw_rows, clip),
-    }
+        limitations=REGULATORY_LIMITATIONS,
+        regulatory_notice=REGULATORY_NOTICE,
+        map=_soil_map_fields(include_map, geom, raw_rows, clip),
+    )

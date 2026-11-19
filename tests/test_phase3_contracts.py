@@ -28,9 +28,12 @@ from fpac_soil_mcp.models.integration import (
     IntegrationStatus,
     UrbanExemptionRecord,
 )
+from fpac_soil_mcp.models.soil import QuerySource
 from fpac_soil_mcp.models.spatial import (
     CorridorCountySegment,
     CorridorFarmlandAnalysisResponse,
+    CorridorImpactBreakdown,
+    CorridorToolResponse,
 )
 from fpac_soil_mcp.spatial.geometry import (
     buffer_centerline,
@@ -40,6 +43,29 @@ from fpac_soil_mcp.spatial.geometry import (
 )
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "corridor" / "multi_county_corridors.json"
+
+
+def _corridor_response(**fields: object) -> CorridorFarmlandAnalysisResponse:
+    """Real corridor analyzer response with the required fields filled in."""
+    defaults: dict[str, object] = {
+        "geometry_hash": "sha256:test",
+        "buffer_distance": 50.0,
+        "buffer_units": "feet",
+        "impact_breakdown": CorridorImpactBreakdown(),
+        "source": QuerySource(timestamp_utc="2026-01-01T00:00:00Z"),
+        "regulatory_notice": "Synthetic regulatory notice.",
+    }
+    return CorridorFarmlandAnalysisResponse(**{**defaults, **fields})
+
+
+def _segment(total_segment_acres: float, nass_profile: dict[str, float]) -> CorridorCountySegment:
+    return CorridorCountySegment(
+        state_fips="19",
+        county_fips="169",
+        county_name="Story",
+        total_segment_acres=total_segment_acres,
+        nass_profile=nass_profile,
+    )
 
 
 def test_corridor_geometry_and_area_reconciliation_contract():
@@ -513,18 +539,11 @@ def test_fastmcp_analyze_corridor_fppa_tool_contract():
     # Direct invocation of tool function with mock analyzer
     from unittest.mock import patch
 
-    mock_resp = MagicMock()
-    mock_resp.model_dump.return_value = {
-        "query_type": "corridor",
-        "geometry_hash": "sha256:123456",
-        "buffer_distance": 50.0,
-        "buffer_units": "feet",
-        "composite_relative_rating": 82.5,
-        "county_segments": [],
-        "reconciliation_summary": {"reconciliation_passed": True},
-    }
-    mock_resp.composite_relative_rating = 82.5
-    mock_resp.county_segments = []
+    mock_resp = _corridor_response(
+        geometry_hash="sha256:123456",
+        composite_relative_rating=82.5,
+        reconciliation_summary={"reconciliation_passed": True},
+    )
 
     with patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
         mock_instance = MagicMock()
@@ -543,11 +562,11 @@ def test_fastmcp_analyze_corridor_fppa_tool_contract():
                 "criteria_inputs": {"1": {"awarded_points": 10}},
             },
         )
-        assert isinstance(result, dict)
-        assert result["query_type"] == "corridor"
-        assert "composite_relative_rating" in result
-        assert "lesa_evaluation" in result
-        assert result["lesa_evaluation"]["total_lesa_score"] >= 0
+        assert isinstance(result, CorridorToolResponse)
+        assert result.query_type == "corridor"
+        assert result.composite_relative_rating == 82.5
+        assert result.lesa_evaluation is not None
+        assert result.lesa_evaluation.total_lesa_score >= 0
 
 
 def test_contract_alternative_composite_le_scoring():
@@ -669,25 +688,17 @@ def test_contract_multi_county_criterion_7_weighting():
     from unittest.mock import patch
 
     # County 1: 100 acres, avg farm size 200 acres
-    seg1 = MagicMock(spec=CorridorCountySegment)
-    seg1.total_segment_acres = 100.0
-    seg1.nass_profile = {"average_farm_size_acres": 200.0}
+    seg1 = _segment(100.0, {"average_farm_size_acres": 200.0})
 
     # County 2: 300 acres, avg farm size 400 acres
-    seg2 = MagicMock(spec=CorridorCountySegment)
-    seg2.total_segment_acres = 300.0
-    seg2.nass_profile = {"average_farm_size_acres": 400.0}
+    seg2 = _segment(300.0, {"average_farm_size_acres": 400.0})
 
     # Area-weighted average: (100*200 + 300*400) / (100+300) = (20000 + 120000) / 400 = 140000 / 400 = 350.0 acres
-    mock_resp = MagicMock()
-    mock_resp.model_dump.return_value = {
-        "query_type": "corridor",
-        "geometry_hash": "sha256:testmulti",
-        "composite_relative_rating": 85.0,
-        "county_segments": [seg1, seg2],
-    }
-    mock_resp.composite_relative_rating = 85.0
-    mock_resp.county_segments = [seg1, seg2]
+    mock_resp = _corridor_response(
+        geometry_hash="sha256:testmulti",
+        composite_relative_rating=85.0,
+        county_segments=[seg1, seg2],
+    )
 
     with patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer") as mock_cls:
         mock_instance = MagicMock()
@@ -700,13 +711,11 @@ def test_contract_multi_county_criterion_7_weighting():
             buffer_distance=50.0,
             site_assessment_inputs={"project_farm_acres": 350.0},
         )
-        lesa_full = res_full["lesa_evaluation"]
-        crit7_full = next(
-            c for c in lesa_full["site_assessment"]["criteria"] if c["criterion_number"] == 7
-        )
-        assert crit7_full["awarded_points"] == 10
-        assert "350.0" in crit7_full["justification"]
-        assert "100.0%" in crit7_full["justification"]
+        lesa_full = res_full.lesa_evaluation
+        crit7_full = next(c for c in lesa_full.site_assessment.criteria if c.criterion_number == 7)
+        assert crit7_full.awarded_points == 10
+        assert "350.0" in crit7_full.justification
+        assert "100.0%" in crit7_full.justification
 
         # Test with project farm size = 175.0 acres (50% below weighted average -> 0 points)
         res_half = analyze_corridor_fppa(
@@ -714,12 +723,10 @@ def test_contract_multi_county_criterion_7_weighting():
             buffer_distance=50.0,
             site_assessment_inputs={"project_farm_acres": 175.0},
         )
-        lesa_half = res_half["lesa_evaluation"]
-        crit7_half = next(
-            c for c in lesa_half["site_assessment"]["criteria"] if c["criterion_number"] == 7
-        )
-        assert crit7_half["awarded_points"] == 0.0
-        assert "50.0%" in crit7_half["justification"]
+        lesa_half = res_half.lesa_evaluation
+        crit7_half = next(c for c in lesa_half.site_assessment.criteria if c.criterion_number == 7)
+        assert crit7_half.awarded_points == 0.0
+        assert "50.0%" in crit7_half.justification
 
         # Test with project farm size = 70.0 acres (20% of weighted average -> 0 points)
         res_small = analyze_corridor_fppa(
@@ -727,12 +734,12 @@ def test_contract_multi_county_criterion_7_weighting():
             buffer_distance=50.0,
             site_assessment_inputs={"project_farm_acres": 70.0},
         )
-        lesa_small = res_small["lesa_evaluation"]
+        lesa_small = res_small.lesa_evaluation
         crit7_small = next(
-            c for c in lesa_small["site_assessment"]["criteria"] if c["criterion_number"] == 7
+            c for c in lesa_small.site_assessment.criteria if c.criterion_number == 7
         )
-        assert crit7_small["awarded_points"] == 0.0
-        assert "20.0%" in crit7_small["justification"]
+        assert crit7_small.awarded_points == 0.0
+        assert "20.0%" in crit7_small.justification
 
 
 def test_contract_sum_reconciliation_warning_appended_to_limitations():

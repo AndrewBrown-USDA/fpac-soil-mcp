@@ -105,34 +105,77 @@ def _polygons() -> dict:
 
 
 def _map_block() -> dict:
-    """An ADR 0017 map block: inline farmland layer (from ``_polygons``) plus a descriptor."""
+    """The browser map block (ADR 0017): an omitted descriptor, an inline farmland layer
+    (from ``_polygons``) and a layer dropped by the server size cap."""
+
+    def layer(layer_id, title, delivery, feature_collection=None, **display):
+        return {
+            "id": layer_id,
+            "title": title,
+            "delivery": delivery,
+            "simplified": display.get("simplified", False),
+            "simplify_tolerance_m": display.get("simplify_tolerance_m"),
+            "truncated": display.get("truncated", False),
+            "feature_count": display.get("feature_count"),
+            "feature_collection": feature_collection,
+        }
+
     return {
         "display_crs": "EPSG:4326",
         "bounds": [0, 0, 1, 1],
-        "warnings": [],
+        "warnings": ["Urban context omitted: size cap."],
         "layers": [
-            {
-                "id": "aoi",
-                "title": "Area of interest",
-                "delivery": "omitted",
-                "feature_collection": None,
-            },
-            {
-                "id": "farmland_classes",
-                "title": "Farmland classification",
-                "delivery": "inline_geojson",
-                "feature_collection": _polygons(),
-            },
+            layer("aoi", "Area of interest", "omitted"),
+            layer(
+                "farmland_classes",
+                "Farmland classification",
+                "inline_geojson",
+                _polygons(),
+                simplified=True,
+                simplify_tolerance_m=1.0,
+                feature_count=1,
+            ),
+            layer("urban_context", "Urban areas", "omitted", truncated=True),
         ],
     }
 
 
+DISPLAY_KEYS = ("feature_collection", "feature_count", "simplified", "simplify_tolerance_m")
+
+
+def _server_map(block: dict) -> tuple[dict, dict]:
+    """Split a browser block into the server's Plan 59 shape: (body ``map``, ``_meta`` entry).
+
+    The body keeps descriptors only; a capped layer is ``{"truncated": true}`` in
+    ``_meta`` (D10); a layer with no display entry stays out of ``_meta``.
+    """
+    body_layers, meta_layers = [], {}
+    for layer in block["layers"]:
+        has_display = layer["feature_collection"] is not None
+        descriptor = {
+            k: v for k, v in layer.items() if k not in (*DISPLAY_KEYS, "truncated", "delivery")
+        }
+        body_layers.append({**descriptor, "delivery": "meta_geojson" if has_display else "omitted"})
+        if layer["truncated"]:
+            meta_layers[layer["id"]] = {"truncated": True}
+        elif has_display:
+            meta_layers[layer["id"]] = {k: layer[k] for k in DISPLAY_KEYS}
+    meta = {
+        "display_crs": block["display_crs"],
+        "bounds": block["bounds"],
+        "warnings": block["warnings"],
+        "layers": meta_layers,
+    }
+    return {"layers": body_layers}, meta
+
+
 def _analysis_with_map() -> dict:
-    return {**_analysis(), "map": _map_block()}
+    return {**_analysis(), "map": _server_map(_map_block())[0]}
 
 
-def _structured(data: dict) -> CallToolResult:
-    return CallToolResult(content=[], structuredContent=data, isError=False)
+def _structured(data: dict, map_meta: dict | None = None) -> CallToolResult:
+    meta = {geo.MAP_META_KEY: map_meta} if map_meta is not None else None
+    return CallToolResult(content=[], structuredContent=data, isError=False, _meta=meta)
 
 
 def _text(data: dict) -> CallToolResult:
@@ -213,7 +256,9 @@ def _local_experiment(tmp_path):
 
 
 def _happy_server() -> FakeMcpServer:
-    return FakeMcpServer({geo.ANALYSIS_TOOL: _structured(_analysis_with_map())})
+    return FakeMcpServer(
+        {geo.ANALYSIS_TOOL: _structured(_analysis_with_map(), _server_map(_map_block())[1])}
+    )
 
 
 def _post(start_server, body):
@@ -480,7 +525,9 @@ def test_untraced_target_is_the_undecorated_parent():
 def test_fixture_uses_the_real_mcp_server_class():
     server = _real_server(_happy_server())
 
-    assert type(server) is McpServer
+    # Plan 59: the deployed client is the trace-guarded McpServer subclass.
+    assert type(server).__mro__[1] is McpServer
+    assert type(server).__name__ == "FpacMcpServer"
 
 
 def test_screening_creates_no_traces(start_server, fake_mcp, tmp_path):
@@ -529,6 +576,31 @@ def test_summary_text_is_capped():
     summary = geo.build_chat_summary(analysis, "aoi-00000000")
 
     assert len(geo.render_chat_summary_text(summary)) <= 2000
+
+
+def test_server_map_shape_has_no_display_in_body():
+    body, meta = _server_map(_map_block())
+    assert not set(_keys(body)) & {*DISPLAY_KEYS, "truncated", "bounds", "warnings"}
+    assert '"coordinates"' not in json.dumps(body)
+    assert {layer["delivery"] for layer in body["layers"]} == {"omitted", "meta_geojson"}
+    assert meta["layers"]["urban_context"] == {"truncated": True}
+
+
+def test_map_without_meta_is_all_omitted(start_server, fake_mcp):
+    fake_mcp(FakeMcpServer({geo.ANALYSIS_TOOL: _structured(_analysis_with_map())}))
+    block = _post(start_server, {"geometry": SQUARE}).json()["display"]["map"]
+    assert block["display_crs"] == "EPSG:4326"
+    assert block["bounds"] is None
+    assert block["warnings"] == []
+    assert [layer["id"] for layer in block["layers"]] == [
+        "aoi",
+        "farmland_classes",
+        "urban_context",
+    ]
+    for layer in block["layers"]:
+        assert layer["delivery"] == "omitted"
+        assert layer["feature_collection"] is None
+        assert layer["truncated"] is False
 
 
 def test_map_is_null_when_result_has_no_map_block(start_server, fake_mcp):

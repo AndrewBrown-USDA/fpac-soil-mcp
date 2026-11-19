@@ -8,6 +8,7 @@ from pydantic import Field
 
 from fpac_soil_mcp.domain.corridor_analyzer import CorridorAnalyzer
 from fpac_soil_mcp.domain.lesa import (
+    LESAEvaluationResult,
     _normalize_productivity_index,
     evaluate_corridor_lesa,
     evaluate_corridor_site_assessment,
@@ -20,12 +21,14 @@ from fpac_soil_mcp.models.lesa import (
 )
 from fpac_soil_mcp.models.spatial import (
     CorridorAlternativeInput,
+    CorridorFarmlandAnalysisResponse,
+    CorridorToolResponse,
     PolygonFarmlandAnalysisResponse,
 )
 
 INCLUDE_MAP_DESCRIPTION = (
-    "Leave false. When true the response embeds display GeoJSON for each map layer, "
-    "which is large; the map app sets it when drawing. Numbers are identical either way."
+    "Return display geometry for client apps in result _meta under "
+    "gov.usda.fpac-soil/map (ADR 0017). The model-visible result is the same either way."
 )
 IncludeMap = Annotated[bool, Field(description=INCLUDE_MAP_DESCRIPTION)]
 
@@ -52,8 +55,9 @@ def analyze_farmland_by_polygon(
             'csr2', 'cpi', or 'storie'). Default is 'nccpi'. NCCPI v3 is always included
             per map unit as national baseline context.
         max_county_rating_override: Optional user-supplied maximum county rating benchmark.
-        include_map: Leave false. True embeds display GeoJSON in ``map.layers``
-            (ADR 0017); by default the layers are descriptors without geometry.
+        include_map: Return display geometry for client apps in result ``_meta``
+            under ``gov.usda.fpac-soil/map`` (ADR 0017). The model-visible result is
+            the same either way.
 
     Returns:
         PolygonFarmlandAnalysisResponse with farmland acreage summaries, urban screening, and provenance.
@@ -84,7 +88,7 @@ def analyze_corridor_fppa(
         float | None, Field(default=None, gt=0, allow_inf_nan=False)
     ] = None,
     include_map: IncludeMap = False,
-) -> dict[str, Any]:
+) -> CorridorToolResponse:
     """Execute multi-county linear corridor FPPA screening and statutory CPA-106 analysis.
 
     Buffers the direct corridor centerline, erases indirect staging overlap, partitions the project
@@ -108,11 +112,13 @@ def analyze_corridor_fppa(
             - 'criteria_inputs': dict mapping criterion numbers (1-12) to {'awarded_points': float, 'justification': str}
             - 'project_farm_acres': float (size of affected farm holding)
             - 'county_average_farm_acres': float (optional override for NASS average farm size)
-        include_map: Leave false. True embeds display GeoJSON in ``map.layers``
-            (ADR 0017); by default the layers are descriptors without geometry.
+        include_map: Return display geometry for client apps in result ``_meta``
+            under ``gov.usda.fpac-soil/map`` (ADR 0017). The model-visible result is
+            the same either way.
 
     Returns:
-        Dictionary containing CorridorFarmlandAnalysisResponse fields, plus optional 'lesa_evaluation' result.
+        CorridorToolResponse: the corridor analysis plus ``lesa_evaluation`` when
+        site assessment inputs are given (otherwise null).
     """
     normalized_productivity_index = _normalize_productivity_index(productivity_index)
     if normalized_productivity_index not in VALIDATED_PRODUCTIVITY_INDEXES:
@@ -144,8 +150,7 @@ def analyze_corridor_fppa(
         **corridor_kwargs,
     )
 
-    result = corridor_response.model_dump()
-
+    lesa_result: LESAEvaluationResult | None = None
     if site_assessment_inputs:
         site_assessment_inputs = SiteAssessmentInputs.model_validate(
             site_assessment_inputs
@@ -211,6 +216,12 @@ def analyze_corridor_fppa(
             land_evaluation_score=le_score,
             site_assessment=sa_summary,
         )
-        result["lesa_evaluation"] = lesa_result.model_dump()
 
-    return result
+    # Built from field values (not model_dump) so the map display data is kept.
+    return CorridorToolResponse(
+        **{
+            name: getattr(corridor_response, name)
+            for name in CorridorFarmlandAnalysisResponse.model_fields
+        },
+        lesa_evaluation=lesa_result,
+    )

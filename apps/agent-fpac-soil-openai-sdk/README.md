@@ -84,6 +84,11 @@ Map results ([ADR 0017](../../docs/decisions/0017-server-map-result-contract.md)
   `include_map=true` and the panel draws the server's layers with the server's
   legends, simplification notes and size-limit warnings. Corridor results
   include each alternative's footprint and farmland.
+* The server returns display geometry in the result `_meta` under
+  `gov.usda.fpac-soil/map`, not in the body (map schema 2.0). `geo.map_block`
+  merges it into the body's layer descriptors, so the browser block keeps
+  `delivery: inline_geojson` with `feature_collection`. In chat traces,
+  `FpacMcpServer` replaces that `_meta` value with the layer ids and its size.
 * `POST /api/geo/map` backs "Show on map" on completed tool cards for those
   three tools (`geo.MAP_TOOLS`): body `{tool, arguments, active_aoi}`; only
   those tools are allowed (400 otherwise), `include_map` is forced on, and an AOI reference in the

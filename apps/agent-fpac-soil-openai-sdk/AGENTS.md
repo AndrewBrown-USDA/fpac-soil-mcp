@@ -27,11 +27,11 @@ uv run start-server       # agent server only
 
 ## Find Things
 
-- `agent_server/agent.py` - agent construction (`create_agent`), MCP client (`init_fpac_mcp_server`), invoke and stream handlers.
+- `agent_server/agent.py` - agent construction (`create_agent`), MCP client (`init_fpac_mcp_server`, which returns `FpacMcpServer`: its tool span stubs `gov.usda.fpac-soil/*` result `_meta`), invoke and stream handlers.
 - `agent_server/config.py` - env-var getters and defaults (`AGENT_MODEL`, `FPAC_MCP_APP`, `FPAC_MCP_URL`, `FPAC_MCP_TIMEOUT_SECONDS`); `FPAC_MCP_APP` is resolved to a URL once per process; stdlib only.
 - `agent_server/prompts/system_prompt.txt` - chat system prompt.
 - `agent_server/history.py` - multi-turn history normalization for the chat UI.
-- `agent_server/geo.py` - `POST /api/geo/screen` (map panel screening, [ADR 0016](../../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): request limits, the one MCP call (`analyze_farmland_by_polygon` with `include_map=True`), the browser-only `display` part (including the server `map` block) and the allowlisted `chat_summary`; also `POST /api/geo/map` for tool-card "Show on map" (two allowlisted tools, `include_map` forced, AOI reference substitution); routes registered in `start_server.py`; tests in `tests/test_geo_screen.py` and `tests/test_geo_map.py`.
+- `agent_server/geo.py` - `POST /api/geo/screen` (map panel screening, [ADR 0016](../../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): request limits, the one MCP call (`analyze_farmland_by_polygon` with `include_map=True`), the browser-only `display` part (including the map block that `map_block` rebuilds from the body layer descriptors and the result `_meta` `gov.usda.fpac-soil/map`, ADR 0017 amendment) and the allowlisted `chat_summary`; also `POST /api/geo/map` for tool-card "Show on map" (two allowlisted tools, `include_map` forced, AOI reference substitution); routes registered in `start_server.py`; tests in `tests/test_geo_screen.py` and `tests/test_geo_map.py`.
 - `agent_server/start_server.py`, `agent_server/utils.py`, `scripts/` - template runtime (server startup, stream processing, diagnostics, `start-app` launcher).
 - `tests/` - offline tests; `conftest.py` sets dummy Databricks credentials.
 - `app.yaml` - command and env vars used by the deployed app.

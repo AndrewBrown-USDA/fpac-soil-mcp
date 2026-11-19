@@ -12,6 +12,7 @@ from fpac_soil_mcp.mcp.tools.fppa_tools import (
     register_fppa_tools,
 )
 from fpac_soil_mcp.mcp.tools.lesa_tools import calculate_preliminary_lesa
+from fpac_soil_mcp.mcp.tools.results import meta_tool
 from fpac_soil_mcp.mcp.tools.soil_lookup_tools import (
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
@@ -21,6 +22,11 @@ from fpac_soil_mcp.mcp.tools.soil_lookup_tools import (
 from fpac_soil_mcp.mcp.tools.spatial_analysis_tools import (
     analyze_corridor_fppa,
     analyze_farmland_by_polygon,
+)
+from fpac_soil_mcp.models.spatial import (
+    CorridorToolResponse,
+    PolygonFarmlandAnalysisResponse,
+    SoilPolygonsResponse,
 )
 
 if TYPE_CHECKING:
@@ -75,7 +81,8 @@ def register_tools(mcp: FastMCP) -> None:
             "Land Evaluation (LE) scores, always includes NCCPI v3 per map unit as national baseline "
             "context, and generates acreage breakdowns by farmland classification."
         ),
-    )(analyze_farmland_by_polygon)
+        output_schema=PolygonFarmlandAnalysisResponse.model_json_schema(),
+    )(meta_tool(analyze_farmland_by_polygon))
     mcp.tool(
         name="calculate_preliminary_lesa",
         description=(
@@ -94,7 +101,8 @@ def register_tools(mcp: FastMCP) -> None:
             "Retrieve intersecting SSURGO soil map unit polygon geometries and attributes as a GeoJSON "
             "FeatureCollection for a Polygon or MultiPolygon AOI, with support for server-side clipping and geodesic acreage."
         ),
-    )(get_soil_polygons_by_geometry)
+        output_schema=SoilPolygonsResponse.model_json_schema(),
+    )(meta_tool(get_soil_polygons_by_geometry))
     mcp.tool(
         name="check_urban_area_exemption",
         description=(
@@ -135,5 +143,6 @@ def register_tools(mcp: FastMCP) -> None:
             "productivity_index (nccpi, csr2, cpi, or storie) selects the index used for Land Evaluation "
             "scoring; NCCPI v3 is always included per map unit as national baseline context."
         ),
-    )(analyze_corridor_fppa)
+        output_schema=CorridorToolResponse.model_json_schema(),
+    )(meta_tool(analyze_corridor_fppa))
     register_fppa_tools(mcp)

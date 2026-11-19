@@ -37,9 +37,13 @@ from fpac_soil_mcp.mcp.tools.spatial_analysis_tools import (
     analyze_farmland_by_polygon,
 )
 from fpac_soil_mcp.models import (
+    CorridorCountySegment,
+    CorridorFarmlandAnalysisResponse,
+    CorridorImpactBreakdown,
     FarmlandClassificationResponse,
     FarmlandClassListResponse,
     FppaScopeResponse,
+    QuerySource,
     SiteAssessmentInputs,
 )
 from fpac_soil_mcp.spatial.geometry import GeometryValidationError
@@ -78,6 +82,29 @@ def _mock_lesa_corridor(mock_analyzer_cls: MagicMock, data: dict[str, Any]) -> M
     instance.analyze_corridor.return_value = response
     mock_analyzer_cls.return_value = instance
     return instance
+
+
+def _corridor_response(**fields: Any) -> CorridorFarmlandAnalysisResponse:
+    """Real corridor analyzer response with the required fields filled in."""
+    defaults: dict[str, Any] = {
+        "geometry_hash": "sha256:test",
+        "buffer_distance": 50.0,
+        "buffer_units": "feet",
+        "impact_breakdown": CorridorImpactBreakdown(),
+        "source": QuerySource(timestamp_utc="2026-01-01T00:00:00Z"),
+        "regulatory_notice": REGULATORY_NOTICE,
+    }
+    return CorridorFarmlandAnalysisResponse(**{**defaults, **fields})
+
+
+def _segment(total_segment_acres: float, nass_profile: dict[str, Any]) -> CorridorCountySegment:
+    return CorridorCountySegment(
+        state_fips="19",
+        county_fips="169",
+        county_name="Story",
+        total_segment_acres=total_segment_acres,
+        nass_profile=nass_profile,
+    )
 
 
 class TestSoilTools:
@@ -601,19 +628,18 @@ class TestFPPATools:
     def test_analyze_corridor_fppa_exposes_shared_criterion_2_evidence(
         self, mock_analyzer_cls: MagicMock
     ) -> None:
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {"manifest": {}}
-        mock_response.manifest = {
-            "criterion_2_perimeter_evidence": {
-                "normalized_ratio": 0.9,
-                "evidence_status": "measured",
-                "is_agricultural": True,
-                "is_verified": True,
-                "source_provenance": ["Agricultural land-use source"],
-            }
-        }
-        mock_response.county_segments = []
-        mock_response.composite_relative_rating = 55.0
+        mock_response = _corridor_response(
+            manifest={
+                "criterion_2_perimeter_evidence": {
+                    "normalized_ratio": 0.9,
+                    "evidence_status": "measured",
+                    "is_agricultural": True,
+                    "is_verified": True,
+                    "source_provenance": ["Agricultural land-use source"],
+                }
+            },
+            composite_relative_rating=55.0,
+        )
         mock_analyzer_cls.return_value.analyze_corridor.return_value = mock_response
 
         result = analyze_corridor_fppa(
@@ -624,14 +650,14 @@ class TestFPPATools:
 
         criterion = next(
             item
-            for item in result["lesa_evaluation"]["site_assessment"]["criteria"]
-            if item["criterion_number"] == 2
+            for item in result.lesa_evaluation.site_assessment.criteria
+            if item.criterion_number == 2
         )
-        assert criterion["awarded_points"] == 9.0
-        assert criterion["normalized_ratio"] == 0.9
-        assert criterion["evidence_status"] == "measured"
-        assert criterion["is_verified"] is True
-        assert criterion["source_provenance"] == ["Agricultural land-use source"]
+        assert criterion.awarded_points == 9.0
+        assert criterion.normalized_ratio == 0.9
+        assert criterion.evidence_status == "measured"
+        assert criterion.is_verified is True
+        assert criterion.source_provenance == ["Agricultural land-use source"]
 
     @patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
     def test_calculate_preliminary_lesa_accepts_wkt_polygon(
@@ -906,11 +932,11 @@ class TestPolygonTools:
         }
 
         fc = get_soil_polygons_by_geometry(geojson)
-        assert fc["type"] == "FeatureCollection"
-        assert len(fc["features"]) == 1
-        assert fc["features"][0]["properties"]["mukey"] == "412915"
-        assert fc["features"][0]["properties"]["area_ac"] == 25.0
-        assert fc["properties"]["clipped"] is True
+        assert fc.type == "FeatureCollection"
+        assert len(fc.features) == 1
+        assert fc.features[0]["properties"]["mukey"] == "412915"
+        assert fc.features[0]["properties"]["area_ac"] == 25.0
+        assert fc.properties.clipped is True
 
 
 class TestCorridorTools:
@@ -921,20 +947,13 @@ class TestCorridorTools:
         mock_instance = MagicMock()
         mock_analyzer_cls.return_value = mock_instance
 
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {
-            "query_type": "corridor",
-            "geometry_hash": "sha256:123456",
-            "buffer_distance": 50.0,
-            "buffer_units": "feet",
-            "composite_relative_rating": 82.5,
-            "productivity_rating": 82.5,
-            "productivity_rating_class": "high",
-            "county_segments": [],
-            "reconciliation_summary": {"status": "reconciled"},
-        }
-        mock_response.county_segments = []
-        mock_response.composite_relative_rating = 82.5
+        mock_response = _corridor_response(
+            geometry_hash="sha256:123456",
+            buffer_distance=50.0,
+            buffer_units="feet",
+            composite_relative_rating=82.5,
+            reconciliation_summary={"status": "reconciled"},
+        )
         mock_instance.analyze_corridor.return_value = mock_response
 
         res = analyze_corridor_fppa(
@@ -943,13 +962,13 @@ class TestCorridorTools:
             buffer_units="feet",
         )
 
-        assert res["query_type"] == "corridor"
-        assert res["composite_relative_rating"] == 82.5
-        assert res["productivity_rating"] == 82.5
-        assert res["productivity_rating_class"] == "high"
-        assert "nccpi_rating" not in res
-        assert "nccpi_class" not in res
-        assert "lesa_evaluation" not in res
+        assert res.query_type == "corridor"
+        assert res.composite_relative_rating == 82.5
+        assert res.reconciliation_summary == {"status": "reconciled"}
+        dumped = res.model_dump()
+        assert "nccpi_rating" not in dumped
+        assert "nccpi_class" not in dumped
+        assert res.lesa_evaluation is None
         mock_instance.analyze_corridor.assert_called_once_with(
             centerline_input="LINESTRING(-93.5 42.0, -93.4 42.1)",
             buffer_distance=50.0,
@@ -966,15 +985,9 @@ class TestCorridorTools:
     ) -> None:
         mock_instance = MagicMock()
         mock_analyzer_cls.return_value = mock_instance
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {
-            "query_type": "corridor",
-            "geometry_hash": "sha256:generic",
-            "composite_relative_rating": 70.0,
-            "county_segments": [],
-        }
-        mock_response.county_segments = []
-        mock_response.composite_relative_rating = 70.0
+        mock_response = _corridor_response(
+            geometry_hash="sha256:generic", composite_relative_rating=70.0
+        )
         mock_instance.analyze_corridor.return_value = mock_response
 
         alternatives = [
@@ -995,7 +1008,7 @@ class TestCorridorTools:
             max_county_rating_override=88.0,
         )
 
-        assert result["query_type"] == "corridor"
+        assert result.query_type == "corridor"
         mock_instance.analyze_corridor.assert_called_once_with(
             centerline_input="LINESTRING(-93.5 42.0, -93.4 42.1)",
             buffer_distance=125.0,
@@ -1012,11 +1025,7 @@ class TestCorridorTools:
         self, mock_analyzer_cls: MagicMock
     ) -> None:
         mock_instance = mock_analyzer_cls.return_value
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {"query_type": "corridor"}
-        mock_response.county_segments = []
-        mock_response.composite_relative_rating = None
-        mock_instance.analyze_corridor.return_value = mock_response
+        mock_instance.analyze_corridor.return_value = _corridor_response()
 
         analyze_corridor_fppa(
             centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
@@ -1039,19 +1048,13 @@ class TestCorridorTools:
         mock_instance = MagicMock()
         mock_analyzer_cls.return_value = mock_instance
 
-        mock_seg = MagicMock()
-        mock_seg.total_segment_acres = 250.0
-        mock_seg.nass_profile = {"farm_size_acres_avg": 250.0}
+        mock_seg = _segment(250.0, {"farm_size_acres_avg": 250.0})
 
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {
-            "query_type": "corridor",
-            "geometry_hash": "sha256:123456",
-            "composite_relative_rating": 80.0,
-            "county_segments": [mock_seg],
-        }
-        mock_response.county_segments = [mock_seg]
-        mock_response.composite_relative_rating = 80.0
+        mock_response = _corridor_response(
+            geometry_hash="sha256:123456",
+            composite_relative_rating=80.0,
+            county_segments=[mock_seg],
+        )
         mock_instance.analyze_corridor.return_value = mock_response
 
         res = analyze_corridor_fppa(
@@ -1066,11 +1069,11 @@ class TestCorridorTools:
             },
         )
 
-        assert "lesa_evaluation" in res
-        lesa = res["lesa_evaluation"]
-        assert lesa["land_evaluation_score"] == 80.0
-        assert lesa["site_assessment"]["total_sa_points"] >= 45.0  # 15 + 20 + 10 (from farm ratio)
-        assert lesa["total_lesa_score"] >= 125.0
+        assert res.lesa_evaluation is not None
+        lesa = res.lesa_evaluation
+        assert lesa.land_evaluation_score == 80.0
+        assert lesa.site_assessment.total_sa_points >= 45.0  # 15 + 20 + 10 (from farm ratio)
+        assert lesa.total_lesa_score >= 125.0
 
     @patch("fpac_soil_mcp.mcp.tools.spatial_analysis_tools.CorridorAnalyzer")
     def test_analyze_corridor_fppa_multi_county_weighted_farm_size(
@@ -1080,25 +1083,17 @@ class TestCorridorTools:
         mock_analyzer_cls.return_value = mock_instance
 
         # County 1: 100 acres, avg farm size 200.0
-        mock_seg1 = MagicMock()
-        mock_seg1.total_segment_acres = 100.0
-        mock_seg1.nass_profile = {"farm_size_acres_avg": 200.0}
+        mock_seg1 = _segment(100.0, {"farm_size_acres_avg": 200.0})
 
         # County 2: 300 acres, avg farm size 400.0
-        mock_seg2 = MagicMock()
-        mock_seg2.total_segment_acres = 300.0
-        mock_seg2.nass_profile = {"farm_size_acres_avg": 400.0}
+        mock_seg2 = _segment(300.0, {"farm_size_acres_avg": 400.0})
 
         # Expected weighted avg: (200*100 + 400*300) / (100 + 300) = (20000 + 120000) / 400 = 140000 / 400 = 350.0
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {
-            "query_type": "corridor",
-            "geometry_hash": "sha256:abcdef",
-            "composite_relative_rating": 75.0,
-            "county_segments": [mock_seg1, mock_seg2],
-        }
-        mock_response.county_segments = [mock_seg1, mock_seg2]
-        mock_response.composite_relative_rating = 75.0
+        mock_response = _corridor_response(
+            geometry_hash="sha256:abcdef",
+            composite_relative_rating=75.0,
+            county_segments=[mock_seg1, mock_seg2],
+        )
         mock_instance.analyze_corridor.return_value = mock_response
 
         # Project farm acres = 350.0. Ratio = 350 / 350 = 1.0 (100% -> 10 points)
@@ -1110,12 +1105,11 @@ class TestCorridorTools:
             },
         )
 
-        assert "lesa_evaluation" in res
-        lesa = res["lesa_evaluation"]
-        sa = lesa["site_assessment"]
-        crit7 = next(c for c in sa["criteria"] if c["criterion_number"] == 7)
-        assert crit7["awarded_points"] == 10
-        assert "350.0" in crit7["justification"] or "100.0%" in crit7["justification"]
+        assert res.lesa_evaluation is not None
+        sa = res.lesa_evaluation.site_assessment
+        crit7 = next(c for c in sa.criteria if c.criterion_number == 7)
+        assert crit7.awarded_points == 10
+        assert "350.0" in crit7.justification or "100.0%" in crit7.justification
 
 
 @pytest.mark.parametrize("include_map", [False, True])
@@ -1133,9 +1127,7 @@ def test_analyze_farmland_by_polygon_forwards_include_map(
 def test_analyze_corridor_fppa_forwards_include_map(
     mock_analyzer_cls: MagicMock, include_map: bool
 ) -> None:
-    mock_response = MagicMock()
-    mock_response.model_dump.return_value = {"query_type": "corridor"}
-    mock_analyzer_cls.return_value.analyze_corridor.return_value = mock_response
+    mock_analyzer_cls.return_value.analyze_corridor.return_value = _corridor_response()
     analyze_corridor_fppa(
         centerline="LINESTRING(-93.5 42.0, -93.4 42.1)",
         buffer_distance=50.0,

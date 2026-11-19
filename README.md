@@ -232,6 +232,8 @@ Tools accept validated coordinates, map-unit keys, or GeoJSON geometries. Full i
 
 **Coverage status values (0.6.0, breaking change).** Soil mapping coverage is `covered`, `partial`, `unmapped`, or `error`. Rating coverage (map-unit productivity, NCCPI baseline, corridor productivity, and Land Evaluation) is `rated`, `partial`, `unrated`, `unmapped`, `unknown`, or `error`. `error` means a query failed or the input was invalid; a failed query is never reported as `unmapped` or `unrated`. Renamed values: `partially_covered` -> `partial`; `no_data` and `invalid_request` -> `error`; rating `covered` -> `rated`; `no_coverage` -> `unrated`; `not_found` -> `unknown`. Field names are unchanged. See [ADR 0019](docs/decisions/0019-shared-coverage-vocabularies.md).
 
+**Map geometry in result `_meta` (map schema 2.0, breaking change).** With `include_map=true`, `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and `get_soil_polygons_by_geometry` return map display geometry in the MCP result `_meta` under `gov.usda.fpac-soil/map` (bounds, warnings, and per-layer feature collections keyed by layer id), not in the result body. The body `map.layers` entries describe each layer; `delivery` is `meta_geojson` or `omitted` (`inline_geojson` is gone). A layer dropped by the size cap is `{"truncated": true}` in `_meta`. The three tools publish explicit output schemas. See [ADR 0017](docs/decisions/0017-server-map-result-contract.md).
+
 ---
 
 ## Resources, Prompts & HTTP Routes

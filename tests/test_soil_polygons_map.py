@@ -1,7 +1,9 @@
 """Map result (ADR 0017) on ``get_soil_polygons_by_geometry`` (EXECUTION_PLAN_44 A6).
 
 Calls the tool through a ``FastMCP`` server built with ``register_tools`` on a
-synthetic SDA client. Synthetic geometry only.
+synthetic SDA client. Synthetic geometry only. The top-level ``features`` stay
+in the body; map display geometry, bounds and warnings come back in result
+``_meta`` under ``gov.usda.fpac-soil/map`` (Plan 59, #117).
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from shapely.geometry import box
 from fpac_soil_mcp.clients.sda import SDAClient, SDAClientError
 from fpac_soil_mcp.core.config import settings
 from fpac_soil_mcp.mcp.tools import register_tools
+from fpac_soil_mcp.models.map import MAP_META_KEY, MAP_SCHEMA_VERSION
 
 TOOL = "get_soil_polygons_by_geometry"
 POLYGON = {
@@ -62,10 +65,15 @@ def sda():
         yield client
 
 
-def _call(mcp: FastMCP, **arguments: Any) -> dict[str, Any]:
+def _call_full(mcp: FastMCP, **arguments: Any) -> tuple[dict[str, Any], dict | None]:
+    """Return (body, our map ``_meta`` entry or None)."""
     result = asyncio.run(mcp.call_tool(TOOL, arguments))
     assert isinstance(result.structured_content, dict)
-    return result.structured_content
+    return result.structured_content, (result.meta or {}).get(MAP_META_KEY)
+
+
+def _call(mcp: FastMCP, **arguments: Any) -> dict[str, Any]:
+    return _call_full(mcp, **arguments)[0]
 
 
 def _layers(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -79,33 +87,35 @@ def _without_map(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_default_call_returns_descriptors_only(mcp, sda):
-    payload = _call(mcp, geojson=POLYGON)
+    payload, meta = _call_full(mcp, geojson=POLYGON)
     assert payload["type"] == "FeatureCollection"
     assert len(payload["features"]) == 2
-    assert payload["schema_version"] == "1.0"
+    assert payload["schema_version"] == MAP_SCHEMA_VERSION
     assert payload["data_mode"] == "live"
     assert payload["authority"]["official_filing"] is False
     layers = _layers(payload)
     assert list(layers) == ["aoi", "farmland_classes"]
     assert all(layer["delivery"] == "omitted" for layer in layers.values())
-    assert all(layer["feature_collection"] is None for layer in layers.values())
-    assert payload["map"]["bounds"] is None
+    assert all("feature_collection" not in layer for layer in layers.values())
+    assert set(payload["map"]) == {"layers"}
+    assert meta is None
 
 
-def test_include_map_returns_inline_layers(mcp, sda):
-    payload = _call(mcp, geojson=POLYGON, include_map=True)
+def test_include_map_returns_meta_layers(mcp, sda):
+    payload, meta = _call_full(mcp, geojson=POLYGON, include_map=True)
     layers = _layers(payload)
-    assert all(layer["delivery"] == "inline_geojson" for layer in layers.values())
+    assert all(layer["delivery"] == "meta_geojson" for layer in layers.values())
+    assert set(payload["map"]) == {"layers"}
     farmland = layers["farmland_classes"]
     assert farmland["style_key"] == "farmland_class"
     assert farmland["legend"]
-    classes = {
-        f["properties"]["farmland_class"] for f in farmland["feature_collection"]["features"]
-    }
-    assert len(farmland["feature_collection"]["features"]) == 2
+    assert meta is not None
+    farmland_fc = meta["layers"]["farmland_classes"]["feature_collection"]
+    classes = {f["properties"]["farmland_class"] for f in farmland_fc["features"]}
+    assert len(farmland_fc["features"]) == 2
     assert len(classes) == 2
-    assert len(layers["aoi"]["feature_collection"]["features"]) == 1
-    assert payload["map"]["bounds"] is not None
+    assert len(meta["layers"]["aoi"]["feature_collection"]["features"]) == 1
+    assert meta["bounds"] is not None
 
 
 def test_include_map_keeps_existing_keys_and_one_sda_call(mcp, sda):
@@ -140,10 +150,11 @@ def test_sda_error_returns_descriptor_map(mcp, sda):
 
 def test_size_cap_drops_farmland_before_aoi(mcp, sda, monkeypatch):
     monkeypatch.setattr(settings, "map_max_geojson_bytes", 400)
-    payload = _call(mcp, geojson=POLYGON, include_map=True)
+    payload, meta = _call_full(mcp, geojson=POLYGON, include_map=True)
     layers = _layers(payload)
-    assert layers["farmland_classes"]["truncated"] is True
     assert layers["farmland_classes"]["delivery"] == "omitted"
-    assert layers["aoi"]["delivery"] == "inline_geojson"
-    assert payload["map"]["warnings"]
+    assert layers["aoi"]["delivery"] == "meta_geojson"
+    assert meta["layers"]["farmland_classes"]["truncated"] is True
+    assert meta["layers"]["farmland_classes"].get("feature_collection") is None
+    assert meta["warnings"]
     assert len(payload["features"]) == 2  # the FeatureCollection itself is not capped
