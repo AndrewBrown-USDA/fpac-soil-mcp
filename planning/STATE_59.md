@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.2 done. Next: 59.1.3.
+- Plan: approved 2026-11-18 (D12). Wave 1 in progress: 59.1.1-59.1.3 done. Next: 59.1.4. From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -24,7 +24,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | --- | --- | --- |
 | 59.1.1 | Map models and builder split | done |
 | 59.1.2 | Tool response models | done |
-| 59.1.3 | Tool functions return models | pending |
+| 59.1.3 | Tool functions return models | done |
 | 59.1.4 | `_meta` wrapper and explicit schemas | pending |
 | 59.1.5 | Polygon map tests | pending |
 | 59.1.6 | Corridor map tests | pending |
@@ -51,3 +51,11 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 - Full root pytest (info): 24 failed, 1082 passed; same 24 failures as after 59.1.1 (59.1.5-59.1.7 files).
 - Deviations: spec said `models.lesa`; class is in `fpac_soil_mcp.domain.lesa` (first `models` -> `domain` import; no cycle, probed).
 - Gotchas: import new models from `fpac_soil_mcp.models.spatial` (not re-exported). `SoilPolygonsResponse.source` is `dict[str, Any]` (success adds `endpoint`). Coverage enum order comes from the `Literal`s, not the frozensets.
+
+## 59.1.3
+- Status: done. Micro-plan `planning/tasks/59.1.3.todo.md` self-approved (see Status).
+- Files: `mcp/tools/spatial_analysis_tools.py` (neutral `INCLUDE_MAP_DESCRIPTION` + both docstrings; `analyze_corridor_fppa -> CorridorToolResponse`, built from `CorridorFarmlandAnalysisResponse.model_fields` values plus `lesa_evaluation`, no `model_dump`); `mcp/tools/soil_lookup_tools.py` (`_soil_map_fields -> MapBlock`; all three branches return `SoilPolygonsResponse`; dropped `MAP_SCHEMA_VERSION`/`ResultAuthority` imports); `tests/test_tools.py` and `tests/test_phase3_contracts.py` (real `CorridorFarmlandAnalysisResponse`/`CorridorCountySegment` via `_corridor_response`/`_segment` helpers instead of `MagicMock`; attribute access).
+- Tests: `pytest tests/test_tools.py tests/test_phase3_contracts.py tests/test_tool_response_models.py tests/test_map_contract.py` -> 114 passed. `git grep "Leave false\|Leave it false" -- src` empty. Ruff check + format clean (one format fix applied).
+- Full root pytest (info): 25 failed, 1081 passed. New vs 59.1.2: `test_map_tool_contracts.py::test_include_map_only_on_the_map_tools` asserts the description `startswith("Leave false.")`; expected from the wording change, fix in 59.1.7.
+- Deviations: `test_analyze_corridor_fppa_basic` dropped the `productivity_rating`/`productivity_rating_class` passthrough asserts (keys only existed in the old mock dict, not on the response model) and now checks `reconciliation_summary`; `"composite_relative_rating" in result` became `== 82.5`.
+- Gotchas: `lesa_tools.py` has its own `CorridorAnalyzer` mock (`_mock_lesa_corridor`), untouched. The returned `map` is a validated copy of the analyzer's `MapBlock`; `_display` survives via the 59.1.1 validator.
