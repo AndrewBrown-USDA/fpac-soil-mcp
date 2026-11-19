@@ -5,7 +5,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Status
 
 - Branch `feature/meta-map1` off `origin/main` 6a00e222. Local, no upstream.
-- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Next: 59.2.1. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
+- Plan: approved 2026-11-18 (D12). Wave 1 done (59.1.1-59.1.7 plus 59.1.3b); wave-1 gate green. Wave 2: 59.2.1 done. Next: 59.2.2. User 2026-11-19: "keep working on all waves of 59 do not stop". From 59.1.3 on, micro-plans are self-approved by the orchestrator (user, 2026-11-18: "do not stop between tasks, proceed"); still one local commit per task, no push.
 
 ## Baseline (feature/meta-map1 @ 6a00e222, recorded 2026-11-18 on a `git archive` copy in /tmp/base59)
 
@@ -30,7 +30,7 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 | 59.1.5 | Polygon map tests | done |
 | 59.1.6 | Corridor map tests | done |
 | 59.1.7 | Tool-layer map tests | done |
-| 59.2.1 | App merges `_meta` into the browser block | pending |
+| 59.2.1 | App merges `_meta` into the browser block | done |
 | 59.2.2 | App trace guard | pending |
 | 59.3.1 | ADR 0017 amendment and docs | pending |
 | 59.3.2 | Final verification | pending |
@@ -100,3 +100,11 @@ Resume point for Plan 59. Plan: `planning/EXECUTION_PLAN_59.md`. Worker prompt: 
 ## Wave 1 gate
 - Full root pytest: 1117 passed, 3 skipped, 45 deselected (baseline 1091 + 26 new tests). 0 failed.
 - Root ruff check + format --check on a /tmp copy (830 files): clean (one I001 import order fixed in test_map_tool_contracts.py first).
+
+## 59.2.1
+- Status: done (self-approved; no separate micro-plan file, scope fixed by the plan spec).
+- mcp 1.30.0: `CallToolResult.meta` (alias `_meta`) confirmed in /tmp/app-venv.
+- `geo.py`: `MAP_META_KEY` constant; `map_meta(raw)` reads `raw.meta[MAP_META_KEY]` (dict only); `map_block(result, meta)` rebuilds `{display_crs, bounds, warnings, layers}`, each layer = body descriptor + `simplified`, `simplify_tolerance_m`, `truncated`, `feature_count`, `feature_collection` from meta (defaults when absent); `delivery` `inline_geojson` iff a feature collection is present; no meta -> all `omitted`, bounds null, warnings [], `EPSG:4326`. All three call sites pass `map_meta(raw)`. No logging added; no server import.
+- Tests: fixtures moved to body descriptors + `_meta`; each asserts the browser block equals the full old-shape block, including a capped layer (`{"truncated": true}` in meta -> `truncated: true`, `omitted`). New: `test_server_map_shape_has_no_display_in_body`, `test_map_without_meta_is_all_omitted`, `test_map_block_merges_meta_by_layer_id`, `test_map_meta_ignores_other_keys_and_bad_values`. The screen tests run through the real `McpServer`/Agents SDK `call_tool` path, so `_meta` survives that path.
+- Results: 84 passed (3 geo files). App ruff (from a full-repo /tmp copy so the root config applies) clean after one format fix.
+- Gotcha: ruff from /tmp/app alone reports false I001s (no root config); run app lint from the full-repo copy.

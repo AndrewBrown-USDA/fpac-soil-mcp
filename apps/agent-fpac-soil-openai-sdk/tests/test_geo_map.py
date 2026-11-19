@@ -22,11 +22,55 @@ MARKER = "R6-MARKER"
 SQUARE = {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]}
 LINE = {"type": "LineString", "coordinates": [[0, 0.5], [1, 0.5]]}
 AOI_REF = "aoi-0123abcd"
+AOI_FC = {"type": "FeatureCollection", "features": []}
+# Server shape (Plan 59): descriptors in the body, display in result _meta. The
+# farmland layer was dropped by the size cap ({"truncated": true}, D10).
+BODY_MAP = {
+    "layers": [
+        {"id": "aoi", "delivery": "meta_geojson"},
+        {"id": "farmland_classes", "delivery": "omitted"},
+    ]
+}
+MAP_META = {
+    "display_crs": "EPSG:4326",
+    "bounds": [0, 0, 1, 1],
+    "warnings": ["Farmland classes omitted: size cap."],
+    "layers": {
+        "aoi": {
+            "feature_collection": AOI_FC,
+            "feature_count": 0,
+            "simplified": False,
+            "simplify_tolerance_m": None,
+            "truncated": False,
+        },
+        "farmland_classes": {"truncated": True},
+    },
+}
+# The browser block the app builds from the two: the pre-Plan 59 shape.
 MAP = {
     "display_crs": "EPSG:4326",
     "bounds": [0, 0, 1, 1],
-    "warnings": [],
-    "layers": [{"id": "aoi", "delivery": "inline_geojson", "feature_collection": {}}],
+    "warnings": ["Farmland classes omitted: size cap."],
+    "layers": [
+        {
+            "id": "aoi",
+            "delivery": "inline_geojson",
+            "simplified": False,
+            "simplify_tolerance_m": None,
+            "truncated": False,
+            "feature_count": 0,
+            "feature_collection": AOI_FC,
+        },
+        {
+            "id": "farmland_classes",
+            "delivery": "omitted",
+            "simplified": False,
+            "simplify_tolerance_m": None,
+            "truncated": True,
+            "feature_count": None,
+            "feature_collection": None,
+        },
+    ],
 }
 AUTHORITY = {"level": "preliminary_screening", "official_filing": False}
 NOTICE = "Preliminary screening only; not an official FPPA determination."
@@ -93,14 +137,16 @@ def _result(extra: dict | None = None) -> CallToolResult:
     data = {
         "query_type": "polygon",
         "tabular_csv": f"mukey\n{MARKER}",
-        "map": MAP,
+        "map": BODY_MAP,
         "authority": AUTHORITY,
         "regulatory_notice": NOTICE,
         "status": "partial",
         "coverage_status": "partial",
         **(extra or {}),
     }
-    return CallToolResult(content=[], structuredContent=data, isError=False)
+    return CallToolResult(
+        content=[], structuredContent=data, isError=False, _meta={geo.MAP_META_KEY: MAP_META}
+    )
 
 
 def _happy() -> FakeMcp:
@@ -139,8 +185,11 @@ def test_polygon_call_returns_map_only(start_server, fake_mcp):
 def test_corridor_call_and_wrapped_result(start_server, fake_mcp):
     wrapped = CallToolResult(
         content=[],
-        structuredContent={"result": {"map": MAP, "authority": AUTHORITY, "lesa_evaluation": {}}},
+        structuredContent={
+            "result": {"map": BODY_MAP, "authority": AUTHORITY, "lesa_evaluation": {}}
+        },
         isError=False,
+        _meta={geo.MAP_META_KEY: MAP_META, "io.modelcontextprotocol/serverInfo": {}},
     )
     fake = fake_mcp(FakeMcp({geo.CORRIDOR_TOOL: wrapped}))
     arguments = {"centerline": LINE, "buffer_distance": 50.0, "alternatives": []}
@@ -309,6 +358,19 @@ def test_mcp_failures_return_bounded_502(start_server, fake_mcp, caplog, fake):
     assert response.status_code == 502
     assert response.json() == {"error": "map_unavailable"}
     assert MARKER not in caplog.text
+
+
+def test_map_block_merges_meta_by_layer_id():
+    assert geo.map_block({"map": BODY_MAP}, MAP_META) == MAP
+    # Unknown meta layers are ignored; a body layer with no entry stays omitted.
+    extra = {**MAP_META, "layers": {**MAP_META["layers"], "ghost": {"feature_collection": {}}}}
+    assert geo.map_block({"map": BODY_MAP}, extra) == MAP
+
+
+def test_map_meta_ignores_other_keys_and_bad_values():
+    assert geo.map_meta(CallToolResult(content=[], _meta={"other/key": {}})) is None
+    assert geo.map_meta(CallToolResult(content=[], _meta={geo.MAP_META_KEY: "x"})) is None
+    assert geo.map_meta(CallToolResult(content=[])) is None
 
 
 def test_missing_map_block_returns_null_map(start_server, fake_mcp):

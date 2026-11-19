@@ -24,7 +24,54 @@ CONTEXT = {
         "coordinates": [[[-100, 40], [-99.9, 40], [-99.9, 40.1], [-100, 40.1], [-100, 40]]],
     },
 }
-MAP = {"layers": [{"id": "corridor", "feature_collection": {"secret": MARKER}}]}
+# Server shape (Plan 59): descriptors in the body, display geometry in result _meta.
+BODY_MAP = {
+    "layers": [
+        {"id": "corridor_direct", "delivery": "meta_geojson"},
+        {"id": "urban_context", "delivery": "omitted"},
+    ]
+}
+MAP_META = {
+    "display_crs": "EPSG:4326",
+    "bounds": [-100, 40, -99.9, 40.1],
+    "warnings": ["Urban context omitted: size cap."],
+    "layers": {
+        "corridor_direct": {
+            "feature_collection": {"secret": MARKER},
+            "feature_count": 1,
+            "simplified": False,
+            "simplify_tolerance_m": None,
+            "truncated": False,
+        },
+        "urban_context": {"truncated": True},
+    },
+}
+# The browser block (pre-Plan 59 shape) the app builds from the two.
+MAP = {
+    "display_crs": "EPSG:4326",
+    "bounds": [-100, 40, -99.9, 40.1],
+    "warnings": ["Urban context omitted: size cap."],
+    "layers": [
+        {
+            "id": "corridor_direct",
+            "delivery": "inline_geojson",
+            "simplified": False,
+            "simplify_tolerance_m": None,
+            "truncated": False,
+            "feature_count": 1,
+            "feature_collection": {"secret": MARKER},
+        },
+        {
+            "id": "urban_context",
+            "delivery": "omitted",
+            "simplified": False,
+            "simplify_tolerance_m": None,
+            "truncated": True,
+            "feature_count": None,
+            "feature_collection": None,
+        },
+    ],
+}
 NOTICE = "Preliminary screening only; not an official FPPA determination."
 
 
@@ -76,12 +123,13 @@ def install_mcp(monkeypatch):
                 }
             ],
             "regulatory_notice": NOTICE,
-            "map": MAP,
+            "map": BODY_MAP,
             "tabular_csv": MARKER,
             "manifest": {"geometry": MARKER},
             "lesa_evaluation": {"marker": MARKER},
         },
         isError=False,
+        _meta={geo.MAP_META_KEY: MAP_META},
     )
 
     monkeypatch.setattr(geo, "local_dev_enabled", lambda: True)
@@ -115,7 +163,12 @@ def _post(start_server, body):
 
 def test_missing_mcp_notice_is_returned_as_none(start_server, install_mcp):
     _, set_outcome = install_mcp
-    structured = {"map": MAP, "impact_breakdown": {}, "county_segments": [], "alternatives": []}
+    structured = {
+        "map": BODY_MAP,
+        "impact_breakdown": {},
+        "county_segments": [],
+        "alternatives": [],
+    }
     set_outcome(CallToolResult(content=[], structuredContent=structured, isError=False))
 
     body = _post(start_server, CONTEXT).json()

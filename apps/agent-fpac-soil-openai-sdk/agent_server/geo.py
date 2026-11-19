@@ -332,10 +332,63 @@ async def _call_tool_untraced(server: McpServer, name: str, arguments: dict[str,
     return await MCPServerStreamableHttp.call_tool(server, name, arguments)
 
 
-def map_block(result: dict[str, Any]) -> dict[str, Any] | None:
-    """The server's ADR 0017 ``map`` block, passed through unchanged; browser-only."""
+# Result ``_meta`` key holding map display geometry (ADR 0017, Plan 59). The app does
+# not import server code, so the key string is repeated here.
+MAP_META_KEY = "gov.usda.fpac-soil/map"
+DISPLAY_CRS = "EPSG:4326"
+# Per-layer display fields from ``_meta`` and their values when a layer has none.
+_LAYER_DISPLAY_DEFAULTS: dict[str, Any] = {
+    "simplified": False,
+    "simplify_tolerance_m": None,
+    "truncated": False,
+    "feature_count": None,
+    "feature_collection": None,
+}
+
+
+def map_meta(raw: Any) -> dict[str, Any] | None:
+    """Return the map display entry from a ``CallToolResult``'s ``_meta``, if any."""
+    meta = getattr(raw, "meta", None)
+    entry = meta.get(MAP_META_KEY) if isinstance(meta, dict) else None
+    return entry if isinstance(entry, dict) else None
+
+
+def map_block(result: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Build the browser map block from the body descriptors and the ``_meta`` display.
+
+    The shape is the pre-Plan 59 block: ``{display_crs, bounds, warnings, layers}``,
+    each layer the body descriptor plus its display fields. A layer is
+    ``inline_geojson`` only when ``_meta`` holds its feature collection. Browser-only.
+    """
     block = result.get("map")
-    return block if isinstance(block, dict) else None
+    if not isinstance(block, dict):
+        return None
+    display = meta if isinstance(meta, dict) else {}
+    entries = display.get("layers")
+    entries = entries if isinstance(entries, dict) else {}
+    layers = []
+    for layer in block.get("layers") or []:
+        if not isinstance(layer, dict):
+            continue
+        entry = entries.get(layer.get("id"))
+        entry = entry if isinstance(entry, dict) else {}
+        merged = {
+            **layer,
+            **{key: entry.get(key, default) for key, default in _LAYER_DISPLAY_DEFAULTS.items()},
+        }
+        if not isinstance(merged["feature_collection"], dict):
+            merged["feature_collection"] = None
+        merged["delivery"] = "omitted" if merged["feature_collection"] is None else "inline_geojson"
+        layers.append(merged)
+    bounds = display.get("bounds")
+    warnings = display.get("warnings")
+    crs = display.get("display_crs")
+    return {
+        "display_crs": crs if isinstance(crs, str) else DISPLAY_CRS,
+        "bounds": bounds if isinstance(bounds, list) else None,
+        "warnings": warnings if isinstance(warnings, list) else [],
+        "layers": layers,
+    }
 
 
 async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
@@ -369,7 +422,7 @@ async def screen_aoi(request: ScreenRequest) -> dict[str, Any]:
         }
 
     summary = build_chat_summary(analysis, aoi_ref)
-    block = map_block(analysis)
+    block = map_block(analysis, map_meta(analysis_result))
     return {
         "aoi_ref": aoi_ref,
         "display": {
@@ -504,7 +557,7 @@ async def screen_corridor(corridor: Any) -> dict[str, Any]:
         raise GeoRequestError(502, "corridor_screening_unavailable") from None
     return {
         "display": select_display_corridor(result, corridor),
-        "map": map_block(result),
+        "map": map_block(result, map_meta(raw)),
         "regulatory_notice": _result_notice(result.get("regulatory_notice")),
         "status": "preliminary_screening",
     }
@@ -574,7 +627,7 @@ async def map_for_tool(tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
     authority = result.get("authority")
     return {
         "tool": tool,
-        "map": map_block(result),
+        "map": map_block(result, map_meta(raw)),
         "regulatory_notice": _result_notice(result.get("regulatory_notice")),
         "authority": authority if isinstance(authority, dict) else None,
         "status": _short_text(result.get("status"), 40),
