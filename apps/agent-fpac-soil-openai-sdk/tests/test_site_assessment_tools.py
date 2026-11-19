@@ -147,6 +147,71 @@ def test_unknown_and_skipped_states_are_structured_records(
         assert record["points"] is None
 
 
+@pytest.mark.parametrize(
+    ("answer_state", "answer"),
+    [
+        ("unknown", "unknown"),
+        ("unknown", " Unknown "),
+        ("unknown", ""),
+        ("skipped", "skipped"),
+        ("skipped", ""),
+    ],
+)
+def test_unknown_and_skipped_accept_placeholder_answer(
+    valid_site_assessment_criteria_resource, answer_state, answer
+):
+    # Trace 9223a54c: the model sent answer="unknown" with answer_state="unknown"; the
+    # tool raised, the run aborted, and the unanswered tool call broke later turns.
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+
+    record = _invoke(
+        answer_tool,
+        {
+            "criterion_number": 1,
+            "answer_state": answer_state,
+            "answer": answer,
+            "evidence": "",
+            "comment": "User stated only below average.",
+            "provenance": "user",
+        },
+    )
+
+    assert record["answer_state"] == answer_state
+    assert record["points"] is None
+    if answer_state == "unknown":
+        assert record["selected_band"]["id"] == "unknown"
+    else:
+        assert record["selected_band"] is None
+        assert record["answer"] is None
+
+
+@pytest.mark.parametrize(
+    ("answer_state", "answer"),
+    [
+        ("unknown", "below_20"),
+        ("unknown", 24.0),
+        ("skipped", "unknown"),
+        ("skipped", 24.0),
+    ],
+)
+def test_unknown_and_skipped_still_reject_real_values(
+    valid_site_assessment_criteria_resource, answer_state, answer
+):
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+    with pytest.raises(ValueError, match="must not include a criterion value"):
+        _invoke(
+            answer_tool,
+            {
+                "criterion_number": 1,
+                "answer_state": answer_state,
+                "answer": answer,
+                "evidence": "",
+                "comment": "",
+                "provenance": "user",
+            },
+        )
+
+
 def test_answer_tool_rejects_non_resource_choice(valid_site_assessment_criteria_resource):
     _, answer_tool = _tools(valid_site_assessment_criteria_resource)
     with pytest.raises(ValueError, match="resource-defined"):

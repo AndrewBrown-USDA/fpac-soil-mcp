@@ -45,7 +45,8 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
         failure_error_function=None,
         description_override=(
             "Record one Site Assessment answer using a choice from the authoritative "
-            "criteria resource. Do not provide points; points come only from that resource."
+            "criteria resource. Do not provide points; points come only from that resource. "
+            "For answer_state 'unknown' or 'skipped', set answer to null."
         ),
     )
     async def record_site_assessment_answer(
@@ -63,6 +64,9 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
         criterion = criteria.get(criterion_number)
         if criterion is None:
             raise ValueError("criterion_number must identify a Site Assessment criterion.")
+
+        if answer_state != "answered" and _is_placeholder_answer(answer, answer_state):
+            answer = None
 
         selected_band = None
         if answer_state == "answered":
@@ -125,6 +129,17 @@ def _reject_unknown_parameters(tool: FunctionTool, allowed_parameters: set[str])
 
     tool.on_invoke_tool = invoke
     return tool
+
+
+def _is_placeholder_answer(answer: str | float | None, answer_state: str) -> bool:
+    """True when an unknown/skipped answer only restates the state (e.g. "unknown").
+
+    Models often echo the state or the registry's ``unknown`` band id instead of null.
+    A real band id or number still contradicts the state and is rejected by the caller.
+    """
+    if not isinstance(answer, str):
+        return False
+    return answer.strip().casefold() in {"", answer_state}
 
 
 def _find_band(criterion: dict[str, Any], answer: str | float) -> dict[str, Any] | None:
