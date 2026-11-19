@@ -15,7 +15,11 @@ These tests lock in that transformation so the regression cannot return silently
 
 import unittest
 
-from agent_server.history import normalize_history_items
+from agent_server.history import (
+    ORPHAN_TOOL_CALL_OUTPUT,
+    normalize_history_items,
+    repair_orphan_tool_calls,
+)
 
 
 class NormalizeHistoryItemsTest(unittest.TestCase):
@@ -126,6 +130,54 @@ class NormalizeHistoryItemsTest(unittest.TestCase):
             },
         ]
         self.assertEqual(normalize_history_items(messages), messages)
+
+
+def _call(call_id: str) -> dict:
+    return {
+        "type": "function_call",
+        "call_id": call_id,
+        "name": "record_site_assessment_answer",
+        "arguments": "{}",
+    }
+
+
+def _output(call_id: str, output: str = "{}") -> dict:
+    return {"type": "function_call_output", "call_id": call_id, "output": output}
+
+
+class RepairOrphanToolCallsTest(unittest.TestCase):
+    def test_orphan_call_gets_placeholder_output_right_after_it(self):
+        # Session 2fc10f43: the run aborted inside the tool, the UI replayed the call
+        # without an output, and every later turn failed with HTTP 400.
+        messages = [
+            {"role": "user", "content": "below average"},
+            _call("call_orphan"),
+            {"role": "user", "content": "try again"},
+        ]
+        self.assertEqual(
+            repair_orphan_tool_calls(messages),
+            [
+                messages[0],
+                messages[1],
+                _output("call_orphan", ORPHAN_TOOL_CALL_OUTPUT),
+                messages[2],
+            ],
+        )
+
+    def test_answered_calls_are_untouched(self):
+        messages = [_call("a"), _call("b"), _output("a"), _output("b")]
+        self.assertEqual(repair_orphan_tool_calls(messages), messages)
+
+    def test_only_the_unanswered_parallel_call_is_repaired(self):
+        messages = [_call("a"), _call("b"), _output("b")]
+        self.assertEqual(
+            repair_orphan_tool_calls(messages),
+            [_call("a"), _output("a", ORPHAN_TOOL_CALL_OUTPUT), _call("b"), _output("b")],
+        )
+
+    def test_call_without_call_id_is_left_alone(self):
+        messages = [{"type": "function_call", "name": "x", "arguments": "{}"}]
+        self.assertEqual(repair_orphan_tool_calls(messages), messages)
 
 
 if __name__ == "__main__":

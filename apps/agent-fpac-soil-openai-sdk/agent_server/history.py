@@ -45,3 +45,41 @@ def normalize_history_items(messages: list[dict]) -> list[dict]:
         else:
             normalized.append(m)
     return normalized
+
+
+# Local addition (not in the upstream template copies).
+ORPHAN_TOOL_CALL_OUTPUT = (
+    "No result was recorded for this tool call because the earlier turn ended before "
+    "the tool returned. Treat the call as not completed."
+)
+
+
+def repair_orphan_tool_calls(messages: list[dict]) -> list[dict]:
+    """Add a placeholder output after each replayed ``function_call`` that has none.
+
+    When a turn aborts mid-tool (for example a tool raised), the chat UI still replays
+    the ``function_call`` but has no ``function_call_output`` for it. Chat Completions
+    providers then reject every later request with HTTP 400 (an assistant
+    ``tool_calls`` message must be followed by a tool message for each id), so the
+    conversation cannot recover. Answered calls and all other items are unchanged.
+    """
+    answered = {m.get("call_id") for m in messages if m.get("type") == "function_call_output"}
+    repaired: list[dict] = []
+    for m in messages:
+        repaired.append(m)
+        call_id = m.get("call_id")
+        if (
+            m.get("type") == "function_call"
+            and isinstance(call_id, str)
+            and call_id
+            and call_id not in answered
+        ):
+            repaired.append(
+                {
+                    "type": "function_call_output",
+                    "call_id": call_id,
+                    "output": ORPHAN_TOOL_CALL_OUTPUT,
+                }
+            )
+            answered.add(call_id)
+    return repaired
