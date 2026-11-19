@@ -6,6 +6,7 @@ from agent_server.agent import (
     _site_assessment_criteria_context,
     _site_assessment_payload_from_context,
 )
+from agent_server.site_assessment_gate import _canonical_answers
 from agent_server.site_assessment_tools import create_site_assessment_tools
 from agents.tool import ToolContext
 
@@ -178,11 +179,28 @@ def test_unknown_and_skipped_accept_placeholder_answer(
 
     assert record["answer_state"] == answer_state
     assert record["points"] is None
+    assert record["answer"] is None
     if answer_state == "unknown":
         assert record["selected_band"]["id"] == "unknown"
     else:
         assert record["selected_band"] is None
-        assert record["answer"] is None
+
+
+@pytest.mark.parametrize("answer_state", ["unknown", "skipped"])
+def test_unknown_and_skipped_records_pass_the_confirmation_gate(
+    valid_site_assessment_criteria_resource, answer_state
+):
+    # The gate rejects unknown records whose answer is not null, as the card sends.
+    context = _site_assessment_criteria_context(valid_site_assessment_criteria_resource)
+    payload = _site_assessment_payload_from_context(context)
+    _, answer_tool = create_site_assessment_tools(payload)
+
+    record = _invoke(
+        answer_tool,
+        {"criterion_number": 1, "answer_state": answer_state, "answer": None},
+    )
+
+    assert _canonical_answers([record], payload)[1]["answer_state"] == answer_state
 
 
 @pytest.mark.parametrize(

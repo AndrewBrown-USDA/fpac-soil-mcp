@@ -87,7 +87,7 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
             "type": "site_assessment_answer",
             "criterion_number": criterion_number,
             "answer_state": answer_state,
-            "answer": selected_band["id"] if selected_band is not None else None,
+            "answer": selected_band["id"] if answer_state == "answered" else None,
             "selected_band": selected_band,
             "points": selected_band["points"] if selected_band is not None else None,
             "evidence": evidence,
