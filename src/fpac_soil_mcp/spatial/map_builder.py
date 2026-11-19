@@ -1,9 +1,10 @@
 """Server map result contract builders and display geometry processors (ADR 0017).
 
-Builders for the additive ``map`` block that ``analyze_farmland_by_polygon``
-and ``analyze_corridor_fppa`` return. Numbers in the responses always come
-from exact geometry; this module only shapes the display copy (simplification,
-size cap) and the server-owned legends.
+Builders for the ``map`` block that the map tools return. The block body only
+describes layers; display geometry goes into a private ``MapDisplay`` that the
+MCP layer returns in result ``_meta`` under ``MAP_META_KEY``. Numbers in the
+responses always come from exact geometry; this module only shapes the display
+copy (simplification, size cap) and the server-owned legends.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Container, Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 import shapely
@@ -22,13 +24,16 @@ from shapely.geometry.base import BaseGeometry
 from fpac_soil_mcp.models.map import (
     AUTHORITY_LABEL,
     DISPLAY_CRS,
+    MAP_META_KEY,
     MAP_SCHEMA_VERSION,
     LayerAuthority,
     LayerDelivery,
     LayerKind,
     LegendPattern,
     MapBlock,
+    MapDisplay,
     MapLayer,
+    MapLayerDisplay,
     MapLegendItem,
     ResultAuthority,
 )
@@ -140,8 +145,8 @@ def build_layer(
     style_key: str | None = None,
     legend: Sequence[MapLegendItem] | None = None,
     simplify_tolerance_m: float | None = None,
-) -> MapLayer:
-    """Build one layer; descriptor only unless ``include_map`` is true.
+) -> LayerBuild:
+    """Build one layer description, plus its display data when ``include_map`` is true.
 
     ``features`` are exact (geometry, properties) pairs in WGS84. When
     ``simplify_tolerance_m`` is positive the display copy is simplified.
@@ -157,32 +162,33 @@ def build_layer(
         legend=list(legend or []),
     )
     if not include_map:
-        return layer
+        return LayerBuild(layer=layer, display=None)
 
     pairs = list(features or [])
     geoms = [geom for geom, _ in pairs]
+    display = MapLayerDisplay()
     if simplify_tolerance_m and simplify_tolerance_m > 0:
         geoms = simplify_for_display(geoms, simplify_tolerance_m)
-        layer.simplified = True
-        layer.simplify_tolerance_m = simplify_tolerance_m
+        display.simplified = True
+        display.simplify_tolerance_m = simplify_tolerance_m
 
-    layer.feature_collection = {
+    display.feature_collection = {
         "type": "FeatureCollection",
         "features": [
             {"type": "Feature", "geometry": mapping(geom), "properties": dict(props)}
             for geom, (_, props) in zip(geoms, pairs, strict=True)
         ],
     }
-    layer.feature_count = len(pairs)
-    layer.delivery = "inline_geojson"
-    return layer
+    display.feature_count = len(pairs)
+    layer.delivery = "meta_geojson"
+    return LayerBuild(layer=layer, display=display)
 
 
-def bounds_of(layers: Iterable[MapLayer]) -> list[float] | None:
-    """Return [min_lon, min_lat, max_lon, max_lat] over inline layers, or None."""
+def bounds_of(display: MapDisplay) -> list[float] | None:
+    """Return [min_lon, min_lat, max_lon, max_lat] over display layers, or None."""
     bounds: list[float] | None = None
-    for layer in layers:
-        if layer.delivery != "inline_geojson" or not layer.feature_collection:
+    for layer in display.layers.values():
+        if not layer.feature_collection:
             continue
         for feature in layer.feature_collection.get("features", []):
             geometry = feature.get("geometry")
@@ -201,42 +207,57 @@ def bounds_of(layers: Iterable[MapLayer]) -> list[float] | None:
     return [round(value, 6) for value in bounds] if bounds is not None else None
 
 
-def _feature_collection_bytes(layer: MapLayer) -> int:
-    if layer.feature_collection is None:
+@dataclass(frozen=True)
+class LayerBuild:
+    """One built layer: its body description and its display data (None when omitted)."""
+
+    layer: MapLayer
+    display: MapLayerDisplay | None
+
+
+def _feature_collection_bytes(display: MapLayerDisplay | None) -> int:
+    if display is None or display.feature_collection is None:
         return 0
-    return len(json.dumps(layer.feature_collection, separators=(",", ":")).encode("utf-8"))
+    return len(json.dumps(display.feature_collection, separators=(",", ":")).encode("utf-8"))
 
 
 def enforce_size_cap(block: MapBlock, max_bytes: int) -> MapBlock:
-    """Drop whole inline layers from the end until the GeoJSON fits ``max_bytes``.
+    """Drop whole display layers from the end until the GeoJSON fits ``max_bytes``.
 
-    A dropped layer keeps its descriptor with ``delivery: omitted`` and
-    ``truncated: true``, and a warning names it. Bounds are recomputed.
+    A dropped layer keeps a ``{truncated: true}`` display entry without features,
+    its body description becomes ``delivery: omitted``, and a warning names it.
+    Bounds are recomputed. A block without display data is returned unchanged.
     """
-    sizes = [_feature_collection_bytes(layer) for layer in block.layers]
+    display = block.display
+    if display is None:
+        return block
+    entries = [display.layers.get(layer.id) for layer in block.layers]
+    sizes = [_feature_collection_bytes(entry) for entry in entries]
     total = sum(sizes)
     for index in range(len(block.layers) - 1, -1, -1):
         if total <= max_bytes:
             break
         layer = block.layers[index]
-        if layer.delivery != "inline_geojson":
+        if layer.delivery != "meta_geojson" or entries[index] is None:
             continue
         total -= sizes[index]
-        layer.feature_collection = None
-        layer.feature_count = None
+        display.layers[layer.id] = MapLayerDisplay(truncated=True)
         layer.delivery = "omitted"
-        layer.truncated = True
-        block.warnings.append(
+        display.warnings.append(
             f"Layer '{layer.title}' was not drawn: map data exceeded the "
             f"{max_bytes:,}-byte limit. Acreage and results are unaffected."
         )
-    block.bounds = bounds_of(block.layers)
+    display.bounds = bounds_of(display)
     return block
 
 
-def build_map_block(layers: Sequence[MapLayer], max_bytes: int) -> MapBlock:
-    """Assemble a map block, apply the size cap and set bounds."""
-    return enforce_size_cap(MapBlock(layers=list(layers)), max_bytes)
+def build_map_block(builds: Sequence[LayerBuild], max_bytes: int) -> MapBlock:
+    """Assemble a map block, attach display data if any layer has it, apply the size cap."""
+    block = MapBlock(layers=[build.layer for build in builds])
+    displays = {build.layer.id: build.display for build in builds if build.display is not None}
+    if displays:
+        block._display = MapDisplay(layers=displays)
+    return enforce_size_cap(block, max_bytes)
 
 
 # Map unit productivity keys a farmland feature carries when the analyzer fetched
@@ -321,17 +342,21 @@ __all__ = [
     "CORRIDOR_DIRECT_COLOR",
     "DISPLAY_CRS",
     "FARMLAND_CLASS_VALUES",
+    "MAP_META_KEY",
     "MAP_SCHEMA_VERSION",
     "NEUTRAL_OUTLINE_COLOR",
     "PRODUCTIVITY_PROPERTIES",
     "URBAN_CONTEXT_COLOR",
     "GeometryWithProperties",
     "LayerAuthority",
+    "LayerBuild",
     "LayerDelivery",
     "LayerKind",
     "LegendPattern",
     "MapBlock",
+    "MapDisplay",
     "MapLayer",
+    "MapLayerDisplay",
     "MapLegendItem",
     "ResultAuthority",
     "bounds_of",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from shapely.geometry import Point, Polygon, shape
 
 from fpac_soil_mcp.core.config import Settings
@@ -18,8 +18,12 @@ from fpac_soil_mcp.models import (
 )
 from fpac_soil_mcp.spatial.map_builder import (
     FARMLAND_CLASS_VALUES,
+    MAP_META_KEY,
     MAP_SCHEMA_VERSION,
     MapBlock,
+    MapDisplay,
+    MapLayer,
+    MapLayerDisplay,
     MapLegendItem,
     ResultAuthority,
     bounds_of,
@@ -33,6 +37,16 @@ from fpac_soil_mcp.spatial.map_builder import (
 )
 
 MARKER = "R6-MARKER"
+MOVED_FIELDS = (
+    "feature_collection",
+    "bounds",
+    "display_crs",
+    "warnings",
+    "feature_count",
+    "simplified",
+    "simplify_tolerance_m",
+    "truncated",
+)
 SQUARE = Polygon([(0, 0), (0.01, 0), (0.01, 0.01), (0, 0.01), (0, 0)])
 
 
@@ -65,36 +79,91 @@ def _layer(layer_id: str, include_map: bool, geom=SQUARE, tolerance=None):
     )
 
 
+def _schema_text(model: type[BaseModel]) -> str:
+    return json.dumps(model.model_json_schema())
+
+
+def test_body_schemas_have_no_display_fields():
+    assert MAP_META_KEY == "gov.usda.fpac-soil/map"
+    assert set(MapLayer.model_fields).isdisjoint(MOVED_FIELDS)
+    assert set(MapBlock.model_fields) == {"layers"}
+    for model in (MapBlock, MapLayer):
+        schema = _schema_text(model)
+        for name in MOVED_FIELDS:
+            assert f'"{name}"' not in schema, (model.__name__, name)
+        assert "_display" not in schema
+        assert "inline_geojson" not in schema
+
+
 def test_layer_omitted_by_default_has_no_geometry():
-    layer = _layer("aoi", include_map=False)
-    assert layer.delivery == "omitted"
-    assert layer.feature_collection is None
-    assert layer.feature_count is None
-    assert layer.simplified is False
-    block = build_map_block([layer], max_bytes=2_000_000)
-    assert block.bounds is None
+    build = _layer("aoi", include_map=False)
+    assert build.layer.delivery == "omitted"
+    assert build.display is None
+    block = build_map_block([build], max_bytes=2_000_000)
+    assert block.display is None
     dumped = json.dumps(block.model_dump())
     assert "coordinates" not in dumped
 
 
-def test_layer_inline_when_requested():
-    layer = _layer("aoi", include_map=True)
-    assert layer.delivery == "inline_geojson"
-    assert layer.feature_count == 1
-    feature = layer.feature_collection["features"][0]
+def test_layer_geometry_only_in_display_when_requested():
+    build = _layer("aoi", include_map=True)
+    assert build.layer.delivery == "meta_geojson"
+    assert build.display.feature_count == 1
+    feature = build.display.feature_collection["features"][0]
     assert feature["properties"] == {"name": MARKER}
     assert shape(feature["geometry"]).equals(SQUARE)
-    block = build_map_block([layer], max_bytes=2_000_000)
-    assert block.bounds == [0.0, 0.0, 0.01, 0.01]
-    assert block.display_crs == "EPSG:4326"
+    block = build_map_block([build], max_bytes=2_000_000)
+    assert "coordinates" not in json.dumps(block.model_dump())
+    assert block.display.bounds == [0.0, 0.0, 0.01, 0.01]
+    assert block.display.display_crs == "EPSG:4326"
+    assert "coordinates" in json.dumps(block.display.model_dump())
+
+
+def test_body_dump_identical_for_both_flags_except_delivery():
+    def body(include_map: bool) -> dict:
+        builds = [
+            _layer("aoi", include_map=include_map),
+            _layer("farmland_classes", include_map=include_map, tolerance=1.0),
+        ]
+        dumped = build_map_block(builds, max_bytes=2_000_000).model_dump()
+        for layer in dumped["layers"]:
+            layer.pop("delivery")
+        return dumped
+
+    assert body(True) == body(False)
+
+
+def test_display_survives_revalidation_into_a_parent_model():
+    class Holder(BaseModel):
+        map: MapBlock = MapBlock()
+
+    block = build_map_block([_layer("aoi", include_map=True)], max_bytes=2_000_000)
+    held = Holder(map=block)
+    assert held.map.display is not None
+    assert held.map.display == block.display
+    assert "coordinates" not in json.dumps(held.model_dump())
+
+    response = PolygonFarmlandAnalysisResponse(
+        geometry_hash="sha256:" + "0" * 64,
+        total_aoi_acres=1.0,
+        coverage_status="covered",
+        urban_screening={},
+        farmland_summary=FarmlandCategoryBreakdown(),
+        tabular_csv="",
+        source=_source(),
+        regulatory_notice=MARKER,
+        map=block,
+    )
+    assert response.map.display == block.display
+    assert "coordinates" not in json.dumps(response.model_dump())
 
 
 def test_simplification_flags_and_reduces_vertices():
     dense = _dense_square()
-    layer = _layer("farmland_classes", include_map=True, geom=dense, tolerance=1.0)
-    assert layer.simplified is True
-    assert layer.simplify_tolerance_m == 1.0
-    simplified = shape(layer.feature_collection["features"][0]["geometry"])
+    display = _layer("farmland_classes", include_map=True, geom=dense, tolerance=1.0).display
+    assert display.simplified is True
+    assert display.simplify_tolerance_m == 1.0
+    simplified = shape(display.feature_collection["features"][0]["geometry"])
     assert len(simplified.exterior.coords) < len(dense.exterior.coords)
     assert simplified.is_valid
     # Display copy stays within about a metre of the exact shape (area check).
@@ -103,37 +172,49 @@ def test_simplification_flags_and_reduces_vertices():
 
 def test_simplify_zero_tolerance_keeps_geometry():
     assert simplify_for_display([SQUARE], 0.0)[0] is SQUARE
-    layer = _layer("aoi", include_map=True, tolerance=0.0)
-    assert layer.simplified is False
-    assert layer.simplify_tolerance_m is None
+    display = _layer("aoi", include_map=True, tolerance=0.0).display
+    assert display.simplified is False
+    assert display.simplify_tolerance_m is None
 
 
 def test_size_cap_drops_whole_layers_from_the_end():
     first = _layer("aoi", include_map=True)
     second = _layer("farmland_classes", include_map=True, geom=_dense_square())
-    first_bytes = len(json.dumps(first.feature_collection, separators=(",", ":")))
+    first_bytes = len(json.dumps(first.display.feature_collection, separators=(",", ":")))
     block = build_map_block([first, second], max_bytes=first_bytes + 10)
+    display = block.display
 
-    assert block.layers[0].delivery == "inline_geojson"
-    assert block.layers[0].truncated is False
+    assert block.layers[0].delivery == "meta_geojson"
+    assert display.layers["aoi"].truncated is False
+    assert display.layers["aoi"].feature_count == 1
     assert block.layers[1].delivery == "omitted"
-    assert block.layers[1].truncated is True
-    assert block.layers[1].feature_collection is None
-    assert len(block.warnings) == 1
-    assert f"{MARKER} farmland_classes" in block.warnings[0]
-    assert block.bounds == [0.0, 0.0, 0.01, 0.01]
+    assert display.layers["farmland_classes"] == MapLayerDisplay(truncated=True)
+    assert display.layers["farmland_classes"].feature_collection is None
+    assert display.layers["farmland_classes"].feature_count is None
+    assert len(display.warnings) == 1
+    assert f"{MARKER} farmland_classes" in display.warnings[0]
+    assert display.bounds == [0.0, 0.0, 0.01, 0.01]
+    assert "coordinates" not in json.dumps(block.model_dump())
 
 
 def test_size_cap_can_drop_every_layer():
-    block = enforce_size_cap(MapBlock(layers=[_layer("aoi", include_map=True)]), max_bytes=1)
-    assert block.layers[0].truncated is True
-    assert block.bounds is None
+    block = build_map_block([_layer("aoi", include_map=True)], max_bytes=1)
+    assert block.layers[0].delivery == "omitted"
+    assert block.display.layers["aoi"].truncated is True
+    assert block.display.bounds is None
 
 
 def test_size_cap_leaves_small_block_untouched():
     block = build_map_block([_layer("aoi", include_map=True)], max_bytes=2_000_000)
-    assert block.warnings == []
-    assert block.layers[0].truncated is False
+    assert block.display.warnings == []
+    assert block.display.layers["aoi"].truncated is False
+
+
+def test_size_cap_without_display_is_a_no_op():
+    block = build_map_block([_layer("aoi", include_map=False)], max_bytes=1)
+    assert enforce_size_cap(block, max_bytes=1) is block
+    assert block.display is None
+    assert block.layers[0].delivery == "omitted"
 
 
 def test_farmland_legend_matches_classifier_values():
@@ -195,9 +276,13 @@ def test_features_from_sda_rows_converts_and_skips_bad_rows():
 
 
 def test_bounds_ignore_omitted_layers():
-    inline = _layer("aoi", include_map=True)
+    shown = _layer("aoi", include_map=True)
     omitted = _layer("urban_context", include_map=False, geom=Point(5, 5).buffer(1))
-    assert bounds_of([inline, omitted]) == [0.0, 0.0, 0.01, 0.01]
+    block = build_map_block([shown, omitted], max_bytes=2_000_000)
+    assert set(block.display.layers) == {"aoi"}
+    assert bounds_of(block.display) == [0.0, 0.0, 0.01, 0.01]
+    capped = MapDisplay(layers={"aoi": MapLayerDisplay(truncated=True)})
+    assert bounds_of(capped) is None
 
 
 def test_result_authority_is_never_official():
@@ -230,7 +315,7 @@ def test_existing_polygon_constructor_validates_without_new_fields():
     assert response.data_mode == "live"
     assert response.authority.official_filing is False
     assert response.map.layers == []
-    assert response.map.bounds is None
+    assert response.map.display is None
 
 
 def test_existing_corridor_constructor_validates_without_new_fields():
@@ -243,13 +328,8 @@ def test_existing_corridor_constructor_validates_without_new_fields():
         regulatory_notice=MARKER,
     )
     dumped = response.model_dump()
-    assert dumped["schema_version"] == "1.0"
-    assert dumped["map"] == {
-        "display_crs": "EPSG:4326",
-        "bounds": None,
-        "layers": [],
-        "warnings": [],
-    }
+    assert dumped["schema_version"] == "2.0"
+    assert dumped["map"] == {"layers": []}
 
 
 def test_map_settings_defaults_and_validation():
