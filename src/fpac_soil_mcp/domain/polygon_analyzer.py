@@ -27,7 +27,24 @@ from fpac_soil_mcp.core.constants import (
     REGULATORY_NOTICE,
 )
 from fpac_soil_mcp.domain.lesa import _normalize_productivity_index
-from fpac_soil_mcp.domain.nccpi_baseline import fetch_nccpi_baseline, nccpi_baseline_fields
+from fpac_soil_mcp.domain.nccpi_baseline import (
+    BASELINE_ERROR_MARKER,
+    fetch_nccpi_baseline,
+    nccpi_baseline_fields,
+)
+from fpac_soil_mcp.models.coverage import (
+    MAPPING_COVERED,
+    MAPPING_ERROR,
+    MAPPING_PARTIAL,
+    MAPPING_UNMAPPED,
+    RATING_ERROR,
+    RATING_PARTIAL,
+    RATING_RATED,
+    RATING_UNKNOWN,
+    RATING_UNMAPPED,
+    RATING_UNRATED,
+    RatingCoverage,
+)
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
@@ -77,6 +94,32 @@ def _normalize_numeric_rating(value: Any, productivity_index: str = "nccpi") -> 
     if rating is None or rating in sentinels:
         return None
     return rating
+
+
+def _unit_rating_coverage(
+    rating_info: dict[str, Any], numeric_rating: float | None, *, rating_failed: bool
+) -> RatingCoverage:
+    """Per-map-unit rating coverage, using the corridor rule.
+
+    A failed rating query is ``error``; a map unit without an SDA row is
+    ``unknown``; otherwise the row status is used, or derived from the rating and
+    component percentages when the row has none.
+    """
+    if rating_failed:
+        return RATING_ERROR
+    if not rating_info:
+        return RATING_UNKNOWN
+    row_status = rating_info.get("coverage_status")
+    if row_status:
+        return row_status
+    if numeric_rating is None:
+        return RATING_UNRATED
+    try:
+        rated_pct = float(rating_info.get("rated_pct", 100.0))
+        total_pct = float(rating_info.get("total_pct", 100.0))
+    except (TypeError, ValueError):
+        return RATING_RATED
+    return RATING_PARTIAL if rated_pct < total_pct else RATING_RATED
 
 
 __all__ = [
@@ -138,7 +181,7 @@ class PolygonAnalyzer:
                 query_type="polygon",
                 geometry_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000",
                 total_aoi_acres=0.0,
-                coverage_status="invalid_request",
+                coverage_status=MAPPING_ERROR,
                 urban_screening={"status": "error", "error": str(exc)},
                 farmland_summary=FarmlandCategoryBreakdown(),
                 map_units=[],
@@ -166,6 +209,8 @@ class PolygonAnalyzer:
         # 3. SDA Spatial Intersection Query with Exact Clipping
         raw_units: list[dict[str, Any]] = []
         limitations = list(REGULATORY_LIMITATIONS)
+        spatial_failed = False
+        rating_failed = False
         try:
             raw_units = self.sda_client.get_spatial_intersection(
                 wkt_str,
@@ -176,6 +221,7 @@ class PolygonAnalyzer:
         except SDAClientError as exc:
             logger.error("SDA spatial query failed: %s", exc)
             limitations.append(f"SDA spatial query error: {exc}")
+            spatial_failed = True
 
         # 4. Ingest productivity ratings for the selected index
         mukeys = list({str(r.get("mukey")) for r in raw_units if r.get("mukey")})
@@ -207,6 +253,7 @@ class PolygonAnalyzer:
                 except SDAClientError as exc:
                     logger.warning("NCCPI interpretation query failed: %s", exc)
                     limitations.append(f"NCCPI interpretation warning: {exc}")
+                    rating_failed = True
             else:
                 try:
                     prod_ratings = self.sda_client.get_productivity_ratings(
@@ -219,6 +266,7 @@ class PolygonAnalyzer:
                 except SDAClientError as exc:
                     logger.warning("Productivity rating query failed (%s): %s", norm_idx, exc)
                     limitations.append(f"Productivity rating warning ({norm_idx}): {exc}")
+                    rating_failed = True
 
         # NCCPI v3 national baseline: context only, never used for Land Evaluation
         baseline_map, baseline_limitation = fetch_nccpi_baseline(
@@ -226,6 +274,9 @@ class PolygonAnalyzer:
         )
         if baseline_limitation:
             limitations.append(baseline_limitation)
+        if rating_failed and norm_idx == "nccpi":
+            # The baseline reuses the failed primary NCCPI query.
+            baseline_map = {k: {BASELINE_ERROR_MARKER: True} for k in mukeys}
 
         # Determine county max benchmark
         county_max = max_county_rating_override
@@ -334,6 +385,9 @@ class PolygonAnalyzer:
                     ),
                     productivity_rating_source=rating_info.get("productivity_rating_source")
                     or PRODUCTIVITY_PROVENANCE.get(norm_idx),
+                    productivity_coverage_status=_unit_rating_coverage(
+                        rating_info, numeric_rating, rating_failed=rating_failed
+                    ),
                     **nccpi_baseline_fields(baseline_map.get(mukey_str)),
                 )
             )
@@ -412,23 +466,27 @@ class PolygonAnalyzer:
             total_fppa_protected_pct=_pct(protected_acres),
         )
 
-        if not unit_models:
-            coverage_status = "unmapped"
+        if spatial_failed:
+            coverage_status = MAPPING_ERROR
+        elif not unit_models:
+            coverage_status = MAPPING_UNMAPPED
         elif unmapped_remainder > 0.0:
-            coverage_status = "partially_covered"
+            coverage_status = MAPPING_PARTIAL
         else:
-            coverage_status = "covered"
-        le_coverage_status = (
-            "unknown"
-            if total_acres <= 0
-            else "unmapped"
-            if not unit_models
-            else "unrated"
-            if rated_le_acres <= 0
-            else "covered"
-            if rated_le_acres >= total_acres
-            else "partial"
-        )
+            coverage_status = MAPPING_COVERED
+        le_coverage_status: RatingCoverage
+        if spatial_failed or (rating_failed and unit_models):
+            le_coverage_status = RATING_ERROR
+        elif total_acres <= 0:
+            le_coverage_status = RATING_UNKNOWN
+        elif not unit_models:
+            le_coverage_status = RATING_UNMAPPED
+        elif rated_le_acres <= 0:
+            le_coverage_status = RATING_UNRATED
+        elif rated_le_acres >= total_acres:
+            le_coverage_status = RATING_RATED
+        else:
+            le_coverage_status = RATING_PARTIAL
         le_summary.coverage_status = le_coverage_status
 
         # 6. Generate CSV table

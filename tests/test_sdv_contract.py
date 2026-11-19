@@ -22,6 +22,7 @@ from fpac_soil_mcp.clients.sda import (
     resolve_sdv_spec,
     validate_sdv_record,
 )
+from fpac_soil_mcp.models.coverage import RATING_COVERAGE_VALUES
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "sdv_attribute_records.json"
 CASES_PATH = Path(__file__).parent / "fixtures" / "sdv_contract_cases.json"
@@ -283,6 +284,7 @@ class TestCoverageAndCountyMaxStates:
         )
         result = client.get_productivity_ratings(["1"], index_type="csr2")[0]
         assert result["coverage_status"] == "partial"
+        assert result["coverage_status"] in RATING_COVERAGE_VALUES
         assert result["productivity_rating_source"] == "SDA:MAPUNIT_IACORNSR"
         assert result["sdv_provenance"]["spec_id"] == "csr2"
 

@@ -21,7 +21,11 @@ from fpac_soil_mcp.mcp.tools.fppa_tools import (
     explain_fppa_screening_scope,
     list_farmland_classes,
 )
-from fpac_soil_mcp.mcp.tools.lesa_tools import _score_registry_facts, calculate_preliminary_lesa
+from fpac_soil_mcp.mcp.tools.lesa_tools import (
+    _lesa_coverage_status,
+    _score_registry_facts,
+    calculate_preliminary_lesa,
+)
 from fpac_soil_mcp.mcp.tools.soil_lookup_tools import (
     get_farmland_classification_by_mukey,
     get_farmland_classification_by_point,
@@ -141,7 +145,7 @@ class TestSoilTools:
         response = get_farmland_classification_by_point(latitude=120.0, longitude=-86.1581)
 
         assert isinstance(response, FarmlandClassificationResponse)
-        assert response.coverage_status == "no_data"
+        assert response.coverage_status == "error"
         assert len(response.map_units) == 0
         assert any("Latitude out of range" in lim for lim in response.limitations)
         assert response.error is not None
@@ -161,7 +165,7 @@ class TestSoilTools:
         response = get_farmland_classification_by_point(latitude=39.7684, longitude=-86.1581)
 
         assert isinstance(response, FarmlandClassificationResponse)
-        assert response.coverage_status == "no_data"
+        assert response.coverage_status == "error"
         assert len(response.map_units) == 0
         assert any("SDA connection timeout" in lim for lim in response.limitations)
         assert response.error is not None
@@ -223,8 +227,28 @@ class TestSoilTools:
         response = get_farmland_classification_by_mukey(mukey="invalid-mukey")
 
         assert isinstance(response, FarmlandClassificationResponse)
-        assert response.coverage_status == "no_data"
+        assert response.coverage_status == "error"
         assert any("Invalid mukey" in lim for lim in response.limitations)
+        assert response.error is not None
+        assert response.error.code == "validation_error"
+
+    @patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient")
+    def test_get_farmland_classification_by_mukey_upstream_error_is_not_unmapped(
+        self,
+        mock_sda_client_cls: MagicMock,
+    ) -> None:
+        mock_instance = MagicMock()
+        mock_sda_client_cls.return_value = mock_instance
+        mock_instance.base_url = "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+        mock_instance.get_by_mukey.side_effect = SDAQueryError("SDA unavailable")
+
+        response = get_farmland_classification_by_mukey(mukey="402001")
+
+        assert response.coverage_status == "error"
+        assert response.map_units == []
+        assert response.error is not None
+        assert response.error.code == "upstream_error"
+        assert any("SDA unavailable" in lim for lim in response.limitations)
 
 
 class TestFPPATools:
@@ -637,7 +661,7 @@ class TestFPPATools:
         )
 
         assert response.project_name == "wkt polygon"
-        assert response.land_evaluation.coverage_status == "covered"
+        assert response.land_evaluation.coverage_status == "rated"
         assert response.land_evaluation.rating_source_provenance == ["SDA:NCCPI_V3"]
         assert any("SDA:NCCPI_V3" in notice for notice in response.land_evaluation.notices)
         mock_analyzer_cls.return_value.analyze_polygon.assert_called_once()
@@ -1119,3 +1143,49 @@ def test_analyze_corridor_fppa_forwards_include_map(
     )
     kwargs = mock_analyzer_cls.return_value.analyze_corridor.call_args.kwargs
     assert kwargs["include_map"] is include_map
+
+
+@pytest.mark.parametrize(
+    ("rated", "total", "sources", "mapped", "expected"),
+    [
+        (5.0, 5.0, ["error"], 5.0, "error"),
+        (0.0, 5.0, ["covered", "error"], 5.0, "error"),
+        (0.0, 0.0, ["error"], 0.0, "error"),
+        (0.0, 0.0, ["covered"], 0.0, "unknown"),
+        (0.0, 5.0, ["unmapped"], 0.0, "unmapped"),
+        (0.0, 5.0, ["covered"], 5.0, "unrated"),
+        (5.0, 5.0, ["covered"], 5.0, "rated"),
+        (2.0, 5.0, ["partial"], 5.0, "partial"),
+    ],
+)
+def test_lesa_coverage_status_uses_rating_vocabulary(rated, total, sources, mapped, expected):
+    assert _lesa_coverage_status(rated, total, sources, mapped) == expected
+
+
+@patch("fpac_soil_mcp.mcp.tools.lesa_tools.PolygonAnalyzer")
+def test_calculate_preliminary_lesa_reports_rating_error(mock_analyzer_cls: MagicMock) -> None:
+    mock_response = MagicMock()
+    mock_response.manifest = {
+        "land_evaluation": {
+            "productivity_index": "NCCPI",
+            "candidate_le_score": None,
+            "aoi_relative_rating": None,
+            "rated_acreage": 0.0,
+            "unrated_acreage": 1.0,
+            "total_acreage": 1.0,
+            "coverage_percent": 0.0,
+            "coverage_status": "error",
+        }
+    }
+    mock_response.total_aoi_acres = 1.0
+    mock_response.limitations = ["NCCPI interpretation warning: SDA down"]
+    mock_response.coverage_status = "covered"
+    mock_response.map_units = [MagicMock(calculated_acres=1.0, productivity_rating=None)]
+    mock_analyzer_cls.return_value.analyze_polygon.return_value = mock_response
+
+    response = calculate_preliminary_lesa(
+        project_name="rating failure",
+        geometry="POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))",
+    )
+
+    assert response.land_evaluation.coverage_status == "error"

@@ -4,6 +4,7 @@ NCCPI v3 is the only nationally applicable, cross-state-comparable productivity
 index, so every polygon and corridor analysis reports it per map unit next to the
 primary ``productivity_index``. The baseline never feeds Land Evaluation scoring.
 Missing, sentinel, or unparseable ratings are reported as ``None``, never as 0.
+A failed baseline query reports coverage ``error`` for every requested map unit.
 """
 
 from __future__ import annotations
@@ -14,6 +15,12 @@ from typing import Any
 
 from fpac_soil_mcp.clients.sda import SDAClient, SDAClientError
 from fpac_soil_mcp.clients.sda.sdv_registry import SDV_RATING_REGISTRY
+from fpac_soil_mcp.models.coverage import (
+    RATING_ERROR,
+    RATING_PARTIAL,
+    RATING_RATED,
+    RATING_UNRATED,
+)
 
 _NCCPI_SPEC = SDV_RATING_REGISTRY["nccpi"]
 NCCPI_BASELINE_RULE = _NCCPI_SPEC.rule_name
@@ -29,6 +36,9 @@ NCCPI_BASELINE_FIELDS: tuple[str, ...] = (
 )
 """``SoilMapUnitAcreage`` field names populated by :func:`nccpi_baseline_fields`."""
 
+BASELINE_ERROR_MARKER = "_baseline_error"
+"""Row key set by :func:`fetch_nccpi_baseline` when the baseline query failed."""
+
 
 def fetch_nccpi_baseline(
     sda_client: SDAClient,
@@ -41,8 +51,9 @@ def fetch_nccpi_baseline(
 
     When the primary index is NCCPI, the already-fetched ``primary_rows`` are
     reused and SDA is not called again. Otherwise one weighted-average NCCPI
-    interpretation query runs for ``mukeys``. An SDA failure yields no rows and a
-    limitation; the caller's primary ratings are unaffected.
+    interpretation query runs for ``mukeys``. An SDA failure yields a failure
+    marker row per requested mukey and a limitation; the caller's primary ratings
+    are unaffected.
     """
     keys = [str(mukey) for mukey in mukeys if mukey]
     if not keys:
@@ -56,7 +67,8 @@ def fetch_nccpi_baseline(
             aggregation_method="Weighted Average",
         )
     except SDAClientError as exc:
-        return {}, f"NCCPI national baseline unavailable: {exc}"
+        failed = {k: {BASELINE_ERROR_MARKER: True} for k in keys}
+        return failed, f"NCCPI national baseline unavailable: {exc}"
     return {str(row.get("mukey")): dict(row) for row in rows if row.get("mukey")}, None
 
 
@@ -73,23 +85,28 @@ def _finite_float(value: Any) -> float | None:
 def nccpi_baseline_fields(row: Mapping[str, Any] | None) -> dict[str, Any]:
     """Map one NCCPI row to the ``SoilMapUnitAcreage`` baseline fields.
 
-    No row gives all ``None``. A row whose rating is missing, unparseable, or an
+    No row gives all ``None``. A failure marker row gives all ``None`` with
+    coverage ``'error'``. A row whose rating is missing, unparseable, or an
     unrated sentinel (e.g. a miscellaneous non-soil map unit) keeps rating and
     class ``None`` and reports coverage ``'unrated'``.
     """
     if row is None:
         return dict.fromkeys(NCCPI_BASELINE_FIELDS)
+    if row.get(BASELINE_ERROR_MARKER):
+        fields: dict[str, Any] = dict.fromkeys(NCCPI_BASELINE_FIELDS)
+        fields["nccpi_baseline_coverage_status"] = RATING_ERROR
+        return fields
     rating = _finite_float(row.get("numeric_rating"))
     if rating is not None and rating in _NCCPI_SENTINELS:
         rating = None
     rated_pct = _finite_float(row.get("rated_pct"))
     total_pct = _finite_float(row.get("total_pct"))
     if rating is None:
-        coverage = "unrated"
+        coverage = RATING_UNRATED
     elif rated_pct is not None and total_pct is not None and rated_pct < total_pct:
-        coverage = "partial"
+        coverage = RATING_PARTIAL
     else:
-        coverage = "rated"
+        coverage = RATING_RATED
     rating_class = row.get("rating_class") if rating is not None else None
     return {
         "nccpi_baseline_rating": rating,

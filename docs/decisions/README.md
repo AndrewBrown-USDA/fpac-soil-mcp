@@ -30,6 +30,7 @@ and refined through `adr-distillation`.
 | [0016](0016-out-of-band-aoi-screening-handoff.md) | Map AOI as Chat Session Context | Accepted (2026-10-31, EP42) | 2026-10-30 | - | - | EXECUTION_PLAN_40, 42 |
 | [0017](0017-server-map-result-contract.md) | Server Map Result Contract for the Analyze Tools | Accepted (2026-11-09, EP44) | 2026-11-04 | - | - | EXECUTION_PLAN_44 |
 | [0018](0018-conservative-missing-site-assessment-inputs.md) | Conservative Bounds for Missing Site Assessment Inputs | Accepted | 2026-11-13 | - | - | EXECUTION_PLAN_51 |
+| [0019](0019-shared-coverage-vocabularies.md) | Shared Soil Mapping and Rating Coverage Vocabularies | Accepted | 2026-11-18 | - | - | EXECUTION_PLAN_58 |
 
 ## Architectural Eras
 
@@ -72,6 +73,11 @@ the move from named productivity constants to per-strategy builders.
 Site Assessment criteria may contribute registry-maximum assumptions to a
 separate conservative bound without becoming evidence, awarded points, or an
 evaluated LESA score.
+
+**Coverage Vocabularies (2026-11-18)**: ADR 0019 replaces per-tool
+`coverage_status` strings with two shared vocabularies, soil mapping and
+rating coverage, each with an explicit `error` value so a failed query is not
+reported as unmapped or unrated soil.
 
 ## Maintenance
 

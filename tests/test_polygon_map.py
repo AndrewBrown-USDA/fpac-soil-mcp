@@ -201,7 +201,7 @@ def test_invalid_geometry_returns_descriptor_map():
     result = PolygonAnalyzer(sda_client=sda, tigerweb_client=tiger).analyze_polygon(
         {"type": "Polygon", "coordinates": [[[0, 0], [1, 1]]]}, include_map=True
     )
-    assert result.coverage_status == "invalid_request"
+    assert result.coverage_status == "error"
     assert [layer.id for layer in result.map.layers] == ["aoi", "farmland_classes", "urban_context"]
     assert all(layer.delivery == "omitted" for layer in result.map.layers)
     sda.get_spatial_intersection.assert_not_called()

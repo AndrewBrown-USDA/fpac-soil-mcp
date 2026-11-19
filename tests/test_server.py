@@ -493,3 +493,80 @@ class TestLiveNetworkIntegration:
         assert response.coverage_status in ("covered", "unmapped")
         assert response.regulatory_notice == REGULATORY_NOTICE
         assert response.source.endpoint == "https://sdmdataaccess.nrcs.usda.gov/Tabular/post.rest"
+
+
+MAPPING_ENUM = ["covered", "partial", "unmapped", "error"]
+RATING_ENUM = ["rated", "partial", "unrated", "unmapped", "unknown", "error"]
+
+
+def _resolve(schema: dict, node: dict) -> dict:
+    while "$ref" in node:
+        node = schema["$defs"][node["$ref"].rsplit("/", 1)[-1]]
+    return node
+
+
+def _field(schema: dict, path: list[str]) -> dict:
+    node = schema
+    for key in path:
+        node = _resolve(schema, node)
+        node = node["items"] if key == "[]" else node["properties"][key]
+    return _resolve(schema, node)
+
+
+def _enum(schema: dict, node: dict) -> tuple[list[str], bool]:
+    if "anyOf" in node:
+        options = [_resolve(schema, option) for option in node["anyOf"]]
+        enums = [option for option in options if "enum" in option]
+        nullable = any(option.get("type") == "null" for option in options)
+        assert len(enums) == 1
+        return enums[0]["enum"], nullable
+    return node["enum"], False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool", "path", "expected", "nullable"),
+    [
+        ("get_farmland_classification_by_point", ["coverage_status"], MAPPING_ENUM, False),
+        ("get_farmland_classification_by_mukey", ["coverage_status"], MAPPING_ENUM, False),
+        ("analyze_farmland_by_polygon", ["coverage_status"], MAPPING_ENUM, False),
+        (
+            "analyze_farmland_by_polygon",
+            ["map_units", "[]", "productivity_coverage_status"],
+            RATING_ENUM,
+            False,
+        ),
+        (
+            "analyze_farmland_by_polygon",
+            ["map_units", "[]", "nccpi_baseline_coverage_status"],
+            RATING_ENUM,
+            True,
+        ),
+        (
+            "calculate_preliminary_lesa",
+            ["land_evaluation", "coverage_status"],
+            RATING_ENUM,
+            False,
+        ),
+    ],
+)
+async def test_tool_output_schemas_list_coverage_enums(tool, path, expected, nullable) -> None:
+    server = create_mcp_server()
+    schema = {t.name: t for t in await server.list_tools()}[tool].output_schema
+    values, is_nullable = _enum(schema, _field(schema, path))
+    assert values == expected
+    assert is_nullable is nullable
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [("coverage_status", MAPPING_ENUM), ("productivity_coverage_status", RATING_ENUM)],
+)
+def test_corridor_segment_schema_lists_coverage_enums(field, expected) -> None:
+    # analyze_corridor_fppa returns a plain dict, so its MCP output schema is an untyped
+    # object; the corridor contract is checked on the response model instead.
+    from fpac_soil_mcp.models.spatial import CorridorFarmlandAnalysisResponse
+
+    schema = CorridorFarmlandAnalysisResponse.model_json_schema()
+    values, _ = _enum(schema, _field(schema, ["county_segments", "[]", field]))
+    assert values == expected

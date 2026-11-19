@@ -187,6 +187,10 @@ Caveat text comes only from `SDV_CAVEATS`. Order per row: rating status
 (`unrated_sentinel`, `no_coverage`, `unparseable`, or `no_rating`), then
 `partial_rating`, `mixed_units`, `dominant_condition`, `aws_fixed_depth`,
 `crop_specific`. Map units missing from the SDA result get only `not_found`.
+Caveat keys are reason codes, not coverage values: a row with reason `no_coverage`
+has `coverage_status` `unrated`, and a `not_found` map unit has `coverage_status`
+`unknown` (vocabulary in
+[`models/coverage.py`](../src/fpac_soil_mcp/models/coverage.py)).
 
 | Key | Text |
 |---|---|

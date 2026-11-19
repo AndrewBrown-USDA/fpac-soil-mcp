@@ -288,7 +288,7 @@ def test_missing_mcp_notice_is_returned_as_none(start_server, fake_mcp):
 
 def test_summary_preserves_partial_status_and_unknown_class_labels():
     analysis = _analysis()
-    analysis.update(status="partial", coverage_status="partially_covered")
+    analysis.update(status="partial", coverage_status="partial")
     analysis["map_units"] = [
         {"musym": "U1", "muname": "Unknown value", "farmlndcl": "Mystery classification"},
         {"musym": "U2", "muname": "Absent value", "farmlndcl": None},
@@ -300,7 +300,7 @@ def test_summary_preserves_partial_status_and_unknown_class_labels():
     text = geo.render_chat_summary_text(summary)
 
     assert summary["status"] == "partial"
-    assert summary["coverage_status"] == "partially_covered"
+    assert summary["coverage_status"] == "partial"
     assert [unit["farmlndcl"] for unit in summary["map_units"]] == [
         "Mystery classification",
         None,

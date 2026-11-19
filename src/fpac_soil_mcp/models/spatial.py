@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from fpac_soil_mcp.models.coverage import RatingCoverage, SoilMappingCoverage
 from fpac_soil_mcp.models.map import MAP_SCHEMA_VERSION, MapBlock, ResultAuthority
 from fpac_soil_mcp.models.soil import (
     FarmlandCategoryBreakdown,
@@ -31,8 +32,11 @@ class PolygonFarmlandAnalysisResponse(BaseModel):
     query_type: str = Field(default="polygon", description="Query type performed")
     geometry_hash: str = Field(description="Deterministic SHA-256 hash of the screened geometry")
     total_aoi_acres: float = Field(description="Total geodesic surface area of the AOI in acres")
-    coverage_status: str = Field(
-        description="Coverage status: 'covered', 'partially_covered', or 'unmapped'"
+    coverage_status: SoilMappingCoverage = Field(
+        description=(
+            "Soil mapping coverage of the AOI: covered, partial, unmapped, or error "
+            "(query failed or invalid geometry); see fpac_soil_mcp.models.coverage"
+        )
     )
     urban_screening: dict[str, Any] = Field(
         description="Census 2020 Urban Area preliminary screening result"
@@ -101,13 +105,20 @@ class CorridorCountySegment(BaseModel):
     segment_weight_pct: float = Field(
         default=0.0, description="Segment acreage as percentage of total corridor footprint"
     )
-    coverage_status: str = Field(
+    coverage_status: SoilMappingCoverage = Field(
         default="covered",
-        description="Soil coverage status: 'covered', 'partially_covered', or 'unmapped'",
+        description=(
+            "Soil mapping coverage of the segment: covered, partial, unmapped, or error "
+            "(query failed); see fpac_soil_mcp.models.coverage"
+        ),
     )
-    productivity_coverage_status: str = Field(
+    productivity_coverage_status: RatingCoverage = Field(
         default="unknown",
-        description="Selected productivity rating coverage, independent of mapped-soil coverage",
+        description=(
+            "Selected productivity rating coverage, independent of soil mapping coverage: "
+            "rated, partial, unrated, unmapped, unknown, or error (query failed); "
+            "see fpac_soil_mcp.models.coverage"
+        ),
     )
     component_rated_acres: float = Field(
         default=0.0,

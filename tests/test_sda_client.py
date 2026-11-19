@@ -613,10 +613,36 @@ class TestSDAClientExecution:
         r_water = next(r for r in results if r["mukey"] == "402099")
         assert r_water["is_rated"] is False
         assert r_water["numeric_rating"] is None
+        assert r_water["coverage_status"] == "unrated"
 
         r_missing = next(r for r in results if r["mukey"] == "999999")
         assert r_missing["is_rated"] is False
+        assert r_missing["coverage_status"] == "unknown"
         assert "Map unit not found" in r_missing["caveats"][0]
+
+    def test_get_productivity_ratings_zero_coverage_row_is_unrated(self) -> None:
+        mock_resp = {
+            "Table": [
+                [
+                    "mukey",
+                    "areasymbol",
+                    "musym",
+                    "muname",
+                    "numeric_rating",
+                    "rated_pct",
+                    "total_pct",
+                ],
+                ["402100", "IL019", "X", "No components", None, 0, 0],
+            ]
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_resp)
+
+        client = SDAClient(http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        result = client.get_productivity_ratings(["402100"], index_type="nccpi")[0]
+        assert result["is_rated"] is False
+        assert result["coverage_status"] == "unrated"
 
     def test_get_productivity_ratings_empty_input(self) -> None:
         client = SDAClient()

@@ -21,6 +21,12 @@ from fpac_soil_mcp.clients.http import (
 )
 from fpac_soil_mcp.core.config import settings
 from fpac_soil_mcp.core.errors import DomainError, UpstreamError, ValidationError
+from fpac_soil_mcp.models.coverage import (
+    RATING_PARTIAL,
+    RATING_RATED,
+    RATING_UNKNOWN,
+    RATING_UNRATED,
+)
 from fpac_soil_mcp.spatial.geometry import (
     GeometryValidationError,
     validate_and_sanitize_polygon_wkt,
@@ -575,7 +581,7 @@ class SDAClient:
                         "numeric_rating": None,
                         "rated_pct": 0.0,
                         "total_pct": 0.0,
-                        "coverage_status": "not_found",
+                        "coverage_status": RATING_UNKNOWN,
                         "is_rated": False,
                         "caveats": [sdv_registry.SDV_CAVEATS["not_found"]],
                         "sdv_provenance": dict(provenance),
@@ -619,11 +625,9 @@ class SDAClient:
                 )
 
             if is_rated:
-                coverage_status = "partial" if rated_pct < total_pct else "rated"
-            elif rated_pct > 0 or total_pct > 0:
-                coverage_status = "unrated"
+                coverage_status = RATING_PARTIAL if rated_pct < total_pct else RATING_RATED
             else:
-                coverage_status = "no_coverage"
+                coverage_status = RATING_UNRATED
 
             row_provenance = dict(provenance)
 
@@ -645,9 +649,12 @@ class SDAClient:
                     row_provenance["yldunits"] = yld_min
 
             if is_rated:
-                coverage_status = "partial" if total_pct > 0 and rated_pct < total_pct else "rated"
+                coverage_status = (
+                    RATING_PARTIAL if total_pct > 0 and rated_pct < total_pct else RATING_RATED
+                )
             else:
-                coverage_status = "unrated" if rated_pct > 0 or total_pct > 0 else "no_coverage"
+                # SDV reason no_coverage (0% rated components) is reported as unrated.
+                coverage_status = RATING_UNRATED
 
             # Method and scope caveats, fixed order.
             if spec.algorithm == "Dominant Condition":

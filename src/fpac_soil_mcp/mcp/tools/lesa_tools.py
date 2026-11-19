@@ -18,6 +18,17 @@ from fpac_soil_mcp.domain.lesa import (
 )
 from fpac_soil_mcp.domain.polygon_analyzer import PolygonAnalyzer
 from fpac_soil_mcp.domain.site_assessment import SITE_ASSESSMENT_REGISTRY
+from fpac_soil_mcp.models.coverage import (
+    MAPPING_ERROR,
+    MAPPING_UNMAPPED,
+    RATING_ERROR,
+    RATING_PARTIAL,
+    RATING_RATED,
+    RATING_UNKNOWN,
+    RATING_UNMAPPED,
+    RATING_UNRATED,
+    RatingCoverage,
+)
 from fpac_soil_mcp.models.lesa import (
     SUPPORTED_INDEX_MSG,
     VALIDATED_PRODUCTIVITY_INDEXES,
@@ -358,6 +369,7 @@ def calculate_preliminary_lesa(
             if not isinstance(segment, dict):
                 continue
             source_coverage.append(segment.get("coverage_status"))
+            source_coverage.append(segment.get("productivity_coverage_status"))
             for unit in segment.get("map_units") or []:
                 if not isinstance(unit, dict):
                     continue
@@ -480,7 +492,10 @@ def calculate_preliminary_lesa(
         le_summary.coverage_status = _lesa_coverage_status(
             le_summary.rated_acreage,
             le_summary.total_acreage,
-            [polygon_response.coverage_status],
+            [
+                polygon_response.coverage_status,
+                le_raw.get("coverage_status") if isinstance(le_raw, dict) else None,
+            ],
             sum(unit.calculated_acres for unit in polygon_response.map_units),
         )
         le_summary.rating_source_provenance = [
@@ -618,14 +633,19 @@ def _lesa_coverage_status(
     total_acreage: float,
     source_statuses: list[Any],
     mapped_acreage: float,
-) -> str:
-    """Normalize analysis-specific coverage outcomes to the public LESA vocabulary."""
+) -> RatingCoverage:
+    """Normalize analysis-specific coverage outcomes to the shared rating vocabulary.
+
+    Any failed source query (status ``error``) makes the result ``error``.
+    """
+    if MAPPING_ERROR in source_statuses or RATING_ERROR in source_statuses:
+        return RATING_ERROR
     if total_acreage <= 0:
-        return "unknown"
+        return RATING_UNKNOWN
     if rated_acreage <= 0:
-        if "unmapped" in source_statuses or mapped_acreage <= 0:
-            return "unmapped"
-        return "unrated"
+        if MAPPING_UNMAPPED in source_statuses or mapped_acreage <= 0:
+            return RATING_UNMAPPED
+        return RATING_UNRATED
     if rated_acreage >= total_acreage:
-        return "covered"
-    return "partial"
+        return RATING_RATED
+    return RATING_PARTIAL
