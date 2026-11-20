@@ -231,7 +231,7 @@ def get_soil_interpretations(
     rule_name: Literal["NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"] = (
         "NCCPI - National Commodity Crop Productivity Index (Ver 3.0)"
     ),
-) -> dict[str, Any]:
+) -> list[dict[str, Any]] | dict[str, Any]:
     """Retrieve component-weighted soil interpretations (such as NCCPI v3) for a list of mukeys.
 
     Args:
