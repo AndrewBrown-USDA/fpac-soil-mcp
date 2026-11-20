@@ -263,7 +263,10 @@ Modified upstream files:
   `get_site_assessment_question` output as a distinct interview card and
   structured `site_assessment_confirmed_summary` text as a separate review
   card. Card actions send the exact `site_assessment_answer` and confirmed
-  summary records as JSON chat messages (Plan 51.2.2).
+  summary records as JSON chat messages (Plan 51.2.2). The review card also
+  renders `show_site_assessment_summary` tool output, which the agent builds
+  from the recorded answers, so confirmation no longer depends on the model
+  writing summary JSON as text.
 * `client/src/components/message.tsx`,
   `client/src/components/elements/tool.tsx`, and
   `client/src/components/map/ShowOnMapButton.tsx`: collapse regular tool
@@ -364,7 +367,12 @@ Added paths:
 * `client/src/components/site-assessment-cards.tsx`: resource-driven question
   choices, evidence/comment/provenance, verification, source, and justification
   fields, explicit unknown/skipped records, and a distinct
-  assumptions/Confirm/Edit review card (Plan 51.2.2).
+  assumptions/Confirm/Edit review card (Plan 51.2.2). Choosing a band only
+  selects it; a Record answer button submits it, and the card marks the
+  verification, justification, and source fields required for scoring and
+  warns that an answer without them is submitted as unknown. The review card
+  shows verification, sources, justification, and the agent's
+  `calculation_notes` for answers submitted as unknown.
 * `client/site-assessment-fixture.html` and
   `client/src/components/site-assessment-fixture.tsx`: isolated browser
   fixture for card and AOI interaction tests (Plan 51.2.2), including the

@@ -511,6 +511,36 @@ const ToolPartRenderer = ({
     }
   }
 
+  if (
+    toolName === 'show_site_assessment_summary' &&
+    state === 'output-available' &&
+    !errorText
+  ) {
+    const summary = parseSiteAssessmentSummary(output);
+    if (summary) {
+      return (
+        <SiteAssessmentSummaryCard
+          summary={summary}
+          onConfirm={(record) =>
+            sendMessage({
+              role: 'user',
+              parts: [{ type: 'text', text: JSON.stringify(record) }],
+            })
+          }
+          onEdit={() =>
+            sendMessage({
+              role: 'user',
+              parts: [{
+                type: 'text',
+                text: 'Edit the Site Assessment answers in the review summary.',
+              }],
+            })
+          }
+        />
+      );
+    }
+  }
+
   return (
     <Tool defaultOpen={false}>
       <ToolHeader type={toolName} state={effectiveState}>

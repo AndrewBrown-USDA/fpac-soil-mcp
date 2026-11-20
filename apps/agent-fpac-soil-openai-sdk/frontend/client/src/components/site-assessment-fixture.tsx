@@ -44,11 +44,20 @@ const answer: SiteAssessmentAnswer = {
   justification: 'Sample justification',
 };
 
+const unverifiedAnswer: SiteAssessmentAnswer = {
+  ...answer,
+  criterion_number: 3,
+  is_verified: false,
+  source_provenance: [],
+  justification: '',
+};
+
 const summary: SiteAssessmentConfirmedSummary = {
   type: 'site_assessment_confirmed_summary',
   confirmed: true,
-  answers: [answer],
+  answers: [answer, unverifiedAnswer],
   assumptions: ['Criterion 2: assumed (no evidence)'],
+  calculation_notes: { '3': 'Submitted as unknown: not verified against the cited source.' },
 };
 
 const cdlOutput = {

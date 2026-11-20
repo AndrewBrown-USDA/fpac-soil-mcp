@@ -4,6 +4,20 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/site-assessment-fixture.html');
 });
 
+test('choosing a band only selects it; Record answer emits after the details are filled', async ({ page }) => {
+  await expect(page.getByTestId('site-assessment-record')).toBeDisabled();
+  await page.getByTestId('site-assessment-band-range_20_90_1').click();
+  await expect(page.getByTestId('site-assessment-band-range_20_90_1')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('emitted-record')).not.toContainText('site_assessment_answer');
+  await expect(page.getByTestId('site-assessment-requirements')).toContainText('verification against the cited source');
+  await expect(page.getByTestId('site-assessment-missing')).toContainText('submitted as unknown');
+
+  await page.getByTestId('site-assessment-verified').check();
+  await expect(page.getByTestId('site-assessment-missing')).toHaveCount(0);
+  await page.getByTestId('site-assessment-record').click();
+  await expect(page.getByTestId('emitted-record')).toContainText('"is_verified":true');
+});
+
 test('selecting a resource band emits answer, evidence, verification, source, justification, and provenance', async ({ page }) => {
   await page.getByTestId('site-assessment-evidence').fill('Observed field evidence');
   await page.getByTestId('site-assessment-comment').fill('Verified during review');
@@ -12,6 +26,7 @@ test('selecting a resource band emits answer, evidence, verification, source, ju
   await page.getByTestId('site-assessment-source-provenance').fill('NRCS field record\nCounty land-use map');
   await page.getByTestId('site-assessment-justification').fill('Both sources support the selected interval.');
   await page.getByTestId('site-assessment-band-range_20_90_1').click();
+  await page.getByTestId('site-assessment-record').click();
 
   await expect(page.getByTestId('emitted-record')).toHaveText(JSON.stringify({
     type: 'site_assessment_answer',
@@ -46,13 +61,27 @@ test('unknown and skipped answers are explicit without invented score bands', as
   await expect(page.getByTestId('emitted-record')).toContainText('"selected_band":null');
 });
 
+test('review summary flags answers that will be submitted as unknown', async ({ page }) => {
+  const summary = page.getByTestId('site-assessment-summary');
+  await expect(summary.getByTestId('site-assessment-note')).toHaveText(
+    'Submitted as unknown: not verified against the cited source.',
+  );
+  await expect(summary.getByTestId('site-assessment-notes-banner')).toContainText('1 answer(s) will be submitted as unknown');
+  await expect(summary).toContainText('Sample justification');
+});
+
 test('review summary shows assumptions and Confirm/Edit emit their distinct actions', async ({ page }) => {
   await expect(page.getByTestId('site-assessment-assumptions')).toContainText('assumed (no evidence)');
   await page.getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByTestId('editing')).toBeVisible();
 
   await page.getByRole('button', { name: 'Confirm' }).click();
-  await expect(page.getByTestId('emitted-record')).toHaveText(JSON.stringify({
+  const emitted = JSON.parse((await page.getByTestId('emitted-record').textContent()) ?? '');
+  expect(emitted.calculation_notes).toEqual({
+    '3': 'Submitted as unknown: not verified against the cited source.',
+  });
+  expect(emitted.answers[1]).toMatchObject({ criterion_number: 3, is_verified: false });
+  await expect(page.getByTestId('emitted-record')).toContainText(JSON.stringify({
     type: 'site_assessment_confirmed_summary',
     confirmed: true,
     answers: [{
@@ -75,8 +104,7 @@ test('review summary shows assumptions and Confirm/Edit emit their distinct acti
       source_provenance: ['Sample source'],
       justification: 'Sample justification',
     }],
-    assumptions: ['Criterion 2: assumed (no evidence)'],
-  }));
+  }).slice(0, -3));
 });
 
 test('a replaced or detached AOI prevents a CDL result from entering map context', async ({ page }) => {
