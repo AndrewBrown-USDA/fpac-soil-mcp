@@ -4,9 +4,9 @@
 
 `fpac-soil-mcp` is a Model Context Protocol (MCP) server for Farmland Protection Policy Act (FPPA) screening. It connects assistants to USDA Natural Resources Conservation Service (NRCS) Soil Data Access (SDA) and other public-facing APIs.
 
-The system automates preliminary soil analysis, site assessments, project alternatives comparisons, draft form generation (AD-1006 and CPA-106), and annual CPA-2 reporting records.
+The current server provides preliminary soil and farmland screening, polygon and corridor analysis, candidate LESA calculations, corridor-alternative comparisons, and map results. Broader case and site-alternatives workflows, draft form generation, clearance letters, and annual CPA-2 reporting remain roadmap goals and are not part of the current server surface.
 
-The server operates in a sandbox with public data. It generates preliminary screening estimates. It does not issue official NRCS land determinations or sign formal agency documents.
+The server uses public data to produce preliminary screening estimates. It does not issue official NRCS land determinations or sign formal agency documents.
 
 The roadmap has two parts: server Phases 0-8 (section 3) and parallel delivery tracks for Deployment (D), Evaluation (E), the Agent App (A), and the MCP Workbench (W) (see [Delivery Tracks](#delivery-tracks)).
 
@@ -20,7 +20,7 @@ Furthermore, existing desktop GIS automation tools (such as the Colorado NRCS Ar
 
 ### Goals
 
-The system gives MCP clients tools to:
+The longer-term roadmap aims to give MCP clients the capabilities below. These are roadmap goals, not a list of features currently shipped; see the phase and delivery-track status notes for implementation status and remaining work.
 
 1. Register FPPA requests with submitting agencies, dates, and status.
 2. Ingest polygon and linear corridor Areas of Interest (AOIs) with automated geodesic buffering and unit conversions (`feet`, `meters`, `miles`).
@@ -33,7 +33,7 @@ The system gives MCP clients tools to:
 9. Calculate candidate Land Evaluation (LE) relative ratings normalized by county baselines, supporting state-specific productivity indexes (CSR2, CPI, Storie Index).
 10. Calculate preliminary Site Assessment (SA) scores implementing 7 CFR § 658.5(c) corridor scoring rules.
 11. Populate watermarked draft Form AD-1006 (parcels) and Form NRCS-CPA-106 (corridors) using standard document template placeholder tags.
-12. Generate standard FPPA clearance and exemption determination letters covering statutory exemption categories (including "Minimal Surface Disturbance").
+12. Generate watermarked, non-official draft FPPA clearance and exemption letters from screening evidence; do not make legal exemption determinations.
 13. Compare project design alternatives (Alternatives B, C, and D) side-by-side with strict analytical neutrality.
 14. Track request lifecycle, claimed exemptions, and calculation audits in an ACID-compliant local SQLite case store.
 15. Generate annual multi-agency Form NRCS-CPA-2 reporting workbooks aggregating all 19 statutory indicators across the 22 Federal action agencies.
@@ -58,7 +58,9 @@ The server does not:
 - Write directly to authoritative agency case databases.
 - Run unvalidated, arbitrary user SQL.
 
-## 2. System Architecture
+## 2. Target Architecture
+
+The diagram below includes planned components as well as current services. The case store, form and letter generator, and CPA-2 reporting engine are not implemented in the current server. For the implemented component boundaries and request flow, see the [Architecture Guide](../docs/architecture.md).
 
 ```mermaid
 flowchart LR
@@ -103,9 +105,9 @@ flowchart LR
 - **Cloud-Native & Headless**: Zero dependency on proprietary desktop GIS (`arcpy`), local geodatabases, or manual CSV maintenance.
 - **Single Entry Point**: All transports (`stdio`, `sse`, `http`) use one unified runner.
 - **Strict Query Boundaries**: Predefined, parameterized SQL templates and REST endpoints only. No dynamic SQL passthrough.
-- **True Multi-County Partitioning**: Segment linear corridors by county, fetch county-specific soils and NASS baselines, and enforce strict sum reconciliation.
-- **Explicit Provenance**: Every response includes query timestamps, source tables, and caveats.
-- **Clear Status Codes**: Separate `covered`, `unmapped`, `invalid_request`, and `upstream_error` states.
+- **True Multi-County Partitioning**: Segment linear corridors by county, fetch county-specific soils, retrieve NASS baselines when enabled or report unavailable data, and enforce sum reconciliation.
+- **Explicit Provenance**: Responses include applicable source metadata, timestamps, coverage, and caveats.
+- **Clear Status Codes**: Soil mapping uses `covered`, `partial`, `unmapped`, or `error`; rating coverage uses `rated`, `partial`, `unrated`, `unmapped`, `unknown`, or `error` (see [ADR 0019](../docs/decisions/0019-shared-coverage-vocabularies.md)).
 - **Human Authority**: Software generates estimates; only designated officials approve formal determinations.
 
 ### Delivery Surfaces
@@ -239,31 +241,23 @@ flowchart TD
 
 ---
 
-### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (Phase 4 evidence delivered; formal agency review remains out of scope)
+### Phase 4: Preliminary Land Evaluation & Site Assessment Workbench (core evidence delivered; automated agricultural-adjacency evidence remains deferred)
 
 **Goal**: Calculate reproducible candidate Land Evaluation (LE) and Site Assessment (SA) estimates integrating state productivity ratings, relative county baselines, and objective physical measurements.
 
-**Delivered**: Plans 17-26 (historical LE scoring, SDV routing, unified LESA, and PR #9 remediation), Plan 27 (state productivity indexes), Plans 31 and 32 (review remediation), and Plan 45 (validated Site Assessment inputs, metadata-driven productivity aggregation, deterministic gold-set and model-assisted evidence); see `planning/EXECUTION_PLAN_N.md`, `planning/EXECUTION_PLAN_45.md`, and [ADR 0014](../docs/decisions/0014-registry-validated-sdv-metadata-contract.md). Plan 26 is historical context; its earlier single-table/national-index assumptions do not describe the current routing contract.
+**Delivered**: Plans 17-27 (historical LE scoring, SDV routing, unified LESA, state productivity indexes, and related remediation), Plans 31 and 32 (review remediation), Plan 45 (validated Site Assessment inputs, metadata-driven productivity aggregation, and evaluation evidence), Plan 57 (always-on NCCPI baseline), and Plan 58 (shared coverage status vocabularies); see `planning/EXECUTION_PLAN_N.md`, `planning/EXECUTION_PLAN_45.md`, [ADR 0014](../docs/decisions/0014-registry-validated-sdv-metadata-contract.md), and [ADR 0019](../docs/decisions/0019-shared-coverage-vocabularies.md). Plan 26 is historical context; its earlier single-table/national-index assumptions do not describe the current routing contract.
 
-**Delivered**: Criterion 2 perimeter non-urban screening for site and corridor
-workflows, using existing TIGERweb and geometry abstractions with bounded ratio
-measurement, explicit unavailable/error states, provenance, and verification
-fields. This is a screening scaffold only; TIGERweb non-urban status, SSURGO
-farmland classifications, and soil productivity ratings do not establish
-current agricultural land use.
+**Criterion 2 status**: Analysts may supply Criterion 2 points with a rationale; registry-scored percentage inputs also require source provenance. The server does not automatically derive Criterion 2 scores from CDL. CDL results remain separate mapped land-cover context, and TIGERweb non-urban screening, SSURGO farmland classifications, and soil productivity ratings do not establish current agricultural use.
 
-**Remaining**: An authoritative spatial current-agricultural-land-use source
-must be integrated before the server can award verified agricultural-adjacency
-Criterion 2 points. The existing preliminary-screening and regulatory
-limitations remain in force.
+**Remaining**: Automated agricultural-adjacency evidence and scoring are not implemented. Any future method must define and validate appropriate evidence before the server derives Criterion 2 points automatically. When no analyst-proposed input or approved evidence is supplied, the criterion remains unavailable rather than being inferred from CDL.
 
-**Remaining**: Formal NRCS review, signed forms, and any verified current
-agricultural-land-use source remain outside this preliminary service. The
-agricultural-adjacency source is intentionally deferred and remains
-`unavailable` unless supplied by an approved source or analyst. Criterion 7
-farm-size comparison is available only from supplied or retrieved county
-baselines and remains preliminary. The next server roadmap item is the Phase 8
-map envelope, tracked as Track A M3 and required before Track A M4.
+**Remaining**: Formal NRCS review, signed forms, and verified current
+agricultural-land-use determinations remain outside this preliminary service.
+Criterion 7 farm-size comparison is available only from supplied or retrieved
+county baselines and remains preliminary. Phase 8 M3-M5 map deliverables are
+complete; the remaining map work is listed in
+[Phase 8](#phase-8-spatial-visualization--interactive-client-demo) and
+[Track A](#track-a-agent-app).
 
 **Scope & Deliverables** (referencing `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`):
 1. **Relative Land Evaluation (LE) Normalization & Scoring (0–100 Scale)**:
@@ -284,7 +278,7 @@ map envelope, tracked as Track A M3 and required before Track A M4.
      - State-approved local LE schedules with user-supplied or SDA-retrieved county maximum rating overrides (`max_county_rating_override`).
 3. **Objective Site Assessment Physical Measurements (0–160 Scale)**:
    - Automate objective physical measurements using Census TIGERweb and spatial algorithms:
-     - Criterion 2: Perimeter agricultural adjacency ratio (% of AOI boundary bordering agricultural/rural land).
+     - Criterion 2: Perimeter agricultural adjacency. Analyst-proposed points may be supplied with a rationale; the server does not automatically score this criterion from CDL land-cover context.
      - Criterion 7: Farm size comparison ratio against NASS county average farm size.
 4. **Explicit Human-Judgment Handling for Subjective Criteria (Part VI)**:
    - Treat subjective criteria (Part VI items) as explicit input slots with mandatory user rationale fields. Never fabricate subjective scores.
@@ -303,19 +297,21 @@ map envelope, tracked as Track A M3 and required before Track A M4.
 - Relative LE scoring, county maximum normalization, and comparison percentile calculations match verified benchmark fixtures within 0.01 precision.
 - Null and unrated soil map units are cleanly caught, reported in data caveats, and excluded from mathematical skew.
 - Dynamic SDV attribute routing retrieves valid state-specific productivity ratings (CSR2, CPI, Storie) from SDA without hardcoded table schema assumptions.
-- Objective SA calculations (perimeter adjacency, farm size ratio) reproduce deterministically against test fixtures.
+- Site Assessment input handling preserves explicit unavailable states and analyst-proposed Criterion 2 rationales; automated agricultural-adjacency scoring remains deferred.
 - Projects scoring $\ge 160$ points automatically receive mandatory alternatives flags in response payloads.
 
 ---
 
-### Phase 5: Project Alternatives & Draft Form Generation
+### Phase 5: Project Alternatives & Draft Form Generation (broader workflow planned)
 
-**Goal**: Compare project design options, populate watermarked draft Form AD-1006 and Form NRCS-CPA-106 documents using canonical placeholder tags, and generate standard FPPA clearance letters.
+**Goal**: Expand project-alternative workflows beyond the current corridor comparison, populate watermarked draft Form AD-1006 and Form NRCS-CPA-106 documents using canonical placeholder tags, and generate standard FPPA clearance letters.
+
+**Status**: `analyze_corridor_fppa` accepts user-supplied corridor alternatives and returns comparative screening results. Broader site/project alternative workflows, document generation, and clearance letters remain roadmap work; the current server does not generate forms or letters.
 
 **Scope & Deliverables** (referencing `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`):
-1. **Multi-Alternative Design Slot Mapping**:
-   - Compare proposed site/corridor designs alongside up to 3 named alternatives (Site/Corridor Alternatives B, C, and D) across soil types, farmland classes, converted acreages, relative LE values, and preliminary SA scores.
-   - Maintain strict analytical selection neutrality without ranking, endorsing, or selecting preferred alternatives.
+1. **Expanded Multi-Alternative Design Slot Mapping**:
+   - Extend beyond current corridor comparisons to support broader site/project cases with up to 3 named alternatives (Site/Corridor Alternatives B, C, and D) across soil types, farmland classes, converted acreages, relative LE values, and preliminary SA scores.
+   - Maintain decision-support neutrality: report comparable metrics without endorsing or selecting a preferred alternative.
 2. **Standard Document Templating & Tag Substitution Engine**:
    - Ingest and populate standard NRCS document templates matching state office practices (`FormDocument` tag-matching schema):
      - **Administrative & Project Metadata**: `{Project Name}`, `{Agency}`, `{Type of Project}`, `{County}`, `{State}`, `{Date Received}`, `{Date of Evaluation}`, `{Reviewer}`.
@@ -323,8 +319,8 @@ map envelope, tracked as Track A M3 and required before Track A M4.
      - **Direct & Converted Acreage**: `{Direct Contains Prime Farmland}`, `{Total Prime Farmland}`, `{Total Important Farmland}`, `{Total Converted Farmland Percent}`.
      - **Multi-Alternative Comparative Slots**: `{Alternative B/C/D Prime Farmland}`, `{Alternative B/C/D Important Farmland}`, `{Alternative B/C/D Percent Farmland to be Converted}`, `{Alternative B/C/D Relative Rating Value}`, `{Alternative B/C/D Percent Farmland with Same or Higher Relative Value}`.
      - **Land Evaluation Metrics**: `{Direct Relative Rating Value}`, `{Direct Percent Farmland with Same or Higher Relative Value}`.
-3. **Automated FPPA Clearance & Exemption Determination Letters**:
-   - Generate official-format draft clearance letters (`Letter_Template.docx` equivalent) when an AOI is determined exempt from FPPA provisions:
+3. **Draft FPPA Clearance and Exemption Letters (non-official)**:
+   - Generate standard-format, watermarked draft letters from supplied screening evidence; do not independently determine exemption eligibility:
      - Inject recipient details: `{Requester Name}`, `{Requester Company}`, `{Requester Street}`, `{Requester City}`, `{Requester State}`, `{Requester Zip}`.
      - Inject standardized regulatory exemption statements (`{Letter Statement}`):
        - **Existing Urban Land / Urbanized Area**: Exemption under 7 CFR § 658.2(a) based on Census TIGERweb urban area screening.
@@ -337,15 +333,17 @@ map envelope, tracked as Track A M3 and required before Track A M4.
 
 **Exit Criteria**:
 - Draft AD-1006 (parcels) and CPA-106 (corridors) documents render all template tags cleanly without unreplaced placeholders.
-- Side-by-side alternative comparison tables correctly populate Slots B, C, and D from saved calculation runs.
+- Broader site/project alternative comparison tables correctly populate Slots B, C, and D from saved calculation runs; corridor-alternative comparisons remain available through `analyze_corridor_fppa`.
 - Clearance letter generator produces legally cited exemption statements for all supported statutory exemption categories.
 - Every generated document contains non-official preliminary watermarks and human authority boundary disclaimers.
 
 ---
 
-### Phase 6: Case Archival & CPA-2 Annual Reporting
+### Phase 6: Case Archival & CPA-2 Annual Reporting (planned; not implemented)
 
 **Goal**: Maintain an immutable local SQLite case record and aggregate annual reporting statistics across all 22 Federal action agencies into Form NRCS-CPA-2 workbooks.
+
+**Status**: The current server does not provide case archival or CPA-2 workbook generation.
 
 **Scope & Deliverables** (referencing `planning/RESEARCH_ARCGIS_TOOLBOX_CROSSWALK.md`):
 1. **ACID-Compliant SQLite Case & Audit Database**:
@@ -382,6 +380,8 @@ map envelope, tracked as Track A M3 and required before Track A M4.
 
 **Goal**: Verify reliability, compile the gold-set evaluation package, and assemble final hackathon materials.
 
+**Status**: Offline contract tests and T0/T1 evaluation infrastructure are available; the exit criteria below describe the broader phase goal, not completed release evidence. See [Track E](#track-e-evaluation) for current evaluation status and limitations.
+
 **Scope & Deliverables**:
 1. **Gold-Set Evaluation Suite**: Run 50+ end-to-end test cases covering point, parcel, corridor, multi-county, and error scenarios.
 2. **Adversarial Safety Suite**: Verify the assistant rejects requests to sign forms, issue official rulings, or bypass human review.
@@ -404,30 +404,30 @@ map envelope, tracked as Track A M3 and required before Track A M4.
 
 **Goal**: Deliver a structured, machine-readable MCP visualization contract and an interactive map client (the agent-app map, [Track A](#track-a-agent-app)) enabling bi-directional map interaction, geometry staging, layer rendering, and resilient live/offline presentation.
 
-**Status (2026-11-09):** Track A M3-M5 delivered by [Plan 44](EXECUTION_PLAN_44.md) and [ADR 0017](../docs/decisions/0017-server-map-result-contract.md): an opt-in `map` block (descriptors by default, inline GeoJSON with server legends) on `analyze_farmland_by_polygon`, `analyze_corridor_fppa` and `get_soil_polygons_by_geometry`; results drawn on the agent-app map from that block, with "Show on map" on tool cards and a click popup on result polygons; fixed context overlays (SSURGO WMS, TIGERweb counties and 2020 urban areas) with identify and "Use as AOI". Remaining Phase 8 items:
+**Status (2026-11-20):** The server map contract (schema 2.0) and the agent-app map experience have shipped across Plans 44, 51, 54-56, and 59 (see [ADR 0017](../docs/decisions/0017-server-map-result-contract.md)). Spatial tools return layer descriptors in the response body and display GeoJSON in result `_meta`; the agent app renders tool results, supports AOI and corridor workflows, and provides fixed context overlays including CDL context and NAIP imagery. CDL is display/context only and does not automatically score Site Assessment Criterion 2. Remaining Phase 8 items:
 - The full section 4 envelope (`analysis_id`, `status`, `summary`, `metrics`, `provenance`, `privacy` as top-level objects; ADR 0017 maps what exists today).
 - Offline fixture mode (`demo_testbeds.gpkg`, `data_mode: "fixture"` banners) and the two benchmark testbeds.
-- Drawing corridor centerlines and alternatives on the map; multiple labelled AOIs.
+- Multiple or labelled AOIs; corridor drawing and direct corridor screening are delivered.
 - The 0.1% map-to-table tolerance exit check as an automated test.
 - Track A M6 (more formats, including WKT input) and M7 (hardening).
 
 **Scope & Deliverables** (referencing `planning/SPATIAL_VISUALIZATION_STRATEGY.md`):
 1. **Structured MCP Visualization Response Envelope & Layer Contract**:
-   - Standardize a versioned JSON output envelope (`schema_version: "1.0"`) across spatial tools returning:
-     - `analysis_id`, `analysis_type`, `status`, `data_mode` (`live | cached | fixture`), `source_status` breakdown.
+   - Standardize a versioned JSON output envelope across spatial tools. This is broader than the current ADR 0017 map contract (schema 2.0); assign the full envelope its own version.
+     - `analysis_id`, `analysis_type`, `status`, `data_mode` (`live | cached | fixture`), and a `source_status` breakdown.
      - `authority` metadata (`machine_estimate`, `analyst_proposed`, `agency_approved`, `nrcs_official`).
      - `map` block containing `display_crs` (EPSG:4326), bounding box, and typed `layers` descriptors (`farmland_classes`, `urban_context`, `county_segments`, `corridor_buffers`).
      - Layer metadata including stable category codes, display legends, color ramps, and bounded GeoJSON FeatureCollections (or MCP Resource URIs for large payloads).
      - Full provenance records (query timestamps, calculation CRS `EPSG:6933`, rule versions, and upstream service vintages).
      - Privacy and Section 1619 redaction states.
-   - This deliverable is agent-app map phase M3 and must ship before Track A M4 (results on map).
+   - Track A M3 is delivered; M4 consumes the server map contract. The current schema places layer descriptors in the response body and display GeoJSON in result `_meta` (see [ADR 0017](../docs/decisions/0017-server-map-result-contract.md)).
 2. **Interactive Map Client** (delivered through [Track A](#track-a-agent-app) map phases M2 and M4):
    - Marimo + ipyleaflet demo (`demos/hackathon_demo.py`): superseded for now by the agent-app map ([Plan 37](EXECUTION_PLAN_37.md) D2, 2026-10-24); not built.
    - **Bi-Modal Geometry Ingestion**: Support drawing AOI polygons and multi-alternative corridor centerlines directly on the interactive map, alongside chat/form parameter inputs (buffer distance, unit selection, route naming).
    - **Explicit Dispatch Control**: Provide an explicit *"Run Preliminary Screening"* / *"Evaluate Corridor Alternatives"* trigger button to stage geometries before executing MCP tool calls (preventing accidental queries during drawing).
    - **Accessible Results Visualization**: Render thematic farmland choropleths, Census urban contextual boundaries, and corridor impact buffers alongside an accessible tabular equivalent displaying direct/indirect acreages, farmland breakdowns, and objective comparative metrics.
 3. **Resilient Hybrid Execution & Pre-packaged Benchmark Testbeds**:
-   - Connect live by default to USDA SDA, Census TIGERweb, and USDA NASS QuickStats endpoints.
+   - Connect to USDA SDA and Census TIGERweb; use NASS QuickStats when enabled and configured with an API key.
    - Implement explicit (non-silent) fallback to local GeoPackage / DuckDB Spatial snapshots (`src/fpac_soil_mcp/data/fixtures/demo_testbeds.gpkg`) with prominent UI data-mode banners when network connectivity is constrained.
    - Pre-package two benchmark demonstration scenarios:
      - **Testbed 1 (Agricultural Core - Boone/Story County, IA)**: High Prime Farmland parcel screening, urban fringe exclusion check, and CSR2 productivity integration.
@@ -466,7 +466,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track D: Deployment
 
 - **Goal:** Run the MCP server and its clients as Databricks Apps with reproducible locks and least-privilege grants.
-- **Status:** The `mcp-fpac-soil` Databricks App serves Streamable HTTP on `/mcp`, plus `/health` and `/meta`.
+- **Status:** The `mcp-fpac-soil` Databricks App serves Streamable HTTP on `/mcp`, plus `/health` and `/meta`. The root server itself does not configure authentication; deployment access controls are provided by the hosting platform.
 - **Delivered:** Databricks App deployment (`app.yaml`); [ADR 0013](../docs/decisions/0013-pin-pypi-default-index-in-every-uv-project.md) (PyPI default index in every uv project).
 - **Backlog:**
   - Proposed: record the agent-app live-check evidence; the 35.5.1 table in [STATE_35.md](STATE_35.md) is empty.
@@ -487,7 +487,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
   - Deferred: run the T2 case corpus against deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent. The Plan 49 authenticated smoke client and notebook (a separate access check, not corpus evaluation) are built but their live acceptance is deferred to a post-hackathon USDA deployment with a provisioned service principal (D14; [state](STATE_49.md)).
   - Proposed: expand ground truth with domain-owner sign-off.
   - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
-  - Deferred: verified agricultural-land adjacency and associated Criterion 2 scoring remain unavailable until PR #79/CDL integration is merged and validated and an authoritative adjacency source is approved.
+  - Deferred: define whether and how CDL can support automatic Criterion 2 scoring. Criterion 2 points can be supplied as analyst-proposed inputs with a rationale; the server does not derive them automatically from CDL.
 - **Exit criteria:** T0 contract tests and the deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for every ground-truth case; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
 - **Open decisions:** T2 authentication is reopened (D14): the Databricks Apps proxy rejects the notebook-runtime token, so the D13 run-as path needs an OAuth M2M token for a dedicated service principal, which means a stored OAuth secret. An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
 - **Source:** [Tracks research, 4.2](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#42-track-e-evaluation).
@@ -495,16 +495,16 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track A: Agent App
 
 - **Goal:** Give USDA staff a chat interface in Databricks that answers only from MCP tool output and keeps the preliminary-screening boundary ([ADR 0003](../docs/decisions/0003-preliminary-screening-authority-boundary.md)).
-- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through model gateway. Its chat UI is a vendored, owned copy of the pinned template ([ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md)) with a map panel MVP: draw or paste one AOI, run a preliminary screening, see it on the map. The map AOI is chat session context ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)): one AOI per conversation, sent with every chat turn, ephemeral like the chat. Orchestration 46 added shared policy assertions and map uncertainty safeguards; deployed performance and model-assisted results were not established by its benchmark dry run.
-- **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md), [42](EXECUTION_PLAN_42.md) and [44](EXECUTION_PLAN_44.md) (M3-M5, [ADR 0017](../docs/decisions/0017-server-map-result-contract.md)); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md).
+- **Status:** `apps/agent-fpac-soil-openai-sdk/` is a separate MCP client project that calls deployed `/mcp`, with its model routed through model gateway. The vendored chat UI supports polygon AOIs and a separate corridor workflow, map-based and chat-based screening, tool-result maps, and fixed context overlays. The AOI and corridor are ephemeral per-chat contexts ([ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md)). CDL summaries and overlays are context only and do not automatically score Criterion 2. Orchestration 46's benchmark was a manifest-only dry run; it did not measure deployed service performance or produce model-assisted results.
+- **Delivered:** Plans 35, [40](EXECUTION_PLAN_40.md), [41](EXECUTION_PLAN_41.md), [42](EXECUTION_PLAN_42.md), [44](EXECUTION_PLAN_44.md), 51, 53-56, and 59 (map contract, Site Assessment interview, CDL context, and agent-app map workflows); [ADR 0012](../docs/decisions/0012-databricks-agent-app-as-separate-mcp-client.md) and its 2026-10-23 amendment, [ADR 0015](../docs/decisions/0015-vendored-agent-app-frontend.md), [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md), and [ADR 0017](../docs/decisions/0017-server-map-result-contract.md).
 - **Backlog:**
   - Delivered: M0, vendor and pin the chat UI (ADR 0015).
   - Resolved: M1 AOI handoff, by ADR 0016 (a single AOI per conversation as session context, not pre-trace redaction). Multiple or labelled AOIs stay in the backlog.
   - Delivered (MVP): M2, polygon and rectangle drawing and GeoJSON paste or upload ([Plan 42](EXECUTION_PLAN_42.md)).
   - Delivered: M3, the server `map` result ([ADR 0017](../docs/decisions/0017-server-map-result-contract.md), [Plan 44](EXECUTION_PLAN_44.md)); see [Phase 8](#phase-8-spatial-visualization--interactive-client-demo) for what remains of the full envelope.
   - Delivered: M4, results on the map from the `map` result, "Show on map" on tool cards (both analyze tools and `get_soil_polygons_by_geometry`), and a click popup on result polygons with the map unit, farmland class, acres and productivity the server sent ([Plan 44](EXECUTION_PLAN_44.md) A6, A7).
-  - Delivered: M5, a fixed context-overlay catalog (SSURGO WMS, TIGERweb counties and 2020 urban areas) loaded by the browser, a Layers control on the map, identify popups and "Use as AOI" for counties and urban areas under the vertex cap ([Plan 44](EXECUTION_PLAN_44.md) D5, D6; [trial](evidence/44.10.1-trial.md)).
-  - Proposed: remaining M2 items: lines and corridors, points, an AOI list, custom basemaps.
+  - Delivered: M5, a fixed context-overlay catalog including SSURGO WMS, TIGERweb counties and 2020 urban areas, CDL context, and NAIP imagery; map layer controls, identify popups, and "Use as AOI" for counties and urban areas under the vertex cap ([Plan 44](EXECUTION_PLAN_44.md) D5, D6; [Plan 51](EXECUTION_PLAN_51.md); [Plan 54](EXECUTION_PLAN_54.md); [trial](evidence/44.10.1-trial.md)).
+  - Proposed: remaining M2 items: point geometries, multiple or labelled AOIs, and custom basemaps.
   - Proposed: WKT input for `get_soil_polygons_by_geometry` (POLY-02 passes WKT; the tool takes GeoJSON only; [44.11.3 eval](evidence/44.11.3-eval.md)), with other formats in M6.
   - Proposed: serve the AOI vertex limit from the server so the frontend uses the same value as `GEO_MAX_VERTICES` ([Plan 44 review](REVIEW_44.md) R7).
   - Proposed: map unit component summary in the result popup (drainage class, hydric rating, slope); needs a new SDA query, so not part of `include_map` ([ADR 0017](../docs/decisions/0017-server-map-result-contract.md)).
@@ -513,12 +513,13 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
   - Proposed: M6 (more formats) and M7 (hardening).
   - Proposed: opt-in chat history and stored sessions (template chat database, for example Lakebase) for users who opt in or deployments in approved secure environments, including whether the AOI is stored with the chat ([Plan 42](EXECUTION_PLAN_42.md) deferral).
   - Delivered: one AOI reference for the map screening and the chat (the map panel sends the chat's reference to the screening route; [ADR 0016](../docs/decisions/0016-out-of-band-aoi-screening-handoff.md), [42.6.1 evidence](evidence/42.6.1-trial.md)).
-  - Proposed: an agent-guided Site Assessment with formalized, rule-based scoring for consistent LESA results: server-side § 658.5(b) scoring from facts, a shared question schema, system-instruction and prompt updates, prefill from NASS and TIGERweb, a multi-turn consistency eval ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md)). The server work belongs on the server roadmap.
-  - Proposed: the agent and the FPPA prompts do not suggest alternatives or siting (farmland class alone does not show land is suitable); alternatives are compared only when the user provides them ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md), finding 12).
+  - Delivered: resource-backed Site Assessment questions and scoring bands, a guided one-question-at-a-time interview, structured answer and confirmation records, and post-confirmation submission to the server's registry scoring rules ([Plan 51](EXECUTION_PLAN_51.md)). The interview is offered for site projects, not corridors.
+  - Proposed: prefill Site Assessment facts from configured NASS/TIGERweb evidence and add an end-to-end multi-turn consistency evaluation ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md)).
+  - Delivered: the system and FPPA prompts prohibit siting or alternative recommendations; compare only alternatives supplied by the user ([guided LESA notes](RESEARCH_GUIDED_LESA_SITE_ASSESSMENT.md), finding 12; [Plan 46](EXECUTION_PLAN_46.md)).
   - Proposed: a separate agent-app evaluation against `/invocations` (not MCP T2).
   - Proposed: per-user attribution (service principal auth does not identify the requesting user).
 - **Exit criteria:** DISC-01, POINT-01, and LESA-01 are answered in the chat UI with an fpac tool call in the trace, the server-provided `regulatory_notice` rendered, and a response within 180 s; map phases meet the M2 and M4 exit criteria in the map research, section 10.
-- **Open decisions:** map research section 11 items 2, 3 and 5: user-supplied basemap URLs in production; backend Tier 3 formats in the first release; whether M3 is its own orchestration before M4. Items 1 (owned template copy, ADR 0015) and 4 (session-only AOI, ADR 0016; opt-in history in the backlog) are decided.
+- **Open decisions:** map research section 11 items 2 and 3: user-supplied basemap URLs in production and backend Tier 3 formats in the first release. Items 1 (owned template copy, ADR 0015) and 4 (session-only AOI, ADR 0016; opt-in history in the backlog) are decided; M3-M5 are delivered.
 - **Source:** [Tracks research, 4.3](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#43-track-a-agent-app); [map research, sections 10](RESEARCH_MAP_WIDGET_AGENT_APP.md#10-suggested-phasing-for-the-master-plan) and [11](RESEARCH_MAP_WIDGET_AGENT_APP.md#11-open-decisions-for-the-user).
 
 ### Track W: MCP Workbench
@@ -555,6 +556,10 @@ From [Plan 37](EXECUTION_PLAN_37.md#decision-log):
 ### Planning Decision (2026-11-13)
 
 - D14: Defer Plan 49 live acceptance (49.2.1) and the T2 corpus to a post-hackathon USDA deployment. A live diagnostic showed the `mcp-fpac-soil` `/mcp` endpoint returns 401 for the Databricks notebook-runtime token regardless of app permission, so D13's run-as design does not authenticate as written. Resume requires a dedicated service principal with `CAN_USE` and an OAuth secret in a secret scope, an amendment of D13 for M2M with a stored secret, and the client fixes listed in [STATE_49](STATE_49.md).
+
+### Planning Decision (2026-11-20)
+
+- D15: Analysts may supply Site Assessment Criterion 2 points with a rationale; the server does not automatically derive Criterion 2 scores from CDL. CDL results remain preliminary land-cover context, and any future automated agricultural-adjacency method requires separate definition and validation.
 
 ---
 

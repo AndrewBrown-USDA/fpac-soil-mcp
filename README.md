@@ -47,7 +47,8 @@ The implementation is organized into transport and registration (`mcp/`), domain
 
 - **Soil and farmland information**: Look up soil map units and USDA farmland classifications by point, map-unit key, or project-area boundary.
 - **Project-area summaries**: Review mapped farmland categories and acreage, validated soil productivity ratings (NCCPI, CSR2, CPI, or STORIE), and whether an area intersects Census urban boundaries. `productivity_index` (nccpi, csr2, cpi, or storie) selects the index used for Land Evaluation scoring; NCCPI v3 is always included per map unit as national baseline context. The `include_nccpi` argument was removed (breaking change); calls that still send it are rejected.
-- **Cropland Data Layer evidence**: Explore mapped CDL classes in an area and nearby bands. CDL is a land-cover dataset; it does not verify active farming or determine farmland classification.
+- **Preliminary LESA screening**: Calculate candidate Land Evaluation and Site Assessment results from available soil data and supplied Site Assessment inputs. Criterion 2 points may be supplied by an analyst with a rationale; the server does not automatically derive them from CDL.
+- **Cropland Data Layer context**: Explore mapped CDL classes in an area and nearby bands. CDL is a land-cover dataset; it does not verify active farming, determine farmland classification, or automatically produce a Criterion 2 score.
 - **Corridor screening**: Summarize soil and agricultural context along a line-based project corridor and compare alternatives.
 - **Traceable results**: Responses identify sources, coverage, and limitations to help users interpret screening evidence.
 
@@ -65,7 +66,7 @@ The implementation is organized into transport and registration (`mcp/`), domain
 ### Regulatory Notice
 
 > **IMPORTANT LIMITATION**:
-> Results are preliminary screening information, not an official FPPA determination. The server does not issue official Land Evaluation or Site Assessment scores, complete Form AD-1006 or NRCS-CPA-106, or replace review by USDA NRCS. Contact the appropriate USDA NRCS office for formal review.
+> Results are preliminary screening information, not an official FPPA determination. The server can calculate candidate Land Evaluation and Site Assessment scores from available data and supplied inputs, but does not issue official scores, complete Form AD-1006 or NRCS-CPA-106, or replace review by USDA NRCS. Contact the appropriate USDA NRCS office for formal review.
 
 ---
 
@@ -75,10 +76,10 @@ The implementation is organized into transport and registration (`mcp/`), domain
 | :--- | :--- | :--- |
 | [USDA NRCS Soil Data Access (SDA)](https://sdmdataaccess.nrcs.usda.gov/) | SSURGO soil map units, farmland classifications, geometry, and selected soil interpretations. | Soil inventory data; not a site-specific agency determination. |
 | [USDA NASS Cropland Data Layer (CDL)](https://www.nass.usda.gov/Research_and_Science/Cropland/Release/) | Annual mapped land-cover class distributions for project areas and nearby zones. | Mapped classes are not evidence of current activity, ownership, or official farmland status. |
-| [USDA NASS Quick Stats](https://quickstats.nass.usda.gov/) | County-level agricultural statistics used for context in corridor screening. | Agricultural Census or survey summaries, not parcel-level measurements. |
+| [USDA NASS Quick Stats](https://quickstats.nass.usda.gov/) | Optional county-level agricultural statistics used for context in corridor screening. | Disabled by default; requires `NASS_ENABLED=true` and an API key. Agricultural Census or survey summaries, not parcel-level measurements. |
 | [U.S. Census Bureau TIGERweb](https://tigerweb.geo.census.gov/) | Census urban-area and county boundaries. | Boundary overlap is screening context and should be confirmed for formal review. |
 
-CDL results include observed class codes and labels, class counts or shares, product vintage, coverage status, and source provenance. The context tool summarizes the area of interest, a one-mile exterior ring, and a 30-metre exterior band when complete coverage can be established. The histogram tool accepts caller-selected CDL class codes; neither tool assigns farmland classes or decides whether land is actively farmed.
+CDL results include observed class codes and labels, class counts or shares, product vintage, coverage status, and source provenance. The context tool summarizes the area of interest, a one-mile exterior ring, and a 30-metre exterior band when complete coverage can be established. The histogram tool accepts caller-selected CDL class codes; neither tool assigns farmland classes, decides whether land is actively farmed, or automatically scores Site Assessment Criterion 2. Analysts may provide Criterion 2 points as Site Assessment inputs with a rationale; those proposed points are not an official NRCS score.
 
 These datasets describe different things: SSURGO farmland classes are soil-based classifications, soil productivity ratings describe selected soil interpretations, and CDL classes represent mapped land cover. They are complementary screening evidence and should not be treated as interchangeable.
 
@@ -131,6 +132,8 @@ $env:MCP_PORT="8000"
 uv run fpac-soil-mcp
 ```
 
+The standalone server does not configure authentication. Keep network listeners on a trusted network or behind an access-control proxy; do not expose them directly to the public internet.
+
 ### Docker Container
 
 The repository includes a production multi-stage `Dockerfile` with dedicated build and slim runtime stages (`ghcr.io/astral-sh/uv:python3.11-bookworm-slim`), non-root `appuser` execution, and a built-in container health check.
@@ -143,7 +146,7 @@ docker build -t fpac-soil-mcp .
 docker run -i --rm -e MCP_TRANSPORT=stdio fpac-soil-mcp
 
 # Run container over SSE / HTTP
-docker run -d --rm -p 8000:8000 -e MCP_TRANSPORT=sse -e MCP_HOST=0.0.0.0 -e MCP_PORT=8000 --name fpac-soil-mcp fpac-soil-mcp
+docker run -d --rm -p 127.0.0.1:8000:8000 -e MCP_TRANSPORT=sse -e MCP_HOST=0.0.0.0 -e MCP_PORT=8000 --name fpac-soil-mcp fpac-soil-mcp
 ```
 
 ### Docker Compose development stack
@@ -197,17 +200,19 @@ Example configuration for an MCP client.
 
 *Note for Windows hosts: use Windows-style directory paths (e.g., `"D:\\workspace\\fpac-soil-mcp"`).*
 
-### Network / Remote (`sse` or `http`) Boilerplate
+### Streamable HTTP (`http`)
 
 ```json
 {
   "mcpServers": {
     "fpac-soil": {
-      "url": "http://127.0.0.1:8000/sse"
+      "url": "http://127.0.0.1:8000/mcp"
     }
   }
 }
 ```
+
+For the legacy SSE transport, use `http://127.0.0.1:8000/sse`.
 
 ---
 
@@ -257,7 +262,7 @@ For network transports, `GET /health` reports service health and `GET /meta` rep
 
 ## Configuration
 
-The default transport is `stdio`, suitable for a local MCP client. For a network deployment, set `MCP_TRANSPORT` to `sse` or `http` and configure `MCP_HOST` and `MCP_PORT` for the deployment environment. See [`.env.example`](.env.example) for supported settings.
+The default transport is `stdio`, suitable for a local MCP client. For a network deployment, set `MCP_TRANSPORT` to `sse` or `http` and configure `MCP_HOST` and `MCP_PORT` for the deployment environment. USDA NASS Quick Stats is disabled by default; enable it with `NASS_ENABLED=true` and provide `NASS_API_KEY`. See [`.env.example`](.env.example) for supported settings.
 
 ## For Contributors
 
