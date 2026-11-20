@@ -11,6 +11,29 @@ from databricks_openai.agents import McpServer
 from mcp.types import CallToolResult, TextContent
 
 CALCULATE_TOOL = "calculate_preliminary_lesa"
+# The MCP calculator also requires source provenance for these criteria (lesa_tools).
+SOURCE_REQUIRED_CRITERIA = frozenset({2})
+
+
+def calculation_gaps(criterion: dict[str, Any], answer: dict[str, Any]) -> list[str]:
+    """Why an answered record cannot be scored as answered; empty when it can.
+
+    These mirror the MCP calculator's checks. An answered record with gaps is still
+    recorded, but it is submitted to the calculator as unknown.
+    """
+    if answer.get("answer_state") != "answered":
+        return []
+    gaps = []
+    if criterion.get("requires_verification") and answer.get("is_verified") is not True:
+        gaps.append("not verified against the cited source")
+    if criterion.get("requires_rationale") and not str(answer.get("justification") or "").strip():
+        gaps.append("no justification")
+    sources = answer.get("source_provenance") or []
+    if criterion.get("criterion_number") in SOURCE_REQUIRED_CRITERIA and not (
+        isinstance(sources, list) and any(isinstance(s, str) and s.strip() for s in sources)
+    ):
+        gaps.append("no source provenance")
+    return gaps
 
 
 class SiteAssessmentGateError(ValueError):
@@ -108,7 +131,7 @@ def validate_site_assessment_call(
         criterion7_answer = answer_by_number.get(7)
         if (
             criterion7_answer is None
-            or criterion7_answer["answer_state"] != "answered"
+            or criterion7_answer["scored_state"] != "answered"
             or criterion7_answer["band_id"] != farm_acre_band["id"]
         ):
             raise SiteAssessmentGateError(
@@ -128,7 +151,7 @@ def validate_site_assessment_call(
             raise SiteAssessmentGateError(
                 "Submitted Site Assessment inputs do not match the confirmed answers."
             )
-        state = answer["answer_state"]
+        state = answer["scored_state"]
         if state == "answered":
             band = _band_for_fact(criteria_payload, number, fact)
             if band is None or band["id"] != answer["band_id"]:
@@ -280,7 +303,13 @@ def _canonical_answers(
             raise SiteAssessmentGateError(
                 "Skipped answers must preserve an empty selected band and value."
             )
-        canonical[number] = {"answer_state": state, "band_id": band_id}
+        # An answered record that misses a scoring requirement is submitted as unknown.
+        scored_state = "unknown" if calculation_gaps(criteria[number], answer) else state
+        canonical[number] = {
+            "answer_state": state,
+            "scored_state": scored_state,
+            "band_id": band_id,
+        }
     if not canonical:
         raise SiteAssessmentGateError("The confirmed Site Assessment summary has no answers.")
     return canonical

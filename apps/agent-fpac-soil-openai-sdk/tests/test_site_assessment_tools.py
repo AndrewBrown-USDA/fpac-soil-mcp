@@ -354,6 +354,9 @@ def _answer_arguments(payload, number, unknown, skipped):
         "answer_state": "answered",
         "answer": _answered_band(criterion)["id"],
         "evidence": "observed",
+        "is_verified": True,
+        "source_provenance": ["observed source"],
+        "justification": "observed",
     }
 
 
@@ -399,6 +402,7 @@ def test_card_confirmation_of_the_summary_passes_the_calculation_gate(
     assert summary["type"] == "site_assessment_confirmed_summary"
     assert summary["confirmed"] is False
     assert summary["answers"] == records
+    assert summary["calculation_notes"] == {}
     assert list(summary["calculation_inputs"]["criteria_facts"]) == [
         str(number) for number in range(1, 13)
     ]
@@ -412,6 +416,49 @@ def test_card_confirmation_of_the_summary_passes_the_calculation_gate(
         )
         == arguments
     )
+
+
+def test_unverified_answer_is_noted_and_submitted_as_unknown(
+    valid_site_assessment_criteria_resource,
+):
+    payload = _payload(valid_site_assessment_criteria_resource)
+    tools = _named_tools(payload)
+    _record_all(tools, payload)
+    criterion1 = payload["criteria"][0]
+    _invoke(
+        tools["record_site_assessment_answer"],
+        {
+            "criterion_number": 1,
+            "answer_state": "answered",
+            "answer": _answered_band(criterion1)["id"],
+        },
+    )
+
+    summary = _invoke(tools["show_site_assessment_summary"], {})
+
+    assert summary["answers"][0]["answer_state"] == "answered"
+    assert summary["calculation_notes"] == {
+        "1": "Submitted as unknown: not verified against the cited source."
+    }
+    assert summary["calculation_inputs"]["criteria_facts"]["1"] == {"value": "unknown"}
+    confirmation = {"role": "user", "content": json.dumps({**summary, "confirmed": True})}
+    assert validate_site_assessment_call(
+        "calculate_preliminary_lesa", _calculate_arguments(summary), [confirmation], payload
+    )
+
+
+def test_question_marks_criterion2_as_requiring_a_source(
+    valid_site_assessment_criteria_resource,
+):
+    payload = _payload(valid_site_assessment_criteria_resource)
+    question_tool = _named_tools(payload)["get_site_assessment_question"]
+
+    flags = {
+        number: _invoke(question_tool, {"criterion_number": number})["requires_source_provenance"]
+        for number in range(1, 13)
+    }
+
+    assert [number for number, required in flags.items() if required] == [2]
 
 
 def test_summary_tool_output_alone_is_not_a_confirmation(

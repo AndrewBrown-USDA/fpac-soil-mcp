@@ -29,6 +29,9 @@ def _answer(resource, state="answered", band_id="range_20_90_1", criterion_numbe
         "evidence": "observed",
         "comment": "",
         "provenance": "user",
+        "is_verified": True,
+        "source_provenance": ["observed source"],
+        "justification": "observed",
     }
 
 
@@ -150,6 +153,58 @@ def test_stale_answer_and_unconfirmed_summary_are_rejected(
             _call_args(24),
             _history(_answer(valid_site_assessment_criteria_resource), confirmed=False),
             _criteria(valid_site_assessment_criteria_resource),
+        )
+
+
+@pytest.mark.parametrize(
+    "missing",
+    [{"is_verified": False}, {"is_verified": None}],
+    ids=["unverified", "no-verification-field"],
+)
+def test_answer_missing_verification_is_submitted_only_as_unknown(
+    valid_site_assessment_criteria_resource, missing
+):
+    answer = {**_answer(valid_site_assessment_criteria_resource), **missing}
+    criteria = _criteria(valid_site_assessment_criteria_resource)
+
+    result = validate_site_assessment_call(
+        "calculate_preliminary_lesa", _call_args("unknown"), _history(answer), criteria
+    )
+
+    assert result["site_assessment_inputs"]["criteria_facts"]["1"] == {"percentage": "unknown"}
+    with pytest.raises(SiteAssessmentGateError):
+        validate_site_assessment_call(
+            "calculate_preliminary_lesa", _call_args(24), _history(answer), criteria
+        )
+
+
+def test_answer_missing_rationale_or_criterion2_source_is_submitted_only_as_unknown(
+    valid_site_assessment_criteria_resource,
+):
+    criteria = _criteria(valid_site_assessment_criteria_resource)
+    for number, missing in ((4, {"justification": "  "}), (2, {"source_provenance": []})):
+        criterion = next(c for c in criteria["criteria"] if c["criterion_number"] == number)
+        band = next(
+            b for b in criterion["bands"] if b["points"] is not None and b["id"] != "unknown"
+        )
+        answer = {
+            **_answer(
+                valid_site_assessment_criteria_resource,
+                band_id=band["id"],
+                criterion_number=number,
+            ),
+            **missing,
+        }
+        arguments = {
+            "project_type": "site",
+            "site_assessment_inputs": {"criteria_facts": {str(number): {"value": "unknown"}}},
+        }
+
+        assert (
+            validate_site_assessment_call(
+                "calculate_preliminary_lesa", arguments, _history(answer), criteria
+            )
+            == arguments
         )
 
 

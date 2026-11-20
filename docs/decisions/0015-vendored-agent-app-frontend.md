@@ -367,7 +367,12 @@ Added paths:
 * `client/src/components/site-assessment-cards.tsx`: resource-driven question
   choices, evidence/comment/provenance, verification, source, and justification
   fields, explicit unknown/skipped records, and a distinct
-  assumptions/Confirm/Edit review card (Plan 51.2.2).
+  assumptions/Confirm/Edit review card (Plan 51.2.2). Choosing a band only
+  selects it; a Record answer button submits it, and the card marks the
+  verification, justification, and source fields required for scoring and
+  warns that an answer without them is submitted as unknown. The review card
+  shows verification, sources, justification, and the agent's
+  `calculation_notes` for answers submitted as unknown.
 * `client/site-assessment-fixture.html` and
   `client/src/components/site-assessment-fixture.tsx`: isolated browser
   fixture for card and AOI interaction tests (Plan 51.2.2), including the

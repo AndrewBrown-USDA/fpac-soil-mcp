@@ -35,6 +35,7 @@ export type SiteAssessmentQuestion = {
   max_points: number;
   requires_rationale?: boolean;
   requires_verification?: boolean;
+  requires_source_provenance?: boolean;
   range_convention?: string;
   evaluation_context?: string;
 };
@@ -44,6 +45,7 @@ export type SiteAssessmentConfirmedSummary = {
   confirmed: true;
   answers: SiteAssessmentAnswer[];
   assumptions?: string[];
+  calculation_notes?: Record<string, string>;
   [key: string]: unknown;
 };
 
@@ -125,7 +127,15 @@ export function SiteAssessmentQuestionCard({
   const [isVerified, setIsVerified] = useState(false);
   const [sourceProvenance, setSourceProvenance] = useState('');
   const [justification, setJustification] = useState('');
+  const [selectedBand, setSelectedBand] = useState<SiteAssessmentBand | null>(null);
   const unknownBand = question.choices.find((choice) => choice.id === 'unknown') ?? null;
+  const sources = sourceProvenance.split('\n').map((source) => source.trim()).filter(Boolean);
+  // Mirrors the agent's scoring rule: an answer missing these is scored as unknown.
+  const missing = [
+    question.requires_verification && !isVerified ? 'verification' : null,
+    question.requires_rationale && !justification.trim() ? 'a justification' : null,
+    question.requires_source_provenance && sources.length === 0 ? 'a source' : null,
+  ].filter((item): item is string => item !== null);
 
   const record = (
     answerState: SiteAssessmentAnswer['answer_state'],
@@ -142,7 +152,7 @@ export function SiteAssessmentQuestionCard({
       comment,
       provenance,
       is_verified: isVerified,
-      source_provenance: sourceProvenance.split('\n').map((source) => source.trim()).filter(Boolean),
+      source_provenance: sources,
       justification,
     });
   };
@@ -162,23 +172,33 @@ export function SiteAssessmentQuestionCard({
           {question.evaluation_context ?? question.range_convention}
         </p>
       )}
-      {question.requires_rationale && (
-        <p className="text-muted-foreground text-xs">A rationale is requested for this criterion.</p>
-      )}
-      {question.requires_verification && (
-        <p className="text-muted-foreground text-xs">Verification is requested for this criterion.</p>
+      {(question.requires_verification ||
+        question.requires_rationale ||
+        question.requires_source_provenance) && (
+        <p className="text-xs" data-testid="site-assessment-requirements">
+          To be scored, this answer needs{' '}
+          {[
+            question.requires_verification ? 'verification against the cited source' : null,
+            question.requires_rationale ? 'a justification' : null,
+            question.requires_source_provenance ? 'a source' : null,
+          ]
+            .filter(Boolean)
+            .join(', ')}
+          . Without them it is submitted as unknown.
+        </p>
       )}
       <fieldset className="grid gap-2">
-        <legend className="font-medium text-sm">Choose a resource-defined band</legend>
+        <legend className="font-medium text-sm">1. Choose a resource-defined band</legend>
         {question.choices
           .filter((choice) => choice.id !== 'unknown')
           .map((choice) => (
             <Button
               key={choice.id}
               type="button"
-              variant="outline"
+              variant={selectedBand?.id === choice.id ? 'default' : 'outline'}
+              aria-pressed={selectedBand?.id === choice.id}
               className="h-auto justify-between whitespace-normal py-2 text-left"
-              onClick={() => record('answered', choice)}
+              onClick={() => setSelectedBand(choice)}
               data-testid={`site-assessment-band-${choice.id}`}
             >
               <span>{choice.label}</span>
@@ -188,6 +208,7 @@ export function SiteAssessmentQuestionCard({
             </Button>
           ))}
       </fieldset>
+      <p className="font-medium text-sm">2. Add evidence and verification, then record the answer</p>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="grid gap-1 text-xs">
           Evidence (optional)
@@ -229,9 +250,11 @@ export function SiteAssessmentQuestionCard({
           data-testid="site-assessment-verified"
         />
         Verified against the cited source
+        {question.requires_verification && ' (required for scoring)'}
       </label>
       <label className="grid gap-1 text-xs">
         Source provenance (one source per line)
+        {question.requires_source_provenance && ' (required for scoring)'}
         <textarea
           className="min-h-16 rounded-md border border-input bg-background p-2 text-sm"
           value={sourceProvenance}
@@ -240,7 +263,7 @@ export function SiteAssessmentQuestionCard({
         />
       </label>
       <label className="grid gap-1 text-xs">
-        Justification
+        Justification{question.requires_rationale && ' (required for scoring)'}
         <textarea
           className="min-h-16 rounded-md border border-input bg-background p-2 text-sm"
           value={justification}
@@ -248,7 +271,21 @@ export function SiteAssessmentQuestionCard({
           data-testid="site-assessment-justification"
         />
       </label>
+      {selectedBand && missing.length > 0 && (
+        <p className="text-amber-700 text-xs dark:text-amber-400" data-testid="site-assessment-missing">
+          Missing {missing.join(', ')}: this answer will be recorded but submitted as unknown in
+          the preliminary calculation.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+        <Button
+          type="button"
+          disabled={selectedBand === null}
+          onClick={() => selectedBand && record('answered', selectedBand)}
+          data-testid="site-assessment-record"
+        >
+          Record answer
+        </Button>
         <Button type="button" variant="outline" onClick={() => record('unknown', unknownBand)}>
           Unknown / unavailable
         </Button>
@@ -294,7 +331,18 @@ export function SiteAssessmentSummaryCard({
             <dd>{answer.comment || 'None provided'}</dd>
             <dt className="text-muted-foreground">Provenance</dt>
             <dd>{answer.provenance}</dd>
+            <dt className="text-muted-foreground">Verified</dt>
+            <dd>{answer.is_verified ? 'Yes' : 'No'}</dd>
+            <dt className="text-muted-foreground">Sources</dt>
+            <dd>{answer.source_provenance?.length ? answer.source_provenance.join('; ') : 'None provided'}</dd>
+            <dt className="text-muted-foreground">Justification</dt>
+            <dd>{answer.justification || 'None provided'}</dd>
           </dl>
+          {summary.calculation_notes?.[String(answer.criterion_number)] && (
+            <p className="mt-1 text-amber-700 text-xs dark:text-amber-400" data-testid="site-assessment-note">
+              {summary.calculation_notes[String(answer.criterion_number)]}
+            </p>
+          )}
         </article>
       ))}
       {summary.assumptions && summary.assumptions.length > 0 && (
@@ -306,6 +354,13 @@ export function SiteAssessmentSummaryCard({
             ))}
           </ul>
         </div>
+      )}
+      {summary.calculation_notes && Object.keys(summary.calculation_notes).length > 0 && (
+        <p className="rounded-md border border-amber-500 p-2 text-xs" data-testid="site-assessment-notes-banner">
+          {Object.keys(summary.calculation_notes).length} answer(s) will be submitted as unknown
+          because required verification, justification, or source is missing. Use Edit to
+          complete them, or Confirm to continue with them as unknown.
+        </p>
       )}
       <div className="flex gap-2 border-t border-border pt-3">
         <Button type="button" onClick={() => onConfirm({ ...summary, confirmed: true })}>

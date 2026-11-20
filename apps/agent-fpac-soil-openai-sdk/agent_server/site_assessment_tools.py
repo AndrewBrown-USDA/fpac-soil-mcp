@@ -8,7 +8,11 @@ from typing import Any, Literal
 from agents import FunctionTool, function_tool
 from agents.exceptions import ModelBehaviorError
 
-from agent_server.site_assessment_gate import _canonical_answers
+from agent_server.site_assessment_gate import (
+    SOURCE_REQUIRED_CRITERIA,
+    _canonical_answers,
+    calculation_gaps,
+)
 
 RECORD_TOOL = "record_site_assessment_answer"
 SUMMARY_TOOL = "show_site_assessment_summary"
@@ -52,6 +56,8 @@ def create_site_assessment_tools(
                 "max_points": criterion["max_points"],
                 "requires_rationale": criterion["requires_rationale"],
                 "requires_verification": criterion["requires_verification"],
+                "requires_source_provenance": criterion["criterion_number"]
+                in SOURCE_REQUIRED_CRITERIA,
             },
             ensure_ascii=False,
         )
@@ -62,7 +68,9 @@ def create_site_assessment_tools(
         description_override=(
             "Record one Site Assessment answer using a choice from the authoritative "
             "criteria resource. Do not provide points; points come only from that resource. "
-            "For answer_state 'unknown' or 'skipped', set answer to null."
+            "For answer_state 'unknown' or 'skipped', set answer to null. Never set "
+            "is_verified unless the user verified the answer; an answer missing required "
+            "verification, justification, or source provenance is scored as unknown."
         ),
     )
     async def record_site_assessment_answer(
@@ -123,9 +131,11 @@ def create_site_assessment_tools(
             "After every Site Assessment criterion has a recorded answer (answered, unknown, "
             "or skipped), call this tool to show the user the review summary card. Do not "
             "write your own summary table. The user confirms only by pressing Confirm on the "
-            "card; typed text such as 'confirm' is not a confirmation. After that confirmation "
-            "arrives, call calculate_preliminary_lesa with site_assessment_inputs set to this "
-            "tool's calculation_inputs, unchanged."
+            "card; typed text such as 'confirm' is not a confirmation. calculation_notes lists "
+            "answers that will be submitted as unknown because required verification, "
+            "justification, or source provenance is missing; tell the user they can use Edit "
+            "to complete them. After the confirmation arrives, call calculate_preliminary_lesa "
+            "with site_assessment_inputs set to this tool's calculation_inputs, unchanged."
         ),
     )
     async def show_site_assessment_summary() -> str:
@@ -139,12 +149,18 @@ def create_site_assessment_tools(
         answers = [recorded[number] for number in sorted(criteria)]
         # The confirmation gate runs the same check; a failure here is a ValueError.
         _canonical_answers(answers, criteria_payload)
+        notes = {}
+        for number in sorted(criteria):
+            gaps = calculation_gaps(criteria[number], recorded[number])
+            if gaps:
+                notes[str(number)] = "Submitted as unknown: " + "; ".join(gaps) + "."
         return json.dumps(
             {
                 "type": SUMMARY_TYPE,
                 # Only the user's Confirm on the card confirms; the gate ignores tool output.
                 "confirmed": False,
                 "answers": answers,
+                "calculation_notes": notes,
                 "calculation_inputs": {
                     "criteria_facts": {
                         str(number): _calculation_fact(criteria[number], recorded[number])
@@ -226,6 +242,9 @@ def _parse_tool_output(output: Any) -> Any:
 def _calculation_fact(criterion: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
     """The ``criteria_facts`` entry the gate and the MCP calculator accept for a record."""
     state = record["answer_state"]
+    if calculation_gaps(criterion, record):
+        # The calculator would reject it; scoring it as unknown shows the assumed bound.
+        return {"value": "unknown"}
     if state != "answered":
         value: str | float = state
     elif criterion["answer_type"] == "qualitative":

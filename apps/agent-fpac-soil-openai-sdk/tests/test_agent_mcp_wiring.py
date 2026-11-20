@@ -385,6 +385,9 @@ def _confirmed_site_summary(
                 "evidence": "",
                 "comment": "",
                 "provenance": "user",
+                "is_verified": True,
+                "source_provenance": ["observed source"],
+                "justification": "observed",
             }
         ],
     }
