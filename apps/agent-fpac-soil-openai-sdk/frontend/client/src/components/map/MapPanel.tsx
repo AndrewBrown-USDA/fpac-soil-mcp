@@ -47,7 +47,7 @@ import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
 import type { OverlayFlags } from './OverlayControl';
 import { OVERLAYS, addOverlay, overlayIdForSource, removeOverlay } from './overlays';
 import type { OverlayId } from './overlays';
-import { NOTICE_CARD, RESULT_CARD, ScreeningResults } from './ScreeningResults';
+import { RESULT_CARD, RegulatoryNotice, ScreeningResults } from './ScreeningResults';
 import { StatusMessage } from './StatusMessage';
 import type { StatusVariant } from './StatusMessage';
 import { summaryToAttach, useScreening } from './useScreening';
@@ -117,7 +117,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const [corridorAlternatives, setCorridorAlternatives] = useState<{ label: string; geometry: LineGeometry }[]>([]);
   const [corridorStaging, setCorridorStaging] = useState<PolygonGeometry[]>([]);
   const [mapMode, setMapMode] = useState<'area' | 'corridor'>('area');
-  const [alternativeLabel, setAlternativeLabel] = useState('Alternative 1');
+  const [alternativeLabel, _setAlternativeLabel] = useState('Alternative 1');
   const alternativeLabelRef = useRef(alternativeLabel);
   alternativeLabelRef.current = alternativeLabel;
   const [bufferText, setBufferText] = useState('');
@@ -840,6 +840,10 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     return actionButton(label, StateIcon, () => chooseMode(pressed ? 'static' : target), !mapReady || noChat, pressed);
   };
 
+  // True when the current result already includes a server farmland-classes layer
+  // (which carries its own legend items). Used to avoid showing CoreFarmlandLegend twice.
+  const hasFarmlandLayer = shown?.block?.layers.some((layer) => layer.id === 'farmland_classes') ?? false;
+
   const groupLabel = 'font-medium text-muted-foreground text-xs uppercase tracking-wide';
   const originBadge = 'rounded-full border border-border bg-muted px-2 py-0.5 font-medium text-xs';
 
@@ -859,16 +863,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     <section aria-label="Map screening" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-3">
         <header className="flex items-center justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
           <div className="flex items-center gap-2">
-            <img
-              src={ncssAcronymColor}
-              alt="National Cooperative Soil Survey"
-              className="h-auto w-12 shrink-0 dark:hidden"
-            />
-            <img
-              src={ncssAcronymWhite}
-              alt="National Cooperative Soil Survey"
-              className="hidden h-auto w-12 shrink-0 dark:block"
-            />
+{/* NCSS logo hidden for now */}
             <h2 className="font-semibold text-sm leading-5 tracking-tight">
               Farmland Protection Policy Act Agent
             </h2>
@@ -931,24 +926,6 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
               <Button type="button" size="sm" variant={mapMode === 'corridor' ? 'primary' : 'default'} aria-pressed={mapMode === 'corridor'} onClick={() => { setMapMode('corridor'); chooseMode('static'); }}>Corridor</Button>
             </div>
           </div>
-          <label className="flex flex-col gap-1 text-xs">
-            {mapMode === 'area' ? 'Area label (optional)' : 'Alternative label'}
-            <input
-              aria-label={mapMode === 'area' ? 'Area label' : 'Alternative label'}
-              type="text"
-              value={mapMode === 'area' ? aoiLabel : alternativeLabel}
-              onChange={(event) => {
-                if (mapMode === 'area') setAoiLabel(event.target.value);
-                else {
-                  setAlternativeLabel(event.target.value);
-                  alternativeLabelRef.current = event.target.value;
-                }
-              }}
-              disabled={mapMode === 'area' && !aoi}
-              maxLength={120}
-              className="h-8 w-36 rounded border bg-background px-2 text-sm"
-            />
-          </label>
           {mapMode === 'area' && (
             <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
               <span aria-hidden="true" className={groupLabel}>
@@ -960,6 +937,29 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
                 {toolButton('Edit', 'select', MousePointer2)}
                 {actionButton('Undo', Undo2, undoAoi, noChat || !canUndo)}
                 {actionButton('Clear', Trash2, clear, !aoi)}
+              </div>
+            </div>
+          )}
+          {mapMode === 'corridor' && (
+            <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
+              <span aria-hidden="true" className={groupLabel}>Corridor</span>
+              <div className="flex flex-wrap gap-1.5">
+                {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), !mapReady || noChat)}
+                {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), !mapReady || noChat)}
+                {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, !mapReady || noChat)}
+                {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), !mapReady || noChat)}
+                {actionButton(
+                  corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
+                  MapIcon,
+                  runCorridorScreening,
+                  !corridorInput || corridorScreening.status === 'running',
+                )}
+                {actionButton(
+                  'Clear corridor',
+                  Trash2,
+                  clearCorridor,
+                  noChat || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
+                )}
               </div>
             </div>
           )}
@@ -978,27 +978,6 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
               <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
             </select>
             {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => { setMeasurePoints([]); setMeasurePreview(null); })}
-          </div>
-          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>Corridor</span>
-            <div className="flex flex-wrap gap-1.5">
-              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton(
-                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
-                MapIcon,
-                runCorridorScreening,
-                mapMode !== 'corridor' || !corridorInput || corridorScreening.status === 'running',
-              )}
-              {actionButton(
-                'Clear corridor',
-                Trash2,
-                clearCorridor,
-                mapMode !== 'corridor' || noChat || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
-              )}
-            </div>
           </div>
         </div>
         {mapMode === 'corridor' && (
@@ -1042,16 +1021,18 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
             <details className="absolute top-2 left-2 z-10 max-w-[min(18rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                 <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
                 <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
-                  <CoreFarmlandLegend />
-                  {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && <hr className="my-2" />}
+                  {/* The server farmland layer carries its own class legend; show the
+                      built-in class key only when that layer is absent. */}
+                  {!hasFarmlandLayer && <CoreFarmlandLegend />}
+                  {!hasFarmlandLayer && (shown?.block || shown?.cdlSummary || overlayOn.cdl) && <hr className="my-2" />}
                   {shown?.block && (
                     <MapLegend
                       block={shown.block}
                       compact
-                      contextLegend={shown.block.layers.some((layer) => layer.id === 'farmland_classes') && (shown.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
+                      contextLegend={hasFarmlandLayer && (shown?.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
                     />
                   )}
-                  {(!shown?.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown?.cdlSummary || overlayOn.cdl) && <CDLLegend />}
+                  {!hasFarmlandLayer && (shown?.cdlSummary || overlayOn.cdl) && <CDLLegend />}
                 </div>
               </details>
           )}
@@ -1138,20 +1119,15 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
           </div>
           {shown.cdlSummary ? (
             <CDLContextSummary result={shown.cdlSummary} />
-          ) : shown.regulatory_notice ? (
-            <div className={NOTICE_CARD}>
-              <h3 className="font-semibold text-sm">Regulatory notice</h3>
-              <p className="mt-1 whitespace-pre-line">{shown.regulatory_notice}</p>
-            </div>
           ) : (
-            <p role="alert" className="text-destructive text-sm">
-              Regulatory notice missing - treat this result as invalid.
-            </p>
-          )}
-          {shown.block && (
-            <div className={RESULT_CARD}>
-              <MapLegend block={shown.block} />
-            </div>
+            <>
+              {shown.block && (
+                <div className={RESULT_CARD}>
+                  <MapLegend block={shown.block} />
+                </div>
+              )}
+              <RegulatoryNotice notice={shown.regulatory_notice} />
+            </>
           )}
         </div>
       ) : shown?.origin === 'corridor' && corridorScreening.status === 'done' && corridorScreening.result ? (

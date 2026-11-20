@@ -25,14 +25,14 @@ import {
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, StopCircleIcon } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@databricks/chatbot-core';
 import { softNavigateToChatId } from '@/lib/navigation';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { DbIcon } from './ui/db-icon';
-import { ChevronDownIcon, ArrowUpIcon, StopIcon } from './icons';
+import { ArrowUpIcon, StopIcon } from './icons';
 import { ActiveAoiChip } from './map/ActiveAoiChip';
 
 function PureMultimodalInput({

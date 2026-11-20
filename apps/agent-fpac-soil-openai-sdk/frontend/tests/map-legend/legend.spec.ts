@@ -132,6 +132,9 @@ test('screening and tool result legends follow the active result', async ({ page
   await page.getByText('Map legend', { exact: true }).click();
   const legend = page.locator('details').filter({ has: page.getByText('Map legend', { exact: true }) });
   await expect(legend.getByLabel('Screen class, code SC; Code SC, solid symbol')).toBeVisible();
+  // Server farmland layer is present — CoreFarmlandLegend must be suppressed so
+  // class entries appear exactly once.
+  await expect(legend.getByText('Prime farmland', { exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Show tool fixture' }).click();
   await expect(legend.getByLabel('Screen class, code SC; Code SC, solid symbol')).toHaveCount(0);
   await expect(legend.getByLabel('Server custom, code Z9; Code Z9, cross hatch symbol')).toBeVisible();

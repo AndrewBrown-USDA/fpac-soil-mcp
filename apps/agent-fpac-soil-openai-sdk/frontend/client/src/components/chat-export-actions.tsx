@@ -28,7 +28,7 @@ export function ChatExportActions({ messages }: { messages: readonly ChatExportM
     <>
       <details className="relative">
         <summary className="cursor-pointer rounded-md border px-3 py-1.5 text-sm">Export chat</summary>
-        <div className="absolute right-0 z-10 mt-1 flex min-w-36 flex-col rounded-md border bg-background p-1 shadow">
+        <div className="absolute right-0 z-50 mt-1 flex min-w-36 flex-col rounded-md border bg-background p-1 shadow">
           <button type="button" className="p-2 text-left text-sm" onClick={() => setFormat('markdown')}>Markdown</button>
           <button type="button" className="p-2 text-left text-sm" onClick={() => setFormat('json')}>JSON</button>
         </div>

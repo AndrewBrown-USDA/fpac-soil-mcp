@@ -37,10 +37,7 @@ function SummaryStrip({ analysis }: { analysis: DisplayAnalysis }) {
   if (items.length === 0) return null;
   return (
     <section aria-label="Screening summary" className={RESULT_CARD}>
-      <span className="rounded-full border border-[var(--border-warning)] bg-[var(--background-warning)] px-2 py-0.5 font-medium text-xs">
-        Preliminary machine estimate
-      </span>
-      <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-3">
+      <dl className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-3">
         {items.map((item) => (
           <div key={item.label} className="flex flex-col">
             <dt className="text-muted-foreground text-xs">{item.label}</dt>
@@ -52,8 +49,27 @@ function SummaryStrip({ analysis }: { analysis: DisplayAnalysis }) {
   );
 }
 
-// Headline figures (badged as a preliminary estimate), then the notice (verbatim,
-// ADR 0003) before any detail, then the server's map legends and the table.
+// Verbatim regulatory notice collapsed to reduce visual dominance while
+// remaining available. A missing notice is flagged as an invalid result (ADR 0003).
+export function RegulatoryNotice({ notice }: { notice: string | null }) {
+  if (!notice) {
+    return (
+      <p role="alert" className="text-destructive text-sm">
+        Regulatory notice missing - treat this result as invalid.
+      </p>
+    );
+  }
+  return (
+    <details className={NOTICE_CARD}>
+      <summary className="cursor-pointer font-semibold text-sm">Regulatory notice</summary>
+      <p className="mt-2 whitespace-pre-line text-xs">{notice}</p>
+    </details>
+  );
+}
+
+// Summary strip, then the results table, then the regulatory notice at the bottom
+// (verbatim, ADR 0003). Farmland class acres come directly from SDA; the preliminary
+// FPPA/LESA determination follows after this screening step.
 export function ScreeningResults({ result }: { result: ScreeningResponse }) {
   const notice = result.display.regulatory_notice;
   const analysis = result.display.analysis;
@@ -62,21 +78,12 @@ export function ScreeningResults({ result }: { result: ScreeningResponse }) {
   return (
     <div className="flex flex-col gap-3">
       {analysis && <SummaryStrip analysis={analysis} />}
-      {notice ? (
-        <div className={NOTICE_CARD}>
-          <h3 className="font-semibold text-sm">Regulatory notice</h3>
-          <p className="mt-1 whitespace-pre-line">{notice}</p>
-        </div>
-      ) : (
-        <p role="alert" className="text-destructive text-sm">
-          Regulatory notice missing - treat this result as invalid.
-        </p>
-      )}
       {analysis && (
         <div className={RESULT_CARD}>
           <ResultsTable analysis={analysis} legend={farmlandLegend} />
         </div>
       )}
+      <RegulatoryNotice notice={notice} />
     </div>
   );
 }
