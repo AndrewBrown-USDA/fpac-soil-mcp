@@ -507,6 +507,43 @@ async def test_malformed_nested_unknown_and_enum_inputs_are_rejected(
     assert result.is_error
 
 
+INTERP_ROWS: list[dict[str, Any]] = [
+    {"mukey": "412850", "numeric_rating": "0.72"},
+    {"mukey": "412851", "numeric_rating": "0.592"},
+]
+
+
+async def test_soil_interpretations_list_result_is_wrapped_not_an_error() -> None:
+    """A list of rating rows reaches MCP clients as structured ``{"result": [...]}``."""
+    sda = MagicMock()
+    sda.return_value.get_interpretations.return_value = INTERP_ROWS
+    with patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient", sda):
+        async with fastmcp.Client(create_mcp_server()) as client:
+            result = await client.call_tool(
+                "get_soil_interpretations", {"mukeys": ["412850", "412851"]}, raise_on_error=False
+            )
+
+    assert not result.is_error, result.content
+    assert result.structured_content == {"result": INTERP_ROWS}
+    assert result.data == INTERP_ROWS
+
+
+async def test_soil_interpretations_upstream_error_is_wrapped_not_an_error() -> None:
+    sda = MagicMock()
+    sda.return_value.base_url = "https://sda.example.test/query"
+    sda.return_value.get_interpretations.side_effect = SDAQueryError("service unavailable")
+    with patch("fpac_soil_mcp.mcp.tools.soil_lookup_tools.SDAClient", sda):
+        async with fastmcp.Client(create_mcp_server()) as client:
+            result = await client.call_tool(
+                "get_soil_interpretations", {"mukeys": ["412850"]}, raise_on_error=False
+            )
+
+    assert not result.is_error, result.content
+    payload = result.structured_content["result"]
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "upstream_error"
+
+
 async def test_regulatory_notice_resource_cites_parts_657_and_658() -> None:
     async with fastmcp.Client(create_mcp_server()) as client:
         contents = await client.read_resource("fppa://regulatory-notice")
