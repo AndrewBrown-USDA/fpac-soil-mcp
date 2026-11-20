@@ -863,16 +863,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     <section aria-label="Map screening" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-3">
         <header className="flex items-center justify-between gap-2 border-atlas-soil/50 border-b-2 pb-2">
           <div className="flex items-center gap-2">
-            <img
-              src={ncssAcronymColor}
-              alt="National Cooperative Soil Survey"
-              className="h-auto w-12 shrink-0 dark:hidden"
-            />
-            <img
-              src={ncssAcronymWhite}
-              alt="National Cooperative Soil Survey"
-              className="hidden h-auto w-12 shrink-0 dark:block"
-            />
+{/* NCSS logo hidden for now */}
             <h2 className="font-semibold text-sm leading-5 tracking-tight">
               Farmland Protection Policy Act Agent
             </h2>
