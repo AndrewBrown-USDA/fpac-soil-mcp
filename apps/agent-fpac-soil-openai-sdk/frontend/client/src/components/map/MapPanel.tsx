@@ -117,7 +117,7 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
   const [corridorAlternatives, setCorridorAlternatives] = useState<{ label: string; geometry: LineGeometry }[]>([]);
   const [corridorStaging, setCorridorStaging] = useState<PolygonGeometry[]>([]);
   const [mapMode, setMapMode] = useState<'area' | 'corridor'>('area');
-  const [alternativeLabel, setAlternativeLabel] = useState('Alternative 1');
+  const [alternativeLabel, _setAlternativeLabel] = useState('Alternative 1');
   const alternativeLabelRef = useRef(alternativeLabel);
   alternativeLabelRef.current = alternativeLabel;
   const [bufferText, setBufferText] = useState('');
