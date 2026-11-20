@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { SidebarToggle } from '@/components/sidebar-toggle';
@@ -45,7 +46,7 @@ function OboScopeBanner({ missingScopes }: { missingScopes: string[] }) {
   );
 }
 
-export function ChatHeader({ title, empty, isLoadingTitle }: { title?: string, empty?: boolean, isLoadingTitle?: boolean }) {
+export function ChatHeader({ title, empty, isLoadingTitle, actions }: { title?: string, empty?: boolean, isLoadingTitle?: boolean, actions?: ReactNode }) {
   const navigate = useNavigate();
   const { chatHistoryEnabled, feedbackEnabled, oboMissingScopes } = useConfig();
 
@@ -109,6 +110,7 @@ export function ChatHeader({ title, empty, isLoadingTitle }: { title?: string, e
               </Tooltip>
             </TooltipProvider>
           )}
+          {actions}
           {/* New Chat button — mobile only; desktop uses the sidebar rail */}
           <Button
             variant="default"

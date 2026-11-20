@@ -8,12 +8,12 @@ Paths below are relative to `apps/agent-fpac-soil-openai-sdk/frontend/client/src
 ## Tasks
 
 ### 1. Plan
-- [ ] Commit this TODO.md (`docs(planning): plan agent map UI feedback fixes`).
+- [x] Commit this TODO.md (`docs(planning): plan agent map UI feedback fixes`).
 
 ### 2. Export chat no longer overlaps the Ephemeral badge
-- [ ] `components/chat-header.tsx`: add an optional `actions` slot rendered inside the right-side `ml-auto` row, after the Ephemeral / Feedback disabled badges.
-- [ ] `components/chat.tsx`: pass `<ChatExportActions>` through that slot; remove the `absolute right-4 top-3` wrapper.
-- [ ] Check: `tests/chat-export/export.spec.ts` selectors (`Export chat`) still match; no layout overlap by reading the classes (both items are flex siblings in one row).
+- [x] `components/chat-header.tsx`: add an optional `actions` slot rendered inside the right-side `ml-auto` row, after the Ephemeral / Feedback disabled badges.
+- [x] `components/chat.tsx`: pass `<ChatExportActions>` through that slot; remove the `absolute right-4 top-3` wrapper.
+- [x] Check: `tests/chat-export/export.spec.ts` selectors (`Export chat`) still match; no layout overlap by reading the classes (both items are flex siblings in one row).
 
 ### 3. Map legend shows farmland classes once
 - [ ] `components/map/MapPanel.tsx`: render `CoreFarmlandLegend` only when the shown map block has no `farmland_classes` layer (before screening, or for results without that layer). Server legend values stay as returned.
