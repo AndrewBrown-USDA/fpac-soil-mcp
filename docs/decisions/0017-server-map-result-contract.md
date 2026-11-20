@@ -12,6 +12,19 @@ source_context: "EXECUTION_PLAN_44"
 
 # 17. Server Map Result Contract for the Analyze Tools
 
+> **Amended 2026-11-20 (branch ui/agent-map-feedback1).**
+> The AOI farmland-screening result panel no longer carries a
+> "Preliminary machine estimate" badge on the summary strip. Farmland class
+> acres and percentages come directly from the SDA database; the FPPA/LESA
+> determination that follows is what constitutes a preliminary estimate.
+> The `regulatory_notice` (verbatim, ADR 0003) still appears on every rendered
+> result, but is now positioned at the bottom of the results panel as a
+> collapsed `<details>` element rather than above the data table.
+> The corridor-screening result keeps its "Preliminary screening estimate" badge
+> (the composite relative rating is a model-derived score).
+> The server `authority` label for each layer (e.g. "Preliminary Machine
+> Estimate. Source: ...") is unchanged.
+>
 > **Amended 2026-11-19 (Plan 59, issue #117; breaking, map schema 2.0).**
 > Display geometry no longer travels in the tool result body. With
 > `include_map=true`, `analyze_farmland_by_polygon`, `analyze_corridor_fppa`

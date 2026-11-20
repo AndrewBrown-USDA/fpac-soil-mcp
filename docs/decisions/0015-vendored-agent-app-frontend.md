@@ -451,6 +451,41 @@ Added paths:
   The request sent to the agent is unchanged. `LOG_SSE_EVENTS` response logging
   (off by default) and the raw-body log (no injected context) are unchanged.
 
+* `client/src/components/chat-header.tsx`: optional `actions` slot added to the
+  right-side header row so other components can render beside the Ephemeral /
+  Feedback-disabled badges without overlapping them (branch
+  `ui/agent-map-feedback1`).
+* `client/src/components/chat.tsx`: `ChatExportActions` passed through the new
+  `actions` slot; removed the `absolute right-4 top-3` wrapper that caused the
+  export button to overlap the header badges (branch `ui/agent-map-feedback1`).
+* `client/src/components/map/MapPanel.tsx`: `hasFarmlandLayer` derived flag;
+  `CoreFarmlandLegend` shown only when the current result has no server
+  `farmland_classes` layer; corridor-tools group rendered only in Corridor mode
+  (same slot as the Area-of-interest group, before Map-view and Measurement);
+  `mapMode !== 'corridor'` conditions removed from corridor-button disabled
+  props; label inputs (Area label / Alternative label) hidden (state kept for
+  GeoJSON export defaults); `RegulatoryNotice` replaces `NOTICE_CARD` in the
+  tool-result view, with the notice moved below the server legend;
+  `NOTICE_CARD` import replaced by `RegulatoryNotice` (branch
+  `ui/agent-map-feedback1`).
+* `client/src/components/map/ScreeningResults.tsx`: `RegulatoryNotice`
+  exported component (collapsed `<details>`, verbatim text, `text-xs`);
+  AOI summary strip no longer carries the "Preliminary machine estimate" badge
+  (class acres come directly from SDA); result order changed to summary →
+  table → notice (branch `ui/agent-map-feedback1`).
+* `client/src/components/map/CorridorScreeningResults.tsx`: uses
+  `RegulatoryNotice` in place of an inline `NOTICE_CARD` div (branch
+  `ui/agent-map-feedback1`).
+* `tests/map-legend/legend.spec.ts`: added `toHaveCount(1)` assertion for
+  "Prime farmland" when the screening result includes a server farmland layer
+  (branch `ui/agent-map-feedback1`).
+* `tests/map-toolbar/toolbar.spec.ts`: updated mode-scoping test — corridor
+  tools are now absent (not disabled) in Area mode; label fill steps removed
+  (branch `ui/agent-map-feedback1`).
+* `tests/corridor-map/corridor-map.spec.ts`: alternative label fill removed;
+  expected button name changed from "Remove North route" to
+  "Remove Alternative 1" (branch `ui/agent-map-feedback1`).
+
 ### Update procedure
 
 1. Re-copy the upstream folder at the new commit, applying the same exclusions.

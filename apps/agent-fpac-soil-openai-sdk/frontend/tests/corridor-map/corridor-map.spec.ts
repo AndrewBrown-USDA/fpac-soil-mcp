@@ -57,12 +57,12 @@ test('retains alternative labels and synchronizes feature removal and clear', as
   await expect(page.getByText(/Primary ready/)).toBeVisible();
   await page.waitForTimeout(50);
 
-  await page.getByLabel('Alternative label').fill('North route');
+  // Alternative label input is hidden; the default name 'Alternative 1' is used.
   await page.getByRole('button', { name: 'Draw alternative line' }).click();
   await map.click({ position: { x: 150, y: 100 } });
   await map.dblclick({ position: { x: 220, y: 160 } });
-  await expect(page.getByRole('button', { name: 'Remove North route' })).toBeVisible();
-  await page.getByRole('button', { name: 'Remove North route' }).click();
+  await expect(page.getByRole('button', { name: 'Remove Alternative 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove Alternative 1' }).click();
   await expect(page.getByText(/0 alternatives/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Draw staging area' }).click();

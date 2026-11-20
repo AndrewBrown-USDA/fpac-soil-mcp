@@ -935,24 +935,6 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
               <Button type="button" size="sm" variant={mapMode === 'corridor' ? 'primary' : 'default'} aria-pressed={mapMode === 'corridor'} onClick={() => { setMapMode('corridor'); chooseMode('static'); }}>Corridor</Button>
             </div>
           </div>
-          <label className="flex flex-col gap-1 text-xs">
-            {mapMode === 'area' ? 'Area label (optional)' : 'Alternative label'}
-            <input
-              aria-label={mapMode === 'area' ? 'Area label' : 'Alternative label'}
-              type="text"
-              value={mapMode === 'area' ? aoiLabel : alternativeLabel}
-              onChange={(event) => {
-                if (mapMode === 'area') setAoiLabel(event.target.value);
-                else {
-                  setAlternativeLabel(event.target.value);
-                  alternativeLabelRef.current = event.target.value;
-                }
-              }}
-              disabled={mapMode === 'area' && !aoi}
-              maxLength={120}
-              className="h-8 w-36 rounded border bg-background px-2 text-sm"
-            />
-          </label>
           {mapMode === 'area' && (
             <div role="group" aria-label="Area of interest" className="flex flex-col gap-1">
               <span aria-hidden="true" className={groupLabel}>
@@ -964,6 +946,29 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
                 {toolButton('Edit', 'select', MousePointer2)}
                 {actionButton('Undo', Undo2, undoAoi, noChat || !canUndo)}
                 {actionButton('Clear', Trash2, clear, !aoi)}
+              </div>
+            </div>
+          )}
+          {mapMode === 'corridor' && (
+            <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
+              <span aria-hidden="true" className={groupLabel}>Corridor</span>
+              <div className="flex flex-wrap gap-1.5">
+                {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), !mapReady || noChat)}
+                {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), !mapReady || noChat)}
+                {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, !mapReady || noChat)}
+                {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), !mapReady || noChat)}
+                {actionButton(
+                  corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
+                  MapIcon,
+                  runCorridorScreening,
+                  !corridorInput || corridorScreening.status === 'running',
+                )}
+                {actionButton(
+                  'Clear corridor',
+                  Trash2,
+                  clearCorridor,
+                  noChat || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
+                )}
               </div>
             </div>
           )}
@@ -982,27 +987,6 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
               <option value="meters">Meters</option><option value="kilometers">Kilometers</option><option value="miles">Miles</option>
             </select>
             {measurePoints.length > 0 && actionButton('Clear measurement', Trash2, () => { setMeasurePoints([]); setMeasurePreview(null); })}
-          </div>
-          <div role="group" aria-label="Corridor tools" className="flex flex-col gap-1">
-            <span aria-hidden="true" className={groupLabel}>Corridor</span>
-            <div className="flex flex-wrap gap-1.5">
-              {actionButton('Draw primary line', Route, () => startCorridorDrawing('primary', alternativeLabel), mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton('Draw alternative line', GitBranch, () => startCorridorDrawing('alternative', alternativeLabel), mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton('Edit corridor', MousePointer2, () => { chooseMode('static'); corridorDrawRef.current?.setMode('select'); }, mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton('Draw staging area', Pentagon, () => startCorridorDrawing('staging'), mapMode !== 'corridor' || !mapReady || noChat)}
-              {actionButton(
-                corridorScreening.status === 'running' ? 'Screening corridor' : 'Screen corridor',
-                MapIcon,
-                runCorridorScreening,
-                mapMode !== 'corridor' || !corridorInput || corridorScreening.status === 'running',
-              )}
-              {actionButton(
-                'Clear corridor',
-                Trash2,
-                clearCorridor,
-                mapMode !== 'corridor' || noChat || (!corridorCenterline && !corridorAlternatives.length && !corridorStaging.length),
-              )}
-            </div>
           </div>
         </div>
         {mapMode === 'corridor' && (

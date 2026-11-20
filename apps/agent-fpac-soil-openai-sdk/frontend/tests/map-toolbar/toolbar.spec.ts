@@ -252,13 +252,9 @@ test('toolbar controls are compact, named, keyboard operable and labelled on hov
 test('Area and Corridor modes scope their drawing workflows while retaining measurement access', async ({ page }) => {
   const corridor = page.getByRole('button', { name: 'Corridor', exact: true });
   const primaryLine = page.getByRole('button', { name: 'Draw primary line' });
-  await expect(primaryLine).toBeVisible();
-  await expect(primaryLine).toBeDisabled();
-  const measurementBox = await page.getByRole('button', { name: 'Measure distance' }).boundingBox();
-  const corridorBox = await primaryLine.boundingBox();
-  if (!measurementBox || !corridorBox) throw new Error('Toolbar buttons are not visible');
-  expect(corridorBox.x).toBeGreaterThan(measurementBox.x);
-  expect(Math.abs(corridorBox.y - measurementBox.y)).toBeLessThan(12);
+  // Corridor tools are hidden in Area mode; Polygon is hidden in Corridor mode.
+  await expect(primaryLine).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Measure distance' })).toBeVisible();
   await corridor.click();
   await expect(corridor).toHaveAttribute('aria-pressed', 'true');
   await expect(primaryLine).toBeEnabled();
@@ -266,8 +262,7 @@ test('Area and Corridor modes scope their drawing workflows while retaining meas
   await expect(page.getByRole('button', { name: 'Measure distance' })).toBeVisible();
   await page.getByRole('button', { name: 'Area', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Polygon' })).toBeVisible();
-  await expect(primaryLine).toBeVisible();
-  await expect(primaryLine).toBeDisabled();
+  await expect(primaryLine).toHaveCount(0);
   await page.getByRole('button', { name: 'Polygon' }).click();
   const map = page.locator('.maplibregl-map');
   await map.click({ position: { x: 100, y: 100 } });
@@ -282,13 +277,9 @@ test('Area and Corridor modes scope their drawing workflows while retaining meas
   const hiddenAoi = await canvas.screenshot();
   expect(hiddenAoi.equals(visibleAoi)).toBe(false);
   await page.getByRole('button', { name: 'AOI outline' }).click();
-  await page.getByLabel('Area label').fill('Test area');
+  // Label inputs are hidden; mode switch alone ends the test.
   await page.getByRole('button', { name: 'Corridor', exact: true }).click();
-  await page.getByLabel('Alternative label').fill('Test route');
-  await page.getByRole('button', { name: 'Area', exact: true }).click();
-  await expect(page.getByLabel('Area label')).toHaveValue('Test area');
-  await page.getByRole('button', { name: 'Corridor', exact: true }).click();
-  await expect(page.getByLabel('Alternative label')).toHaveValue('Test route');
+  await expect(primaryLine).toBeEnabled();
 });
 
 test('drawing and measurement cursors restore and measurement defaults to selectable miles', async ({ page }) => {
