@@ -387,6 +387,7 @@ def create_agent(
     aoi_note: str | None = None,
     corridor_note: str | None = None,
     site_assessment_context: str | None = None,
+    history_items: list[dict] | None = None,
 ) -> Agent:
     """Build the FPAC Soil agent.
 
@@ -394,7 +395,9 @@ def create_agent(
     which they need for tool calling. When ``tools_unavailable`` is set, the instructions
     tell the model to say so instead of answering from memory. ``aoi_note`` describes the
     map AOI attached to the conversation (ADR 0016); ``site_assessment_context`` is the
-    validated criteria resource read from the MCP server for this turn.
+    validated criteria resource read from the MCP server for this turn. ``history_items``
+    is this request's chat history; the Site Assessment summary tool reads recorded
+    answers from it.
     """
     configure_local_mlflow_tracing()
     model = agent_model()
@@ -416,7 +419,7 @@ def create_agent(
     if not tools_unavailable:
         site_assessment_payload = _site_assessment_payload_from_context(site_assessment_context)
     tools = (
-        create_site_assessment_tools(site_assessment_payload)
+        create_site_assessment_tools(site_assessment_payload, history_items)
         if site_assessment_payload is not None
         else []
     )
@@ -493,17 +496,20 @@ async def _connect_fpac_agent(
             aoi_note=instruction_note(aoi) if aoi is not None else None,
             corridor_note=corridor_instruction_note(corridor),
             site_assessment_context=site_assessment_context,
+            history_items=history_items,
         )
     if aoi is not None:
         return create_agent(
             mcp_servers=servers,
             aoi_note=instruction_note(aoi),
             site_assessment_context=site_assessment_context,
+            history_items=history_items,
         )
     return create_agent(
         mcp_servers=servers,
         tools_unavailable=bool(unavailable),
         site_assessment_context=site_assessment_context,
+        history_items=history_items,
     )
 
 

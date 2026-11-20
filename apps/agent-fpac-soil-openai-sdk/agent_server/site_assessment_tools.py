@@ -8,10 +8,25 @@ from typing import Any, Literal
 from agents import FunctionTool, function_tool
 from agents.exceptions import ModelBehaviorError
 
+from agent_server.site_assessment_gate import _canonical_answers
 
-def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[FunctionTool]:
-    """Create interview tools from criteria already validated by the MCP resource path."""
+RECORD_TOOL = "record_site_assessment_answer"
+SUMMARY_TOOL = "show_site_assessment_summary"
+SUMMARY_TYPE = "site_assessment_confirmed_summary"
+
+
+def create_site_assessment_tools(
+    criteria_payload: dict[str, Any],
+    history_items: list[dict[str, Any]] | None = None,
+) -> list[FunctionTool]:
+    """Create interview tools from criteria already validated by the MCP resource path.
+
+    ``history_items`` is this request's replayed chat history. Answers recorded in earlier
+    turns are read from it, and answers recorded during this run are added as they are
+    recorded, so the summary tool sees every answer.
+    """
     criteria = {item["criterion_number"]: item for item in criteria_payload["criteria"]}
+    recorded = _recorded_answers(history_items or [])
 
     @function_tool(
         name_override="get_site_assessment_question",
@@ -42,7 +57,7 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
         )
 
     @function_tool(
-        name_override="record_site_assessment_answer",
+        name_override=RECORD_TOOL,
         failure_error_function=_tool_error_message,
         description_override=(
             "Record one Site Assessment answer using a choice from the authoritative "
@@ -98,7 +113,47 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
             "source_provenance": source_provenance or [],
             "justification": justification,
         }
+        recorded[criterion_number] = record
         return json.dumps(record, ensure_ascii=False)
+
+    @function_tool(
+        name_override=SUMMARY_TOOL,
+        failure_error_function=_tool_error_message,
+        description_override=(
+            "After every Site Assessment criterion has a recorded answer (answered, unknown, "
+            "or skipped), call this tool to show the user the review summary card. Do not "
+            "write your own summary table. The user confirms only by pressing Confirm on the "
+            "card; typed text such as 'confirm' is not a confirmation. After that confirmation "
+            "arrives, call calculate_preliminary_lesa with site_assessment_inputs set to this "
+            "tool's calculation_inputs, unchanged."
+        ),
+    )
+    async def show_site_assessment_summary() -> str:
+        missing = [number for number in sorted(criteria) if number not in recorded]
+        if missing:
+            raise ValueError(
+                "Criteria without a recorded answer: "
+                + ", ".join(str(number) for number in missing)
+                + ". Record each one (unknown or skipped is allowed) before showing the summary."
+            )
+        answers = [recorded[number] for number in sorted(criteria)]
+        # The confirmation gate runs the same check; a failure here is a ValueError.
+        _canonical_answers(answers, criteria_payload)
+        return json.dumps(
+            {
+                "type": SUMMARY_TYPE,
+                # Only the user's Confirm on the card confirms; the gate ignores tool output.
+                "confirmed": False,
+                "answers": answers,
+                "calculation_inputs": {
+                    "criteria_facts": {
+                        str(number): _calculation_fact(criteria[number], recorded[number])
+                        for number in sorted(criteria)
+                    }
+                },
+            },
+            ensure_ascii=False,
+        )
 
     return [
         _reject_unknown_parameters(get_site_assessment_question, {"criterion_number"}),
@@ -116,7 +171,86 @@ def create_site_assessment_tools(criteria_payload: dict[str, Any]) -> list[Funct
                 "justification",
             },
         ),
+        _reject_unknown_parameters(show_site_assessment_summary, set()),
     ]
+
+
+def _recorded_answers(history_items: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """Latest answer record per criterion from earlier answer-tool results in the history."""
+    record_call_ids = {
+        item.get("call_id")
+        for item in history_items
+        if isinstance(item, dict)
+        and item.get("type") == "function_call"
+        and item.get("name") == RECORD_TOOL
+    }
+    recorded: dict[int, dict[str, Any]] = {}
+    for item in history_items:
+        if not (
+            isinstance(item, dict)
+            and item.get("type") == "function_call_output"
+            and item.get("call_id") in record_call_ids
+        ):
+            continue
+        record = _parse_tool_output(item.get("output"))
+        number = record.get("criterion_number") if isinstance(record, dict) else None
+        if (
+            isinstance(record, dict)
+            and record.get("type") == "site_assessment_answer"
+            and isinstance(number, int)
+            and not isinstance(number, bool)
+        ):
+            recorded[number] = record
+    return recorded
+
+
+def _parse_tool_output(output: Any) -> Any:
+    """Decode a replayed tool output: a JSON string or a list of text parts."""
+    if isinstance(output, list):
+        output = next(
+            (
+                part.get("text")
+                for part in output
+                if isinstance(part, dict) and isinstance(part.get("text"), str)
+            ),
+            None,
+        )
+    if not isinstance(output, str):
+        return output
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError:
+        return None
+
+
+def _calculation_fact(criterion: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    """The ``criteria_facts`` entry the gate and the MCP calculator accept for a record."""
+    state = record["answer_state"]
+    if state != "answered":
+        value: str | float = state
+    elif criterion["answer_type"] == "qualitative":
+        value = record["answer"]
+    else:
+        # Percentage facts must be numbers; the card records a band, so submit its midpoint.
+        band = next(band for band in criterion["bands"] if band["id"] == record["answer"])
+        value = _representative_value(band)
+    fact: dict[str, Any] = {
+        "value": value,
+        "is_verified": bool(record.get("is_verified")),
+        "source_provenance": list(record.get("source_provenance") or []),
+    }
+    if record.get("justification"):
+        fact["justification"] = record["justification"]
+    return fact
+
+
+def _representative_value(band: dict[str, Any]) -> float:
+    """Midpoint of a percentage band; open-ended bands above 100% are capped at 100%."""
+    lower = float(band["min"])
+    upper = band.get("max")
+    if upper is None or (upper > 100 and lower < 100):
+        upper = 100.0
+    return round((lower + float(upper)) / 2, 4)
 
 
 def _reject_unknown_parameters(tool: FunctionTool, allowed_parameters: set[str]) -> FunctionTool:

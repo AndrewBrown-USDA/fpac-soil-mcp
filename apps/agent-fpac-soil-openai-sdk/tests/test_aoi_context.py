@@ -11,7 +11,7 @@ import asyncio
 import logging
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import mlflow
 import pytest
@@ -318,6 +318,7 @@ def test_handler_with_active_aoi_adds_note_and_binds_server(patched, run):
         site_assessment_context=agent_module._site_assessment_criteria_context(
             patched.criteria_resource
         ),
+        history_items=ANY,
     )
     patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
     assert patched.server.call_tool is not patched.original_call_tool
@@ -349,6 +350,7 @@ def test_handler_without_aoi_behaves_as_before(patched, run, custom_inputs):
         site_assessment_context=agent_module._site_assessment_criteria_context(
             patched.criteria_resource
         ),
+        history_items=ANY,
     )
     patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
     assert patched.server.call_tool is not patched.original_call_tool

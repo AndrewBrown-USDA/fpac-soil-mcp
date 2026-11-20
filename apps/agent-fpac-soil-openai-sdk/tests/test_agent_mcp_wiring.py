@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import mlflow
 import pytest
@@ -300,7 +300,14 @@ def test_handler_healthy_path(patched, caplog, run_handler):
         site_assessment_context=agent_module._site_assessment_criteria_context(
             patched.server.read_resource.return_value
         ),
+        history_items=ANY,
     )
+    # The Site Assessment tools read recorded answers from the same history the run gets.
+    if patched.run.call_args:
+        messages = patched.run.call_args.args[1]
+    else:
+        messages = patched.run_streamed.call_args.kwargs["input"]
+    assert patched.create_agent.call_args.kwargs["history_items"] == messages
     patched.server.read_resource.assert_awaited_once_with("fppa://site-assessment-criteria")
     assert not [r for r in caplog.records if r.name == agent_module.__name__]
 
@@ -655,6 +662,7 @@ def test_valid_resource_wires_tools_into_agent(
     assert [tool.name for tool in constructed.call_args.kwargs["tools"]] == [
         "get_site_assessment_question",
         "record_site_assessment_answer",
+        "show_site_assessment_summary",
     ]
 
 

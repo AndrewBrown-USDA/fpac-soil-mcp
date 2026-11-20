@@ -51,6 +51,7 @@ def test_validated_site_assessment_context_adds_resource_backed_tools(
     assert [tool.name for tool in agent.tools] == [
         "get_site_assessment_question",
         "record_site_assessment_answer",
+        "show_site_assessment_summary",
     ]
     answer_schema = agent.tools[1].params_json_schema
     assert "points" not in answer_schema["properties"]

@@ -263,7 +263,10 @@ Modified upstream files:
   `get_site_assessment_question` output as a distinct interview card and
   structured `site_assessment_confirmed_summary` text as a separate review
   card. Card actions send the exact `site_assessment_answer` and confirmed
-  summary records as JSON chat messages (Plan 51.2.2).
+  summary records as JSON chat messages (Plan 51.2.2). The review card also
+  renders `show_site_assessment_summary` tool output, which the agent builds
+  from the recorded answers, so confirmation no longer depends on the model
+  writing summary JSON as text.
 * `client/src/components/message.tsx`,
   `client/src/components/elements/tool.tsx`, and
   `client/src/components/map/ShowOnMapButton.tsx`: collapse regular tool

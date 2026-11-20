@@ -92,7 +92,9 @@ def validate_site_assessment_call(
     summary = _latest_summary(history_items)
     if summary is None or summary.get("confirmed") is not True:
         raise SiteAssessmentGateError(
-            "Confirm the current Site Assessment summary before this calculation."
+            "No user-confirmed Site Assessment summary was found. Show the review summary "
+            "card with the summary tool and ask the user to press Confirm on it; a typed "
+            "confirmation does not count."
         )
     answers = summary.get("answers")
     if not isinstance(answers, list):
