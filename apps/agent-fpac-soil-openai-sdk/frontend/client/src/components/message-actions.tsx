@@ -40,6 +40,7 @@ function PureMessageActions({
   // Sync server-restored feedback into local state when it arrives after mount
   // (e.g. NewChatPage's useChatData resolves after the first stream completes).
   // Only applies when the user hasn't clicked anything yet (feedback === null).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: feedback excluded intentionally; effect runs once on initialFeedback arrival, not on every feedback change
   useEffect(() => {
     if (initialFeedback?.feedbackType && feedback === null) {
       setFeedback(initialFeedback.feedbackType);

@@ -1,5 +1,4 @@
 import React, { memo, useState } from 'react';
-import { AnimatedAssistantIcon } from './animation-assistant-icon';
 import { Response } from './elements/response';
 import { MessageContent } from './elements/message';
 import {
@@ -38,7 +37,6 @@ import { MessageOAuthError } from './message-oauth-error';
 import { isCredentialErrorMessage } from '@/lib/oauth-error-utils';
 import {
   groupConsecutiveToolSegments,
-  type ChatPart,
   type ToolPart,
 } from '@/lib/tool-group-segments';
 import { Streamdown } from 'streamdown';

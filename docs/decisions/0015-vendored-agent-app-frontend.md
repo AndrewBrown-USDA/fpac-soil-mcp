@@ -485,6 +485,17 @@ Added paths:
 * `tests/corridor-map/corridor-map.spec.ts`: alternative label fill removed;
   expected button name changed from "Remove North route" to
   "Remove Alternative 1" (branch `ui/agent-map-feedback1`).
+* `client/src/components/app-sidebar.tsx`: removed unused `Button` import.
+* `client/src/components/elements/prompt-input.tsx`: removed unused `SendIcon`
+  and `ChevronUpIcon` imports.
+* `client/src/components/elements/reasoning.tsx`: removed unused `BrainIcon`
+  import.
+* `client/src/components/sidebar-user-nav.tsx`: removed unused
+  `DropdownMenuSeparator` import.
+* `client/src/components/message-actions.tsx`: added `biome-ignore` marker for
+  `useExhaustiveDependencies` on the feedback-sync `useEffect`; `feedback` is
+  intentionally excluded so the effect fires only on `initialFeedback` arrival.
+  (All five: pre-existing upstream lint warnings, branch `ui/agent-map-feedback1`.)
 
 ### Update procedure
 
