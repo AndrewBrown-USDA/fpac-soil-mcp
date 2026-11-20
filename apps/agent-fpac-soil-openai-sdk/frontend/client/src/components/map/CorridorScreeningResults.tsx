@@ -1,4 +1,4 @@
-import { NOTICE_CARD, RESULT_CARD } from './ScreeningResults';
+import { RESULT_CARD, RegulatoryNotice } from './ScreeningResults';
 import type { CorridorDisplay, CorridorScreeningResponse } from './useCorridorScreening';
 
 function number(value: unknown): string | null {
@@ -43,11 +43,10 @@ function Summary({ display }: { display: CorridorDisplay }) {
 }
 
 export function CorridorScreeningResults({ result }: { result: CorridorScreeningResponse }) {
-  return <div className="flex flex-col gap-3">
-    <Summary display={result.display} />
-    {result.regulatory_notice ? <div className={NOTICE_CARD}>
-      <h3 className="font-semibold text-sm">Regulatory notice</h3>
-      <p className="mt-1 whitespace-pre-line">{result.regulatory_notice}</p>
-    </div> : <p role="alert" className="text-destructive text-sm">Regulatory notice missing - treat this result as invalid.</p>}
-  </div>;
+  return (
+    <div className="flex flex-col gap-3">
+      <Summary display={result.display} />
+      <RegulatoryNotice notice={result.regulatory_notice} />
+    </div>
+  );
 }

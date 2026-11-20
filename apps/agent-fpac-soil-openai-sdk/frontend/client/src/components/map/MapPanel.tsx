@@ -47,7 +47,7 @@ import { NO_OVERLAYS, OverlayControl } from './OverlayControl';
 import type { OverlayFlags } from './OverlayControl';
 import { OVERLAYS, addOverlay, overlayIdForSource, removeOverlay } from './overlays';
 import type { OverlayId } from './overlays';
-import { NOTICE_CARD, RESULT_CARD, ScreeningResults } from './ScreeningResults';
+import { RESULT_CARD, RegulatoryNotice, ScreeningResults } from './ScreeningResults';
 import { StatusMessage } from './StatusMessage';
 import type { StatusVariant } from './StatusMessage';
 import { summaryToAttach, useScreening } from './useScreening';
@@ -840,6 +840,10 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
     return actionButton(label, StateIcon, () => chooseMode(pressed ? 'static' : target), !mapReady || noChat, pressed);
   };
 
+  // True when the current result already includes a server farmland-classes layer
+  // (which carries its own legend items). Used to avoid showing CoreFarmlandLegend twice.
+  const hasFarmlandLayer = shown?.block?.layers.some((layer) => layer.id === 'farmland_classes') ?? false;
+
   const groupLabel = 'font-medium text-muted-foreground text-xs uppercase tracking-wide';
   const originBadge = 'rounded-full border border-border bg-muted px-2 py-0.5 font-medium text-xs';
 
@@ -1042,16 +1046,18 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
             <details className="absolute top-2 left-2 z-10 max-w-[min(18rem,calc(100%-7rem))] rounded-md border border-border bg-popover text-popover-foreground shadow-md">
                 <summary className="cursor-pointer px-2 py-1 font-medium text-sm">Map legend</summary>
                 <div className="max-h-[min(14rem,40vh)] overflow-auto border-border border-t p-2">
-                  <CoreFarmlandLegend />
-                  {(shown?.block || shown?.cdlSummary || overlayOn.cdl) && <hr className="my-2" />}
+                  {/* The server farmland layer carries its own class legend; show the
+                      built-in class key only when that layer is absent. */}
+                  {!hasFarmlandLayer && <CoreFarmlandLegend />}
+                  {!hasFarmlandLayer && (shown?.block || shown?.cdlSummary || overlayOn.cdl) && <hr className="my-2" />}
                   {shown?.block && (
                     <MapLegend
                       block={shown.block}
                       compact
-                      contextLegend={shown.block.layers.some((layer) => layer.id === 'farmland_classes') && (shown.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
+                      contextLegend={hasFarmlandLayer && (shown?.cdlSummary || overlayOn.cdl) ? <CDLLegend /> : undefined}
                     />
                   )}
-                  {(!shown?.block || !shown.block.layers.some((layer) => layer.id === 'farmland_classes')) && (shown?.cdlSummary || overlayOn.cdl) && <CDLLegend />}
+                  {!hasFarmlandLayer && (shown?.cdlSummary || overlayOn.cdl) && <CDLLegend />}
                 </div>
               </details>
           )}
@@ -1138,20 +1144,15 @@ export function MapPanel({ onCloseMap, onMapReady }: MapPanelProps) {
           </div>
           {shown.cdlSummary ? (
             <CDLContextSummary result={shown.cdlSummary} />
-          ) : shown.regulatory_notice ? (
-            <div className={NOTICE_CARD}>
-              <h3 className="font-semibold text-sm">Regulatory notice</h3>
-              <p className="mt-1 whitespace-pre-line">{shown.regulatory_notice}</p>
-            </div>
           ) : (
-            <p role="alert" className="text-destructive text-sm">
-              Regulatory notice missing - treat this result as invalid.
-            </p>
-          )}
-          {shown.block && (
-            <div className={RESULT_CARD}>
-              <MapLegend block={shown.block} />
-            </div>
+            <>
+              {shown.block && (
+                <div className={RESULT_CARD}>
+                  <MapLegend block={shown.block} />
+                </div>
+              )}
+              <RegulatoryNotice notice={shown.regulatory_notice} />
+            </>
           )}
         </div>
       ) : shown?.origin === 'corridor' && corridorScreening.status === 'done' && corridorScreening.result ? (
