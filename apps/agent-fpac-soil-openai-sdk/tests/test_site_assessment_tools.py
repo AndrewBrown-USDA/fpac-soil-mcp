@@ -6,6 +6,7 @@ from agent_server.agent import (
     _site_assessment_criteria_context,
     _site_assessment_payload_from_context,
 )
+from agent_server.site_assessment_gate import _canonical_answers
 from agent_server.site_assessment_tools import create_site_assessment_tools
 from agents.tool import ToolContext
 
@@ -16,15 +17,26 @@ def _tools(valid_site_assessment_criteria_resource):
     return create_site_assessment_tools(payload)
 
 
-def _invoke(tool, arguments):
-    serialized = json.dumps(arguments)
+def _invoke_raw(tool, serialized):
     context = ToolContext(
         {},
         tool_name=tool.name,
         tool_call_id="test-call",
         tool_arguments=serialized,
     )
-    return json.loads(asyncio.run(tool.on_invoke_tool(context, serialized)))
+    return asyncio.run(tool.on_invoke_tool(context, serialized))
+
+
+def _invoke(tool, arguments):
+    return json.loads(_invoke_raw(tool, json.dumps(arguments)))
+
+
+def _invoke_error(tool, arguments):
+    # Tool failures come back as the tool result so the run continues (trace 9223a54c).
+    result = _invoke_raw(tool, json.dumps(arguments))
+    assert isinstance(result, str)
+    assert result.startswith("Site Assessment tool error: ")
+    return result
 
 
 def test_question_tool_returns_only_registry_defined_question_and_schedule(
@@ -147,20 +159,102 @@ def test_unknown_and_skipped_states_are_structured_records(
         assert record["points"] is None
 
 
+@pytest.mark.parametrize(
+    ("answer_state", "answer"),
+    [
+        ("unknown", "unknown"),
+        ("unknown", " Unknown "),
+        ("unknown", ""),
+        ("skipped", "skipped"),
+        ("skipped", ""),
+    ],
+)
+def test_unknown_and_skipped_accept_placeholder_answer(
+    valid_site_assessment_criteria_resource, answer_state, answer
+):
+    # Trace 9223a54c: the model sent answer="unknown" with answer_state="unknown"; the
+    # tool raised, the run aborted, and the unanswered tool call broke later turns.
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+
+    record = _invoke(
+        answer_tool,
+        {
+            "criterion_number": 1,
+            "answer_state": answer_state,
+            "answer": answer,
+            "evidence": "",
+            "comment": "User stated only below average.",
+            "provenance": "user",
+        },
+    )
+
+    assert record["answer_state"] == answer_state
+    assert record["points"] is None
+    assert record["answer"] is None
+    if answer_state == "unknown":
+        assert record["selected_band"]["id"] == "unknown"
+    else:
+        assert record["selected_band"] is None
+
+
+@pytest.mark.parametrize("answer_state", ["unknown", "skipped"])
+def test_unknown_and_skipped_records_pass_the_confirmation_gate(
+    valid_site_assessment_criteria_resource, answer_state
+):
+    # The gate rejects unknown records whose answer is not null, as the card sends.
+    context = _site_assessment_criteria_context(valid_site_assessment_criteria_resource)
+    payload = _site_assessment_payload_from_context(context)
+    _, answer_tool = create_site_assessment_tools(payload)
+
+    record = _invoke(
+        answer_tool,
+        {"criterion_number": 1, "answer_state": answer_state, "answer": None},
+    )
+
+    assert _canonical_answers([record], payload)[1]["answer_state"] == answer_state
+
+
+@pytest.mark.parametrize(
+    ("answer_state", "answer"),
+    [
+        ("unknown", "below_20"),
+        ("unknown", 24.0),
+        ("skipped", "unknown"),
+        ("skipped", 24.0),
+    ],
+)
+def test_unknown_and_skipped_still_reject_real_values(
+    valid_site_assessment_criteria_resource, answer_state, answer
+):
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+    message = _invoke_error(
+        answer_tool,
+        {
+            "criterion_number": 1,
+            "answer_state": answer_state,
+            "answer": answer,
+            "evidence": "",
+            "comment": "",
+            "provenance": "user",
+        },
+    )
+    assert "must not include a criterion value" in message
+
+
 def test_answer_tool_rejects_non_resource_choice(valid_site_assessment_criteria_resource):
     _, answer_tool = _tools(valid_site_assessment_criteria_resource)
-    with pytest.raises(ValueError, match="resource-defined"):
-        _invoke(
-            answer_tool,
-            {
-                "criterion_number": 1,
-                "answer_state": "answered",
-                "answer": -1,
-                "evidence": "",
-                "comment": "",
-                "provenance": "user",
-            },
-        )
+    message = _invoke_error(
+        answer_tool,
+        {
+            "criterion_number": 1,
+            "answer_state": "answered",
+            "answer": -1,
+            "evidence": "",
+            "comment": "",
+            "provenance": "user",
+        },
+    )
+    assert "resource-defined" in message
 
 
 def test_answer_tool_rejects_model_supplied_points(valid_site_assessment_criteria_resource):
@@ -175,5 +269,37 @@ def test_answer_tool_rejects_model_supplied_points(valid_site_assessment_criteri
         "points": 100,
     }
 
-    with pytest.raises((TypeError, ValueError)):
-        _invoke(answer_tool, arguments)
+    assert "unsupported fields" in _invoke_error(answer_tool, arguments)
+
+
+def test_question_tool_reports_unknown_criterion_to_the_model(
+    valid_site_assessment_criteria_resource,
+):
+    question_tool, _ = _tools(valid_site_assessment_criteria_resource)
+
+    message = _invoke_error(question_tool, {"criterion_number": 99})
+
+    assert "must identify a Site Assessment criterion" in message
+
+
+def test_answer_tool_reports_invalid_arguments_to_the_model(
+    valid_site_assessment_criteria_resource,
+):
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+
+    message = _invoke_error(
+        answer_tool,
+        {"criterion_number": 1, "answer_state": "not-a-state", "answer": None},
+    )
+
+    assert "record_site_assessment_answer" in message
+
+
+def test_answer_tool_reports_non_object_arguments_to_the_model(
+    valid_site_assessment_criteria_resource,
+):
+    _, answer_tool = _tools(valid_site_assessment_criteria_resource)
+
+    result = _invoke_raw(answer_tool, "not json")
+
+    assert result.startswith("Site Assessment tool error: ")

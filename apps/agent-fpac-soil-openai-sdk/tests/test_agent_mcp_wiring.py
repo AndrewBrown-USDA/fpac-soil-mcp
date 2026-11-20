@@ -656,3 +656,31 @@ def test_valid_resource_wires_tools_into_agent(
         "get_site_assessment_question",
         "record_site_assessment_answer",
     ]
+
+
+@pytest.mark.parametrize("handler", ["invoke", "stream"])
+def test_handlers_repair_orphan_tool_calls_before_running(patched, handler):
+    # Session 2fc10f43: a replayed call with no output made every later turn fail.
+    request = ResponsesAgentRequest(
+        input=[
+            {"role": "user", "content": "below average"},
+            {
+                "type": "function_call",
+                "call_id": "call_orphan",
+                "name": "record_site_assessment_answer",
+                "arguments": "{}",
+            },
+            {"role": "user", "content": "try again"},
+        ]
+    )
+
+    if handler == "invoke":
+        _run_invoke(request)
+        messages = patched.run.call_args.args[1]
+    else:
+        _run_stream(request)
+        messages = patched.run_streamed.call_args.kwargs["input"]
+
+    outputs = [m for m in messages if m.get("type") == "function_call_output"]
+    assert [m["call_id"] for m in outputs] == ["call_orphan"]
+    assert messages.index(outputs[0]) == 2

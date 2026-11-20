@@ -53,7 +53,7 @@ from agent_server.config import (
     local_mlflow_tracking_uri,
     uses_reasoning_effort_none,
 )
-from agent_server.history import normalize_history_items
+from agent_server.history import normalize_history_items, repair_orphan_tool_calls
 from agent_server.site_assessment_gate import bind_site_assessment_gate
 from agent_server.site_assessment_tools import create_site_assessment_tools
 from agent_server.utils import get_session_id, process_agent_stream_events
@@ -511,7 +511,9 @@ async def _connect_fpac_agent(
 async def invoke_handler(request: ResponsesAgentRequest) -> ResponsesAgentResponse:
     _update_trace_session(get_session_id(request))
     configure_openai_client()
-    messages = normalize_history_items([i.model_dump() for i in request.input])
+    messages = repair_orphan_tool_calls(
+        normalize_history_items([i.model_dump() for i in request.input])
+    )
     from agent_server.corridor_context import read_active_corridor
 
     # The AsyncExitStack keeps the MCP server open for the whole request.
@@ -532,7 +534,9 @@ async def stream_handler(
 ) -> AsyncGenerator[ResponsesAgentStreamEvent, None]:
     _update_trace_session(get_session_id(request))
     configure_openai_client()
-    messages = normalize_history_items([i.model_dump() for i in request.input])
+    messages = repair_orphan_tool_calls(
+        normalize_history_items([i.model_dump() for i in request.input])
+    )
     from agent_server.corridor_context import read_active_corridor
 
     # The AsyncExitStack keeps the MCP server open for the whole request.
