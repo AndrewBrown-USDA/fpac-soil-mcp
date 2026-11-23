@@ -72,7 +72,7 @@ flowchart TB
     SOIL & ANALYSIS & URBAN & CDL & REF --> RESULT
     RESULT -->|"Evidence for assistants"| HOST
     RESULT -->|"Analysis and layer descriptions"| APP
-    SOIL & ANALYSIS -->|"Map-enabled geometry tools"| DISPLAY
+    RESULT -->|"include_map=true: display output in _meta"| DISPLAY
     DISPLAY -->|"Display data, separate from model content"| APP
     RESULT -.-> GIS
     DISPLAY -.-> GIS

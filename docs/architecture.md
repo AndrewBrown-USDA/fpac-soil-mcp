@@ -72,10 +72,10 @@ Source/client arrows point toward the tools and analyzers that consume their dat
 ```mermaid
 flowchart TB
     subgraph SERVER["FPAC Soil MCP server"]
-        TOOLS["Map-enabled tools<br/>Polygon, corridor, soil geometry"]
+        TOOLS["Existing polygon, corridor and soil geometry tools<br/>Optional include_map=true"]
         EXACT["Exact analytical geometry<br/>Clipping, acreage and ratings"]
         BUILD["spatial/map_builder.py<br/>Display layers, legends and size limits"]
-        WRAP["mcp/tools/results.py<br/>meta_tool result adapter"]
+        WRAP["mcp/tools/results.py<br/>One tool result, two output channels"]
         BODY["MCP result body<br/>Analysis, sources, coverage, map layer descriptors"]
         META["MCP result _meta<br/>gov.usda.fpac-soil/map<br/>Display geometry, bounds and warnings"]
         CRITERIA["fppa://site-assessment-criteria<br/>Questions, bands, citations and scoring rules"]
