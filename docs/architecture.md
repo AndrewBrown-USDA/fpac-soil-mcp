@@ -6,121 +6,120 @@ This guide describes the current implementation of the FPAC Soil MCP server: how
 
 ```mermaid
 flowchart TB
-    HOST["MCP host or client"]
+    CLIENT["MCP clients<br/>Assistants, example agent app, workbench"]
+    FACTORY["mcp/app.py<br/>Central registration"]
+    MCP["FastMCP<br/>stdio / SSE / Streamable HTTP"]
+    OPS["Network-only routes<br/>GET /health and /meta"]
 
-    subgraph SERVER["fpac-soil-mcp service"]
-        TRANSPORT["FastMCP transport<br/>stdio | SSE | Streamable HTTP"]
-        APP["mcp/app.py<br/>create_mcp_server()"]
-        REG["Central registration"]
-        TOOLREG["mcp/tools/<br/>tool groups"]
-        RESREG["mcp/resources/<br/>FPPA reference resources"]
-        PROMPTREG["mcp/prompts/<br/>guided FPPA workflows"]
-        ROUTES["mcp/routes.py<br/>GET /health and GET /meta"]
-
-        subgraph TOOLGROUPS["MCP tool adapters"]
-            SOILTOOLS["Soil lookup<br/>point | mukey | interpretations"]
-            SPATIALTOOLS["Spatial analysis<br/>polygon | soil geometry | corridor"]
-            CDLTOOLS["CDL analysis<br/>histogram | area and surrounding zones"]
-            FPPATOOLS["FPPA guidance<br/>scope | farmland classes"]
-            EXEMPTTOOLS["Urban-area screening"]
-            LESATOOLS["Preliminary LESA"]
-        end
-
-        subgraph DOMAIN["Domain workflows"]
-            FPPA["domain/fppa.py<br/>classifications and scope"]
-            POLYGON["domain/polygon_analyzer.py<br/>area sampling and aggregation"]
-            CORRIDOR["domain/corridor_analyzer.py<br/>segments, buffers, alternatives"]
-            LESA["domain/lesa.py and<br/>domain/site_assessment.py"]
-            WORKFLOW["domain/workflow.py<br/>workflow guidance"]
-        end
-
-        GEO["spatial/geometry.py<br/>GeoJSON/WKT validation, transforms,<br/>acreage and geometry operations"]
-        MAP["spatial/map_builder.py<br/>map-layer response construction"]
-
-        subgraph SHARED["Shared policy, contracts, and configuration"]
-            MODELS["models/<br/>soil | spatial | CDL | case | LESA"]
-            CORE["core/<br/>authority | constants | privacy | errors"]
-            CONFIG["core/config.py<br/>environment-backed settings"]
-        end
-
-        subgraph CLIENTS["Upstream client adapters"]
-            HTTP["clients/http.py<br/>shared HTTP errors and retries"]
-            SDA["clients/sda/<br/>SDA client, fixed SQL templates,<br/>SDV metadata registry"]
-            CDL["clients/cdl.py<br/>CDL ImageServer client"]
-            NASS["clients/nass.py<br/>QuickStats client"]
-            TIGER["clients/tigerweb.py<br/>Census TIGERweb client"]
-        end
-
-        RESULT["Typed screening response<br/>source provenance | coverage/status<br/>caveats and limitations"]
+    subgraph TOOLS["MCP tool adapters"]
+        SOIL["soil_lookup_tools.py<br/>Point, mukey, interpretations, soil polygons"]
+        AREA["spatial_analysis_tools.py<br/>Polygon and corridor"]
+        LE["lesa_tools.py<br/>Preliminary LESA"]
+        URBAN["exemption_tools.py<br/>Urban screening"]
+        LAND["cdl_tools.py<br/>Histogram and surrounding context"]
+        GUIDE["fppa_tools.py<br/>Scope and farmland classes"]
     end
 
-    subgraph SOURCES["External public data services"]
-        SDAAPI["USDA NRCS Soil Data Access<br/>SSURGO tabular and spatial queries"]
-        CDLAPI["USDA NASS Cropland Data Layer<br/>ImageServer metadata and class data"]
-        NASSAPI["USDA NASS QuickStats<br/>county agricultural statistics"]
-        CENSUSAPI["U.S. Census Bureau TIGERweb<br/>2020 Urban Areas and county boundaries"]
+    subgraph LOGIC["Domain and spatial operations"]
+        POLYGON["PolygonAnalyzer<br/>Soil clipping and acreage aggregation"]
+        CORRIDOR["CorridorAnalyzer<br/>Footprints, county partitions, alternatives"]
+        LESA["LESA and Site Assessment<br/>Ratings, facts and supplied inputs"]
+        GEO["Geometry validation and transformations<br/>Exact analytical geometry"]
+        POLICY["Shared models and policy<br/>Authority, provenance, coverage, notices"]
     end
 
-    HOST <-->|"MCP messages"| TRANSPORT
-    APP --> REG
-    APP --> TRANSPORT
-    REG --> TOOLREG
-    REG --> RESREG
-    REG --> PROMPTREG
-    REG --> ROUTES
-    TOOLREG --> TOOLGROUPS
-    TRANSPORT --> TOOLGROUPS
-    TRANSPORT --> RESREG
-    TRANSPORT --> PROMPTREG
-    TRANSPORT --> ROUTES
+    subgraph DATA["Dedicated clients and external sources"]
+        SDA["SDAClient + fixed SQL<br/>NRCS SSURGO soils and ratings"]
+        TIGER["TigerwebClient<br/>Census urban areas and counties"]
+        NASS["NassClient<br/>Optional NASS county statistics"]
+        CDL["CDLClient<br/>NASS ImageServer land cover"]
+        HTTP["Shared HTTP handling<br/>Timeouts, errors and retries"]
+    end
 
-    SOILTOOLS --> FPPA
-    SOILTOOLS --> SDA
-    SPATIALTOOLS --> POLYGON
-    SPATIALTOOLS --> CORRIDOR
-    SPATIALTOOLS --> GEO
-    SPATIALTOOLS --> MAP
-    CDLTOOLS --> POLYGON
-    CDLTOOLS --> CDL
-    FPPATOOLS --> FPPA
-    EXEMPTTOOLS --> TIGER
-    LESATOOLS --> LESA
-    LESATOOLS --> POLYGON
-    LESATOOLS --> CORRIDOR
-    LESA --> WORKFLOW
+    REFERENCES["Resources and guided prompts<br/>Notices, classes, validated assessment criteria"]
+    RESPONSE["Typed analytical responses<br/>Optional map descriptors and display metadata"]
 
-    FPPA --> MODELS
-    POLYGON --> GEO
-    POLYGON --> SDA
-    POLYGON --> CDL
-    POLYGON --> TIGER
-    CORRIDOR --> GEO
-    CORRIDOR --> SDA
-    CORRIDOR --> TIGER
-    CORRIDOR --> NASS
-    LESA --> MODELS
-    GEO --> MODELS
-    CORE --> TOOLGROUPS
-    CORE --> DOMAIN
-    CONFIG --> CLIENTS
-    CLIENTS --> HTTP
-
-    SDA <-->|"queries and results"| SDAAPI
-    CDL <-->|"metadata and class data"| CDLAPI
-    NASS <-->|"statistics requests and results"| NASSAPI
-    TIGER <-->|"boundary requests and results"| CENSUSAPI
-
-    TOOLGROUPS --> RESULT
-    DOMAIN --> RESULT
-    MODELS --> RESULT
-    RESULT --> TRANSPORT
+    FACTORY --> MCP
+    FACTORY --> OPS
+    CLIENT <-->|"Requests and results"| MCP
+    MCP --> SOIL & AREA & LE & URBAN & LAND & GUIDE
+    MCP --> REFERENCES
+    SDA -->|"Soil records and geometry"| SOIL
+    SOIL --> GEO
+    AREA --> POLYGON & CORRIDOR
+    LE --> LESA
+    LESA --> POLYGON & CORRIDOR
+    SDA -->|"Soil intersections and ratings"| POLYGON & CORRIDOR
+    TIGER -->|"Urban and county boundaries"| POLYGON & CORRIDOR
+    NASS -->|"County agricultural context"| CORRIDOR
+    POLYGON & CORRIDOR --> GEO
+    TIGER -->|"Urban boundaries"| URBAN
+    LAND --> GEO
+    CDL -->|"Land-cover distributions"| LAND
+    GUIDE --> POLICY
+    LESA --> POLICY
+    REFERENCES --> POLICY
+    SDA & TIGER & NASS & CDL --> HTTP
+    SOIL & AREA & LE & URBAN & LAND & GUIDE --> RESPONSE
+    POLICY --> RESPONSE
+    RESPONSE --> MCP
 ```
+
+Source/client arrows point toward the tools and analyzers that consume their data. Tool-to-analyzer arrows show delegation; client-to-HTTP arrows show shared request handling. Each dedicated client encapsulates its corresponding external service; configuration supplies endpoints and capability settings. Map output and application consumption are expanded below rather than mixed into the source-query graph.
+
+## Map Contract and Example Application
+
+```mermaid
+flowchart TB
+    subgraph SERVER["FPAC Soil MCP server"]
+        TOOLS["Existing polygon, corridor and soil geometry tools<br/>Optional include_map=true"]
+        EXACT["Exact analytical geometry<br/>Clipping, acreage and ratings"]
+        BUILD["spatial/map_builder.py<br/>Display layers, legends and size limits"]
+        WRAP["mcp/tools/results.py<br/>One tool result, two output channels"]
+        BODY["MCP result body<br/>Analysis, sources, coverage, map layer descriptors"]
+        META["MCP result _meta<br/>gov.usda.fpac-soil/map<br/>Display geometry, bounds and warnings"]
+        CRITERIA["fppa://site-assessment-criteria<br/>Questions, bands, citations and scoring rules"]
+        CALC["calculate_preliminary_lesa<br/>Validated assessment inputs"]
+    end
+
+    subgraph APP["Example agent/map app - separate MCP client"]
+        CHAT["Agent loop<br/>Model-facing evidence"]
+        MAPAPI["agent_server/geo.py<br/>Direct map requests and metadata merge"]
+        MAPUI["Browser map<br/>AOI/corridor layers, legends and tables"]
+        INTERVIEW["Resource-backed interview tools<br/>Question cards and recorded answers"]
+        REVIEW["User-reviewed summary<br/>Confirmation and matching-input gate"]
+    end
+
+    GIS["Future GIS software integrations<br/>MCP client with map-contract support"]
+
+    TOOLS --> EXACT
+    EXACT --> BUILD
+    TOOLS --> WRAP
+    BUILD --> WRAP
+    WRAP --> BODY & META
+    BODY --> CHAT
+    MAPAPI -->|"include_map=true"| TOOLS
+    BODY & META --> MAPAPI
+    MAPAPI --> MAPUI
+    CRITERIA --> INTERVIEW
+    INTERVIEW --> REVIEW
+    REVIEW -->|"Confirmed inputs through MCP"| CALC
+    CALC --> CHAT
+    BODY -.->|"Analytical contract"| GIS
+    META -.->|"Display contract"| GIS
+```
+
+The server owns calculations, domain resources, and output contracts. The example app owns chat, questionnaire interaction, confirmation, and rendering. Its map routes call MCP tools directly; the `geo.py` adapter joins display metadata to body layer descriptors for the browser. The chat path keeps map display metadata separate from model-facing content and summarizes that metadata in tool traces.
+
+With `include_map=true`, `analyze_farmland_by_polygon`, `analyze_corridor_fppa`, and `get_soil_polygons_by_geometry` deliver map display data under `_meta["gov.usda.fpac-soil/map"]`. Body descriptors identify layers, authority, source, vintage, style keys, legends, and delivery status. Metadata contains display CRS, bounds, warnings, and layer-keyed feature collections with simplification/truncation information. Display simplification does not change exact analytical results. The soil-geometry retrieval tool also retains its primary top-level features in the body; the metadata split is not a universal removal of geometry from all responses.
+
+Dashed edges identify a future integration path, not an existing GIS connector. A GIS client can implement the same descriptor/metadata contract without embedding the agent app or recreating screening calculations. See [ADR 0017](decisions/0017-server-map-result-contract.md) for the map contract and the [agent app guide](../apps/agent-fpac-soil-openai-sdk/README.md) for the existing client.
 
 ## Responsibilities and Boundaries
 
 - **MCP assembly (`src/fpac_soil_mcp/mcp/`)** creates the FastMCP server and registers tool groups, resources, prompts, and custom HTTP routes. The same server supports `stdio`, SSE, and Streamable HTTP transports; route handlers are available on network transports.
 - **Tool adapters (`mcp/tools/`)** expose the public MCP functions and organize them by soil lookup, spatial analysis, CDL, FPPA guidance, exemptions, and LESA. They connect the MCP contract to domain operations rather than acting as independent data stores.
-- **Domain workflows (`domain/`)** combine soil, geography, and agricultural context for point, map-unit, polygon, corridor, and preliminary LESA workflows. Polygon analysis aggregates spatial samples; corridor analysis works with linear segments, county partitions, buffers, and alternatives.
+- **Domain workflows (`domain/`)** combine soil, geography, and agricultural context for polygon, corridor, and preliminary LESA workflows. Polygon analysis clips intersecting soil geometry and aggregates acreage and ratings; corridor analysis works with footprints, county partitions, and alternatives.
 - **Spatial operations (`spatial/`)** validate and normalize geometry, produce safe WKT for service queries, calculate area and length, and prepare map-layer responses. These operations are shared by multiple workflows.
 - **Clients (`clients/`)** isolate external request and response behavior. The shared HTTP helper normalizes request/status errors and retries configured transient failures. The SDA client uses fixed query templates and parses SDA's `JSON+COLUMNNAME` response format; clients do not accept arbitrary user SQL.
 - **Contracts and policy (`models/`, `core/`)** hold response schemas, authority and provenance types, configuration, error types, regulatory notices, and privacy protections. Results should communicate partial coverage and unavailable upstream data rather than imply unsupported completeness.
@@ -143,6 +142,8 @@ These sources describe different things. SSURGO farmland classes are soil-based 
 The console entry point is `fpac_soil_mcp.mcp.app:main`. Local MCP clients commonly use `stdio`; network deployments select SSE or Streamable HTTP using configuration. The root Dockerfile packages the server with a non-root runtime user and health check. The Databricks App configuration runs the same server over Streamable HTTP at `/mcp`; the separate application under `apps/agent-fpac-soil-openai-sdk/` is an MCP client, not part of the server's domain or data-access layers.
 
 Automated checks use mocked upstream HTTP responses by default. Offline contract and evaluation suites exercise MCP behavior without requiring live federal services; live-network tests and deployment-specific evaluations are opt-in. The browser harness under `eval/fpac_soil_mcp_harness/` is a local client/workbench for connecting to the server.
+
+The [evaluation guide](evaluation.md) describes case coverage and recorded results. T1 evaluates the checked-out server in process; deployed endpoint access and health are checked separately.
 
 ## Source Map
 

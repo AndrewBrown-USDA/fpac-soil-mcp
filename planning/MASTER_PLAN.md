@@ -480,10 +480,11 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 ### Track E: Evaluation
 
 - **Goal:** Measure MCP contract stability, agent tool routing, answer correctness, and preliminary-screening compliance across complementary tiers.
-- **Status:** T0 in-memory contract tests (`eval/contract/`) and T1 in-process MLflow evaluation (`eval/databricks/`) have shipped; the Pi harness remains a local smoke test. Orchestration 46 added cross-surface prompt-policy assertions, adversarial cases and deterministic safety/reliability scorers, and hardened MCP/map contracts. Its Wave 4 benchmark evidence is a reproducible manifest-only dry run; no service performance was measured.
+- **Status:** T0 in-memory contract tests (`eval/contract/`) and T1 in-process MLflow evaluation (`eval/databricks/`) have shipped; the Pi harness has recorded local full-suite runs and selected reruns. The shared corpus v1.1.0 contains 42 cases, including six model-assisted Site Assessment cases and 14 adversarial cases. Evaluation records cover earlier 38-case full-suite runs and a controlled five-case prompt comparison. Orchestration 46 added cross-surface prompt-policy assertions, adversarial cases and deterministic safety/reliability scorers, and hardened MCP/map contracts. Its Wave 4 benchmark validates fixture scheduling in manifest-only dry-run mode; service performance remains a separate measurement.
 - **Delivered:** Plans 28-30 (Pi capture and fixes); Plans 33 and 34 (`eval/common`, T0, T1); Plan 36 (deterministic workbench cases); Orchestration 46 (policy, adversarial evaluation, MCP/map safety, and Criterion 2 benchmark setup/evidence; see [execution plan](EXECUTION_PLAN_46.md), [state](STATE_46.md), and [46.4.2 evidence](evidence/46.4.2-performance.md)).
 - **Backlog:**
   - Proposed: move the T1 model client to model gateway.
+  - Planned: a [full-suite with/without-MCP comparison](../docs/evaluation.md#future-evaluation), with matched settings and explicit case/metric eligibility.
   - Deferred: run the T2 case corpus against deployed `mcp-fpac-soil` `/mcp`, reusing T1 ground truth and scorers where they are transport-independent. The Plan 49 authenticated smoke client and notebook (a separate access check, not corpus evaluation) are built but their live acceptance is deferred to a post-hackathon USDA deployment with a provisioned service principal (D14; [state](STATE_49.md)).
   - Proposed: expand ground truth with domain-owner sign-off.
   - Proposed: a committed docs consistency checker ([Plan 37](EXECUTION_PLAN_37.md) D9).
@@ -491,6 +492,7 @@ Tracks run alongside the server phases and depend on the server's public MCP sur
 - **Exit criteria:** T0 contract tests and the deterministic workbench suite gate CI; T1 runs record non-null MLflow scores for every ground-truth case; T2 reproduces the applicable T1 cases through deployed `/mcp` and records transport-specific deviations.
 - **Open decisions:** T2 authentication is reopened (D14): the Databricks Apps proxy rejects the notebook-runtime token, so the D13 run-as path needs an OAuth M2M token for a dedicated service principal, which means a stored OAuth secret. An agent-app evaluation against `/invocations` belongs to Track A and is not T2.
 - **Source:** [Tracks research, 4.2](RESEARCH_EVAL_AGENT_WORKBENCH_TRACKS.md#42-track-e-evaluation).
+- **Evaluation records:** The [evaluation guide](../docs/evaluation.md#recorded-evaluation-evidence) summarizes full-suite results and the November 20 v1/v2 example with run-specific provenance.
 
 ### Track A: Agent App
 
