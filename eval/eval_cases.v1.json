@@ -1615,7 +1615,7 @@
       "category": "Phase 5 CDL histogram",
       "target_type": "tool",
       "target_name": "analyze_cdl_histogram",
-      "user_prompt": "Summarize the Cropland Data Layer land-cover histogram for this pasted GeoJSON area, using the CDL histogram tool only: {\"type\": \"Point\", \"coordinates\": [-93.6, 42.03]}",
+      "user_prompt": "Summarize the Cropland Data Layer land-cover histogram for this pasted GeoJSON area, using the CDL histogram tool only, for CDL product vintage 2025 with classes 1 (Corn) and 5 (Soybeans) as the qualifying agricultural classes: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}",
       "expected_tools": [
         "analyze_cdl_histogram"
       ],
@@ -1638,7 +1638,7 @@
       "category": "Phase 5 CDL combined context",
       "target_type": "tool",
       "target_name": "analyze_cdl_context",
-      "user_prompt": "Provide the combined Cropland Data Layer context for this pasted GeoJSON area in one call: {\"type\": \"Point\", \"coordinates\": [-93.6, 42.03]}",
+      "user_prompt": "Provide the combined Cropland Data Layer context for this pasted GeoJSON area in one call: {\"type\": \"Polygon\", \"coordinates\": [[[-93.65, 42.02], [-93.63, 42.02], [-93.63, 42.04], [-93.65, 42.04], [-93.65, 42.02]]]}",
       "expected_tools": [
         "analyze_cdl_context"
       ],
