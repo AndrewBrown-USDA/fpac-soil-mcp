@@ -40,6 +40,47 @@ The server reports source data and screening context to support review. It does 
 
 The server exposes MCP tools, resources, and guided prompts through FastMCP. Tool handlers validate MCP inputs, coordinate domain and spatial operations, and call dedicated clients for USDA and Census services. Responses retain source provenance, coverage, and screening limitations. HTTP deployments also expose `/health` and `/meta`; these routes are separate from the MCP tool surface.
 
+```mermaid
+flowchart TB
+    HOST["Compatible assistants / MCP clients"]
+    APP["Example agent and map app<br/>Chat, AOI/corridor maps, assessment questionnaire"]
+
+    subgraph SERVER["FPAC Soil MCP server"]
+        MCP["FastMCP<br/>stdio / SSE / Streamable HTTP"]
+        SOIL["Soil tools<br/>Point, map-unit, interpretations, geometry"]
+        ANALYSIS["Analysis tools<br/>Polygon, corridor, preliminary LESA"]
+        URBAN["Urban screening"]
+        CDL["CDL histogram and context"]
+        REF["Guidance tools, resources and prompts<br/>Notices, classes, assessment criteria"]
+        RESULT["Typed results and map layer descriptors"]
+        DISPLAY["Map display geometry in MCP _meta<br/>gov.usda.fpac-soil/map"]
+    end
+
+    SDA["NRCS Soil Data Access<br/>SSURGO soils and ratings"]
+    CENSUS["Census TIGERweb<br/>Urban areas and counties"]
+    NASS["NASS QuickStats<br/>Optional county agricultural context"]
+    COVER["NASS Cropland Data Layer<br/>Mapped land cover"]
+    GIS["Future GIS clients<br/>Consume the same MCP map contract"]
+
+    HOST --> MCP
+    APP -->|"Streamable HTTP"| MCP
+    MCP --> SOIL & ANALYSIS & URBAN & CDL & REF
+    SOIL --> SDA
+    ANALYSIS --> SDA & CENSUS
+    ANALYSIS -->|"Corridor context"| NASS
+    URBAN --> CENSUS
+    CDL --> COVER
+    SOIL & ANALYSIS & URBAN & CDL & REF --> RESULT
+    RESULT -->|"Evidence for assistants"| HOST
+    RESULT -->|"Analysis and layer descriptions"| APP
+    SOIL & ANALYSIS -->|"Map-enabled geometry tools"| DISPLAY
+    DISPLAY -->|"Display data, separate from model content"| APP
+    RESULT -.-> GIS
+    DISPLAY -.-> GIS
+```
+
+The example app uses the server's map layer descriptions and separate display metadata to render screening results. The same contract can support future GIS clients; dashed connections show that integration opportunity rather than an existing GIS deployment.
+
 The implementation is organized into transport and registration (`mcp/`), domain workflows (`domain/`), shared geospatial operations (`spatial/`), upstream adapters (`clients/`), and typed contracts and policy (`models/`, `core/`). The detailed component diagram, data flows, and deployment boundaries are in the [Architecture Guide](docs/architecture.md).
 
 ---
