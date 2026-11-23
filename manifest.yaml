@@ -1,6 +1,6 @@
 name: fpac-soil-mcp
 title: USDA FPAC Soil MCP Server
-version: 0.6.0
+version: 0.7.0
 description: FastMCP server providing USDA NRCS Soil Data Access (SDA) farmland classifications and preliminary FPPA screening metadata.
 author: Andrew Brown
 license: MIT
