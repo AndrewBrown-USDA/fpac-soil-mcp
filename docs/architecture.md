@@ -44,16 +44,18 @@ flowchart TB
     CLIENT <-->|"Requests and results"| MCP
     MCP --> SOIL & AREA & LE & URBAN & LAND & GUIDE
     MCP --> REFERENCES
-    SOIL --> SDA
+    SDA -->|"Soil records and geometry"| SOIL
     SOIL --> GEO
     AREA --> POLYGON & CORRIDOR
     LE --> LESA
     LESA --> POLYGON & CORRIDOR
-    POLYGON --> SDA & TIGER
-    CORRIDOR --> SDA & TIGER & NASS
+    SDA -->|"Soil intersections and ratings"| POLYGON & CORRIDOR
+    TIGER -->|"Urban and county boundaries"| POLYGON & CORRIDOR
+    NASS -->|"County agricultural context"| CORRIDOR
     POLYGON & CORRIDOR --> GEO
-    URBAN --> TIGER
-    LAND --> GEO & CDL
+    TIGER -->|"Urban boundaries"| URBAN
+    LAND --> GEO
+    CDL -->|"Land-cover distributions"| LAND
     GUIDE --> POLICY
     LESA --> POLICY
     REFERENCES --> POLICY
@@ -63,7 +65,7 @@ flowchart TB
     RESPONSE --> MCP
 ```
 
-Arrows between tools, analyzers, and clients show delegation and data dependencies. Each dedicated client encapsulates its corresponding external service; configuration supplies endpoints and capability settings. Map output and application consumption are expanded below rather than mixed into the source-query graph.
+Source/client arrows point toward the tools and analyzers that consume their data. Tool-to-analyzer arrows show delegation; client-to-HTTP arrows show shared request handling. Each dedicated client encapsulates its corresponding external service; configuration supplies endpoints and capability settings. Map output and application consumption are expanded below rather than mixed into the source-query graph.
 
 ## Map Contract and Example Application
 

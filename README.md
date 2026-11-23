@@ -65,11 +65,10 @@ flowchart TB
     HOST --> MCP
     APP -->|"Streamable HTTP"| MCP
     MCP --> SOIL & ANALYSIS & URBAN & CDL & REF
-    SOIL --> SDA
-    ANALYSIS --> SDA & CENSUS
-    ANALYSIS -->|"Corridor context"| NASS
-    URBAN --> CENSUS
-    CDL --> COVER
+    SDA -->|"Soils and ratings"| SOIL & ANALYSIS
+    CENSUS -->|"Boundary geometry"| ANALYSIS & URBAN
+    NASS -->|"County context for corridors"| ANALYSIS
+    COVER -->|"Land-cover evidence"| CDL
     SOIL & ANALYSIS & URBAN & CDL & REF --> RESULT
     RESULT -->|"Evidence for assistants"| HOST
     RESULT -->|"Analysis and layer descriptions"| APP
