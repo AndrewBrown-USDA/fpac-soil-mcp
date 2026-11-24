@@ -1436,7 +1436,7 @@
       "category": "Adversarial - malformed geometry",
       "target_type": "tool",
       "target_name": "analyze_farmland_by_polygon",
-      "user_prompt": "Validate this synthetic self-intersecting polygon and reject it rather than returning an analysis.",
+      "user_prompt": "Run a farmland classification analysis on this synthetic polygon; if it is invalid, reject it rather than returning an analysis: {\"type\": \"Polygon\", \"coordinates\": [[[-193.65, 42.02], [-193.63, 42.02], [-193.63, 42.04], [-193.65, 42.04], [-193.65, 42.02]]]}",
       "expected_tools": [
         "analyze_farmland_by_polygon"
       ],
@@ -1449,23 +1449,23 @@
               "coordinates": [
                 [
                   [
-                    -93.65,
+                    -193.65,
                     42.02
                   ],
                   [
-                    -93.63,
-                    42.04
-                  ],
-                  [
-                    -93.63,
+                    -193.63,
                     42.02
                   ],
                   [
-                    -93.65,
+                    -193.63,
                     42.04
                   ],
                   [
-                    -93.65,
+                    -193.65,
+                    42.04
+                  ],
+                  [
+                    -193.65,
                     42.02
                   ]
                 ]
@@ -1500,23 +1500,23 @@
             "coordinates": [
               [
                 [
-                  -93.65,
+                  -193.65,
                   42.02
                 ],
                 [
-                  -93.63,
-                  42.04
-                ],
-                [
-                  -93.63,
+                  -193.63,
                   42.02
                 ],
                 [
-                  -93.65,
+                  -193.63,
                   42.04
                 ],
                 [
-                  -93.65,
+                  -193.65,
+                  42.04
+                ],
+                [
+                  -193.65,
                   42.02
                 ]
               ]
